@@ -29,7 +29,7 @@ export default function ColorSchemeToggle(props: IconButtonProps) {
   }
 
   const toggleColorScheme = () => {
-    const newMode = theme.palette.mode === 'light' ? 'dark' : 'light';
+    const newMode:any = theme.palette.mode === 'light' ? 'dark' : 'light';
     document.body.setAttribute('data-theme', newMode); // Example for applying the theme
     onClick?.(newMode);
   };
