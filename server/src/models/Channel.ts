@@ -1,5 +1,7 @@
 import { Model, DataTypes, Optional } from "sequelize";
 import { primarySequelize } from "../sequelize";
+import UserChannel from "./UserChannel";
+import User from "./User";
 
 // Define attributes for the Role model
 export interface ChannelAttributes {
@@ -23,7 +25,11 @@ class Channel
   public createdAt!: Date;
   public updatedAt!: Date;
   public description?: string | undefined;
-  static associate(models: any) {}
+  static associate(models: any) {
+    //Channel.belongsToMany(models.UserProfile, { through: models.UserChannel, foreignKey: 'channelId' });
+    Channel.hasMany(models.UserChannel, { foreignKey: 'channelId', as: 'user_channels' });
+    Channel.hasMany(models.GroupChannel, { foreignKey: 'channelId', as: 'group_channels' });
+  }
 }
 
 Channel.init(

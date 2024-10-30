@@ -27,6 +27,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
 
   static associate(models: any) {
     User.hasMany(models.UserProfile, { foreignKey: 'userId', as: 'profiles' });
+  
+
   }
 }
 

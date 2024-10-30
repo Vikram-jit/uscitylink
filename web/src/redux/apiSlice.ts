@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'http://52.8.75.98:4300/api/v1/', // Replace with your API base URL
+  baseUrl: process.env.API_URL, // Replace with your API base URL
   prepareHeaders: (headers) => {
     const token = localStorage.getItem('custom-auth-token'); // Retrieve the token from local storage
 
@@ -15,10 +15,15 @@ return headers;
   },
 });
 
+export interface ApiResponse<T = unknown> {
+  status: boolean
+  message: string
+  data?: T
+}
 
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery,
   endpoints: () => ({ }),
-  tagTypes:['users','profile','channels']
+  tagTypes:['users','profile','channels','groups']
 });

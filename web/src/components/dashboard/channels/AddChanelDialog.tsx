@@ -43,7 +43,7 @@ export default function AddChanelDialog() {
               const formJson = Object.fromEntries((formData as any).entries());
               const name = formJson.name;
               const description = formJson.description;
-              await addChannel({name,description})
+              await addChannel({name, description})
               toast.success("Created New Channel Successfully.")
               handleClose?.()
             },

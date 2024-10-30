@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import { UserModel } from '@/redux/models/UserModel';
+import { Edit, RemoveRedEye } from '@mui/icons-material';
+import { IconButton, Tooltip } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -39,6 +41,7 @@ export function UsersTable({ count = 0, rows = [], page = 0, rowsPerPage = 0 }: 
               <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Is Online</TableCell>
+              <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -47,7 +50,7 @@ export function UsersTable({ count = 0, rows = [], page = 0, rowsPerPage = 0 }: 
                 <TableRow hover key={row.id}>
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
-                      <Avatar src={row.username} />
+                      <Avatar alt={row.username} />
                       <Typography variant="subtitle2">{row.username}</Typography>
                     </Stack>
                   </TableCell>
@@ -57,6 +60,18 @@ export function UsersTable({ count = 0, rows = [], page = 0, rowsPerPage = 0 }: 
                   <TableCell>{row.status}</TableCell>
                   <TableCell>
                     {row.isOnline ? <Circle color="green" weight="fill" /> : <Circle color="red" weight="fill" />}
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title="Edit Information">
+                      <IconButton>
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="View">
+                      <IconButton>
+                        <RemoveRedEye />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                   {/* <TableCell>{dayjs(row.createdAt).format('MMM D, YYYY')}</TableCell> */}
                 </TableRow>

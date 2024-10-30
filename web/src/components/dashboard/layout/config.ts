@@ -8,7 +8,8 @@ export const navItems = [
   // { key: 'integrations', title: 'Integrations', href: paths.dashboard.integrations, icon: 'plugs-connected' },
   // { key: 'settings', title: 'Settings', href: paths.dashboard.settings, icon: 'gear-six' },
   // { key: 'account', title: 'Account', href: paths.dashboard.account, icon: 'user' },
-  { key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' },
+  { key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
   { key: 'channels', title: 'Channels', href: paths.dashboard.channels, icon: 'channels' },
+  { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users' },
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },
 ] satisfies NavItemConfig[];

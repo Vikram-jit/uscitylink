@@ -8,8 +8,13 @@ export const paths = {
     integrations: '/dashboard/integrations',
     settings: '/dashboard/settings',
     users: '/dashboard/users',
+
     channels: '/dashboard/channels',
+    groups: '/dashboard/groups',
     messages: '/dashboard/messages',
+  },
+  user:{
+    "add":'/dashboard/users/add'
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

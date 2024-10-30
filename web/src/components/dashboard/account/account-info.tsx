@@ -45,3 +45,31 @@ export function AccountInfo(): React.JSX.Element {
     </Card>
   );
 }
+
+
+
+const FileUploadButton: React.FC = () => {
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  return (
+    <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }} // Hide the default file input
+        accept="image/*" // You can specify the types of files allowed
+      />
+      <Button fullWidth variant="text" onClick={handleClick}>
+        Upload picture
+      </Button>
+    </>
+  );
+};
+
+export default FileUploadButton;

@@ -4,7 +4,6 @@ import React from 'react';
 
 import { CircularProgress } from '@mui/material';
 
-import { CustomersFilters } from '../customer/customers-filters';
 import { useGetChannelsQuery } from '@/redux/ChannelApiSlice';
 import { ChannelTable } from './ChannelTable';
 

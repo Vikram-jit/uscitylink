@@ -42,9 +42,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         throw new Error("User already exists with this role.");
       }
     }
-
+     const pass = password || "123456"
     // Hash the password
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(pass);
 
     // If user does not exist, create a new user
     const newUser =

@@ -8,14 +8,11 @@ import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { config } from '@/config';
 import UserList from '@/components/dashboard/users/UserList';
 import { Container } from '@mui/material';
+import { paths } from '@/paths';
 
 export const metadata = { title: `Users | Dashboard | ${config.site.name}` } satisfies Metadata;
 
-
-
 export default function Page(): React.JSX.Element {
-
-
   return (
     <Container maxWidth="xl" sx={{ py: '64px' }}>
     <Stack spacing={3}>
@@ -24,7 +21,7 @@ export default function Page(): React.JSX.Element {
           <Typography variant="h4">Users</Typography>
         </Stack>
         <div>
-          <Button startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
+          <Button LinkComponent={"a"} href={paths.user.add} startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
             Add
           </Button>
         </div>
