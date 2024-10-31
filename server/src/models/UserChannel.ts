@@ -5,7 +5,8 @@ class UserChannel extends Model {
   public id!: string;
   public userProfileId!: string;
   public channelId!: string;
-
+  public readonly userChannels?: UserChannel[]; // Add this line
+  
   static associate(models: any) {
     UserChannel.belongsTo(models.UserProfile, { foreignKey: 'userProfileId' });
     UserChannel.belongsTo(models.Channel, { foreignKey: 'channelId' });

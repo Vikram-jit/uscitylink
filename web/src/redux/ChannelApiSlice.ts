@@ -1,5 +1,5 @@
 import { apiSlice } from './apiSlice';
-import { ChannelModel } from './models/ChannelModel';
+import { ChannelModel, SingleChannelModel } from './models/ChannelModel';
 import { UserModel } from './models/UserModel';
 
 export const ChannelApiSlice = apiSlice.injectEndpoints({
@@ -18,7 +18,20 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
         method: 'GET',
       }),
     }),
-
+    getActiveChannel: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: ChannelModel;
+      },
+      Partial<void>
+    >({
+      providesTags: ['channels'],
+      query: () => ({
+        url: 'channel/activeChannel',
+        method: 'GET',
+      }),
+    }),
     addChannel: builder.mutation<
       {
         name: string;
@@ -33,7 +46,37 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
+    getChannelMembers: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: SingleChannelModel;
+      },
+      Partial<void>
+    >({
+      providesTags: ['channel'],
+      query: () => ({
+        url: 'channel/members',
+        method: 'GET',
+      }),
+    }),
+    addMemberToChannel: builder.mutation<
+      {
+        status: boolean;
+        message: string;
+
+      },
+      {ids:string[]}
+    >({
+      invalidatesTags: ['channel',"channelUsers"],
+      query: (payload) => ({
+        url: 'channel/addToChannel',
+        method: 'POST',
+        body:payload
+      }),
+    }),
   }),
 });
 
-export const { useGetChannelsQuery,useAddChannelMutation } = ChannelApiSlice;
+export const { useGetChannelsQuery, useAddChannelMutation, useGetActiveChannelQuery, useGetChannelMembersQuery ,useAddMemberToChannelMutation} =
+  ChannelApiSlice;

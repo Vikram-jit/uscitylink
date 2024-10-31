@@ -16,5 +16,8 @@ export const paths = {
   user:{
     "add":'/dashboard/users/add'
   },
+  channel:{
+    "members":'/dashboard/channels/members'
+  },
   errors: { notFound: '/errors/not-found' },
 } as const;

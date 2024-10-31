@@ -4,6 +4,7 @@ import UserChannel from "../models/UserChannel";
 import { UserProfile } from "../models/UserProfile";
 import GroupChannel from "../models/GroupChannel";
 import Group from "../models/Group";
+import User from "../models/User";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -27,14 +28,12 @@ export async function create(req: Request, res: Response): Promise<any> {
 
 export async function get(req: Request, res: Response): Promise<any> {
   try {
-
     const [channels, activeChannel] = await Promise.all([
       Channel.findAll(),
       UserProfile.findByPk(req.user?.id),
     ]);
 
-   
-    const newData = channels.map(channel => ({
+    const newData = channels.map((channel) => ({
       ...channel.dataValues,
       isActive: activeChannel?.channelId === channel.id,
     }));
@@ -56,22 +55,40 @@ export async function userAddToChannel(
   res: Response
 ): Promise<any> {
   try {
-    const { user_id, channel_id } = req.body;
+    const { ids } = req.body; // Assuming ids is an array of userProfileIds
 
-    const isFound = await UserChannel.findOne({
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error("No user IDs provided.");
+    }
+
+    
+    const existingUserChannels = await UserChannel.findAll({
       where: {
-        channelId: channel_id,
-        userProfileId: user_id,
+        channelId: req.activeChannel,
+        userProfileId: ids,
       },
     });
 
-    if (isFound) throw new Error("Already added into channel.");
+    
+    const existingUserIds = existingUserChannels.map(
+      (channel) => channel.userProfileId
+    );
 
-    await UserChannel.create({
-      channelId: channel_id,
-      userProfileId: user_id,
+  
+    const newUserIds = ids.filter(
+      (user_id) => !existingUserIds.includes(user_id)
+    );
+
+    // Create UserChannel entries for the new user IDs
+    const createPromises = newUserIds.map((user_id) => {
+      return UserChannel.create({
+        channelId: req.activeChannel,
+        userProfileId: user_id,
+      });
     });
 
+    await Promise.all(createPromises);
+    
     return res.status(200).json({
       status: true,
       message: `Added into channel successfully.`,
@@ -87,7 +104,7 @@ export async function getById(req: Request, res: Response): Promise<any> {
   try {
     const data: any = await Channel.findOne({
       where: {
-        id: req.params.id,
+        id: req.activeChannel,
       },
       include: [
         {
@@ -151,6 +168,71 @@ export async function getById(req: Request, res: Response): Promise<any> {
       status: true,
       message: `Channel Fetch Successfully.`,
       data: mergedResponse,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getMembers(req: Request, res: Response): Promise<any> {
+  try {
+    const data: any = await Channel.findOne({
+      where: {
+        id: req.activeChannel,
+      },
+      include: [
+        {
+          model: UserChannel,
+          as: "user_channels",
+          include: [
+            {
+              model: UserProfile,
+              attributes: {
+                exclude: ["password"],
+              },
+              include: [
+                {
+                  model: User,
+                  as: "user",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Channel Fetch Successfully.`,
+      data: data,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getActiveChannel(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    let channel: any = {};
+
+    const userProfile = await UserProfile.findByPk(req.user?.id);
+
+    if (userProfile) {
+      channel = await Channel.findByPk(userProfile?.dataValues?.channelId);
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Active channel Fetch Successfully.`,
+      data: channel,
     });
   } catch (err: any) {
     return res

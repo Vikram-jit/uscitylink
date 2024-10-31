@@ -12,6 +12,7 @@ import { UserProfile } from "./models/UserProfile";
 import Role from "./models/Role";
 import userRoutes from "./routes/userRoutes";
 import channelRoutes from "./routes/channelRoutes";
+import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import Channel from "./models/Channel";
@@ -39,6 +40,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/channel", channelRoutes);
 app.use("/api/v1/group", groupRoutes);
+app.use("/api/v1/channel/member", channelMemberRoutes);
 app.use("/api/v1/message", messageRoutes);
 
 

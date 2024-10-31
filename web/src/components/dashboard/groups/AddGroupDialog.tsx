@@ -43,7 +43,7 @@ export default function AddGroupDialog() {
               const formJson = Object.fromEntries((formData as any).entries());
               const name = formJson.name;
               const description = formJson.description;
-              await createGroup({ name, channelId: '9361a441-b99d-4ff6-83b5-e59314dff472', description });
+              await createGroup({ name,  description });
               toast.success('Created New Group Successfully.');
               handleClose?.();
             },

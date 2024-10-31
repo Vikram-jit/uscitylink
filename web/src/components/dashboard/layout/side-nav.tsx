@@ -18,10 +18,13 @@ import { navItems } from './config';
 import { navIcons } from './nav-icons';
 import { usePopover } from '@/hooks/use-popover';
 import { ChannelPopover } from './channel-popover';
+import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
+import { CircularProgress } from '@mui/material';
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
   const userPopover = usePopover<HTMLDivElement>();
+  const {data,isLoading,isFetching} = useGetActiveChannelQuery()
 
   return (
     <Box
@@ -69,12 +72,12 @@ export function SideNav(): React.JSX.Element {
           ref={userPopover.anchorRef}
         >
           <Box sx={{ flex: '1 1 auto' }}>
-            <Typography color="var(--mui-palette-neutral-400)" variant="body2">
-              Channels
+            {isLoading || isFetching  ? <CircularProgress/> :<><Typography color="var(--mui-palette-neutral-400)" variant="body2">
+              Active Channel
             </Typography>
             <Typography color="inherit" variant="subtitle1">
-              Devias
-            </Typography>
+              {data && data?.data?.name}
+            </Typography></>}
           </Box>
           <CaretUpDownIcon />
 

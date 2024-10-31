@@ -27,20 +27,22 @@ export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps)
       open={open}
       slotProps={{ paper: { sx: { width: '240px' } } }}
     >
-      <Box sx={{ p: '16px 20px ' }}>
-        <Typography variant="subtitle1">Sofia Rivers</Typography>
-        <Typography color="text.secondary" variant="body2">
-          sofia.rivers@devias.io
-        </Typography>
-      </Box>
-      <Divider />
+
       <MenuList disablePadding sx={{ p: '8px', '& .MuiMenuItem-root': { borderRadius: 1 } }}>
         {data &&
           data?.data?.map((e) => {
-            return <MenuItem onClick={async()=>{
+            return <MenuItem  sx={{
+              background: e.isActive ? "var(--mui-palette-primary-dark)" : "#fff",
+              color: e.isActive ? "#fff" : "black",
+              "&:hover": {
+                background: "#e7e7e7",
+                color: "#000"
+              }
+            }}   onClick={async()=>{
                const res = await updateActiveChannel({channelId:e.id,id:"0adc1023-bb6c-4444-81b6-2f6c942c5392"})
                if(res.data?.status){
                 toast.success("Changes Channel successfully.")
+                onClose?.()
                }else{
                 toast.error("SERVER ERROR")
                }

@@ -20,7 +20,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
 
     createGroup: builder.mutation<
       ApiResponse,
-      {name:string,channelId:string, description?:string}
+      {name:string, description?:string}
     >({
       invalidatesTags: ['groups'],
       query: (payload) => ({

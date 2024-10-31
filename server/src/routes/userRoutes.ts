@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { getChannelList, getUsers, updateUserActiveChannel } from '../controllers/userController';
+import { getChannelList,  getUsers, getUserWithoutChannel, updateUserActiveChannel } from '../controllers/userController';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 
 router.get('/', getUsers);
+router.get('/drivers',authMiddleware, getUserWithoutChannel);
+
 router.get('/channels/:id', getChannelList);
 router.put('/updateActiveChannel/:id', updateUserActiveChannel);
 

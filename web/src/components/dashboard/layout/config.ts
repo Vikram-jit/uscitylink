@@ -10,6 +10,7 @@ export const navItems = [
   // { key: 'account', title: 'Account', href: paths.dashboard.account, icon: 'user' },
   { key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
   { key: 'channels', title: 'Channels', href: paths.dashboard.channels, icon: 'channels' },
+  { key: 'channel Members', title: 'Channel Members', href: paths.channel.members, icon: 'users-four' },
   { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users' },
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },
 ] satisfies NavItemConfig[];

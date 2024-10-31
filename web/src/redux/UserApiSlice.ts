@@ -25,15 +25,27 @@ export const UserApiSlice = apiSlice.injectEndpoints({
       }),
     }),
     updateActiveChannel: builder.mutation< ApiResponse,{id:string,channelId:string}>({
-      invalidatesTags:['users'],
+      invalidatesTags:['channels',"groups","channel","channelUsers"],
       query: (newPost) => ({
         url: `user/updateActiveChannel/${newPost?.id}`,
         method: 'PUT',
         body: {channelId:newPost?.channelId},
       }),
     }),
+    getUserWithoutChannel: builder.query<{
+      status:boolean,
+      message:string,
+      data:UserModel[]
+    }, Partial<void>>({
+      providesTags:['channelUsers'],
+      query: () => ({
+        url: 'user/drivers',
+        method: 'GET',
+
+      }),
+    }),
   }),
 });
 
 
-export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation} = UserApiSlice;
+export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation,useGetUserWithoutChannelQuery} = UserApiSlice;

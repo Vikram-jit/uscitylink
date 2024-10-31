@@ -8,9 +8,9 @@ import Channel from "../models/Channel";
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
     const users = await UserProfile.findAll({
-        attributes: {
-            exclude: ["password"],
-          },
+      attributes: {
+        exclude: ["password"],
+      },
       include: [
         {
           model: User,
@@ -21,7 +21,7 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
           as: "role",
         },
       ],
-      order:[["id", "DESC"]]
+      order: [["id", "DESC"]],
     });
 
     return res.status(200).json({
@@ -36,20 +36,21 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
   }
 }
 
-export async function getChannelList(req: Request, res: Response): Promise<any> {
+export async function getChannelList(
+  req: Request,
+  res: Response
+): Promise<any> {
   try {
     const users = await UserChannel.findAll({
-       where:{
-        userProfileId:req.params.id
-       },
+      where: {
+        userProfileId: req.params.id,
+      },
       include: [
         {
           model: Channel,
-         
         },
-     
       ],
-      order:[["id", "DESC"]]
+      order: [["id", "DESC"]],
     });
 
     return res.status(200).json({
@@ -64,23 +65,26 @@ export async function getChannelList(req: Request, res: Response): Promise<any> 
   }
 }
 
-
-export async function updateUserActiveChannel(req: Request, res: Response): Promise<any> {
+export async function updateUserActiveChannel(
+  req: Request,
+  res: Response
+): Promise<any> {
   try {
-
-    await UserProfile.update({
-      channelId:req.body?.channelId
-    }, {
-      where: {
-          id: req.params.id, 
+    await UserProfile.update(
+      {
+        channelId: req.body?.channelId,
       },
-      returning: true,
-  });
+      {
+        where: {
+          id: req.params.id,
+        },
+        returning: true,
+      }
+    );
 
     return res.status(200).json({
       status: true,
       message: `Update Channel Successfully.`,
-     
     });
   } catch (err: any) {
     return res
@@ -88,3 +92,66 @@ export async function updateUserActiveChannel(req: Request, res: Response): Prom
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+export async function getUserWithoutChannel(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const isDriverRole = await Role.findOne({
+      where: {
+        name: "driver",
+      },
+    });
+
+    const users: any = await UserProfile.findAll({
+      where: {
+        role_id: isDriverRole?.id,
+      },
+      attributes: {
+        exclude: ["password"],
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Role,
+          as: "role",
+        },
+        {
+          model: UserChannel,
+          as: "userChannels",
+          required: false,
+          where: {
+            channelId: req.activeChannel,
+          },
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
+
+    const filteredUsers = users?.filter((user: any) => {
+      return (
+        !user.userChannels ||
+        user.userChannels.length === 0 ||
+        !user.userChannels.some(
+          (channel: any) => channel.channelId === req.activeChannel
+        )
+      );
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Driver Users Successfully.`,
+      data: filteredUsers,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+

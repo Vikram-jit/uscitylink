@@ -1,5 +1,6 @@
 import { Model, DataTypes, Optional, Sequelize } from "sequelize";
 import { primarySequelize } from "../sequelize";
+import UserChannel from "./UserChannel";
 
 // Define the attributes of the model
 interface UserProfileAttributes {
@@ -49,7 +50,8 @@ export class UserProfile
   public static associate(models: any) {
     UserProfile.belongsTo(models.User, { foreignKey: "userId", as: "user" });
     UserProfile.belongsTo(models.Role, { foreignKey: "role_id", as: "role" });
-    UserProfile.belongsToMany(models.Channel, { through: models.UserChannel, foreignKey: 'userProfileId' });
+    UserProfile.hasMany(UserChannel, { foreignKey: 'userProfileId', as: 'userChannels' });
+
   }
 }
 
