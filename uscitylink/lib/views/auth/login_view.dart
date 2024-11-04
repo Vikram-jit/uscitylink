@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart'; // Add this import for TapGestureRecognizer
+import 'package:get/get.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
+import 'package:uscitylink/views/auth/otp_view.dart';
+import 'package:uscitylink/views/auth/password_view.dart';
+import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -45,11 +51,7 @@ class _LoginViewState extends State<LoginView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.1,
               ),
-              Image.asset(
-                TImages.logo,
-                fit: BoxFit.cover,
-                height: TDeviceUtils.getScreenHeight() * 0.3,
-              ),
+              const LogoWidgets(),
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
@@ -74,6 +76,36 @@ class _LoginViewState extends State<LoginView>
                     padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                   onPressed: () {
+                    showAdaptiveActionSheet(
+                      context: context,
+                      actions: <BottomSheetAction>[
+                        BottomSheetAction(
+                          title: const Text(
+                            'Send OTP',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Navigator.of(context).pop();
+                            Get.to(() => OtpView(email: 'user@example.com'));
+                          },
+                        ),
+                        BottomSheetAction(
+                          title: const Text(
+                            'Use Password',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Navigator.of(context).pop();
+                            Get.to(
+                                () => PasswordView(email: 'user@example.com'));
+                          },
+                        ),
+                      ],
+                    );
                     // Handle login action here
                   },
                   child: const Text(
@@ -85,13 +117,13 @@ class _LoginViewState extends State<LoginView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  "Forgotten Password?",
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
+              // Align(
+              //   alignment: Alignment.centerRight,
+              //   child: Text(
+              //     "Forgotten Password?",
+              //     style: Theme.of(context).textTheme.titleSmall,
+              //   ),
+              // ),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,

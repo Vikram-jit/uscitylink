@@ -37,6 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_launcher_icons: ^0.14.1
   get: ^4.6.6
+  adaptive_action_sheet: ^2.0.3
   
 
 dev_dependencies:
