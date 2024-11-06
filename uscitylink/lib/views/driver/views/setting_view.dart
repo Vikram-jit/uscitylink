@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/views/widgets/custom_button.dart';
 
 class SettingView extends StatefulWidget {
   const SettingView({super.key});
@@ -8,108 +13,104 @@ class SettingView extends StatefulWidget {
 }
 
 class _SettingViewState extends State<SettingView> {
-  late ScrollController _scrollController;
-  bool _isAppBarCollapsed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (scrollNotification) {
-          if (scrollNotification is ScrollUpdateNotification) {
-            // This listens for scroll updates and updates the collapsed state
-            setState(() {
-              _isAppBarCollapsed = _scrollController.offset > 0;
-            });
-          }
-          return true;
-        },
-        child: CustomScrollView(
-          controller: _scrollController, // Attach ScrollController
-          slivers: <Widget>[
-            SliverAppBar(
-              expandedHeight: 70.0, // Height when expanded
-              floating: false,
-              pinned: true, // AppBar stays pinned when collapsed
-              centerTitle: true,
-              automaticallyImplyLeading: false,
-              backgroundColor: Colors.white,
-              title: AnimatedOpacity(
-                opacity: _isAppBarCollapsed
-                    ? 1.0
-                    : 0.0, // Title opacity based on collapsed state
-                duration: Duration(milliseconds: 300),
-                child: Text(
-                  "Settings", // Title text when collapsed
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 22,
-                  ),
-                ),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                title: AnimatedOpacity(
-                  opacity: _isAppBarCollapsed
-                      ? 0.0
-                      : 1.0, // Title opacity when expanded
-                  duration: Duration(milliseconds: 300),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text(
-                          "Settings", // Title text when expanded
-                          style: Theme.of(context).textTheme.headlineLarge,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      backgroundColor: TColors.white,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: Column(
+          children: [
+            AppBar(
+              title: Text(
+                "Settings",
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
             ),
-            // Content after the SliverAppBar
-            SliverToBoxAdapter(
-              child: Container(
-                color: Colors.amber,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text("Body content goes here",
-                          style: TextStyle(fontSize: 18)),
-                    )
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Container(
-                color: Colors.amber,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text("Body content goes here",
-                          style: TextStyle(fontSize: 18)),
-                    )
-                  ],
-                ),
-              ),
+            Container(
+              height: 1.0,
+              color: Colors.grey.shade300,
             ),
           ],
         ),
+      ),
+      body: ListView(
+        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+        children: [
+          // Profile Section
+          Center(
+            child: Column(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: TColors.grey,
+                  radius: 60,
+                  child: Text("A"), // Placeholder for profile image
+                ),
+                SizedBox(height: TDeviceUtils.getScreenHeight() * 0.01),
+                Text("John Doe",
+                    style: Theme.of(context).textTheme.headlineLarge),
+              ],
+            ),
+          ),
+          SizedBox(height: TDeviceUtils.getScreenHeight() * 0.03),
+
+          // Account and Settings Options List
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+            elevation: 0, // Adding some elevation for a card-like effect
+            child: Column(
+              children: [
+                // First ListTile for Account
+                ListTile(
+                  minTileHeight: 20,
+                  leading: Icon(Icons.account_circle, size: 18),
+                  title: Text('Account',
+                      style: Theme.of(context).textTheme.labelLarge),
+                  onTap: () {
+                    Get.toNamed(AppRoutes.driverAccount);
+                  },
+                  trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                ),
+                Divider(thickness: 1, color: Colors.grey.shade300),
+
+                // Second ListTile for Change Password
+                ListTile(
+                  minTileHeight: 20,
+                  leading: Icon(Icons.password, size: 18),
+                  title: Text('Change Password',
+                      style: Theme.of(context).textTheme.labelLarge),
+                  onTap: () {
+                    Get.toNamed(AppRoutes.driverChangePassword);
+                  },
+                  trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                ),
+                Divider(thickness: 1, color: Colors.grey.shade300),
+
+                // Third ListTile for Pin Messages
+                ListTile(
+                  minTileHeight: 20,
+                  leading: Icon(Icons.message, size: 18),
+                  title: Text('Pin Messages',
+                      style: Theme.of(context).textTheme.labelLarge),
+                  onTap: () {
+                    print("Pin Messages tapped");
+                  },
+                  trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                ),
+                Divider(thickness: 1, color: Colors.grey.shade300),
+              ],
+            ),
+          ),
+          SizedBox(height: TDeviceUtils.getScreenHeight() * 0.20),
+
+          // Log out Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: CustomButton(label: "Log out", onPressed: () {}),
+          ),
+        ],
       ),
     );
   }

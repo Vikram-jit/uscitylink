@@ -8,117 +8,159 @@ class DriverDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(18.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: Column(
+          children: [
+            AppBar(
+              // backgroundColor: TColors.primary,  // Uncomment to use your custom primary color
+              title: Text(
+                "Dashboard",
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end, // Align icons to the right
                     children: [
-                      const CircleAvatar(
-                        child: Text("A"),
+                      // Profile Image Container
+                      Container(
+                        height: 35,
+                        width: 35,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.asset(
+                            "assets/images/placeholder.png", // Path to your image asset
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                       SizedBox(
-                        width: TDeviceUtils.getScreenHeight() * 0.01,
-                      ),
-                      const Text("Hello,"),
-                      SizedBox(
-                        width: TDeviceUtils.getScreenHeight() * 0.004,
-                      ),
-                      const Text(
-                        "Text User",
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                          width:
+                              10), // Add some space between the image and the notification icon
+                      // Notification Icon Container
+                      Container(
+                        height: 35,
+                        width: 35,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.notification_add,
+                            color: Colors.black,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const Icon(Icons.notification_add)
-                ],
-              ),
+                ),
+              ],
+            ),
+            // Add a bottom line under the AppBar using a Container
+            Container(
+              height: 1.0, // Thickness of the line
+              color: Colors.grey.shade300, // Color of the line (light grey)
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18.0),
+          child: Column(
+            children: [
               //Announcement Ui
-              SizedBox(
-                height: TDeviceUtils.getAppBarHeight() * 0.2,
-              ),
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                color: Colors.black,
-                elevation: 0.0,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: TDeviceUtils.getAppBarHeight() * 0.2,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Important Announcement',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(color: Colors.white),
-                          ),
-                          SizedBox(
-                            width: TDeviceUtils.getAppBarHeight() * 0.2,
-                          ),
-                          const Icon(
-                            Icons.announcement,
-                            color: Colors.white,
-                          )
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: TDeviceUtils.getAppBarHeight() * 0.1,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          left: 8.0, right: 8.0, bottom: 8.0),
-                      child: Text(
-                        'This is the body of the card. You can put any content here, .',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // SizedBox(
+              //   height: TDeviceUtils.getAppBarHeight() * 0.2,
+              // ),
+              // Card(
+              //   shape: RoundedRectangleBorder(
+              //     borderRadius: BorderRadius.circular(5.0),
+              //   ),
+              //   color: Color(0XFF272727).withOpacity(1),
+              //   elevation: 0.0,
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       SizedBox(
+              //         height: TDeviceUtils.getAppBarHeight() * 0.2,
+              //       ),
+              //       Padding(
+              //         padding: const EdgeInsets.symmetric(horizontal: 8),
+              //         child: Row(
+              //           children: [
+              //             Text(
+              //               'Important Announcement',
+              //               style: Theme.of(context)
+              //                   .textTheme
+              //                   .titleLarge
+              //                   ?.copyWith(color: Colors.white),
+              //             ),
+              //             SizedBox(
+              //               width: TDeviceUtils.getAppBarHeight() * 0.2,
+              //             ),
+              //             const Icon(
+              //               Icons.announcement,
+              //               color: Colors.yellowAccent,
+              //             )
+              //           ],
+              //         ),
+              //       ),
+              //       SizedBox(
+              //         height: TDeviceUtils.getAppBarHeight() * 0.1,
+              //       ),
+              //       Padding(
+              //         padding: const EdgeInsets.only(
+              //             left: 8.0, right: 8.0, bottom: 8.0),
+              //         child: Text(
+              //           'This is the body of the card. You can put any content here, .',
+              //           style: Theme.of(context)
+              //               .textTheme
+              //               .bodySmall
+              //               ?.copyWith(color: Colors.white),
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
               //Announcement Ui End
               SizedBox(
                 height: TDeviceUtils.getAppBarHeight() * 0.3,
               ),
               SizedBox(
-                height: TDeviceUtils.getAppBarHeight() * 2,
+                height: TDeviceUtils.getAppBarHeight() * 1.2,
                 child: const Row(
                   children: [
                     Expanded(
                       child: StatCard(
-                        title: "Total Channels",
+                        title: "TOTAL CHANNEL",
                         value: 18,
+                        icon: Icons.wifi_channel,
                         gradientColors: [
                           Color(
-                              0xFFffde59), // Hex color for a shade of green (Active User)
-                          Color(0xFFe45d0d),
+                              0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                          Color(0xFFe5e5e5),
                         ], // Gradient colors
                       ),
                     ),
                     Expanded(
                       child: StatCard(
-                        title: "Total Message",
+                        title: "TOTAL MESSAGE",
+                        icon: Icons.message,
                         value: 18,
                         gradientColors: [
                           Color(
-                              0xFFff7171), // Hex color for a shade of green (Active User)
-                          Color(0xFF9B2020),
+                              0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                          Color(0xFFe5e5e5),
                         ], // Gradient colors
                       ),
                     ),
@@ -129,28 +171,30 @@ class DriverDashboard extends StatelessWidget {
                 height: TDeviceUtils.getAppBarHeight() * 0.1,
               ),
               SizedBox(
-                height: TDeviceUtils.getAppBarHeight() * 2,
+                height: TDeviceUtils.getAppBarHeight() * 1.2,
                 child: const Row(
                   children: [
                     Expanded(
                       child: StatCard(
-                        title: "Trucks",
+                        icon: Icons.fire_truck,
+                        title: "TRUCKS",
                         value: 18,
                         gradientColors: [
                           Color(
-                              0xFF9ccd2a), // Hex color for a shade of green (Active User)
-                          Color(0xFFffff33),
+                              0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                          Color(0xFFe5e5e5),
                         ], // Gradient colors
                       ),
                     ),
                     Expanded(
                       child: StatCard(
-                        title: "Trailers",
+                        title: "TRAILERS",
                         value: 18,
+                        icon: Icons.car_crash,
                         gradientColors: [
                           Color(
-                              0xFFbff870), // Hex color for a shade of green (Active User)
-                          Color(0xFF34ffaa),
+                              0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                          Color(0xFFe5e5e5),
                         ], // Gradient colors
                       ),
                     ),
