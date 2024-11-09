@@ -43,7 +43,7 @@ export async function getChannelList(
   try {
     const users = await UserChannel.findAll({
       where: {
-        userProfileId: req.params.id,
+        userProfileId: req.user?.id,
       },
       include: [
         {
