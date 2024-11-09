@@ -41,6 +41,9 @@ dependencies:
   salomon_bottom_bar: ^3.3.2
   fl_chart: ^0.69.0
   image_picker: ^1.1.2
+  fluttertoast: ^8.2.8
+  shared_preferences: ^2.3.3
+  flutter_native_splash: ^2.4.2
   
  
   
@@ -58,6 +61,12 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+
+flutter_native_splash:
+  color: "#1e1650"  # Optional, background color for splash screen
+  image: assets/images/white-logo.png  # Path to your image
+  android: true  # Enable splash for Android
+  ios: true
 
 # The following section is specific to Flutter packages.
 flutter:

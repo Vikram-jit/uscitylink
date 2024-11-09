@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // Add this import for TapGestureRecognizer
+import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/loading_controller.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
@@ -13,8 +14,10 @@ import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class PasswordView extends StatefulWidget {
   final String email;
+  final String role;
 
-  PasswordView({Key? key, required this.email}) : super(key: key);
+  PasswordView({Key? key, required this.email, required this.role})
+      : super(key: key);
 
   @override
   _PasswordViewState createState() => _PasswordViewState();
@@ -26,6 +29,7 @@ class _PasswordViewState extends State<PasswordView>
   late Animation<double> _fadeAnimation;
   // final LoadingController loadingController = Get.find();
 
+  final loginController = Get.put(LoginController());
   @override
   void initState() {
     super.initState();
@@ -36,14 +40,6 @@ class _PasswordViewState extends State<PasswordView>
     )..forward(); // Start the animation
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
-
-  // void loadData() async {
-  //   loadingController.showLoader();
-  //   // Simulate a network request or data fetching
-  //   await Future.delayed(Duration(seconds: 2)); // Simulating a delay
-  //   loadingController.hideLoader();
-  //   // Handle your data processing here
-  // }
 
   @override
   void dispose() {
@@ -90,9 +86,12 @@ class _PasswordViewState extends State<PasswordView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-              const TextField(
+              TextField(
+                controller: loginController.passwordController.value,
+                focusNode: loginController.passwordFoucsNode.value,
+                obscureText: true,
                 autofocus: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: "Enter Password",
                   hintStyle: TextStyle(
                     color: Colors.grey,
@@ -107,7 +106,8 @@ class _PasswordViewState extends State<PasswordView>
               CustomButton(
                   label: "Submit",
                   onPressed: () {
-                    Get.offNamed(AppRoutes.driverDashboard);
+                    loginController.loginWithPassword(
+                        context, widget.email, widget.role);
                   }),
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,

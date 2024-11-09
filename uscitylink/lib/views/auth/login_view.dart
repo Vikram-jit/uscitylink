@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart'; // Add this import for TapGestureRecognizer
+import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
+import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+  LoginView({super.key});
 
   @override
   _LoginViewState createState() => _LoginViewState();
@@ -22,9 +24,13 @@ class _LoginViewState extends State<LoginView>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 
+  // Access the LoginController to use the TextEditingController
+  final loginController = Get.put(LoginController());
+
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -55,8 +61,11 @@ class _LoginViewState extends State<LoginView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-              const TextField(
-                decoration: InputDecoration(
+              // Use the TextEditingController from the LoginController
+              TextField(
+                controller: loginController.emailController.value,
+                focusNode: loginController.emailFoucsNode.value,
+                decoration: const InputDecoration(
                   hintText: "Mobile number or email address",
                   hintStyle: TextStyle(
                     color: Colors.grey,
@@ -76,37 +85,7 @@ class _LoginViewState extends State<LoginView>
                     padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                   onPressed: () {
-                    showAdaptiveActionSheet(
-                      context: context,
-                      actions: <BottomSheetAction>[
-                        BottomSheetAction(
-                          title: const Text(
-                            'Send OTP',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Navigator.of(context).pop();
-                            Get.to(() => OtpView(email: 'user@example.com'));
-                          },
-                        ),
-                        BottomSheetAction(
-                          title: const Text(
-                            'Use Password',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Navigator.of(context).pop();
-                            Get.to(
-                                () => PasswordView(email: 'user@example.com'));
-                          },
-                        ),
-                      ],
-                    );
-                    // Handle login action here
+                    loginController.loginApi(context);
                   },
                   child: const Text(
                     "Log in",
@@ -117,13 +96,6 @@ class _LoginViewState extends State<LoginView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-              // Align(
-              //   alignment: Alignment.centerRight,
-              //   child: Text(
-              //     "Forgotten Password?",
-              //     style: Theme.of(context).textTheme.titleSmall,
-              //   ),
-              // ),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,

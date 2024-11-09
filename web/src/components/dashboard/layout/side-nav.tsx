@@ -127,7 +127,7 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
 
 function reduceChildRoutes({
   acc, pathname, item, depth = 0
-}) {
+}:any) {
   if (item.items) {
     // const open = matchPath(pathname, {
     //   path: item.href,
@@ -139,7 +139,7 @@ function reduceChildRoutes({
       pathname={pathname} {...item}
       >
         {renderNavItems({
-          depth: depth + 1,
+          // depth: depth + 1,
           pathname,
           items: item.items
         })}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -13,6 +14,7 @@ class SettingView extends StatefulWidget {
 }
 
 class _SettingViewState extends State<SettingView> {
+  final loginController = Get.put(LoginController());
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,7 +110,11 @@ class _SettingViewState extends State<SettingView> {
           // Log out Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: CustomButton(label: "Log out", onPressed: () {}),
+            child: CustomButton(
+                label: "Log out",
+                onPressed: () {
+                  loginController.logOut();
+                }),
           ),
         ],
       ),

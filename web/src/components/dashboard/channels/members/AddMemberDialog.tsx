@@ -27,7 +27,7 @@ export default function AddChanelMemberDialog() {
   }
   const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
 
-  const handleChange = (event, value) => {
+  const handleChange = (event:any, value:any) => {
     setSelectedUsers(value);
   };
   const [addMemberToChannel, { isLoading }] = useAddMemberToChannelMutation();
@@ -75,7 +75,7 @@ export default function AddChanelMemberDialog() {
               disableCloseOnSelect
               onChange={handleChange}
               getOptionLabel={(option) => option.username}
-              renderOption={(props, option, { selected }) => {
+              renderOption={(props:any, option, { selected }) => {
                 const { key, ...optionProps } = props;
                 return (
                   <li key={key} {...optionProps}>
