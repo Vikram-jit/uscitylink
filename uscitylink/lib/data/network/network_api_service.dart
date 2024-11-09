@@ -15,8 +15,19 @@ class NetworkApiService extends BaseApiServices {
   Future getApi(String url) async {
     try {
       dynamic responseJson;
-      final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+
+      String? token = await userPreferenceController.getToken();
+
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       responseJson = returnResponse(response);
       return responseJson;
@@ -41,7 +52,6 @@ class NetworkApiService extends BaseApiServices {
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }
-      print(headers);
 
       final response = await http
           .post(Uri.parse(url), body: jsonEncode(data), headers: headers)

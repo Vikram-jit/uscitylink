@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
@@ -14,10 +16,13 @@ class DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<DashboardView> {
   int _currentIndex = 0;
 
+  final ChannelController channelController = Get.put(ChannelController());
+
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;
     });
+    channelController.setTabIndex(index);
   }
 
   final List<Widget> _screens = [
