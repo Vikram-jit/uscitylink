@@ -6,15 +6,19 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ChatListItem from './ChatListItem';
 import { ChatProps } from './types';
 import { toggleMessagesPane } from './utils';
+import { SingleChannelModel } from '@/redux/models/ChannelModel';
 
 type ChatsPaneProps = {
-  chats: ChatProps[];
-  setSelectedChat: (chat: ChatProps) => void;
-  selectedChatId: string;
+  chats: SingleChannelModel;
+  setSelectedChannelId?: (id: string) => void;
+  selectedChannelId?: string;
+  selectedUserId:string;
+  setSelectedUserId: (id: string) => void;
+
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
-  const { chats, setSelectedChat, selectedChatId } = props;
+  const { chats, setSelectedChannelId, selectedChannelId,setSelectedUserId,selectedUserId } = props;
 
   return (
     <Paper
@@ -78,12 +82,13 @@ export default function ChatsPane(props: ChatsPaneProps) {
           paddingX: '1rem',
         }}
       >
-        {chats.map((chat) => (
+        {chats.user_channels.map((chat) => (
           <ChatListItem
             key={chat.id}
-            {...chat}
-            setSelectedChat={setSelectedChat}
-            selectedChatId={selectedChatId}
+            id={chat?.userProfileId}
+            user={chat}
+            selectedUserId={selectedUserId}
+            setSelectedUserId={setSelectedUserId}
           />
         ))}
       </List>

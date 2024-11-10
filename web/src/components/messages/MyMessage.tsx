@@ -1,13 +1,24 @@
-import { Box } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import * as React from 'react';
 import ChatsPane from './ChatsPane';
 
 import { ChatProps } from './types';
 import { chats } from './data';
 import MessagesPane from './MessagesPane';
+import { useGetChannelMembersQuery } from '@/redux/ChannelApiSlice';
 
 export default function MyMessage() {
-  const [selectedChat, setSelectedChat] = React.useState<ChatProps>(chats[0]);
+
+  const {data,isLoading} = useGetChannelMembersQuery();
+
+  const [selectedChannelId, setSelectedChannelId] = React.useState<string>("");
+
+  const [selectedUserId, setSelectedUserId] = React.useState<string>("");
+
+  if(isLoading){
+    return <CircularProgress/>
+  }
+
   return (
     <Box
       sx={{
@@ -35,12 +46,12 @@ export default function MyMessage() {
         }}
       >
        <ChatsPane
-          chats={chats}
-          selectedChatId={selectedChat.id}
-          setSelectedChat={setSelectedChat}
+          chats={data?.data!}
+          selectedUserId={selectedUserId}
+          setSelectedUserId={setSelectedUserId}
         />
       </Box>
-      <MessagesPane chat={selectedChat} />
+      <MessagesPane userId={selectedUserId} />
     </Box>
   );
 }

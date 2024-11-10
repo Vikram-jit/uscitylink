@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/model/login_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
@@ -80,6 +81,7 @@ class LoginController extends GetxController {
         if (value.data.access_token!.isNotEmpty) {
           userPreferenceController.storeToken(value.data).then((value) {
             Utils.toastMessage("Login Successfully");
+            Get.find<SocketService>().connectSocket();
             Get.offAllNamed(AppRoutes.driverDashboard);
           });
         }

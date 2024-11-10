@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
 class Messageui extends StatefulWidget {
-  const Messageui({super.key});
+  final dynamic channelId;
+  Messageui({required this.channelId, super.key});
 
   @override
   _MessageuiState createState() => _MessageuiState();
 }
 
 class _MessageuiState extends State<Messageui> {
-  final TextEditingController _controller =
-      TextEditingController(); // Text controller for the input field
+  final TextEditingController _controller = TextEditingController();
+
+  MessageController messageController = Get.put(MessageController());
+  SocketService socketService = Get.put(SocketService());
   final List<ChatMessage> messages = [
     ChatMessage(
       sender: 'John',
@@ -45,15 +52,17 @@ class _MessageuiState extends State<Messageui> {
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
-      setState(() {
-        messages.add(ChatMessage(
-          sender: 'You',
-          message: _controller.text,
-          isUser: true,
-          time: TimeOfDay.now().format(context),
-        ));
-        _controller.clear(); // Clear the input field after sending
-      });
+      socketService.sendMessage(_controller.text);
+      _controller.clear();
+      // setState(() {
+      //   messages.add(ChatMessage(
+      //     sender: 'You',
+      //     message: _controller.text,
+      //     isUser: true,
+      //     time: TimeOfDay.now().format(context),
+      //   ));
+      //   _controller.clear(); // Clear the input field after sending
+      // });
     }
   }
 
@@ -91,11 +100,23 @@ class _MessageuiState extends State<Messageui> {
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  return _buildChatMessage(messages[index]);
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  print("hello");
                 },
+                child: Obx(() {
+                  if (messageController.messages.isEmpty) {
+                    return CircularProgressIndicator();
+                  }
+                  return ListView.builder(
+                    reverse: true,
+                    itemCount: messageController.messages.length,
+                    itemBuilder: (context, index) {
+                      return _buildChatMessage(
+                          messageController.messages[index]);
+                    },
+                  );
+                }),
               ),
             ),
             Padding(
@@ -111,12 +132,12 @@ class _MessageuiState extends State<Messageui> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   // Plus button to send the message
                   GestureDetector(
                     onTap: _sendMessage,
@@ -128,7 +149,7 @@ class _MessageuiState extends State<Messageui> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: Icon(
-                        Icons.add,
+                        Icons.send,
                         color: Colors.white,
                       ),
                     ),
@@ -142,34 +163,38 @@ class _MessageuiState extends State<Messageui> {
     );
   }
 
-  Widget _buildChatMessage(ChatMessage message) {
+  Widget _buildChatMessage(MessageModel message) {
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: message.messageDirection == "R"
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
-          crossAxisAlignment: message.isUser
+          crossAxisAlignment: message.messageDirection == "R"
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
-                color: message.isUser ? Colors.blue[200] : Colors.grey[300],
+                color: message.messageDirection == "R"
+                    ? Colors.blue[200]
+                    : Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                crossAxisAlignment: message.isUser
+                crossAxisAlignment: message.messageDirection == "R"
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
                   Text(
-                    message.message,
+                    message.body!,
                     style: TextStyle(fontSize: 16),
                   ),
                   SizedBox(height: 5),
                   Text(
-                    message.time,
+                    message.messageTimestampUtc!,
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
@@ -194,10 +219,4 @@ class ChatMessage {
     required this.isUser,
     required this.time,
   });
-}
-
-void main() {
-  runApp(MaterialApp(
-    home: Messageui(),
-  ));
 }

@@ -33,12 +33,37 @@ export const createMessage = async (req: Request, res: Response):Promise<any> =>
   export const getMessages = async (req: Request, res: Response):Promise<any> => {
     try {
         
-      const { channelId, userProfileId } = req.params;
+      const { channelId } = req.params;
     
       const messages = await Message.findAll({
         where:{
             channelId:channelId,
-            userProfileId
+            userProfileId:req.user?.id
+        }
+      })
+  
+      return res.status(200).json({
+        status: true,
+        message: `Fetch message successfully`,
+        data:messages
+      });
+
+    } catch (err: any) {
+      return res
+        .status(400)
+        .json({ status: false, message: err.message || "Internal Server Error" });
+    }
+  };
+
+  export const getMessagesByUserId = async (req: Request, res: Response):Promise<any> => {
+    try {
+        
+      const { id } = req.params;
+    
+      const messages = await Message.findAll({
+        where:{
+            channelId:req.activeChannel,
+            userProfileId:id
         }
       })
   

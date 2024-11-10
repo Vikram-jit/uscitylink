@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 
 class ChannelTab extends StatelessWidget {
   // Pass the controller as a parameter to this widget
   final ChannelController channelController;
+
+  SocketService socketServive = Get.put(SocketService());
 
   ChannelTab({required this.channelController});
 
@@ -85,7 +88,9 @@ class ChannelTab extends StatelessWidget {
                       style: TextStyle(color: Colors.black54),
                     ),
                     onTap: () {
-                      Get.toNamed(AppRoutes.driverMessage, arguments: channel);
+                      socketServive.updateActiveChannel(channel.channel!.id!);
+                      Get.toNamed(AppRoutes.driverMessage,
+                          arguments: [channel.channel?.id]);
                       // Handle navigation to message screen (pass channel as argument)
                     },
                   ),

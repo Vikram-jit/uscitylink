@@ -56,7 +56,7 @@ class AppRoutes {
     ),
     GetPage(
       name: AppRoutes.driverMessage,
-      page: () => const Messageui(),
+      page: () => Messageui(channelId: Get.arguments),
     ),
 
     GetPage(

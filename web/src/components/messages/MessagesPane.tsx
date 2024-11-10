@@ -1,25 +1,57 @@
 import * as React from 'react';
+import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
+import { MessageModel } from '@/redux/models/MessageModel';
+import { CircularProgress } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { ChatProps, MessageProps } from './types';
+import { useSocket } from '@/lib/socketProvider';
 
 type MessagesPaneProps = {
-  chat: ChatProps;
+  userId: string;
 };
 
 export default function MessagesPane(props: MessagesPaneProps) {
-  const { chat } = props;
-  const [chatMessages, setChatMessages] = React.useState(chat.messages);
+  const { userId } = props;
+
+  // const [chatMessages, setChatMessages] = React.useState(chat.messages);
   const [textAreaValue, setTextAreaValue] = React.useState('');
+  const [messages, setMessages] = React.useState<MessageModel[]>([]);
+  const {socket} = useSocket();
+  const { data, isLoading } = useGetMessagesByUserIdQuery(
+    { id: userId },
+    {
+      skip: !userId,
+    }
+  );
 
   React.useEffect(() => {
-    setChatMessages(chat.messages);
-  }, [chat.messages]);
+
+
+    if (data && data?.status) {
+      setMessages(data?.data);
+    }
+  }, [data, isLoading]);
+
+  React.useEffect(()=>{
+    if(socket){
+      socket.emit("staff_active_channel_user_update",userId);
+    }
+  },[socket])
+
+  // React.useEffect(() => {
+  //   setChatMessages(chat.messages);
+  // }, [chat.messages]);
+
+  if (isLoading) {
+    return <CircularProgress />;
+  }
 
   return (
     <Paper
@@ -30,7 +62,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: 'background.default',
       }}
     >
-      <MessagesPaneHeader sender={chat.sender} />
+      {/* <MessagesPaneHeader sender={chat.sender} /> */}
       <Box
         sx={{
           display: 'flex',
@@ -43,44 +75,45 @@ export default function MessagesPane(props: MessagesPaneProps) {
         }}
       >
         <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
-          {chatMessages.map((message: MessageProps, index: number) => {
-            const isYou = message.sender === 'You';
-            return (
-              <Stack
-                key={index}
-                direction="row"
-                spacing={2}
-                sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
-              >
-                {message.sender !== 'You' && (
-                  <AvatarWithStatus
-                    online={message.sender.online}
-                    src={message.sender.avatar}
-                  />
-                )}
-                <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} />
-              </Stack>
-            );
-          })}
+          {messages &&
+            messages.map((message: MessageModel, index: number) => {
+              const isYou = message.messageDirection === 'S';
+              return (
+                <Stack key={index} direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
+                  {message.messageDirection !== 'S' && <AvatarWithStatus online={true} src={'a'} />}
+                  <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} />
+                </Stack>
+              );
+            })}
         </Stack>
       </Box>
-      <MessageInput
-        textAreaValue={textAreaValue}
-        setTextAreaValue={setTextAreaValue}
-        onSubmit={() => {
-          const newId = chatMessages.length + 1;
-          const newIdString = newId.toString();
-          setChatMessages([
-            ...chatMessages,
-            {
-              id: newIdString,
-              sender: 'You',
-              content: textAreaValue,
-              timestamp: 'Just now',
-            },
-          ]);
-        }}
-      />
+      {data && (
+        <MessageInput
+          textAreaValue={textAreaValue}
+          setTextAreaValue={setTextAreaValue}
+          onSubmit={() => {
+            socket.emit("send_message_to_user",{body:textAreaValue,userId:userId,direction:"S"})
+            setMessages([
+              ...messages,
+              {
+                id: 'newIdString',
+                messageDirection: 'S',
+                body: textAreaValue,
+                messageTimestampUtc: new Date(),
+                userProfileId: userId,
+                channelId: '',
+                groupId: null,
+                deliveryStatus: 'sent',
+                senderId: 'string',
+                isRead: false,
+                status: 'send',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ]);
+          }}
+        />
+      )}
     </Paper>
   );
 }

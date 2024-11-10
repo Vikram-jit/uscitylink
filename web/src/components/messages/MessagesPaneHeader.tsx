@@ -44,15 +44,15 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
         >
           <ArrowBackIosNewRoundedIcon />
         </IconButton>
-        <Avatar alt={sender.name} src={sender.avatar} />
+        <Avatar alt={"sender.name"} src={"sender.avatar"} />
         <div>
           <Typography
             variant="h6"
             noWrap
             sx={{ fontWeight: 'fontWeightBold' }}
           >
-            {sender.name}
-            {sender.online && (
+            {"sender.name"}
+            {/* {sender.online && (
               <Chip
                 size="small"
                 color="success"
@@ -60,7 +60,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
                 icon={<CircleIcon sx={{ fontSize: 12 }} />}
                 label="Online"
               />
-            )}
+            )} */}
           </Typography>
           <Typography variant="body2">{sender.username}</Typography>
         </div>

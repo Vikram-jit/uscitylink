@@ -9,19 +9,22 @@ import CircleIcon from '@mui/icons-material/Circle';
 import AvatarWithStatus from './AvatarWithStatus';
 import { ChatProps, MessageProps, UserProps } from './types';
 import { toggleMessagesPane } from './utils';
+import { UserChannel } from '@/redux/models/ChannelModel';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
   unread?: boolean;
-  sender: UserProps;
-  messages: MessageProps[];
-  selectedChatId?: string;
-  setSelectedChat: (chat: ChatProps) => void;
+  user: UserChannel;
+  messages?: MessageProps[];
+  setSelectedChannelId?: (id: string) => void;
+  selectedChannelId?: string;
+  selectedUserId:string;
+  setSelectedUserId: (id: string) => void;
 };
 
 export default function ChatListItem(props: ChatListItemProps) {
-  const { id, sender, messages, selectedChatId, setSelectedChat } = props;
-  const selected = selectedChatId === id;
+  const { id, user, messages, setSelectedChannelId, selectedUserId,setSelectedUserId } = props;
+  const selected = selectedUserId === id;
 
   return (
     <>
@@ -29,21 +32,21 @@ export default function ChatListItem(props: ChatListItemProps) {
         <ListItemButton
           onClick={() => {
             toggleMessagesPane();
-            setSelectedChat({ id, sender, messages });
+            setSelectedUserId(user?.userProfileId);
           }}
           selected={selected}
           sx={{ flexDirection: 'column', alignItems: 'initial', gap: 1 }}
         >
           <Stack direction="row" spacing={1.5}>
-            <AvatarWithStatus online={sender.online} src={sender.avatar} />
+            <AvatarWithStatus online={user?.UserProfile?.isOnline} src={user?.UserProfile?.username} />
             <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1">{sender.name}</Typography>
-              <Typography variant="body2">{sender.username}</Typography>
+              <Typography variant="subtitle1">{user?.UserProfile?.username}</Typography>
+              {/* <Typography variant="body2">{sender.username}</Typography> */}
             </Box>
             <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
-              {messages[0]?.unread && (
+              {/* {messages[0]?.unread && (
                 <CircleIcon sx={{ fontSize: 12 }} color="primary" />
-              )}
+              )} */}
               <Typography
                 variant="caption"
                 noWrap
@@ -63,7 +66,7 @@ export default function ChatListItem(props: ChatListItemProps) {
               textOverflow: 'ellipsis',
             }}
           >
-            {messages[0]?.content}
+
           </Typography>
         </ListItemButton>
       </ListItem>

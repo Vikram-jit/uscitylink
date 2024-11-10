@@ -9,13 +9,15 @@ import CelebrationOutlinedIcon from '@mui/icons-material/CelebrationOutlined';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
 import { MessageProps } from './types';
+import { MessageModel } from '@/redux/models/MessageModel';
 
-type ChatBubbleProps = MessageProps & {
+type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
+  attachment:false
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { content, variant, timestamp, attachment, sender } = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment } = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
@@ -29,9 +31,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
         sx={{ justifyContent: 'space-between', mb: 0.25 }}
       >
         <Typography variant="caption">
-          {sender === 'You' ? sender : sender.name}
+          {messageDirection === 'S' ? "sender" : "sender.name"}
         </Typography>
-        <Typography variant="caption">{timestamp}</Typography>
+        <Typography variant="caption">{messageTimestampUtc?.toString()}</Typography>
       </Stack>
       {attachment ? (
         <Paper
@@ -49,8 +51,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
               <InsertDriveFileRoundedIcon />
             </Avatar>
             <div>
-              <Typography variant="body2">{attachment.fileName}</Typography>
-              <Typography variant="caption">{attachment.size}</Typography>
+              {/* <Typography variant="body2">{attachment.fileName}</Typography>
+              <Typography variant="caption">{attachment.size}</Typography> */}
             </div>
           </Stack>
         </Paper>
@@ -70,7 +72,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               borderTopLeftRadius: isSent ? 'lg' : 0,
             }}
           >
-            <Typography variant="body2">{content}</Typography>
+            <Typography variant="body2">{body}</Typography>
           </Paper>
           {(isHovered || isLiked || isCelebrated) && (
             <Stack
