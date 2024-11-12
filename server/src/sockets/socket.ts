@@ -57,7 +57,7 @@ export interface CustomSocket extends Socket {
 export const initSocket = (httpServer: any) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:3000",  // Allow requests from your React app (localhost:3000)
+      origin: "*",  // Allow requests from your React app (localhost:3000)
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     
