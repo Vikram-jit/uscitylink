@@ -50,10 +50,7 @@ export async function getChannelList(
         {
           model: Channel,
         },
-        {
-          model: Message,
-          as: 'lastMessage', 
-        },
+        
       ],
       order: [["id", "DESC"]],
     });

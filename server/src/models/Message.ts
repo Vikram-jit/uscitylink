@@ -76,5 +76,6 @@ Message.init(
     timestamps: true,
   }
 );
+
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
 UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });

@@ -72,7 +72,7 @@ class NetworkApiService extends BaseApiServices {
 
 dynamic returnResponse(http.Response response) {
   dynamic responseJson = jsonDecode(response.body);
-
+  print(responseJson);
   switch (response.statusCode) {
     case 200:
       Utils.hideLoader();
@@ -83,6 +83,7 @@ dynamic returnResponse(http.Response response) {
       throw Exception(responseJson['message']);
 
     default:
+      Utils.hideLoader();
       throw Exception("SERVER ERROR");
   }
 }
