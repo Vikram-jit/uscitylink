@@ -39,7 +39,7 @@ UserChannel.init(
     },
     last_message_id: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'messages', // Adjust based on your table name
         key: 'id',

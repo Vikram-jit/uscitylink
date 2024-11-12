@@ -74,8 +74,9 @@ server.listen(PORT, async () => {
   Channel.associate({ UserChannel,GroupChannel });
   UserChannel.associate({ UserProfile, Channel });
   GroupChannel.associate({ Group, Channel });
-  UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
-  Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
+
+  // UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
+  // Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
 
   
   console.log("Secondary database & tables synced!");
