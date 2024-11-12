@@ -1,5 +1,6 @@
-import { Model, DataTypes } from 'sequelize';
+import { Model, DataTypes,BelongsToGetAssociationMixin } from 'sequelize';
 import { primarySequelize } from '../sequelize';
+import { UserProfile } from './UserProfile';
 
 export class Message extends Model {
   public id!: string; // Primary key
@@ -16,6 +17,8 @@ export class Message extends Model {
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+
+  public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
 
 Message.init(
@@ -73,3 +76,5 @@ Message.init(
     timestamps: true,
   }
 );
+Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
+UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });

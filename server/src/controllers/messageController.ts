@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Message } from "../models/Message";
+import { UserProfile } from "../models/UserProfile";
 
 export const createMessage = async (req: Request, res: Response):Promise<any> => {
     try {
@@ -39,7 +40,8 @@ export const createMessage = async (req: Request, res: Response):Promise<any> =>
         where:{
             channelId:channelId,
             userProfileId:req.user?.id
-        }
+        },
+        order: [['messageTimestampUtc', 'DESC']]
       })
   
       return res.status(200).json({
@@ -60,17 +62,25 @@ export const createMessage = async (req: Request, res: Response):Promise<any> =>
         
       const { id } = req.params;
     
+      const userProfile = await UserProfile.findByPk(id)
+
       const messages = await Message.findAll({
         where:{
             channelId:req.activeChannel,
             userProfileId:id
-        }
+        },
+        include: {
+          model: UserProfile,
+          as: 'sender', 
+          attributes: ['id', 'username','isOnline'], 
+        },
+        order: [['messageTimestampUtc', 'ASC']]
       })
   
       return res.status(200).json({
         status: true,
         message: `Fetch message successfully`,
-        data:messages
+        data:{userProfile,messages}
       });
 
     } catch (err: any) {

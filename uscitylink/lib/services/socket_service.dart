@@ -32,7 +32,7 @@ class SocketService extends GetxController {
 
     // Establish socket connection with the access token as part of the query
     socket = IO.io(
-      'http://localhost:4300',
+      'http://52.8.75.98:4300',
       IO.OptionBuilder().setTransports(['websocket']) // Use WebSocket transport
           .setQuery({'token': accessToken}) // Pass token in query parameters
           .build(),
@@ -72,7 +72,7 @@ class SocketService extends GetxController {
 
   void updateActiveChannel(String channelId) {
     if (isConnected.value) {
-      socket.emit(SocketEvents.ACTIVE_CHANNEL, channelId);
+      socket.emit("driver_open_chat", channelId);
     } else {
       print("Not connected to socket.");
     }

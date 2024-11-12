@@ -9,11 +9,11 @@ import CircleIcon from '@mui/icons-material/Circle';
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
 import PhoneInTalkRoundedIcon from '@mui/icons-material/PhoneInTalkRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import { UserProps } from './types';
 import { toggleMessagesPane } from './utils';
+import { UserProfile } from '@/redux/models/ChannelModel';
 
 type MessagesPaneHeaderProps = {
-  sender: UserProps;
+  sender?: UserProfile;
 };
 
 export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
@@ -44,15 +44,15 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
         >
           <ArrowBackIosNewRoundedIcon />
         </IconButton>
-        <Avatar alt={"sender.name"} src={"sender.avatar"} />
+        <Avatar alt={sender?.username} src={sender?.profile_pic || ""} />
         <div>
           <Typography
             variant="h6"
             noWrap
             sx={{ fontWeight: 'fontWeightBold' }}
           >
-            {"sender.name"}
-            {/* {sender.online && (
+            {sender?.username}
+            {sender?.isOnline && (
               <Chip
                 size="small"
                 color="success"
@@ -60,21 +60,13 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
                 icon={<CircleIcon sx={{ fontSize: 12 }} />}
                 label="Online"
               />
-            )} */}
+            )}
           </Typography>
-          <Typography variant="body2">{sender.username}</Typography>
+          <Typography variant="body2">{sender?.username}</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
-        {/* <Button
-          startIcon={<PhoneInTalkRoundedIcon />}
 
-          variant="outlined"
-          size="small"
-          sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-        >
-          Call
-        </Button> */}
         <Button
 
           variant="outlined"

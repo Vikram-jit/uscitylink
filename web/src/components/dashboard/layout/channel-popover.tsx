@@ -8,6 +8,7 @@ import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
 import { useUpdateActiveChannelMutation } from '@/redux/UserApiSlice';
 import { toast } from 'react-toastify';
+import { useSocket } from '@/lib/socketProvider';
 
 
 export interface ChannelPopoverProps {
@@ -19,6 +20,7 @@ export interface ChannelPopoverProps {
 export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps): React.JSX.Element {
   const { data, isLoading } = useGetChannelsQuery();
   const [updateActiveChannel] = useUpdateActiveChannelMutation()
+  const {socket} = useSocket();
   return (
     <Popover
       anchorEl={anchorEl}
@@ -39,7 +41,10 @@ export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps)
                 color: "#000"
               }
             }}   onClick={async()=>{
-               const res = await updateActiveChannel({channelId:e.id,id:"0adc1023-bb6c-4444-81b6-2f6c942c5392"})
+
+              socket.emit("staff_channel_update",e.id);
+
+               const res = await updateActiveChannel({channelId:e.id})
                if(res.data?.status){
                 toast.success("Changes Channel successfully.")
                 onClose?.()

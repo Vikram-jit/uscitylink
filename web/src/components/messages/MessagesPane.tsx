@@ -20,10 +20,12 @@ type MessagesPaneProps = {
 export default function MessagesPane(props: MessagesPaneProps) {
   const { userId } = props;
 
-  // const [chatMessages, setChatMessages] = React.useState(chat.messages);
+
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
   const {socket} = useSocket();
+
+
   const { data, isLoading } = useGetMessagesByUserIdQuery(
     { id: userId },
     {
@@ -32,22 +34,30 @@ export default function MessagesPane(props: MessagesPaneProps) {
   );
 
   React.useEffect(() => {
-
-
     if (data && data?.status) {
-      setMessages(data?.data);
+      setMessages(data?.data?.messages);
     }
   }, [data, isLoading]);
 
-  React.useEffect(()=>{
-    if(socket){
-      socket.emit("staff_active_channel_user_update",userId);
-    }
-  },[socket])
+  React.useEffect(() => {
+    if (socket) {
+      socket.emit("staff_active_channel_user_update", userId);
 
-  // React.useEffect(() => {
-  //   setChatMessages(chat.messages);
-  // }, [chat.messages]);
+      socket.on("receive_message_channel", (message: MessageModel) => {
+
+        setMessages((prevMessages) => [...prevMessages, message]);
+      });
+    }
+
+
+    return () => {
+      if (socket) {
+        socket.off("receive_message_channel");
+      }
+    };
+  }, [socket, userId]);
+
+
 
   if (isLoading) {
     return <CircularProgress />;
@@ -62,7 +72,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: 'background.default',
       }}
     >
-      {/* <MessagesPaneHeader sender={chat.sender} /> */}
+      <MessagesPaneHeader sender={data?.data?.userProfile} />
       <Box
         sx={{
           display: 'flex',
@@ -80,8 +90,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
               const isYou = message.messageDirection === 'S';
               return (
                 <Stack key={index} direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
-                  {message.messageDirection !== 'S' && <AvatarWithStatus online={true} src={'a'} />}
-                  <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} />
+                  {message.messageDirection !== 'S' && <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />}
+                  <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender}/>
                 </Stack>
               );
             })}
@@ -93,24 +103,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           setTextAreaValue={setTextAreaValue}
           onSubmit={() => {
             socket.emit("send_message_to_user",{body:textAreaValue,userId:userId,direction:"S"})
-            setMessages([
-              ...messages,
-              {
-                id: 'newIdString',
-                messageDirection: 'S',
-                body: textAreaValue,
-                messageTimestampUtc: new Date(),
-                userProfileId: userId,
-                channelId: '',
-                groupId: null,
-                deliveryStatus: 'sent',
-                senderId: 'string',
-                isRead: false,
-                status: 'send',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            ]);
+
           }}
         />
       )}

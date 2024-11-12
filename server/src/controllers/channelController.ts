@@ -224,9 +224,10 @@ export async function getActiveChannel(
     let channel: any = {};
 
     const userProfile = await UserProfile.findByPk(req.user?.id);
-
+    console.log(userProfile)
+    
     if (userProfile) {
-      channel = await Channel.findByPk(userProfile?.dataValues?.channelId);
+      channel = await Channel.findByPk(userProfile?.dataValues?.channelId || "");
     }
 
     return res.status(200).json({

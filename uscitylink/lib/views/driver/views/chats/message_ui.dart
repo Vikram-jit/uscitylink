@@ -7,7 +7,8 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 
 class Messageui extends StatefulWidget {
   final dynamic channelId;
-  Messageui({required this.channelId, super.key});
+  final String name;
+  Messageui({required this.channelId, super.key, required this.name});
 
   @override
   _MessageuiState createState() => _MessageuiState();
@@ -18,51 +19,12 @@ class _MessageuiState extends State<Messageui> {
 
   MessageController messageController = Get.put(MessageController());
   SocketService socketService = Get.put(SocketService());
-  final List<ChatMessage> messages = [
-    ChatMessage(
-      sender: 'John',
-      message: 'Hello, how are you?',
-      isUser: false,
-      time: '10:00 AM',
-    ),
-    ChatMessage(
-      sender: 'You',
-      message: 'I\'m good, thanks! How about you?',
-      isUser: true,
-      time: '10:01 AM',
-    ),
-    ChatMessage(
-      sender: 'John',
-      message: 'I\'m doing great, thanks for asking!',
-      isUser: false,
-      time: '10:02 AM',
-    ),
-    ChatMessage(
-      sender: 'You',
-      message: 'That\'s awesome! Let\'s catch up soon.',
-      isUser: true,
-      time: '10:05 AM',
-    ),
-    // More sample messages
-  ];
-
-  String lastLogin = 'Last login: 8:30 AM, 1st Dec 2024'; // Sample last login
-  String channelName = 'Chat Channel 1'; // Sample channel name
 
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
       socketService.sendMessage(_controller.text);
       _controller.clear();
-      // setState(() {
-      //   messages.add(ChatMessage(
-      //     sender: 'You',
-      //     message: _controller.text,
-      //     isUser: true,
-      //     time: TimeOfDay.now().format(context),
-      //   ));
-      //   _controller.clear(); // Clear the input field after sending
-      // });
     }
   }
 
@@ -78,13 +40,13 @@ class _MessageuiState extends State<Messageui> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    channelName, // Display the channel name
+                    widget.name, // Display the channel name
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  Text(
-                    lastLogin, // Display the last login info
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                  ),
+                  // Text(
+                  //   lastLogin, // Display the last login info
+                  //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  // ),
                 ],
               ),
             ),

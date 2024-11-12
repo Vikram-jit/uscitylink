@@ -26,7 +26,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           },
         }}
       />
-      <Box
+     <SocketProvider> <Box
         sx={{
           bgcolor: 'var(--mui-palette-background-default)',
           display: 'flex',
@@ -38,9 +38,10 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         <SideNav />
         <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', pl: { lg: 'var(--SideNav-width)' } }}>
           <MainNav />
-          <main><SocketProvider>{children}</SocketProvider></main>
+          <main>{children}</main>
         </Box>
       </Box>
+      </SocketProvider>
     </AuthGuard>
   );
 }

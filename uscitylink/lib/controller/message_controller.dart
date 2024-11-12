@@ -15,8 +15,9 @@ class MessageController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    Map args = Get.arguments as Map;
+    String channelId = args['channelId'];
 
-    String channelId = Get.arguments[0];
     getChannelMessages(channelId);
   }
 

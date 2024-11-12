@@ -8,6 +8,6 @@ router.get('/', getUsers);
 router.get('/drivers',authMiddleware, getUserWithoutChannel);
 
 router.get('/channels', authMiddleware,getChannelList);
-router.put('/updateActiveChannel/:id', updateUserActiveChannel);
+router.put('/updateActiveChannel',authMiddleware, updateUserActiveChannel);
 
 export default router;

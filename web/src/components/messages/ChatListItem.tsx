@@ -10,6 +10,7 @@ import AvatarWithStatus from './AvatarWithStatus';
 import { ChatProps, MessageProps, UserProps } from './types';
 import { toggleMessagesPane } from './utils';
 import { UserChannel } from '@/redux/models/ChannelModel';
+import { useSocket } from '@/lib/socketProvider';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
@@ -25,7 +26,7 @@ type ChatListItemProps = ListItemButtonProps & {
 export default function ChatListItem(props: ChatListItemProps) {
   const { id, user, messages, setSelectedChannelId, selectedUserId,setSelectedUserId } = props;
   const selected = selectedUserId === id;
-
+  const {socket} = useSocket();
   return (
     <>
       <ListItem>
@@ -33,6 +34,7 @@ export default function ChatListItem(props: ChatListItemProps) {
           onClick={() => {
             toggleMessagesPane();
             setSelectedUserId(user?.userProfileId);
+            socket.emit("staff_open_chat",user?.userProfileId)
           }}
           selected={selected}
           sx={{ flexDirection: 'column', alignItems: 'initial', gap: 1 }}

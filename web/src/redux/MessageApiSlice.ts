@@ -1,4 +1,5 @@
 import {  apiSlice } from './apiSlice';
+import { UserProfile } from './models/ChannelModel';
 import { MessageModel } from './models/MessageModel';
 
 export const MessageApiSlice = apiSlice.injectEndpoints({
@@ -7,7 +8,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: MessageModel[];
+        data: {userProfile:UserProfile,messages:MessageModel[]};
       },
       {id:string}
     >({

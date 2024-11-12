@@ -64,8 +64,8 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 flutter_native_splash:
-  color: "#1e1650"  # Optional, background color for splash screen
-  image: assets/images/white-logo.png  # Path to your image
+  color: "#ffffff"  # Optional, background color for splash screen
+  image: assets/images/logo.png  # Path to your image
   android: true  # Enable splash for Android
   ios: true
 

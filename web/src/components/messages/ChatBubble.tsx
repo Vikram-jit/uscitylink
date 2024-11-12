@@ -9,15 +9,17 @@ import CelebrationOutlinedIcon from '@mui/icons-material/CelebrationOutlined';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
 import { MessageProps } from './types';
-import { MessageModel } from '@/redux/models/MessageModel';
+import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
+import moment from 'moment';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
   attachment:false
+  sender:SenderModel
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { body, variant, messageTimestampUtc,messageDirection,attachment } = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender } = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
@@ -31,9 +33,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
         sx={{ justifyContent: 'space-between', mb: 0.25 }}
       >
         <Typography variant="caption">
-          {messageDirection === 'S' ? "sender" : "sender.name"}
+          {messageDirection === 'S' ? sender?.username : sender?.username }
         </Typography>
-        <Typography variant="caption">{messageTimestampUtc?.toString()}</Typography>
+        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm:ss')}</Typography>
       </Stack>
       {attachment ? (
         <Paper

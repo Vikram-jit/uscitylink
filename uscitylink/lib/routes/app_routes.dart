@@ -55,9 +55,18 @@ class AppRoutes {
       page: () => const ChangePasswordView(),
     ),
     GetPage(
-      name: AppRoutes.driverMessage,
-      page: () => Messageui(channelId: Get.arguments),
-    ),
+        name: AppRoutes.driverMessage,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['channelId'];
+          final name = args['name'];
+
+          return Messageui(
+            channelId: channelId,
+            name: name,
+          );
+        }),
 
     GetPage(
         name: AppRoutes.splashView,

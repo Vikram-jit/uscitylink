@@ -3,33 +3,52 @@ import { verifyToken } from "../utils/jwt";
 import { UserProfile } from "../models/UserProfile";
 import SocketEvents from "./socketEvents";
 import { Message } from "../models/Message";
+import Role from "../models/Role";
+import { staffActiveChannelUpdate, staffOpenChatUpdate } from "./staffHandler";
+import { driverActiveChannelUpdate } from "./driverHandler";
+import { messageToChannelToUser, messageToDriver } from "./messageHandler";
 
 let io: Server;
 interface User {
   id: string;
   name: string;
   socketId: string;
+  role?: string;
 }
-interface StaffActiveChannel {
-  staffId: string;
-  channelId: string;
-}
-interface StaffActiveChannelUser {
-  staffId: string;
-  channelId: string;
-  userId: string;
-}
+
+
 interface staffActiveChannel {
   staffId: string;
   channelId: string;
+  role: string;
 }
+
+
+
+interface driver_open_chat{
+  driverId: string;
+  channelId: string;
+}
+
+interface staff_open_chat{
+  staffId: string;
+  channelId: string;
+  userId:string
+}
+
 declare global {
+
   var userSockets: Record<string, Socket>;
   var socketIO: Server;
   var userActiveRoom: Record<string, string>;
-  var staffActiveChannelUser: StaffActiveChannelUser[];
   var staffActiveChannel: staffActiveChannel[];
   var onlineUsers: User[];
+
+
+  var driverOpenChat:driver_open_chat[];
+  var staffOpenChat:staff_open_chat[];
+
+
 }
 export interface CustomSocket extends Socket {
   user?: { id: string; name: string }; // Define your custom user structure
@@ -38,8 +57,10 @@ export interface CustomSocket extends Socket {
 export const initSocket = (httpServer: any) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
+      origin: "http://localhost:3000",  // Allow requests from your React app (localhost:3000)
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+    
     },
   });
 
@@ -47,8 +68,15 @@ export const initSocket = (httpServer: any) => {
   global.socketIO = io;
   global.userActiveRoom = {};
   global.onlineUsers = [];
-  global.staffActiveChannelUser = [];
+ 
+
+
   global.staffActiveChannel = [];
+
+
+  global.driverOpenChat = [];
+  global.staffOpenChat = [];
+
   //Validate User Connect With Socket
 
   io.use(async (socket: CustomSocket, next) => {
@@ -61,46 +89,145 @@ export const initSocket = (httpServer: any) => {
     try {
       const decoded: any = verifyToken(token);
       if (decoded?.id) {
-        const userProfile = await UserProfile.findByPk(decoded.id);
+        const userProfile = await UserProfile.findByPk(decoded.id, {
+          include: [
+            {
+              model: Role,
+              as: "role",
+            },
+          ],
+        });
 
         if (userProfile) {
           socket.user = {
-            id: decoded.id,
+            id: userProfile.id,
             name: userProfile.username || "Unknown",
           };
+
           global.userSockets[userProfile.id] = socket;
+
+          //Store All onlineUsers in global variable with role
           if (
             !global.onlineUsers.find((user: any) => user.id === userProfile.id)
           ) {
+          
             global.onlineUsers.push({
-              id: decoded.id,
+              id: userProfile.id,
               name: userProfile?.username || "",
               socketId: socket.id,
+              role: userProfile?.role?.name || "admin",
             });
+          } else {
+           
+            const existingUser = global.onlineUsers.find(
+              (user: any) => user.id === userProfile.id
+            );
+          
+            if (existingUser) {
+              existingUser.socketId = socket.id; 
+              existingUser.role = userProfile?.role?.name || "admin"; 
+              console.log(`Updated socketId for user ${userProfile.id}`);
+            }
           }
-          //Check Staff Active Channel
+
+          //Store Staff into global variable with matched role staff with active channel
 
           if (
             !global.staffActiveChannel.find(
               (user) => user.staffId === userProfile.id
-            )
+            ) &&
+            userProfile?.role?.name === "staff"
           ) {
             if (userProfile?.channelId) {
               global.staffActiveChannel.push({
                 staffId: userProfile.id,
                 channelId: userProfile?.channelId!,
+                role: userProfile?.role?.name,
               });
+              await UserProfile.update({
+                channelId:userProfile?.channelId!,
+            
+              },{
+                where:{
+                    id:userProfile.id
+                }
+              })
             }
           } else {
             const existingUser = global.staffActiveChannel.find(
-              (user) => user.staffId === userProfile.id
+              (user) =>
+                user.staffId === userProfile.id && user.role === "driver"
             );
 
             if (existingUser) {
               existingUser.channelId = userProfile.channelId!; // Update the channelId
+              await UserProfile.update({
+                channelId:userProfile?.channelId!,
+            
+              },{
+                where:{
+                    id:userProfile.id
+                }
+              })
               console.log(`Updated channelId for staff ${userProfile.id}`);
             }
           }
+
+          //Store Driver into global variable with matched role driver
+          if (
+            !global.driverOpenChat.find(
+              (user) => user.driverId === userProfile.id
+            ) &&
+            userProfile?.role?.name === "driver"
+          ) {
+            if (userProfile?.channelId) {
+              global.driverOpenChat.push({
+                driverId: userProfile.id,
+                channelId: userProfile.channelId,
+             
+              });
+              await UserProfile.update({
+                channelId:userProfile?.channelId!,
+            
+              },{
+                where:{
+                    id:userProfile.id
+                }
+              })
+            } else {
+              console.log(
+                `Driver ${userProfile.id} has no channelId, not added`
+              );
+            }
+          } else {
+            const existingUser = global.driverOpenChat.find(
+              (user) =>
+                user.driverId === userProfile.id 
+            );
+
+            if (existingUser) {
+              if (existingUser.channelId !== userProfile.channelId) {
+                existingUser.channelId = userProfile.channelId!;
+                await UserProfile.update({
+                  channelId:userProfile?.channelId!,
+              
+                },{
+                  where:{
+                      id:userProfile.id
+                  }
+                })
+              } else {
+                console.log(
+                  `Driver ${userProfile.id} already has the same channelId`
+                );
+              }
+            } else {
+              console.log(
+                `Driver ${userProfile.id} not found in active channels`
+              );
+            }
+          }
+
           console.log(
             `${userProfile.username} connected with socket ID ${socket.id}`
           );
@@ -119,135 +246,61 @@ export const initSocket = (httpServer: any) => {
   });
 
   io.on("connection", (socket: CustomSocket) => {
-    console.log(global.staffActiveChannel, "staffActiveChannel");
-    console.log(global.staffActiveChannelUser, "staffActiveChannelUser");
-    console.log(global.userSockets)
-    socket.on(SocketEvents.ACTIVE_CHANNEL, async (channelId: string) => {
-      const userId = socket.user?.id;
+    
 
-      console.log("User Active Channel", channelId);
-      console.log("User Id", userId);
-      // io.emit("message", data); // Broadcast the message
-    });
 
-    socket.on("staff_active_channel_user_update", async (userId) => {
-      const isFindActiveChannel = global.staffActiveChannel.find(
-        (user) => user.staffId === socket?.user?.id
-      );
+    //Staff Open Chat 
 
-      if (isFindActiveChannel) {
-        if (
-          !global.staffActiveChannelUser.find(
-            (staff) => staff.staffId === socket.user?.id
-          )
-        ) {
-          global.staffActiveChannelUser.push({
-            staffId: socket.user?.id!,
-            channelId: isFindActiveChannel?.channelId,
-            userId: userId,
-          });
-        } else {
-          const existingUser = global.staffActiveChannelUser.find(
-            (user) => user.staffId === socket.user?.id
-          );
+    socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
+    socket.on("staff_channel_update",async (channelId) => await staffActiveChannelUpdate(socket,channelId))
 
-          if (existingUser) {
-            existingUser.channelId = isFindActiveChannel?.channelId!; // Update the channelId
-            existingUser.userId = userId; // Update the userId
-            console.log(
-              `Updated channelId and userId ${isFindActiveChannel?.channelId}`
-            );
-          }
-        }
-      }
-      console.log(global.staffActiveChannelUser, "staff");
-    });
+
+
+    //driver web app
+
+    socket.on("driver_open_chat",async (channelId) => await driverActiveChannelUpdate(socket,channelId))
 
     //sendMessage Event
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction }) => {
-        // console.log(userId)
-        const findUserSocket = global.onlineUsers.find(
-          (user: any) => user?.id === userId
-        );
-        const message = await Message.create({
-          channelId: "9361a441-b99d-4ff6-83b5-e59314dff472",
-          userProfileId: userId,
-          body,
-          messageDirection: direction,
-          deliveryStatus: "sent",
-          messageTimestampUtc: new Date(),
-          senderId: socket?.user?.id,
-          isRead: false,
-          status: "sent",
-        });
-        if (findUserSocket) {
-          socket
-            .to(findUserSocket?.socketId)
-            .emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
-        }
-      }
+      async ({ userId, body, direction }) => await messageToDriver(io,socket,userId,body,direction)
     );
 
-    //sendMessage Event
+    socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async (body) => await messageToChannelToUser(io,socket,body));
 
-    socket.on(
-      SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ( body ) => {
 
-        const findUserChannel = global.staffActiveChannel.find((e)=>e.staffId == socket?.user?.id)
 
-        if(findUserChannel){
-            const message = await Message.create({
-                channelId: findUserChannel.channelId,
-                userProfileId: findUserChannel.staffId,
-                body,
-                messageDirection: "R",
-                deliveryStatus: "sent",
-                messageTimestampUtc: new Date(),
-                senderId: socket?.user?.id,
-                isRead: false,
-                status: "sent",
-              });
-      
-              //Send Message To StaffActiveChannel
-              global.staffActiveChannel.forEach((el) => {
-                if (el.channelId == findUserChannel.channelId) {
-      
-                  //Check Staff is isOnline
-                  const isSocketId = global.onlineUsers.find(
-                    (user) => user?.socketId === el.staffId
-                  );
-      
-                  socket
-                    .to(isSocketId?.socketId!)
-                    .emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
-                }
-              });
+    socket.on("disconnect", async() => {
 
-        }
-        
-      }
-    );
-
-    socket.on("disconnect", () => {
-      console.log("User disconnected");
       // Find the user in the global.onlineUsers array based on userId
       const findUserSocket = global.onlineUsers.find(
         (user: any) => user?.socketId === socket.id
       );
 
       if (findUserSocket) {
+
+         
+      // await UserProfile.update(
+      //   {
+      //     channelId: null,
+      //   },
+      //   {
+      //     where: {
+      //       id: findUserSocket?.id,
+      //     },
+      //   }
+      // );
+
+
         // If the user is found, remove them from global.onlineUsers
-        const index = global.onlineUsers.indexOf(findUserSocket);
-        if (index > -1) {
-          global.onlineUsers.splice(index, 1); // Removes 1 element at the found index
-          console.log(
-            `User ${socket.id} removed from global.onlineUsers due to disconnection`
-          );
-        }
+        // const index = global.onlineUsers.indexOf(findUserSocket);
+        // if (index > -1) {
+        //   global.onlineUsers.splice(index, 1); // Removes 1 element at the found index
+        //   console.log(
+        //     `User ${socket.id} removed from global.onlineUsers due to disconnection`
+        //   );
+        // }
       } else {
         console.log(`User ${socket.id} not found in global.onlineUsers.`);
       }

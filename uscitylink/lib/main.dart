@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/route_manager.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -17,6 +18,7 @@ void main() async {
     final socketService = Get.put(SocketService());
     socketService.connectSocket();
   }
+  Get.lazyPut(() => MessageController());
 
   runApp(const MyApp());
 }
@@ -29,9 +31,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'ChatBox USCityLink',
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       theme: TAppTheme.lightTheme,
-      darkTheme: TAppTheme.darkTheme,
+      // darkTheme: TAppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.splashView,
       getPages: AppRoutes.routes,

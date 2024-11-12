@@ -82,7 +82,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           paddingX: '1rem',
         }}
       >
-        {chats.user_channels.map((chat) => (
+        {chats?.user_channels?.map((chat) => (
           <ChatListItem
             key={chat.id}
             id={chat?.userProfileId}

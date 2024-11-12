@@ -37,6 +37,14 @@ UserChannel.init(
         key: 'id',
       },
     },
+    last_message_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'messages', // Adjust based on your table name
+        key: 'id',
+      },
+    },
   },
   {
     sequelize: primarySequelize,

@@ -19,6 +19,7 @@ import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
 import GroupChannel from "./models/GroupChannel";
 import Group from "./models/Group";
+import { Message } from "./models/Message";
 
 dotenv.config();
 
@@ -73,8 +74,10 @@ server.listen(PORT, async () => {
   Channel.associate({ UserChannel,GroupChannel });
   UserChannel.associate({ UserProfile, Channel });
   GroupChannel.associate({ Group, Channel });
+  UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
+  Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
 
-
+  
   console.log("Secondary database & tables synced!");
   console.log(`Server is running on port ${PORT}`);
 });

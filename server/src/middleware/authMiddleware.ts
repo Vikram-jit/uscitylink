@@ -30,7 +30,7 @@ export const authMiddleware = async (
       const userProfile = await UserProfile.findByPk(decoded?.id);
      
       if (userProfile) {
-        req.activeChannel = userProfile?.dataValues?.channelId;
+        req.activeChannel = userProfile?.dataValues?.channelId || "";
       }
       req.user = decoded as any; 
       

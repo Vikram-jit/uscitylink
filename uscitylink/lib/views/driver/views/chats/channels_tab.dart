@@ -46,17 +46,18 @@ class ChannelTab extends StatelessWidget {
                   background: Container(
                     color: Colors.red,
                     alignment: Alignment.centerRight,
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Icon(Icons.delete, color: Colors.white),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
                   child: ListTile(
-                    contentPadding: EdgeInsets.all(0),
+                    contentPadding: const EdgeInsets.all(0),
                     leading: CircleAvatar(
                       radius: 25,
                       backgroundColor: Colors.grey.shade400,
                       child: Text(
                         channel.channel?.name?.substring(0, 1) ?? '',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
+                        style:
+                            const TextStyle(color: Colors.black, fontSize: 18),
                       ),
                     ),
                     title: Row(
@@ -65,11 +66,11 @@ class ChannelTab extends StatelessWidget {
                         Expanded(
                           child: Text(
                             channel.channel?.name ?? 'Unnamed Channel',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Row(
+                        const Row(
                           children: [
                             Text(
                               "10:30 AM", // Example time, replace with actual message time
@@ -89,8 +90,13 @@ class ChannelTab extends StatelessWidget {
                     ),
                     onTap: () {
                       socketServive.updateActiveChannel(channel.channel!.id!);
-                      Get.toNamed(AppRoutes.driverMessage,
-                          arguments: [channel.channel?.id]);
+                      Get.toNamed(
+                        AppRoutes.driverMessage,
+                        arguments: {
+                          'channelId': channel?.channel?.id,
+                          'name': channel?.channel?.name
+                        },
+                      );
                       // Handle navigation to message screen (pass channel as argument)
                     },
                   ),

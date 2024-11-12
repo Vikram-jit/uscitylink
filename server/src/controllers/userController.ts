@@ -4,6 +4,7 @@ import User from "../models/User";
 import Role from "../models/Role";
 import UserChannel from "../models/UserChannel";
 import Channel from "../models/Channel";
+import { Message } from "../models/Message";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -49,6 +50,10 @@ export async function getChannelList(
         {
           model: Channel,
         },
+        {
+          model: Message,
+          as: 'lastMessage', 
+        },
       ],
       order: [["id", "DESC"]],
     });
@@ -76,7 +81,7 @@ export async function updateUserActiveChannel(
       },
       {
         where: {
-          id: req.params.id,
+          id: req.user?.id,
         },
         returning: true,
       }

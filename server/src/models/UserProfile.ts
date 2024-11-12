@@ -1,6 +1,7 @@
 import { Model, DataTypes, Optional, Sequelize } from "sequelize";
 import { primarySequelize } from "../sequelize";
 import UserChannel from "./UserChannel";
+import Role from "./Role";
 
 // Define the attributes of the model
 interface UserProfileAttributes {
@@ -17,7 +18,8 @@ interface UserProfileAttributes {
   device_token?: string;
   platform?: string;
   last_login?: Date;
-  channelId?:string;
+  channelId?:string | null;
+  role?:Role
 }
 
 // Define the creation attributes (optional attributes for creating a new instance)
@@ -41,7 +43,8 @@ export class UserProfile
   public device_token?: string;
   public platform?: string;
   public last_login?: Date;
-  public channelId?: string;
+  public channelId?: string | null;
+  public role?: Role | undefined;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -53,6 +56,8 @@ export class UserProfile
     UserProfile.hasMany(UserChannel, { foreignKey: 'userProfileId', as: 'userChannels' });
 
   }
+
+  
 }
 
 UserProfile.init(
