@@ -72,7 +72,6 @@ class NetworkApiService extends BaseApiServices {
 
 dynamic returnResponse(http.Response response) {
   dynamic responseJson = jsonDecode(response.body);
-  print(responseJson);
   switch (response.statusCode) {
     case 200:
       Utils.hideLoader();

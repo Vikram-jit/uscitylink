@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/utils.dart';
 
 class ChannelTab extends StatelessWidget {
   // Pass the controller as a parameter to this widget
@@ -63,6 +65,7 @@ class ChannelTab extends StatelessWidget {
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Channel name
                         Expanded(
                           child: Text(
                             channel.channel?.name ?? 'Unnamed Channel',
@@ -70,26 +73,46 @@ class ChannelTab extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Row(
+                        // Time and Badge column
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // Formatted time (UTC converted to local time)
                             Text(
-                              "10:30 AM", // Example time, replace with actual message time
-                              style: TextStyle(
+                              Utils.formatUtcTime(channel
+                                      ?.last_message?.messageTimestampUtc) ??
+                                  '',
+                              style: const TextStyle(
                                   fontSize: 12, color: Colors.black45),
                             ),
+
+                            // Badge showing unread message count
+                            channel?.recieve_message_count != 0
+                                ? Badge(
+                                    label: Text(
+                                      channel?.recieve_message_count == 0
+                                          ? ""
+                                          : '${channel?.recieve_message_count}', // Example unread count, replace with actual count
+                                      style: TextStyle(fontSize: 11),
+                                    ),
+                                    backgroundColor: TColors.primary,
+                                  )
+                                : SizedBox(),
                           ],
                         ),
                       ],
                     ),
                     subtitle: Text(
-                      channel.channel?.description ??
-                          "No description", // Use channel description
+                      channel?.last_message?.body ??
+                          "Not message yet", // Message body or description
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Colors.black54),
                     ),
                     onTap: () {
                       socketServive.updateActiveChannel(channel.channel!.id!);
+
                       Get.toNamed(
                         AppRoutes.driverMessage,
                         arguments: {
@@ -97,7 +120,7 @@ class ChannelTab extends StatelessWidget {
                           'name': channel?.channel?.name
                         },
                       );
-                      // Handle navigation to message screen (pass channel as argument)
+                      // Handle navigation to the message screen (pass channel as an argument)
                     },
                   ),
                 );

@@ -15,10 +15,16 @@ class MessageController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    Map args = Get.arguments as Map;
-    String channelId = args['channelId'];
 
-    getChannelMessages(channelId);
+    Map args = Get.arguments as Map? ?? {};
+
+    String channelId = args['channelId'] ?? '';
+
+    if (channelId.isNotEmpty) {
+      getChannelMessages(channelId);
+    } else {
+      print("Error: channelId is empty or invalid.");
+    }
   }
 
   void getChannelMessages(String channelId) {
@@ -34,6 +40,8 @@ class MessageController extends GetxController {
     // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
     MessageModel newMessage =
         MessageModel.fromJson(data); // Convert the data to MessageModel
+
     messages.insert(0, newMessage); // Append the new message to the list
+    messages.refresh();
   }
 }

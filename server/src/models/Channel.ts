@@ -29,6 +29,7 @@ class Channel
     //Channel.belongsToMany(models.UserProfile, { through: models.UserChannel, foreignKey: 'channelId' });
     Channel.hasMany(models.UserChannel, { foreignKey: 'channelId', as: 'user_channels' });
     Channel.hasMany(models.GroupChannel, { foreignKey: 'channelId', as: 'group_channels' });
+   
   }
 }
 

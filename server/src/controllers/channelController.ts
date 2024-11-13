@@ -5,6 +5,8 @@ import { UserProfile } from "../models/UserProfile";
 import GroupChannel from "../models/GroupChannel";
 import Group from "../models/Group";
 import User from "../models/User";
+import { getSocketInstance } from "../sockets/socket";
+import { Message } from "../models/Message";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -88,7 +90,37 @@ export async function userAddToChannel(
     });
 
     await Promise.all(createPromises);
+
     
+     // After users have been added to the channel, check if they are online
+     for (const user_id of newUserIds) {
+      const userSocket = global.onlineUsers.find(
+        (user) => user.id === user_id
+      );
+
+      // Get UserChannel details for the user
+      const userChannel = await UserChannel.findOne({
+        where: {
+          userProfileId: user_id,
+          channelId: req.activeChannel, // Make sure the channel matches
+        },
+        include: [
+          {
+            model: Channel, // Assuming the channel is associated with UserChannel
+          },
+          {
+            model: Message, // Assuming the last message is associated with UserChannel
+            as: "last_message", // Alias for last_message relationship
+          },
+        ],
+      });
+
+      // Emit the data to the user's socket if they are online
+      if (userSocket && userChannel) {
+        getSocketInstance().to(userSocket.socketId).emit('user_added_to_channel', userChannel);
+      }
+    }
+
     return res.status(200).json({
       status: true,
       message: `Added into channel successfully.`,
@@ -224,7 +256,7 @@ export async function getActiveChannel(
     let channel: any = {};
 
     const userProfile = await UserProfile.findByPk(req.user?.id);
-    console.log(userProfile)
+    
     
     if (userProfile) {
       channel = await Channel.findByPk(userProfile?.dataValues?.channelId || "");

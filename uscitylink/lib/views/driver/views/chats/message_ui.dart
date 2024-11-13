@@ -4,6 +4,7 @@ import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/utils/utils.dart';
 
 class Messageui extends StatefulWidget {
   final dynamic channelId;
@@ -17,8 +18,17 @@ class Messageui extends StatefulWidget {
 class _MessageuiState extends State<Messageui> {
   final TextEditingController _controller = TextEditingController();
 
-  MessageController messageController = Get.put(MessageController());
+  late MessageController messageController;
   SocketService socketService = Get.put(SocketService());
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize the MessageController and fetch messages for the given channelId
+    messageController = Get.put(MessageController());
+    messageController.getChannelMessages(
+        widget.channelId); // Fetch the messages for the given channelId
+  }
 
   // Function to send a new message
   void _sendMessage() {
@@ -49,6 +59,15 @@ class _MessageuiState extends State<Messageui> {
                   // ),
                 ],
               ),
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back), // Back icon
+                onPressed: () {
+                  // Trigger the socket event when the back icon is clicked
+                  socketService.updateActiveChannel("");
+                  Navigator.pop(
+                      context); // This will pop the current screen and go back to the previous screen
+                },
+              ),
             ),
             Container(
               height: 1.0,
@@ -64,11 +83,38 @@ class _MessageuiState extends State<Messageui> {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
-                  print("hello");
+                  messageController.getChannelMessages(widget.channelId);
                 },
                 child: Obx(() {
                   if (messageController.messages.isEmpty) {
-                    return CircularProgressIndicator();
+                    return Center(
+                        child: Container(
+                      height: 100,
+                      width: 100,
+                      child: InkWell(
+                        onTap: () {
+                          socketService.sendMessage("Hi");
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.waving_hand,
+                              color: Colors.orange,
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Text("Say Hi",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(color: Colors.grey.shade700))
+                          ],
+                        ),
+                      ),
+                    ));
                   }
                   return ListView.builder(
                     reverse: true,
@@ -152,12 +198,12 @@ class _MessageuiState extends State<Messageui> {
                 children: [
                   Text(
                     message.body!,
-                    style: TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 16),
                   ),
-                  SizedBox(height: 5),
+                  const SizedBox(height: 5),
                   Text(
-                    message.messageTimestampUtc!,
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                    Utils.formatUtcDateTime(message.messageTimestampUtc!),
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
               ),

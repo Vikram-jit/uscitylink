@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/events/socket_events.dart';
@@ -48,10 +49,31 @@ class SocketService extends GetxController {
     });
 
     socket.on('receive_message_channel', (data) {
-      print('New message received: $data');
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().onNewMessage(data);
+      }
 
-      // Notify MessageController to update the message list
-      Get.find<MessageController>().onNewMessage(data);
+      if (Get.find<ChannelController>().channels.isNotEmpty) {
+        Get.find<ChannelController>().addNewMessage(data);
+      }
+    });
+
+    socket.on('update_user_channel_list', (data) {
+      if (Get.find<ChannelController>().channels.isNotEmpty) {
+        Get.find<ChannelController>().addNewMessage(data);
+      }
+    });
+
+    socket.on("user_added_to_channel", (data) {
+      Get.find<ChannelController>().addNewChannel(data);
+    });
+
+    socket.on("update_channel_message_count", (data) {
+      Get.find<ChannelController>().updateCount(data);
+    });
+
+    socket.on("new_message_count_update", (data) {
+      Get.find<ChannelController>().incrementCount(data);
     });
 
     socket.on('disconnect', (_) {
@@ -73,6 +95,9 @@ class SocketService extends GetxController {
   void updateActiveChannel(String channelId) {
     if (isConnected.value) {
       socket.emit("driver_open_chat", channelId);
+      if (channelId.isNotEmpty) {
+        socket.emit("update_channel_message_count", channelId);
+      }
     } else {
       print("Not connected to socket.");
     }

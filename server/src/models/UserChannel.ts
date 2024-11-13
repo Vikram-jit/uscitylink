@@ -1,3 +1,4 @@
+import { Message } from './Message';
 import { Model, DataTypes } from "sequelize";
 import { primarySequelize } from "../sequelize";
 
@@ -5,11 +6,16 @@ class UserChannel extends Model {
   public id!: string;
   public userProfileId!: string;
   public channelId!: string;
-  public readonly userChannels?: UserChannel[]; // Add this line
+  public last_message_id?: string;
+  public sent_message_count?: number;
+  public recieve_message_count?: number;
+  public last_message_utc?:Date
+  public readonly userChannels?: UserChannel[]; 
   
   static associate(models: any) {
     UserChannel.belongsTo(models.UserProfile, { foreignKey: 'userProfileId' });
     UserChannel.belongsTo(models.Channel, { foreignKey: 'channelId' });
+    
   }
 }
 
@@ -25,7 +31,7 @@ UserChannel.init(
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'user_profiles', // Adjust based on your table name
+        model: 'user_profiles',
         key: 'id',
       },
     },
@@ -33,7 +39,7 @@ UserChannel.init(
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'channels', // Adjust based on your table name
+        model: 'channels', 
         key: 'id',
       },
     },
@@ -41,9 +47,21 @@ UserChannel.init(
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: 'messages', // Adjust based on your table name
+        model: 'messages', 
         key: 'id',
       },
+    },
+    recieve_message_count: {
+      type: DataTypes.INTEGER,
+      defaultValue:0
+    },
+    sent_message_count: {
+      type: DataTypes.INTEGER,
+      defaultValue:0
+    },
+    last_message_utc: {
+      type: DataTypes.DATE,
+      defaultValue:0
     },
   },
   {

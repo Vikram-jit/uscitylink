@@ -6,7 +6,7 @@ import { Message } from "../models/Message";
 import Role from "../models/Role";
 import { staffActiveChannelUpdate, staffOpenChatUpdate } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
-import { messageToChannelToUser, messageToDriver } from "./messageHandler";
+import { messageToChannelToUser, messageToDriver, unreadAllMessage } from "./messageHandler";
 
 let io: Server;
 interface User {
@@ -195,6 +195,11 @@ export const initSocket = (httpServer: any) => {
                 }
               })
             } else {
+              global.driverOpenChat.push({
+                driverId: userProfile.id,
+                channelId:"",
+             
+              });
               console.log(
                 `Driver ${userProfile.id} has no channelId, not added`
               );
@@ -217,6 +222,7 @@ export const initSocket = (httpServer: any) => {
                   }
                 })
               } else {
+                
                 console.log(
                   `Driver ${userProfile.id} already has the same channelId`
                 );
@@ -259,6 +265,7 @@ export const initSocket = (httpServer: any) => {
     //driver web app
 
     socket.on("driver_open_chat",async (channelId) => await driverActiveChannelUpdate(socket,channelId))
+    socket.on("update_channel_message_count",async (channelId) => await unreadAllMessage(io,socket,channelId))
 
     //sendMessage Event
 
