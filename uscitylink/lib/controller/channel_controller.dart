@@ -86,7 +86,6 @@ class ChannelController extends GetxController {
 
   void incrementCount(String channelId) {
     try {
-      print(channelId);
       var channel = channels.firstWhere(
         (ch) => ch.channelId == channelId,
         orElse: () => UserChannelModel(id: channelId),

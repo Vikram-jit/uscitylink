@@ -1,17 +1,18 @@
 import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
 import { MessageModel } from '@/redux/models/MessageModel';
-import { CircularProgress } from '@mui/material';
+import { WavingHand } from '@mui/icons-material';
+import { CircularProgress, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+
+import { useSocket } from '@/lib/socketProvider';
 
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
-import { ChatProps, MessageProps } from './types';
-import { useSocket } from '@/lib/socketProvider';
 
 type MessagesPaneProps = {
   userId: string;
@@ -20,16 +21,15 @@ type MessagesPaneProps = {
 export default function MessagesPane(props: MessagesPaneProps) {
   const { userId } = props;
 
-
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
-  const {socket} = useSocket();
-
+  const { socket } = useSocket();
 
   const { data, isLoading } = useGetMessagesByUserIdQuery(
     { id: userId },
     {
       skip: !userId,
+      pollingInterval: 30000
     }
   );
 
@@ -39,25 +39,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   }, [data, isLoading]);
 
+  React.useEffect(()=>{
+
+    if(userId == ""){
+      setMessages([])
+    }
+  },[userId])
+
   React.useEffect(() => {
     if (socket) {
-      socket.emit("staff_active_channel_user_update", userId);
+      socket.emit('staff_active_channel_user_update', userId);
 
-      socket.on("receive_message_channel", (message: MessageModel) => {
-
+      socket.on('receive_message_channel', (message: MessageModel) => {
         setMessages((prevMessages) => [...prevMessages, message]);
       });
     }
 
-
     return () => {
       if (socket) {
-        socket.off("receive_message_channel");
+        socket.off('receive_message_channel');
       }
     };
   }, [socket, userId]);
-
-
 
   if (isLoading) {
     return <CircularProgress />;
@@ -72,40 +75,74 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: 'background.default',
       }}
     >
-      <MessagesPaneHeader sender={data?.data?.userProfile} />
-      <Box
-        sx={{
-          display: 'flex',
-          flex: 1,
-          minHeight: 0,
-          px: 2,
-          py: 3,
-          overflowY: 'scroll',
-          flexDirection: 'column-reverse',
-        }}
-      >
-        <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
-          {messages &&
-            messages.map((message: MessageModel, index: number) => {
-              const isYou = message.messageDirection === 'S';
-              return (
-                <Stack key={index} direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
-                  {message.messageDirection !== 'S' && <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />}
-                  <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender}/>
-                </Stack>
-              );
-            })}
-        </Stack>
-      </Box>
-      {data && (
-        <MessageInput
-          textAreaValue={textAreaValue}
-          setTextAreaValue={setTextAreaValue}
-          onSubmit={() => {
-            socket.emit("send_message_to_user",{body:textAreaValue,userId:userId,direction:"S"})
-
-          }}
-        />
+      {data?.data && userId && <MessagesPaneHeader sender={data?.data?.userProfile} />}
+      {data?.data && messages?.length > 0 ? (
+        <>
+          <Box
+            sx={{
+              display: 'flex',
+              flex: 1,
+              minHeight: 0,
+              px: 2,
+              py: 3,
+              overflowY: 'scroll',
+              flexDirection: 'column-reverse',
+            }}
+          >
+            <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
+              {messages &&
+                messages.map((message: MessageModel, index: number) => {
+                  const isYou = message.messageDirection === 'S';
+                  return (
+                    <Stack
+                      key={index}
+                      direction="row"
+                      spacing={2}
+                      sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
+                    >
+                      {message.messageDirection !== 'S' && (
+                        <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                      )}
+                      <ChatBubble
+                        variant={isYou ? 'sent' : 'received'}
+                        {...message}
+                        attachment={false}
+                        sender={message?.sender}
+                      />
+                    </Stack>
+                  );
+                })}
+            </Stack>
+          </Box>
+          {messages.length > 0 && (
+            <MessageInput
+              textAreaValue={textAreaValue}
+              setTextAreaValue={setTextAreaValue}
+              onSubmit={() => {
+                socket.emit('send_message_to_user', { body: textAreaValue, userId: userId, direction: 'S' });
+              }}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          <Box flex={1} display={'flex'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
+            {userId && messages.length == 0 ? (
+              <IconButton
+                onClick={() => {
+                  socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' });
+                }}
+              >
+                <Box display={'flex'} flexDirection={'column'} justifyContent={'center'} alignItems={'center'}>
+                  <WavingHand color="warning" />
+                  <Typography>Say Hi</Typography>
+                </Box>
+              </IconButton>
+            ) : (
+              <Typography>Not Chat Selected</Typography>
+            )}
+          </Box>
+        </>
       )}
     </Paper>
   );

@@ -18,6 +18,7 @@ import { Eye as EyeIcon } from '@phosphor-icons/react/dist/ssr/Eye';
 import { EyeSlash as EyeSlashIcon } from '@phosphor-icons/react/dist/ssr/EyeSlash';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
+
 import { paths } from '@/paths';
 import { useUser } from '@/hooks/use-user';
 
@@ -53,6 +54,7 @@ export function SignInForm(): React.JSX.Element {
       setIsPending(true);
 
       const res: any = await login(values);
+      console.log(res);
       if (res?.error) {
         if ('data' in res?.error) {
           setError('root', { type: 'server', message: res?.error?.data?.message });
@@ -63,13 +65,25 @@ export function SignInForm(): React.JSX.Element {
         setIsPending(false);
         return;
       }
-      localStorage.setItem('custom-auth-token', res?.data?.data?.access_token);
 
+      if (res?.data?.data) {
+        if (res?.data?.data?.user) {
+          if (res?.data?.data?.user?.role) {
+            if (res?.data?.data?.user?.role?.name == 'staff') {
+              localStorage.setItem('custom-auth-token', res?.data?.data?.access_token);
 
-       await checkSession?.();
+              await checkSession?.();
 
-
-       router.refresh();
+              router.refresh();
+            } else {
+              setError('root', { type: 'server', message: 'Invalid Credential' });
+              setIsPending(false);
+              return;
+            }
+            console.log(res?.data?.data?.user?.role);
+          }
+        }
+      }
     },
     [checkSession, router, setError]
   );

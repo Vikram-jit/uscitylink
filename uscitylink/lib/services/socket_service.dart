@@ -103,6 +103,14 @@ class SocketService extends GetxController {
     }
   }
 
+  void logout() {
+    if (isConnected.value) {
+      socket.emit("logout");
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
   @override
   void onClose() {
     socket.dispose();

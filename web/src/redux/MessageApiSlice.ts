@@ -17,6 +17,9 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         url: `message/byUserId/${payload.id}`,
         method: 'GET',
       }),
+      keepUnusedDataFor: 60,  // Keep data in the cache for 60 seconds
+
+
     }),
 
 

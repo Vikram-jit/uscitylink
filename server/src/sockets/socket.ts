@@ -6,7 +6,7 @@ import { Message } from "../models/Message";
 import Role from "../models/Role";
 import { staffActiveChannelUpdate, staffOpenChatUpdate } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
-import { messageToChannelToUser, messageToDriver, unreadAllMessage } from "./messageHandler";
+import { messageToChannelToUser, messageToDriver, unreadAllMessage, unreadAllUserMessage } from "./messageHandler";
 
 let io: Server;
 interface User {
@@ -88,6 +88,7 @@ export const initSocket = (httpServer: any) => {
 
     try {
       const decoded: any = verifyToken(token);
+
       if (decoded?.id) {
         const userProfile = await UserProfile.findByPk(decoded.id, {
           include: [
@@ -260,7 +261,7 @@ export const initSocket = (httpServer: any) => {
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
     socket.on("staff_channel_update",async (channelId) => await staffActiveChannelUpdate(socket,channelId))
 
-
+    socket.on("update_channel_sent_message_count",async ({channelId,userId}) => await unreadAllUserMessage(io,socket,channelId,userId))
 
     //driver web app
 
@@ -276,40 +277,56 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async (body) => await messageToChannelToUser(io,socket,body));
 
+    socket.on("logout",async ()=>{
+      const userId = socket?.user?.id!
+      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
+      global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
+      global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+      global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
 
+      const isUser = await UserProfile.findByPk(userId,{
+        include:[
+          {
+            model:Role,
+            as:"role"
+          }
+        ]
+      })
+
+      if(isUser){
+        if(isUser?.role?.name == "driver"){
+         await isUser.update({
+            channelId:null
+          })
+        }
+      }
+
+    })
 
     socket.on("disconnect", async() => {
 
-      // Find the user in the global.onlineUsers array based on userId
-      const findUserSocket = global.onlineUsers.find(
-        (user: any) => user?.socketId === socket.id
-      );
+      const userId = socket?.user?.id!
 
-      if (findUserSocket) {
+      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
+      global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
+      global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+      global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
 
-         
-      // await UserProfile.update(
-      //   {
-      //     channelId: null,
-      //   },
-      //   {
-      //     where: {
-      //       id: findUserSocket?.id,
-      //     },
-      //   }
-      // );
+      const isUser = await UserProfile.findByPk(userId,{
+        include:[
+          {
+            model:Role,
+            as:"role"
+          }
+        ]
+      })
 
-
-        // If the user is found, remove them from global.onlineUsers
-        // const index = global.onlineUsers.indexOf(findUserSocket);
-        // if (index > -1) {
-        //   global.onlineUsers.splice(index, 1); // Removes 1 element at the found index
-        //   console.log(
-        //     `User ${socket.id} removed from global.onlineUsers due to disconnection`
-        //   );
-        // }
-      } else {
-        console.log(`User ${socket.id} not found in global.onlineUsers.`);
+      if(isUser){
+        if(isUser?.role?.name == "driver"){
+         await isUser.update({
+            channelId:null
+          })
+        }
       }
     });
   });

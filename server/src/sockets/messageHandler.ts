@@ -5,8 +5,9 @@ import { Message } from "../models/Message";
 import { CustomSocket } from "./socket";
 import SocketEvents from "./socketEvents";
 import UserChannel from "../models/UserChannel";
-import { Sequelize, where } from "sequelize";
+import { Sequelize } from "sequelize";
 import moment from "moment";
+import Channel from "../models/Channel";
 
 export async function messageToChannelToUser(
   io: Server,
@@ -48,21 +49,95 @@ export async function messageToChannelToUser(
       );
 
       //Find Active Driver With Channel
+      let isCheckAnyStaffOpenChat = 0;
 
-      global.staffOpenChat.map((e) => {
-        if (e.channelId == findUserChannel.channelId) {
-          const isSocket = global.onlineUsers.find(
-            (user) => user.id === e.staffId
-          );
-
+      const promises = global.staffOpenChat.map(async (e) => {
+        const isSocket = global.onlineUsers.find((user) => user.id === e.staffId);
+  
+        
+        if (e.channelId === findUserChannel.channelId && socket?.user?.id === e.userId) {
           if (isSocket) {
-            io.to(isSocket.socketId).emit(
-              SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-              message
-            );
+            isCheckAnyStaffOpenChat += 1;
+            io.to(isSocket.socketId).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+          }
+        } else {
+          
+          if (e.channelId !== findUserChannel.channelId) {
+            if (isSocket) {
+              const channel = await Channel.findByPk(message?.channelId);
+              io.to(isSocket?.socketId).emit("notification_new_message", `New Message received on ${channel?.name} channel`);
+              isCheckAnyStaffOpenChat += 1;
+            }
+          } else {
+          
+            if (isSocket) {
+              io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
+                channelId: message?.channelId,
+                userId: message?.userProfileId,
+                message,
+              });
+              isCheckAnyStaffOpenChat += 1;
+              io.to(isSocket?.socketId).emit(
+                "notification_new_message",
+                `New Message received`
+              );
+            }
           }
         }
       });
+  
+      
+      await Promise.all(promises);
+  
+
+      if (isCheckAnyStaffOpenChat === 0) {
+        await UserChannel.update(
+          {
+            sent_message_count: Sequelize.literal("sent_message_count + 1"),
+          },
+          {
+            where: {
+              userProfileId: socket?.user?.id,
+              channelId: findUserChannel.channelId,
+            },
+          }
+        );
+      }
+
+      if (isCheckAnyStaffOpenChat == 0) {
+      const newPromise =  global.staffActiveChannel.map(async (el) => {
+          const isSocket = global.onlineUsers.find(
+            (user) => user.id === el.staffId
+          );
+          if (el.role == "staff" && el.channelId == findUserChannel.channelId) {
+            if (isSocket) {
+              io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
+                channelId: message?.channelId,
+                userId: message?.userProfileId,
+                message,
+              });
+              io.to(isSocket?.socketId).emit(
+                "notification_new_message",
+                `New Message received`
+              );
+            }
+          } else {
+            if (
+              el.role == "staff" &&
+              el.channelId != findUserChannel.channelId
+            ) {
+              const channel = await Channel.findByPk(message?.channelId);
+              if (isSocket) {
+                io.to(isSocket?.socketId).emit(
+                  "notification_new_message",
+                  `New Message received on ${channel?.name} channel`
+                );
+              }
+            }
+          }
+        });
+        await Promise.all(newPromise)
+      }
     }
   }
 }
@@ -83,7 +158,7 @@ export async function messageToDriver(
   const findDriverSocket = global.driverOpenChat.find(
     (driver) => driver?.driverId === userId
   );
-  console.log(findDriverSocket);
+
   const message = await Message.create({
     channelId: findStaffActiveChannel?.channelId,
     userProfileId: userId,
@@ -112,14 +187,12 @@ export async function messageToDriver(
       );
     }
   } else {
-    console.log(isDriverSocket);
     if (isDriverSocket) {
-
-
-
       io.to(isDriverSocket?.socketId).emit("update_user_channel_list", message);
-      io.to(isDriverSocket?.socketId).emit("new_message_count_update", message?.channelId);
-      
+      io.to(isDriverSocket?.socketId).emit(
+        "new_message_count_update",
+        message?.channelId
+      );
     }
 
     await UserChannel.update(
@@ -168,7 +241,7 @@ export async function unreadAllMessage(
   socket: CustomSocket,
   channelId: string
 ) {
-  if(channelId){
+  if (channelId) {
     await UserChannel.update(
       {
         recieve_message_count: 0,
@@ -180,8 +253,42 @@ export async function unreadAllMessage(
         },
       }
     );
-  
+
     io.to(socket.id).emit("update_channel_message_count", channelId);
   }
+}
 
+
+export async function unreadAllUserMessage(
+  io: Server,
+  socket: CustomSocket,
+  channelId: string,
+  userId:string
+) {
+  if (channelId) {
+    await UserChannel.update(
+      {
+        sent_message_count: 0,
+      },
+      {
+        where: {
+          channelId: channelId,
+          userProfileId: userId,
+        },
+      }
+    );
+    await Message.update(
+      {
+        deliveryStatus: "seen",
+      },
+      {
+        where: {
+          channelId: channelId,
+          userProfileId: userId,
+          senderId:userId
+        },
+      }
+    );
+    io.to(socket.id).emit("update_channel_sent_message_count", {channelId,userId});
+  }
 }

@@ -11,6 +11,7 @@ import { SingleChannelModel } from '@/redux/models/ChannelModel';
 type ChatsPaneProps = {
   chats: SingleChannelModel;
   setSelectedChannelId?: (id: string) => void;
+
   selectedChannelId?: string;
   selectedUserId:string;
   setSelectedUserId: (id: string) => void;
@@ -80,6 +81,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           py: 0,
           paddingY: '0.75rem',
           paddingX: '1rem',
+          padding:0
         }}
       >
         {chats?.user_channels?.map((chat) => (
@@ -87,6 +89,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
             key={chat.id}
             id={chat?.userProfileId}
             user={chat}
+            channelId={chats.id}
             selectedUserId={selectedUserId}
             setSelectedUserId={setSelectedUserId}
           />

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -21,6 +23,23 @@ class LoginController extends GetxController {
 
   final emailFoucsNode = FocusNode().obs;
   final passwordFoucsNode = FocusNode().obs;
+
+  var userProfile = <Profiles>{}.obs; // A reactive Set of Profiles
+  var currentIndex = 0.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    currentIndex.listen((index) {
+      if (index == 3) {
+        getProfile();
+      }
+    });
+  }
+
+  void setTabIndex(int index) {
+    currentIndex.value = index;
+  }
 
   void loginApi(BuildContext context) {
     Map data = {"email": emailController.value.text};
@@ -91,7 +110,23 @@ class LoginController extends GetxController {
     });
   }
 
+  void getProfile() {
+    __authService.getProfile().then((value) {
+      if (value.status == true) {
+        userProfile.value = {
+          Profiles(
+            id: value.data.id,
+            username: value.data.username,
+          )
+        };
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
   void logOut() {
+    SocketService().logout();
     userPreferenceController.removeStore().then((value) {
       Get.offAllNamed(AppRoutes.login);
     });

@@ -14,7 +14,7 @@ export interface MessageModel {
   body: string;
   messageDirection: 'S' | 'R';
   deliveryStatus: string;
-  messageTimestampUtc: Date;
+  messageTimestampUtc: string;
   senderId: string;
   isRead: boolean;
   status: string;

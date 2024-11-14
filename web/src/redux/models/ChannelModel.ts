@@ -1,3 +1,4 @@
+import { MessageModel } from "./MessageModel";
 import { User } from "./UserModel";
 
 export interface ChannelModel {
@@ -27,6 +28,9 @@ export interface UserChannel {
   updatedAt:     Date;
   ChannelId:     string;
   UserProfile:   UserProfile;
+  last_message: MessageModel
+  recieve_message_count:number
+  sent_message_count:number
 }
 
 export interface UserProfile {

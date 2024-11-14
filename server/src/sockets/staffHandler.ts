@@ -14,7 +14,7 @@ export async function staffActiveChannelUpdate(
         channelId: channelId,
         role: "staff",
       });
-      
+      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== socket?.user?.id);
     }
   } else {
     const existingUser = global.staffActiveChannel.find(
@@ -23,11 +23,11 @@ export async function staffActiveChannelUpdate(
 
     if (existingUser) {
       existingUser.channelId = channelId;
-      
+      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== socket?.user?.id);
       console.log(`Updated channelId for staff ${socket?.user?.id}`);
     }
   }
-
+  socket.emit("update_channel",{channelId,userId:socket?.user?.id})
   await UserProfile.update({
     channelId:channelId,
 

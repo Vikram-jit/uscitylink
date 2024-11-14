@@ -1,9 +1,11 @@
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 
 class AccountView extends StatefulWidget {
@@ -14,12 +16,22 @@ class AccountView extends StatefulWidget {
 }
 
 class _AccountViewState extends State<AccountView> {
+  final loginController = Get.put(LoginController());
   // Controllers for text fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
   File? pickedImage;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _nameController.text = loginController.userProfile.isNotEmpty
+        ? loginController.userProfile.first.username!
+        : "";
+  }
 
   @override
   Widget build(BuildContext context) {

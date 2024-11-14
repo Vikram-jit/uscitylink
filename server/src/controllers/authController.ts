@@ -273,9 +273,9 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
       },
     });
-
+    
     if (!isUser) throw new Error("Invalid credentials");
-
+ 
     const isProfile = await UserProfile.findOne({
       where: {
         userId: isUser?.id,
@@ -288,13 +288,14 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
         },
       ],
     });
+   
 
     const isMatch = await comparePasswords(password, isProfile?.password!);
 
     if (!isMatch) throw new Error("Invalid credentials");
 
     const token = await generateToken(isProfile?.id!);
-
+   
     return res.status(200).json({
       status: true,
       message: `Login Successfully.`,

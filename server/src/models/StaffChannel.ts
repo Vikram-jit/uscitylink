@@ -2,25 +2,23 @@ import { Message } from './Message';
 import { Model, DataTypes } from "sequelize";
 import { primarySequelize } from "../sequelize";
 
-class UserChannel extends Model {
+class StaffChannel extends Model {
   public id!: string;
   public userProfileId!: string;
   public channelId!: string;
   public last_message_id?: string;
   public sent_message_count?: number;
   public recieve_message_count?: number;
- 
-  public last_message_utc?:Date
-  public readonly userChannels?: UserChannel[]; 
+  public readonly StaffChannels?: StaffChannel[]; 
   
   static associate(models: any) {
-    UserChannel.belongsTo(models.UserProfile, { foreignKey: 'userProfileId' });
-    UserChannel.belongsTo(models.Channel, { foreignKey: 'channelId' });
+    StaffChannel.belongsTo(models.UserProfile, { foreignKey: 'userProfileId' });
+    StaffChannel.belongsTo(models.Channel, { foreignKey: 'channelId' });
     
   }
 }
 
-UserChannel.init(
+StaffChannel.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -67,9 +65,9 @@ UserChannel.init(
   },
   {
     sequelize: primarySequelize,
-    modelName: "UserChannel",
+    modelName: "StaffChannel",
     tableName: "user_channels",
   }
 );
 
-export default UserChannel;
+export default StaffChannel;

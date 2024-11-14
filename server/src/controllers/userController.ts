@@ -161,4 +161,20 @@ export async function getUserWithoutChannel(
   }
 }
 
+export async function getUserProfile( req: Request,
+  res: Response):Promise<any>{
+  try {
 
+    const user = await UserProfile.findByPk(req.user?.id)
+    
+    return res.status(200).json({
+      status: true,
+      message: `Get Profile User Successfully.`,
+      data: user,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}

@@ -10,16 +10,21 @@ import 'package:uscitylink/utils/theme/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Check if the access token exists
+  // Step 1: Initialize SocketService
+  final socketService = Get.put(SocketService());
+
+  // Step 2: Get the access token if it exists
   String? accessToken = await UserPreferenceController().getToken();
 
-  // If the token exists, initialize SocketService and connect to the socket
+  // Step 3: If the token exists, connect to the socket
   if (accessToken != null) {
-    final socketService = Get.put(SocketService());
     socketService.connectSocket();
   }
+
+  // Step 4: Lazily load the MessageController
   Get.lazyPut(() => MessageController());
 
+  // Step 5: Run the app
   runApp(const MyApp());
 }
 

@@ -218,6 +218,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
         {
           model: UserChannel,
           as: "user_channels",
+        
           include: [
             {
               model: UserProfile,
@@ -230,15 +231,22 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
                   as: "user",
                 },
               ],
+             
+            },
+            {
+              model: Message, 
+              as: "last_message", 
             },
           ],
+          
         },
       ],
+      order: [[{ model: UserChannel,as: "user_channels", }, 'sent_message_count', 'DESC']],
     });
 
     return res.status(200).json({
       status: true,
-      message: `Channel Fetch Successfully.`,
+      message: `Channel Fetch Successfully..`,
       data: data,
     });
   } catch (err: any) {

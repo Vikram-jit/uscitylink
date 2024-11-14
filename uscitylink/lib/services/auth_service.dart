@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
@@ -37,6 +39,22 @@ class AuthService {
       return ApiResponse<LoginWithPasswordModel>(
         data: loginModel,
         message: response['message'] ?? 'Login successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in: No valid data received.');
+    }
+  }
+
+  Future<ApiResponse<Profiles>> getProfile() async {
+    dynamic response = await _apiService.getApi('${Constant.url}/user/profile');
+
+    if (response != null && response['data'] != null) {
+      Profiles userProfile = Profiles.fromJson(response['data']);
+
+      return ApiResponse<Profiles>(
+        data: userProfile,
+        message: response['message'] ?? 'User Profile successful',
         status: response['status'] ?? true,
       );
     } else {
