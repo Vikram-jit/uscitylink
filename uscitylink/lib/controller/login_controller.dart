@@ -18,6 +18,8 @@ class LoginController extends GetxController {
   UserPreferenceController userPreferenceController =
       Get.put(UserPreferenceController());
 
+  SocketService socketService = Get.put(SocketService());
+
   final emailController = TextEditingController().obs;
   final passwordController = TextEditingController().obs;
 
@@ -98,9 +100,9 @@ class LoginController extends GetxController {
     __authService.loginWithPassword(loginData).then((value) {
       if (value.status == true) {
         if (value.data.access_token!.isNotEmpty) {
-          userPreferenceController.storeToken(value.data).then((value) {
+          userPreferenceController.storeToken(value.data).then((value) async {
             Utils.toastMessage("Login Successfully");
-            Get.find<SocketService>().connectSocket();
+            await socketService.connectSocket();
             Get.offAllNamed(AppRoutes.driverDashboard);
           });
         }
@@ -125,8 +127,8 @@ class LoginController extends GetxController {
     });
   }
 
-  void logOut() {
-    SocketService().logout();
+  void logOut() async {
+    Get.find<SocketService>().logout();
     userPreferenceController.removeStore().then((value) {
       Get.offAllNamed(AppRoutes.login);
     });

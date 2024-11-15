@@ -10,6 +10,7 @@ class MessageModel {
   String? senderId;
   bool? isRead;
   String? status;
+  String? url;
   String? createdAt;
   String? updatedAt;
 
@@ -26,7 +27,8 @@ class MessageModel {
       this.isRead,
       this.status,
       this.createdAt,
-      this.updatedAt});
+      this.updatedAt,
+      this.url});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -42,6 +44,7 @@ class MessageModel {
     status = json['status'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    url = json['url'];
   }
 
   Map<String, dynamic> toJson() {
@@ -59,6 +62,7 @@ class MessageModel {
     data['status'] = this.status;
     data['createdAt'] = this.createdAt;
     data['updatedAt'] = this.updatedAt;
+    data['url'] = this.url;
     return data;
   }
 }

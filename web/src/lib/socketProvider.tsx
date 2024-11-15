@@ -32,7 +32,7 @@ export const SocketProvider = ({
   const token: any = localStorage.getItem('custom-auth-token');
 
   useEffect(() => {
-    const socketServer = io('http://52.8.75.98:4300', {
+    const socketServer = io('http://localhost:4300', {
       query: { token: token },
 
     });

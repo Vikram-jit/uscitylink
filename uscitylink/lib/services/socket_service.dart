@@ -17,6 +17,10 @@ class SocketService extends GetxController {
   // Variable to track the connection state
   var isConnected = false.obs;
 
+  String generateSocketUrl(String token) {
+    return 'http://52.8.75.98:4300?token=$token';
+  }
+
   // Method to connect to the socket server
   Future<void> connectSocket() async {
     String? accessToken = await userPreferenceController.getToken();
@@ -30,12 +34,14 @@ class SocketService extends GetxController {
       print("Already connected to socket.");
       return; // If already connected, don't try to connect again
     }
+    String customUrl = generateSocketUrl(accessToken);
 
     // Establish socket connection with the access token as part of the query
     socket = IO.io(
-      'http://52.8.75.98:4300',
-      IO.OptionBuilder().setTransports(['websocket']) // Use WebSocket transport
-          .setQuery({'token': accessToken}) // Pass token in query parameters
+      customUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableForceNewConnection()
           .build(),
     );
 
@@ -83,10 +89,9 @@ class SocketService extends GetxController {
   }
 
   // Method to send a message to the server
-  void sendMessage(String body) {
+  void sendMessage(String body, String? url) {
     if (isConnected.value) {
-      print(body);
-      socket.emit("send_message_to_channel", body);
+      socket.emit("send_message_to_channel", {"body": body, "url": url});
     } else {
       print("Not connected to socket.");
     }
@@ -106,6 +111,7 @@ class SocketService extends GetxController {
   void logout() {
     if (isConnected.value) {
       socket.emit("logout");
+      socket.disconnect();
     } else {
       print("Not connected to socket.");
     }

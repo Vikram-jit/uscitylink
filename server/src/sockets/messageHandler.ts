@@ -12,8 +12,10 @@ import Channel from "../models/Channel";
 export async function messageToChannelToUser(
   io: Server,
   socket: CustomSocket,
-  body: string
+  body: string,
+  url: string | null
 ) {
+  console.log(body,url)
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -29,6 +31,7 @@ export async function messageToChannelToUser(
       senderId: socket?.user?.id,
       isRead: false,
       status: "sent",
+      url: url ,
     });
 
     if (message) {
@@ -52,24 +55,32 @@ export async function messageToChannelToUser(
       let isCheckAnyStaffOpenChat = 0;
 
       const promises = global.staffOpenChat.map(async (e) => {
-        const isSocket = global.onlineUsers.find((user) => user.id === e.staffId);
-  
-        
-        if (e.channelId === findUserChannel.channelId && socket?.user?.id === e.userId) {
+        const isSocket = global.onlineUsers.find(
+          (user) => user.id === e.staffId
+        );
+
+        if (
+          e.channelId === findUserChannel.channelId &&
+          socket?.user?.id === e.userId
+        ) {
           if (isSocket) {
             isCheckAnyStaffOpenChat += 1;
-            io.to(isSocket.socketId).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+            io.to(isSocket.socketId).emit(
+              SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+              message
+            );
           }
         } else {
-          
           if (e.channelId !== findUserChannel.channelId) {
             if (isSocket) {
               const channel = await Channel.findByPk(message?.channelId);
-              io.to(isSocket?.socketId).emit("notification_new_message", `New Message received on ${channel?.name} channel`);
+              io.to(isSocket?.socketId).emit(
+                "notification_new_message",
+                `New Message received on ${channel?.name} channel`
+              );
               isCheckAnyStaffOpenChat += 1;
             }
           } else {
-          
             if (isSocket) {
               io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
                 channelId: message?.channelId,
@@ -85,10 +96,8 @@ export async function messageToChannelToUser(
           }
         }
       });
-  
-      
+
       await Promise.all(promises);
-  
 
       if (isCheckAnyStaffOpenChat === 0) {
         await UserChannel.update(
@@ -105,7 +114,7 @@ export async function messageToChannelToUser(
       }
 
       if (isCheckAnyStaffOpenChat == 0) {
-      const newPromise =  global.staffActiveChannel.map(async (el) => {
+        const newPromise = global.staffActiveChannel.map(async (el) => {
           const isSocket = global.onlineUsers.find(
             (user) => user.id === el.staffId
           );
@@ -136,7 +145,7 @@ export async function messageToChannelToUser(
             }
           }
         });
-        await Promise.all(newPromise)
+        await Promise.all(newPromise);
       }
     }
   }
@@ -258,12 +267,11 @@ export async function unreadAllMessage(
   }
 }
 
-
 export async function unreadAllUserMessage(
   io: Server,
   socket: CustomSocket,
   channelId: string,
-  userId:string
+  userId: string
 ) {
   if (channelId) {
     await UserChannel.update(
@@ -285,10 +293,13 @@ export async function unreadAllUserMessage(
         where: {
           channelId: channelId,
           userProfileId: userId,
-          senderId:userId
+          senderId: userId,
         },
       }
     );
-    io.to(socket.id).emit("update_channel_sent_message_count", {channelId,userId});
+    io.to(socket.id).emit("update_channel_sent_message_count", {
+      channelId,
+      userId,
+    });
   }
 }

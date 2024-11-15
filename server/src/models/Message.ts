@@ -15,6 +15,7 @@ export class Message extends Model {
   public senderId!: string;
   public isRead!: boolean;
   public status!: string;
+  public url?:string
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -60,6 +61,10 @@ Message.init(
     senderId: {
       type: DataTypes.UUID,
       allowNull: false,
+    },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     isRead: {
       type: DataTypes.BOOLEAN,

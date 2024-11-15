@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -20,6 +22,7 @@ class _MessageuiState extends State<Messageui> {
 
   late MessageController messageController;
   SocketService socketService = Get.put(SocketService());
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +36,7 @@ class _MessageuiState extends State<Messageui> {
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
-      socketService.sendMessage(_controller.text);
+      socketService.sendMessage(_controller.text, null);
       _controller.clear();
     }
   }
@@ -68,6 +71,12 @@ class _MessageuiState extends State<Messageui> {
                       context); // This will pop the current screen and go back to the previous screen
                 },
               ),
+              actions: [
+                Icon(Icons.add_a_photo),
+                SizedBox(
+                  width: 20,
+                )
+              ],
             ),
             Container(
               height: 1.0,
@@ -93,7 +102,7 @@ class _MessageuiState extends State<Messageui> {
                       width: 100,
                       child: InkWell(
                         onTap: () {
-                          socketService.sendMessage("Hi");
+                          socketService.sendMessage("Hi", null);
                         },
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -142,6 +151,18 @@ class _MessageuiState extends State<Messageui> {
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                              Icons.attachment), // You can use any icon here
+                          onPressed: () {
+                            // Handle the icon press action
+                            Get.bottomSheet(
+                              AttachmentBottomSheet(),
+                              isScrollControlled: true,
+                              backgroundColor: Colors.white,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -172,6 +193,8 @@ class _MessageuiState extends State<Messageui> {
   }
 
   Widget _buildChatMessage(MessageModel message) {
+    bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
+
     return Align(
       alignment: message.messageDirection == "R"
           ? Alignment.centerRight
@@ -184,6 +207,7 @@ class _MessageuiState extends State<Messageui> {
               : CrossAxisAlignment.start,
           children: [
             Container(
+              width: TDeviceUtils.getScreenWidth(context) * 0.5,
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
                 color: message.messageDirection == "R"
@@ -196,11 +220,51 @@ class _MessageuiState extends State<Messageui> {
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
+                  // Display message body
+
+                  // If there's an image URL, show the image with a loading indicator
+                  if (hasImageUrl)
+                    Image.network(
+                      "${Constant.aws}/${message.url!}",
+                      width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                      height: 150, // Set image height
+                      fit: BoxFit.cover, // Maintain aspect ratio
+                      loadingBuilder: (context, child, loadingProgress) {
+                        // If the image is still loading, show the progress indicator
+                        if (loadingProgress == null) {
+                          return child; // Image loaded
+                        } else {
+                          return Container(
+                            width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                            height: 150, // Set image height
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        (loadingProgress.expectedTotalBytes ??
+                                            1)
+                                    : null,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        // Handle error when loading the image
+                        return const Icon(
+                          Icons.error,
+                          size: 40,
+                          color: Colors.red,
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 5),
                   Text(
                     message.body!,
                     style: const TextStyle(fontSize: 16),
                   ),
-                  const SizedBox(height: 5),
+
                   Text(
                     Utils.formatUtcDateTime(message.messageTimestampUtc!),
                     style: const TextStyle(fontSize: 12, color: Colors.black54),
@@ -215,16 +279,62 @@ class _MessageuiState extends State<Messageui> {
   }
 }
 
-class ChatMessage {
-  final String sender;
-  final String message;
-  final bool isUser;
-  final String time;
-
-  ChatMessage({
-    required this.sender,
-    required this.message,
-    required this.isUser,
-    required this.time,
-  });
+class AttachmentBottomSheet extends StatelessWidget {
+  final ImagePickerController imagePickerController =
+      Get.put(ImagePickerController());
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      height: 150,
+      width: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              InkWell(
+                onTap: () {
+                  imagePickerController.pickImageFromGallery();
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.photo,
+                      color: Colors.blue,
+                      size: 34,
+                    ),
+                    Text("Photos",
+                        style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  imagePickerController.pickImageFromCamera();
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.add_a_photo,
+                      color: Colors.black87,
+                      size: 34,
+                    ),
+                    Text("Camera",
+                        style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
 }

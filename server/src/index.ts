@@ -20,6 +20,7 @@ import UserChannel from "./models/UserChannel";
 import GroupChannel from "./models/GroupChannel";
 import Group from "./models/Group";
 import { Message } from "./models/Message";
+import { verifyToken } from "./utils/jwt";
 
 dotenv.config();
 
@@ -36,8 +37,10 @@ app.use(helmet());
 app.use(express.json());
 
 // Basic route
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+app.get("/:id", async (req, res) => {
+  const decoded: any = verifyToken(req.params.id)
+  const user = await UserProfile.findByPk(decoded?.id)
+  res.send(user)
 });
 
 // Use authentication routes
@@ -62,7 +65,7 @@ server.listen(PORT, async () => {
 
   // Sync both databases
   await primarySequelize.sync(); // Use { force: false } to avoid dropping tables
-  console.log("Primary database & tables synced!");
+
 
   await secondarySequelize.sync(); // Use { force: false } to avoid dropping tables
 

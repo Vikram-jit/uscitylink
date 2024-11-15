@@ -98,7 +98,7 @@ export const initSocket = (httpServer: any) => {
             },
           ],
         });
-
+     
         if (userProfile) {
           socket.user = {
             id: userProfile.id,
@@ -255,7 +255,7 @@ export const initSocket = (httpServer: any) => {
   io.on("connection", (socket: CustomSocket) => {
     
 
-
+    console.log(onlineUsers,driverOpenChat)
     //Staff Open Chat 
 
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
@@ -275,7 +275,7 @@ export const initSocket = (httpServer: any) => {
       async ({ userId, body, direction }) => await messageToDriver(io,socket,userId,body,direction)
     );
 
-    socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async (body) => await messageToChannelToUser(io,socket,body));
+    socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async ({body,url=null}) => await messageToChannelToUser(io,socket,body,url));
 
     socket.on("logout",async ()=>{
       const userId = socket?.user?.id!
@@ -283,6 +283,8 @@ export const initSocket = (httpServer: any) => {
       global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
       global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
+
+      
 
       const isUser = await UserProfile.findByPk(userId,{
         include:[
@@ -311,7 +313,7 @@ export const initSocket = (httpServer: any) => {
       global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
       global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
-
+      console.log(global.onlineUsers,global.driverOpenChat)
       const isUser = await UserProfile.findByPk(userId,{
         include:[
           {
