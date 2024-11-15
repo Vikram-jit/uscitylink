@@ -103,8 +103,7 @@ class NetworkApiService extends BaseApiServices {
         request.files.add(file);
       }
 
-      final response =
-          await request.send().timeout(const Duration(seconds: 10));
+      final response = await request.send().timeout(const Duration(hours: 1));
 
       final responseString = await response.stream.bytesToString();
 
