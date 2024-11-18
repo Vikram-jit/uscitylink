@@ -42,6 +42,7 @@ class SocketService extends GetxController {
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .enableForceNewConnection()
+          .enableAutoConnect()
           .build(),
     );
 

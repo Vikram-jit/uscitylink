@@ -1,6 +1,9 @@
 'use client';
 
+import { apiSlice } from '@/redux/apiSlice';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 
 type SocketContextType = {
@@ -30,9 +33,9 @@ export const SocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
 
   const token: any = localStorage.getItem('custom-auth-token');
-
+  const dispatch  = useDispatch()
   useEffect(() => {
-    const socketServer = io('http://localhost:4300', {
+    const socketServer = io('http://52.8.75.98:4300', {
       query: { token: token },
 
     });
@@ -53,8 +56,19 @@ export const SocketProvider = ({
 
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
+    socketServer.on("notification_new_message",(message:string)=>{
 
-    return () => {};
+      toast.success(message)
+      dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
+    })
+    return () => {
+     // const user =""
+      // socketServer.off("new_message_count_update_staff");
+      // socketServer.off("notification_new_message");
+      // socketServer.off("update_channel_sent_message_count");
+     //socketServer.emit('staff_open_chat', user);
+
+    };
   }, []);
 
   return <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>;

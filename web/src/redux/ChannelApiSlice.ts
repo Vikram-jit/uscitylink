@@ -54,11 +54,12 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-      providesTags: ['channel'],
+      providesTags: ['channel',"members"],
       query: () => ({
         url: 'channel/members',
         method: 'GET',
       }),
+
     }),
     addMemberToChannel: builder.mutation<
       {

@@ -15,7 +15,7 @@ export async function messageToChannelToUser(
   body: string,
   url: string | null
 ) {
-  console.log(body,url)
+ 
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -38,22 +38,11 @@ export async function messageToChannelToUser(
       io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
       const utcTime = moment.utc().toDate();
 
-      await UserChannel.update(
-        {
-          last_message_id: message?.id,
-          last_message_utc: utcTime,
-        },
-        {
-          where: {
-            userProfileId: socket?.user?.id,
-            channelId: findUserChannel.channelId,
-          },
-        }
-      );
-
+     
       //Find Active Driver With Channel
       let isCheckAnyStaffOpenChat = 0;
-
+      console.log(staffOpenChat)
+      console.log(staffActiveChannel)
       const promises = global.staffOpenChat.map(async (e) => {
         const isSocket = global.onlineUsers.find(
           (user) => user.id === e.staffId
@@ -119,7 +108,9 @@ export async function messageToChannelToUser(
             (user) => user.id === el.staffId
           );
           if (el.role == "staff" && el.channelId == findUserChannel.channelId) {
+           
             if (isSocket) {
+              console.log(isSocket?.socketId);
               io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
                 channelId: message?.channelId,
                 userId: message?.userProfileId,
@@ -147,6 +138,19 @@ export async function messageToChannelToUser(
         });
         await Promise.all(newPromise);
       }
+      await UserChannel.update(
+        {
+          last_message_id: message?.id,
+          last_message_utc: utcTime,
+        },
+        {
+          where: {
+            userProfileId: socket?.user?.id,
+            channelId: findUserChannel.channelId,
+          },
+        }
+      );
+
     }
   }
 }
@@ -158,7 +162,8 @@ export async function messageToDriver(
   socket: CustomSocket,
   userId: string,
   body: string,
-  direction: string
+  direction: string,
+  url: string | null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel.find(
     (user) => user?.staffId === socket?.user?.id
@@ -178,6 +183,7 @@ export async function messageToDriver(
     senderId: socket?.user?.id,
     isRead: false,
     status: "sent",
+    url:url || null
   });
 
   //Check Before send driver active room channel

@@ -9,29 +9,50 @@ import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { useSocket } from '@/lib/socketProvider';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { toast } from 'react-toastify';
+import { useDispatch } from 'react-redux';
 
 export default function MyMessage() {
 
-  const {data,isLoading} = useGetChannelMembersQuery();
+  const {data,isLoading,refetch} = useGetChannelMembersQuery(undefined,{
+    refetchOnFocus:true
+  });
+  const dispatch = useDispatch();
 
   const [userList,setUserList] = React.useState<SingleChannelModel|null>(null);
 
   const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const {socket} = useSocket()
-   // Effect to set the user list from data
+
    React.useEffect(() => {
     if (data?.status && data?.data) {
-      setUserList(data?.data); // Assuming data.data is of type SingleChannelModel
+      setUserList(data?.data);
     }
   }, [data, isLoading]);
 
-  // Effect to handle new messages and update the user list when a socket event is received
+  React.useEffect(() => {
+
+    const handleFocus = () => {
+      refetch();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refetch]);
+
   React.useEffect(() => {
     if (socket) {
+
       socket.on("new_message_count_update_staff", ({ channelId, userId,message }: { channelId: string; userId: string,message:MessageModel }) => {
+
+
+
         if (userList && userList.id === channelId) {
 
           setUserList((prevUserList) => {
+
             if (!prevUserList) return prevUserList;
 
 
@@ -60,18 +81,19 @@ export default function MyMessage() {
           });
         }
       });
-      socket.on("notification_new_message",(message:string)=>{
-        toast.success(message)
-      })
+
 
       socket.on("update_channel",({channelId,userId}:{channelId:string,userId:string})=>{
         setSelectedUserId("")
       })
 
       socket.on("update_channel_sent_message_count",({channelId,userId}:{channelId:string,userId:string})=>{
+
+
         if (userList && userList.id === channelId) {
 
           setUserList((prevUserList) => {
+            console.log(prevUserList);
             if (!prevUserList) return prevUserList;
 
 
@@ -91,12 +113,11 @@ export default function MyMessage() {
           });
         }
       })
-      return () => {
-        socket.off("new_message_count_update_staff");
-        socket.off("notification_new_message");
-        socket.off("update_channel_sent_message_count");
-      };
+
     }
+    // return () => {
+    //   socket?.emit('staff_open_chat', "");
+    // }
   }, [socket, userList]);
 
 
@@ -139,7 +160,7 @@ export default function MyMessage() {
           setSelectedUserId={setSelectedUserId}
         />
       </Box>
-      <MessagesPane userId={selectedUserId} />
+      <MessagesPane userId={selectedUserId} setUserList={setUserList} userList={userList ||null}/>
     </Box>
   );
 }

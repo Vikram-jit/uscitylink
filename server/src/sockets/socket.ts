@@ -43,8 +43,6 @@ declare global {
   var userActiveRoom: Record<string, string>;
   var staffActiveChannel: staffActiveChannel[];
   var onlineUsers: User[];
-
-
   var driverOpenChat:driver_open_chat[];
   var staffOpenChat:staff_open_chat[];
 
@@ -272,7 +270,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction }) => await messageToDriver(io,socket,userId,body,direction)
+      async ({ userId, body, direction,url }) => await messageToDriver(io,socket,userId,body,direction,url)
     );
 
     socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async ({body,url=null}) => await messageToChannelToUser(io,socket,body,url));

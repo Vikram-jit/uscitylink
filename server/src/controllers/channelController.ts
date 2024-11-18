@@ -63,7 +63,6 @@ export async function userAddToChannel(
       throw new Error("No user IDs provided.");
     }
 
-    
     const existingUserChannels = await UserChannel.findAll({
       where: {
         channelId: req.activeChannel,
@@ -71,12 +70,10 @@ export async function userAddToChannel(
       },
     });
 
-    
     const existingUserIds = existingUserChannels.map(
       (channel) => channel.userProfileId
     );
 
-  
     const newUserIds = ids.filter(
       (user_id) => !existingUserIds.includes(user_id)
     );
@@ -91,12 +88,9 @@ export async function userAddToChannel(
 
     await Promise.all(createPromises);
 
-    
-     // After users have been added to the channel, check if they are online
-     for (const user_id of newUserIds) {
-      const userSocket = global.onlineUsers.find(
-        (user) => user.id === user_id
-      );
+    // After users have been added to the channel, check if they are online
+    for (const user_id of newUserIds) {
+      const userSocket = global.onlineUsers.find((user) => user.id === user_id);
 
       // Get UserChannel details for the user
       const userChannel = await UserChannel.findOne({
@@ -117,7 +111,9 @@ export async function userAddToChannel(
 
       // Emit the data to the user's socket if they are online
       if (userSocket && userChannel) {
-        getSocketInstance().to(userSocket.socketId).emit('user_added_to_channel', userChannel);
+        getSocketInstance()
+          .to(userSocket.socketId)
+          .emit("user_added_to_channel", userChannel);
       }
     }
 
@@ -218,7 +214,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
         {
           model: UserChannel,
           as: "user_channels",
-        
+
           include: [
             {
               model: UserProfile,
@@ -231,17 +227,27 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
                   as: "user",
                 },
               ],
-             
             },
             {
-              model: Message, 
-              as: "last_message", 
+              model: Message,
+              as: "last_message",
             },
           ],
-          
         },
       ],
-      order: [[{ model: UserChannel,as: "user_channels", }, 'sent_message_count', 'DESC']],
+      order: [
+        [
+          { model: UserChannel, as: "user_channels" },
+          "sent_message_count",
+          "DESC",
+        ],
+      
+        [
+          { model: UserChannel, as: "user_channels" },
+          "last_message_utc",
+          "DESC",
+        ],
+      ],
     });
 
     return res.status(200).json({
@@ -264,10 +270,11 @@ export async function getActiveChannel(
     let channel: any = {};
 
     const userProfile = await UserProfile.findByPk(req.user?.id);
-    
-    
+
     if (userProfile) {
-      channel = await Channel.findByPk(userProfile?.dataValues?.channelId || "");
+      channel = await Channel.findByPk(
+        userProfile?.dataValues?.channelId || ""
+      );
     }
 
     return res.status(200).json({

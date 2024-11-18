@@ -40,30 +40,42 @@ export async function staffActiveChannelUpdate(
 
 export async function staffOpenChatUpdate(
   socket: CustomSocket,
-  userId: string
+  userId: string | null | undefined
 ) {
+  // Check if userId is empty (null or undefined)
+  if (!userId) {
+    // If userId is empty, remove the entry from staffOpenChat if it exists
+    const index = global.staffOpenChat.findIndex(
+      (chat) => chat.staffId === socket.user?.id
+    );
+    if (index !== -1) {
+      global.staffOpenChat.splice(index, 1); // Remove the staff entry
+    }
+    return;
+  }
+
+  // Find the active channel for the current staff
   const isActiveChannel = global.staffActiveChannel.find(
     (user) => user.staffId === socket?.user?.id
   );
+
   if (isActiveChannel) {
-    if (
-      !global.staffOpenChat.find((staff) => staff.staffId === socket.user?.id)
-    ) {
+    // Check if this staff member does not yet have an open chat
+    const existingChat = global.staffOpenChat.find(
+      (staff) => staff.staffId === socket.user?.id
+    );
+
+    if (!existingChat) {
+      // Add a new open chat for this staff member
       global.staffOpenChat.push({
         staffId: socket.user?.id!,
-        channelId: isActiveChannel?.channelId,
+        channelId: isActiveChannel.channelId,
         userId: userId,
       });
     } else {
-      const existingUser = global.staffOpenChat.find(
-        (user) => user.staffId === socket.user?.id
-      );
-
-      if (existingUser) {
-        existingUser.channelId = isActiveChannel?.channelId;
-        existingUser.userId = userId;
-       
-      }
+      // Update the existing open chat with the new userId
+      existingChat.channelId = isActiveChannel.channelId;
+      existingChat.userId = userId;
     }
   }
 }

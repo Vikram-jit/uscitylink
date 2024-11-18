@@ -22,8 +22,29 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
 
     }),
 
+    fileUpload: builder.mutation<
+    {
+      status: boolean;
+      message: string;
+      data: any
+    },
+    FormData
+  >({
 
+    query: (formData) => ({
+      url: 'message/fileUpload',
+      method: 'POST',
+      body: formData,
+      formData: true,
+      // headers: {
+
+      //   'Content-Type': 'multipart/form-data',
+      // },
+    }),
+
+    invalidatesTags: ['messages'],
+  }),
   }),
 });
 
-export const { useGetMessagesByUserIdQuery } = MessageApiSlice;
+export const { useGetMessagesByUserIdQuery,useFileUploadMutation } = MessageApiSlice;

@@ -1,8 +1,9 @@
 import { combineReducers } from 'redux';
-import exampleReducer from './exampleSlice'; // Import your slices
+import messageReducer from './messageSlice'; // Import your slices
 
 const rootReducer = combineReducers({
-  example: exampleReducer,
+
+  messages:messageReducer
   // Add other reducers here
 });
 

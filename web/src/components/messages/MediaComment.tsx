@@ -1,0 +1,143 @@
+'use client'
+import React from 'react'
+
+import Image from 'next/image'
+
+import { IconButton } from '@mui/material'
+
+
+import 'react-medium-image-zoom/dist/styles.css'
+import { DocumentScanner } from '@mui/icons-material'
+import { FilePdf } from '@phosphor-icons/react'
+
+
+
+interface MediaComponent {
+  url: string
+
+  width?:number,
+  height?:number
+}
+
+export default function MediaComponent({ url,width,height }: MediaComponent) {
+
+
+  switch (getFileExtension(url)) {
+    case '.3gpp':
+      return (
+        <IconButton
+          LinkComponent={'a'}
+          href={url}
+          target='_blank'
+
+        >
+          <DocumentScanner/>
+        </IconButton>
+      )
+
+    case '.jpeg ':
+      return (
+        <IconButton
+          LinkComponent={'a'}
+          href={url}
+          target='_blank'
+          onClick={async () => {
+
+          }}
+        >
+          <img  src={url} alt='' />
+        </IconButton>
+      )
+      case '.jpg':
+        return (
+          <IconButton
+            LinkComponent={'a'}
+            href={url}
+            target='_blank'
+            onClick={async () => {
+
+            }}
+          >
+            <Image height={height || 60} src={url} alt='' width={181} style={{height:200,width:181,objectFit:"cover"}} objectFit='cover' />
+          </IconButton>
+        )
+    case '.png':
+      return (
+        <IconButton
+          LinkComponent={'a'}
+          href={url}
+          target='_blank'
+
+        >
+          <img height={height || 60} src={url} alt='' />
+        </IconButton>
+      )
+    case '.pdf':
+      return (
+        <IconButton
+          LinkComponent={'a'}
+          href={url}
+          target='_blank'
+
+        >
+          <FilePdf style={{color:"red"}}/>
+        </IconButton>
+      )
+
+    case 'application/octet-stream':
+      switch (getFileExtension(url)) {
+        case '.jpeg':
+          return (
+            <IconButton
+              LinkComponent={'a'}
+              href={url}
+              target='_blank'
+
+            >
+              <img height={height || 60} src={url} alt='' />
+            </IconButton>
+          )
+          case '.png':
+            return (
+              <IconButton
+                LinkComponent={'a'}
+                href={url}
+                target='_blank'
+
+              >
+                <img height={height || 60} src={url} alt='' />
+              </IconButton>
+            )
+            case '.pdf':
+            return (
+              <IconButton
+                LinkComponent={'a'}
+                href={url}
+                target='_blank'
+
+              >
+                <FilePdf/>
+              </IconButton>
+            )
+
+
+      }
+
+    default:
+      return <>not matched format</>
+  }
+}
+
+function getFileExtension(url: string) {
+  // Create a new URL object
+  const parsedUrl = new URL(url)
+
+  // Get the pathname from the URL
+  const pathname = parsedUrl.pathname
+
+  // Extract the file extension
+  const extension = pathname.split('.').pop()
+
+  // If the last part is not a dot, return it with a dot
+  return extension !== pathname ? `.${extension}` : ''
+}

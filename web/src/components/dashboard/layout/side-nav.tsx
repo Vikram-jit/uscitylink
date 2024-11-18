@@ -20,6 +20,7 @@ import { usePopover } from '@/hooks/use-popover';
 import { ChannelPopover } from './channel-popover';
 import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
 import { CircularProgress } from '@mui/material';
+import { useSocket } from '@/lib/socketProvider';
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
@@ -137,6 +138,7 @@ function reduceChildRoutes({
     acc.push(
       <NavItem
       pathname={pathname} {...item}
+      onC
       >
         {renderNavItems({
           // depth: depth + 1,
@@ -162,12 +164,16 @@ interface NavItemProps extends Omit<NavItemConfig, 'items'> {
 
 function NavItem({ disabled, external, href, icon, matcher, pathname, title}: NavItemProps): React.JSX.Element {
 
+  const {socket} = useSocket()
+
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
   const Icon = icon ? navIcons[icon] : null;
 
 
   return (
-    <li>
+    <li onClick={()=>{
+      socket?.emit('staff_open_chat', "");
+    }}>
       <Box
         {...(href
           ? {

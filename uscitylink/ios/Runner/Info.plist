@@ -51,5 +51,16 @@
 		<string>Allow access your phone's camera</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSPhotoLibraryUsageDescription</key>
+<string>We need access to your photos to save images to the gallery.</string>
+<key>LSSupportsOpeningDocumentsInPlace</key>
+<true/>
+<key>UIFileSharingEnabled</key>
+<true/>
+ <key>NSAllowsArbitraryLoads</key>
+    <true/>
 	</dict>
+	
+
+
 </plist>

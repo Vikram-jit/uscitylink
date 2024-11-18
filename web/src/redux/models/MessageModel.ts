@@ -20,6 +20,7 @@ export interface MessageModel {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  url:string | null
 
   sender: SenderModel;
 }

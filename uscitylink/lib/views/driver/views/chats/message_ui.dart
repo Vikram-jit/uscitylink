@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 
 class Messageui extends StatefulWidget {
   final dynamic channelId;
@@ -224,41 +226,7 @@ class _MessageuiState extends State<Messageui> {
 
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
-                    Image.network(
-                      "${Constant.aws}/${message.url!}",
-                      width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                      height: 150, // Set image height
-                      fit: BoxFit.cover, // Maintain aspect ratio
-                      loadingBuilder: (context, child, loadingProgress) {
-                        // If the image is still loading, show the progress indicator
-                        if (loadingProgress == null) {
-                          return child; // Image loaded
-                        } else {
-                          return Container(
-                            width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                            height: 150, // Set image height
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        (loadingProgress.expectedTotalBytes ??
-                                            1)
-                                    : null,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        // Handle error when loading the image
-                        return const Icon(
-                          Icons.error,
-                          size: 40,
-                          color: Colors.red,
-                        );
-                      },
-                    ),
+                    AttachementUi(fileUrl: "${Constant.aws}/${message.url}"),
                   const SizedBox(height: 5),
                   Text(
                     message.body!,
@@ -282,6 +250,9 @@ class _MessageuiState extends State<Messageui> {
 class AttachmentBottomSheet extends StatelessWidget {
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
+
+  final filePickerController = Get.put(FilePickerController());
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -328,6 +299,23 @@ class AttachmentBottomSheet extends StatelessWidget {
                     ),
                     Text("Camera",
                         style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  filePickerController.pickFileWithExtension();
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.edit_document,
+                      color: Colors.black87,
+                      size: 34,
+                    ),
+                    Text("Files", style: Theme.of(context).textTheme.titleSmall)
                   ],
                 ),
               ),

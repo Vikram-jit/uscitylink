@@ -11,6 +11,7 @@ import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRound
 import { MessageProps } from './types';
 import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
 import moment from 'moment';
+import MediaComponent from './MediaComment';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -19,7 +20,7 @@ type ChatBubbleProps = MessageModel & {
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender } = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url } = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
@@ -37,7 +38,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
         </Typography>
         <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm:ss')}</Typography>
       </Stack>
-      {attachment ? (
+      {url ? (
         <Paper
           variant="outlined"
           sx={{
@@ -46,17 +47,20 @@ export default function ChatBubble(props: ChatBubbleProps) {
             borderRadius: 'lg',
             borderTopRightRadius: isSent ? 0 : 'lg',
             borderTopLeftRadius: isSent ? 'lg' : 0,
+
           }}
         >
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`}/>
+            {body &&  <Typography  variant="body2">{body}</Typography>}
+          {/* <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Avatar color="primary" sx={{ width: 40, height: 40 }}>
               <InsertDriveFileRoundedIcon />
             </Avatar>
-            <div>
+            <div> */}
               {/* <Typography variant="body2">{attachment.fileName}</Typography>
               <Typography variant="caption">{attachment.size}</Typography> */}
-            </div>
-          </Stack>
+            {/* </div>
+          </Stack> */}
         </Paper>
       ) : (
         <Box

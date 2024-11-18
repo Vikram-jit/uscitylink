@@ -7,6 +7,12 @@ const config = {
     API_URL: process.env.NEXT_ENV == 'development' ? 'http://localhost:4300/api/v1/' : 'http://52.8.75.98:4300/api/v1/',
     SOCKET_URL: process.env.NEXT_ENV == 'development' ? 'http://localhost:4000' : 'http://52.8.75.98:4000',
   },
+  images: {
+    domains: [
+      'ciity-sms.s3.us-west-1.amazonaws.com', // Add this line to allow images from the AWS S3 domain
+      // You can add other allowed image domains here if necessary
+    ],
+  },
 };
 
 export default config;

@@ -1,11 +1,14 @@
 import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
+import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
+import { updateMessageList } from '@/redux/slices/messageSlice';
 import { WavingHand } from '@mui/icons-material';
 import { CircularProgress, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 
@@ -16,22 +19,37 @@ import MessagesPaneHeader from './MessagesPaneHeader';
 
 type MessagesPaneProps = {
   userId: string;
+  userList: SingleChannelModel | null;
+  setUserList: React.Dispatch<React.SetStateAction<SingleChannelModel | null>>;
 };
 
 export default function MessagesPane(props: MessagesPaneProps) {
-  const { userId } = props;
+  const { userId, userList, setUserList } = props;
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
   const { socket } = useSocket();
+  const dispatch = useDispatch();
 
-  const { data, isLoading } = useGetMessagesByUserIdQuery(
+  const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
     { id: userId },
     {
       skip: !userId,
-      pollingInterval: 30000
+      pollingInterval: 30000,
+      refetchOnFocus: true,
+      selectFromResult: ({ data, isLoading, isFetching }) => ({
+        data: data,
+        isLoading,
+        isFetching,
+      }),
     }
   );
+  React.useEffect(() => {
+    // Force a refetch whenever the userId changes or re-renders
+    if (userId) {
+      refetch(); // Manually trigger refetch to reload data
+    }
+  }, [userId, refetch]); // Trigger the effect when userId changes
 
   React.useEffect(() => {
     if (data && data?.status) {
@@ -39,12 +57,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   }, [data, isLoading]);
 
-  React.useEffect(()=>{
-
-    if(userId == ""){
-      setMessages([])
+  React.useEffect(() => {
+    if (userId == '') {
+      setMessages([]);
     }
-  },[userId])
+  }, [userId]);
 
   React.useEffect(() => {
     if (socket) {
@@ -52,12 +69,33 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
       socket.on('receive_message_channel', (message: MessageModel) => {
         setMessages((prevMessages) => [...prevMessages, message]);
+
+        if (message) {
+          setUserList((prevUserList) => {
+            if (!prevUserList) return prevUserList;
+
+            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+              if (channel.userProfileId === message?.userProfileId) {
+                return {
+                  ...channel,
+                  sent_message_count: 0,
+                  last_message:message
+
+                };
+              }
+              return channel;
+            });
+
+            return { ...prevUserList, user_channels: updatedUserChannels };
+          });
+        }
       });
     }
 
     return () => {
       if (socket) {
-        socket.off('receive_message_channel');
+        //socket.off('receive_message_channel');
+        // socket?.emit('staff_open_chat', "");
       }
     };
   }, [socket, userId]);
@@ -118,6 +156,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             <MessageInput
               textAreaValue={textAreaValue}
               setTextAreaValue={setTextAreaValue}
+              userId={userId}
               onSubmit={() => {
                 socket.emit('send_message_to_user', { body: textAreaValue, userId: userId, direction: 'S' });
               }}
