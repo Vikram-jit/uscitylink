@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
@@ -24,7 +25,8 @@ class _MessageuiState extends State<Messageui> {
 
   late MessageController messageController;
   SocketService socketService = Get.put(SocketService());
-
+  final ImagePickerController imagePickerController =
+      Get.put(ImagePickerController());
   @override
   void initState() {
     super.initState();
@@ -51,18 +53,26 @@ class _MessageuiState extends State<Messageui> {
         child: Column(
           children: [
             AppBar(
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.name, // Display the channel name
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  // Text(
-                  //   lastLogin, // Display the last login info
-                  //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                  // ),
-                ],
+              title: InkWell(
+                onTap: () {
+                  Get.toNamed(
+                    AppRoutes.profileView,
+                    arguments: {'channelId': widget.channelId},
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.name, // Display the channel name
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    // Text(
+                    //   lastLogin, // Display the last login info
+                    //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                    // ),
+                  ],
+                ),
               ),
               leading: IconButton(
                 icon: Icon(Icons.arrow_back), // Back icon
@@ -74,7 +84,12 @@ class _MessageuiState extends State<Messageui> {
                 },
               ),
               actions: [
-                Icon(Icons.add_a_photo),
+                InkWell(
+                    onTap: () {
+                      imagePickerController
+                          .pickImageFromCamera(widget.channelId);
+                    },
+                    child: Icon(Icons.add_a_photo)),
                 SizedBox(
                   width: 20,
                 )
@@ -87,108 +102,112 @@ class _MessageuiState extends State<Messageui> {
           ],
         ),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
-        child: Column(
-          children: [
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  messageController.getChannelMessages(widget.channelId);
-                },
-                child: Obx(() {
-                  if (messageController.messages.isEmpty) {
-                    return Center(
-                        child: Container(
-                      height: 100,
-                      width: 100,
-                      child: InkWell(
-                        onTap: () {
-                          socketService.sendMessage("Hi", null);
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.waving_hand,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Text("Say Hi",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
-                                    ?.copyWith(color: Colors.grey.shade700))
-                          ],
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
+          child: Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    messageController.getChannelMessages(widget.channelId);
+                  },
+                  child: Obx(() {
+                    if (messageController.messages.isEmpty) {
+                      return Center(
+                          child: Container(
+                        height: 100,
+                        width: 100,
+                        child: InkWell(
+                          onTap: () {
+                            socketService.sendMessage("Hi", null);
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.waving_hand,
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(
+                                height: 10,
+                              ),
+                              Text("Say Hi",
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(color: Colors.grey.shade700))
+                            ],
+                          ),
+                        ),
+                      ));
+                    }
+                    return ListView.builder(
+                      reverse: true,
+                      itemCount: messageController.messages.length,
+                      itemBuilder: (context, index) {
+                        return _buildChatMessage(
+                            messageController.messages[index]);
+                      },
+                    );
+                  }),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    // Text Field for typing the message
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: "Type your message...",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                                Icons.attachment), // You can use any icon here
+                            onPressed: () {
+                              // Handle the icon press action
+                              Get.bottomSheet(
+                                AttachmentBottomSheet(
+                                  channelId: widget.channelId,
+                                ),
+                                isScrollControlled: true,
+                                backgroundColor: Colors.white,
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ));
-                  }
-                  return ListView.builder(
-                    reverse: true,
-                    itemCount: messageController.messages.length,
-                    itemBuilder: (context, index) {
-                      return _buildChatMessage(
-                          messageController.messages[index]);
-                    },
-                  );
-                }),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  // Text Field for typing the message
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: "Type your message...",
-                        border: OutlineInputBorder(
+                    ),
+                    const SizedBox(width: 8),
+                    // Plus button to send the message
+                    GestureDetector(
+                      onTap: _sendMessage,
+                      child: Container(
+                        height: 50,
+                        width: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                              Icons.attachment), // You can use any icon here
-                          onPressed: () {
-                            // Handle the icon press action
-                            Get.bottomSheet(
-                              AttachmentBottomSheet(),
-                              isScrollControlled: true,
-                              backgroundColor: Colors.white,
-                            );
-                          },
+                        child: Icon(
+                          Icons.send,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Plus button to send the message
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      height: 50,
-                      width: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Icon(
-                        Icons.send,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -240,6 +259,19 @@ class _MessageuiState extends State<Messageui> {
                 ],
               ),
             ),
+            if (message.messageDirection == "R")
+              if (message.deliveryStatus == "sent")
+                Icon(
+                  Icons.done,
+                  color: Colors.grey.shade500,
+                  size: 16,
+                )
+              else
+                Icon(
+                  Icons.done_all,
+                  color: Colors.blue.shade500,
+                  size: 16,
+                )
           ],
         ),
       ),
@@ -248,10 +280,13 @@ class _MessageuiState extends State<Messageui> {
 }
 
 class AttachmentBottomSheet extends StatelessWidget {
+  final String channelId;
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
+
+  AttachmentBottomSheet({super.key, required this.channelId});
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +303,7 @@ class AttachmentBottomSheet extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromGallery();
+                  imagePickerController.pickImageFromGallery(channelId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -286,7 +321,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromCamera();
+                  imagePickerController.pickImageFromCamera(channelId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -304,7 +339,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  filePickerController.pickFileWithExtension();
+                  filePickerController.pickFileWithExtension(channelId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

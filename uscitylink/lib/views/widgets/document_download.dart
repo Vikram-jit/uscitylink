@@ -75,7 +75,7 @@ class DocumentDownload extends StatelessWidget {
                 _buildPdfPreview(file)
               // Handle Unsupported File Types
               else
-                Center(
+                const Center(
                     child: Text("Unsupported File Type",
                         style: TextStyle(fontSize: 18, color: Colors.red))),
             ],
@@ -159,11 +159,11 @@ class DocumentDownload extends StatelessWidget {
           if (loadingProgress == null) {
             return child; // Image loaded
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
         errorBuilder: (context, error, stackTrace) {
-          return Icon(Icons.error, size: 40, color: Colors.red);
+          return const Icon(Icons.error, size: 40, color: Colors.red);
         },
       ),
     );
@@ -175,9 +175,9 @@ class DocumentDownload extends StatelessWidget {
       future: DefaultCacheManager().getSingleFile(pdfUrl),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text('Error loading PDF'));
+          return const Center(child: Text('Error loading PDF'));
         } else if (snapshot.hasData) {
           // You can now use PDFView from the flutter_pdfview package
           return Container(
@@ -192,7 +192,7 @@ class DocumentDownload extends StatelessWidget {
             ),
           );
         } else {
-          return Center(child: Text('No PDF data available'));
+          return const Center(child: Text('No PDF data available'));
         }
       },
     );

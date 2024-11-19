@@ -4,6 +4,7 @@ import 'package:uscitylink/views/auth/login_view.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/driver/views/chats/message_ui.dart';
+import 'package:uscitylink/views/driver/views/chats/profile_view.dart';
 import 'package:uscitylink/views/driver/views/dashboard_view.dart';
 import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
@@ -25,6 +26,8 @@ class AppRoutes {
   static const String driverMessage = '/driver/chat/message';
 
   static const String splashView = '/';
+
+  static const String profileView = '/profile';
 
   static final routes = [
     GetPage(
@@ -65,6 +68,17 @@ class AppRoutes {
           return Messageui(
             channelId: channelId,
             name: name,
+          );
+        }),
+    GetPage(
+        name: AppRoutes.profileView,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['channelId'];
+
+          return ProfileView(
+            channelId: channelId,
           );
         }),
 

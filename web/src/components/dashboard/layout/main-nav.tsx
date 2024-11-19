@@ -22,6 +22,7 @@ export function MainNav(): React.JSX.Element {
   const userPopover = usePopover<HTMLDivElement>();
 
   return (
+
     <React.Fragment>
       <Box
         component="header"
@@ -83,5 +84,6 @@ export function MainNav(): React.JSX.Element {
         open={openNav}
       />
     </React.Fragment>
+
   );
 }

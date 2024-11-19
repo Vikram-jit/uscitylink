@@ -17,7 +17,7 @@ class ImagePickerController extends GetxController {
   RxString selectedSource = ''.obs;
   final ImagePicker _picker = ImagePicker();
   var isLoading = false.obs; // Loading state for image
-  Future<void> pickImageFromCamera() async {
+  Future<void> pickImageFromCamera(String channelId) async {
     try {
       isLoading.value = true;
       selectedSource.value = "camera";
@@ -25,14 +25,17 @@ class ImagePickerController extends GetxController {
       if (image != null) {
         selectedImage.value = File(image.path);
         isLoading.value = false;
-        Get.to(() => PhotoPreviewScreen());
+        Get.to(() => PhotoPreviewScreen(
+              channelId: channelId,
+              type: "media",
+            ));
       }
     } catch (e) {
       print('Error picking image from camera: $e');
     }
   }
 
-  Future<void> pickImageFromGallery() async {
+  Future<void> pickImageFromGallery(String channelId) async {
     try {
       selectedSource.value = "gallery";
       isLoading.value = true;
@@ -41,18 +44,21 @@ class ImagePickerController extends GetxController {
       if (image != null) {
         selectedImage.value = File(image.path);
         isLoading.value = false;
-        Get.to(() => PhotoPreviewScreen());
+        Get.to(() => PhotoPreviewScreen(
+              channelId: channelId,
+              type: "media",
+            ));
       }
     } catch (e) {
       print('Error picking image from gallery: $e');
     }
   }
 
-  void uploadFile() async {
+  void uploadFile(String channelId, String type) async {
     try {
       if (selectedImage != null) {
-        var res = await _apiService.fileUpload(
-            selectedImage.value!, "${Constant.url}/message/fileUpload");
+        var res = await _apiService.fileUpload(selectedImage.value!,
+            "${Constant.url}/message/fileUpload", channelId, type);
         if (res.status) {
           socketService.sendMessage(caption.value, res.data.key!);
 

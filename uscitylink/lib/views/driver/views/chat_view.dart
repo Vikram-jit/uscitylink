@@ -52,12 +52,14 @@ class _ChatViewState extends State<ChatView>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          ChannelTab(channelController: channelController),
-          _buildGroupsTab(),
-        ],
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            ChannelTab(channelController: channelController),
+            _buildGroupsTab(),
+          ],
+        ),
       ),
     );
   }

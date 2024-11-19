@@ -35,29 +35,37 @@ export async function messageToChannelToUser(
     });
 
     if (message) {
-      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+     console.log(global.staffActiveChannel,global.staffActiveChannel,global.onlineUsers)
+    
       const utcTime = moment.utc().toDate();
 
      
       //Find Active Driver With Channel
       let isCheckAnyStaffOpenChat = 0;
-      console.log(staffOpenChat)
-      console.log(staffActiveChannel)
+      
       const promises = global.staffOpenChat.map(async (e) => {
         const isSocket = global.onlineUsers.find(
           (user) => user.id === e.staffId
         );
-
+       
         if (
           e.channelId === findUserChannel.channelId &&
           socket?.user?.id === e.userId
         ) {
           if (isSocket) {
+            await message.update({
+              deliveryStatus: "seen",
+            },{
+              where:{
+                id:message.id
+              }
+            })
             isCheckAnyStaffOpenChat += 1;
             io.to(isSocket.socketId).emit(
               SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
               message
             );
+            
           }
         } else {
           if (e.channelId !== findUserChannel.channelId) {
@@ -110,7 +118,7 @@ export async function messageToChannelToUser(
           if (el.role == "staff" && el.channelId == findUserChannel.channelId) {
            
             if (isSocket) {
-              console.log(isSocket?.socketId);
+              
               io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
                 channelId: message?.channelId,
                 userId: message?.userProfileId,
@@ -150,7 +158,7 @@ export async function messageToChannelToUser(
           },
         }
       );
-
+      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
     }
   }
 }
@@ -196,6 +204,13 @@ export async function messageToDriver(
     findDriverSocket?.channelId == findStaffActiveChannel?.channelId
   ) {
     if (isDriverSocket) {
+      await message.update({
+        deliveryStatus: "seen",
+      },{
+        where:{
+          id:message.id
+        }
+      })
       io.to(isDriverSocket?.socketId).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
         message
@@ -280,6 +295,7 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
+   
     await UserChannel.update(
       {
         sent_message_count: 0,

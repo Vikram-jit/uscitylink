@@ -37,6 +37,7 @@ class MessageController extends GetxController {
   }
 
   void onNewMessage(dynamic data) {
+    print(data);
     // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
     MessageModel newMessage =
         MessageModel.fromJson(data); // Convert the data to MessageModel

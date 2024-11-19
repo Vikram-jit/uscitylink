@@ -5,8 +5,12 @@ import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class PhotoPreviewScreen extends StatelessWidget {
+  final String channelId;
+  final String type;
   // Access the controller instance
   final ImagePickerController controller = Get.find();
+
+  PhotoPreviewScreen({super.key, required this.channelId, required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +75,7 @@ class PhotoPreviewScreen extends StatelessWidget {
                               vertical: 12, horizontal: 16),
                           suffixIcon: InkWell(
                             onTap: () {
-                              controller.uploadFile();
+                              controller.uploadFile(channelId, type);
                             },
                             child: const Icon(
                               Icons.send,

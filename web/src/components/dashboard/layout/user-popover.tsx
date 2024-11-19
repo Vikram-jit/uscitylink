@@ -16,6 +16,7 @@ import { paths } from '@/paths';
 import { authClient } from '@/lib/auth/client';
 import { logger } from '@/lib/default-logger';
 import { useUser } from '@/hooks/use-user';
+import { useSocket } from '@/lib/socketProvider';
 
 export interface UserPopoverProps {
   anchorEl: Element | null;
@@ -25,11 +26,24 @@ export interface UserPopoverProps {
 
 export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
   const { checkSession } = useUser();
-
+  const  {socket} = useSocket();
+  const  [socketServer,setSocketServer] = React.useState<any>(null)
   const router = useRouter();
-
+  React.useEffect(()=>{
+    if(socket){
+      console.log(socket)
+      setSocketServer(socket)
+    }
+  },[socket])
   const handleSignOut = React.useCallback(async (): Promise<void> => {
     try {
+
+        if(socket){
+
+         await socket.emit("driverLogout",{})
+        }
+
+
       const { error } = await authClient.signOut();
 
       if (error) {
@@ -46,7 +60,7 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
     } catch (err) {
       logger.error('Sign out error', err);
     }
-  }, [checkSession, router]);
+  }, [checkSession, router,socket,socketServer]);
 
   return (
     <Popover

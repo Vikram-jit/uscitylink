@@ -42,6 +42,7 @@ export async function staffOpenChatUpdate(
   socket: CustomSocket,
   userId: string | null | undefined
 ) {
+  
   // Check if userId is empty (null or undefined)
   if (!userId) {
     // If userId is empty, remove the entry from staffOpenChat if it exists

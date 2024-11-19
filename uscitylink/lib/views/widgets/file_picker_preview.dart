@@ -6,8 +6,12 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
 class FilePickerPreview extends StatelessWidget {
+  final String channelId;
+  final String type;
   // Initialize the controller
   final FilePickerController _controller = Get.put(FilePickerController());
+
+  FilePickerPreview({super.key, required this.channelId, required this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +92,7 @@ class FilePickerPreview extends StatelessWidget {
                             vertical: 12, horizontal: 16),
                         suffixIcon: InkWell(
                           onTap: () {
-                            _controller.uploadFile();
+                            _controller.uploadFile(channelId, type);
                           },
                           child: const Icon(
                             Icons.send,

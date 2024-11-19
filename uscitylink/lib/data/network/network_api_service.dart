@@ -72,7 +72,8 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
-  Future<ApiResponse<FileModel>> fileUpload(File data, String url) async {
+  Future<ApiResponse<FileModel>> fileUpload(
+      File data, String url, String channelId, String type) async {
     try {
       // Show the loader while the file is uploading
       Utils.showLoader();
@@ -91,7 +92,8 @@ class NetworkApiService extends BaseApiServices {
       // Initialize MultipartRequest
       final request = http.MultipartRequest('POST', Uri.parse(url))
         ..headers.addAll(headers);
-
+      request.fields['channelId'] = channelId;
+      request.fields['type'] = type;
       // Add the file to the request
       if (data != null && data is File) {
         // Add file to the request (assumes 'file' is the key for the file in your form)

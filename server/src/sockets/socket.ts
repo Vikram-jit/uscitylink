@@ -275,8 +275,18 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async ({body,url=null}) => await messageToChannelToUser(io,socket,body,url));
 
+    socket.on("driverLogout",()=>{
+      console.log("hello driver logout")
+      const userId = socket?.user?.id!
+      console.log("hello driver logout",userId)
+    global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
+   global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
+   global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+    })
+
     socket.on("logout",async ()=>{
       const userId = socket?.user?.id!
+ 
       global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
       global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
       global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);

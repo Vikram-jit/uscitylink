@@ -12,6 +12,7 @@ import { UserProfile } from "./models/UserProfile";
 import Role from "./models/Role";
 import userRoutes from "./routes/userRoutes";
 import channelRoutes from "./routes/channelRoutes";
+import mediaRoutes from "./routes/mediaRoutes";
 import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import messageRoutes from "./routes/messageRoutes";
@@ -19,7 +20,7 @@ import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
 import GroupChannel from "./models/GroupChannel";
 import Group from "./models/Group";
-import { Message } from "./models/Message";
+
 import { verifyToken } from "./utils/jwt";
 
 dotenv.config();
@@ -50,6 +51,7 @@ app.use("/api/v1/channel", channelRoutes);
 app.use("/api/v1/group", groupRoutes);
 app.use("/api/v1/channel/member", channelMemberRoutes);
 app.use("/api/v1/message", messageRoutes);
+app.use("/api/v1/media", mediaRoutes);
 
 
 // Start server
