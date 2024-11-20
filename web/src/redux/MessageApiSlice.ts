@@ -1,4 +1,4 @@
-import { getMedia } from './../../../server/src/controllers/messageController';
+
 import { apiSlice } from './apiSlice';
 import { UserProfile } from './models/ChannelModel';
 import { MediaModel } from './models/MediaModel';
