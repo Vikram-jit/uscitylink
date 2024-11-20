@@ -90,7 +90,7 @@ export async function userAddToChannel(
 
     // After users have been added to the channel, check if they are online
     for (const user_id of newUserIds) {
-      const userSocket = global.onlineUsers.find((user) => user.id === user_id);
+      const userSocket = global.userSockets[user_id];
 
       // Get UserChannel details for the user
       const userChannel = await UserChannel.findOne({
@@ -112,7 +112,7 @@ export async function userAddToChannel(
       // Emit the data to the user's socket if they are online
       if (userSocket && userChannel) {
         getSocketInstance()
-          .to(userSocket.socketId)
+          .to(userSocket.id)
           .emit("user_added_to_channel", userChannel);
       }
     }

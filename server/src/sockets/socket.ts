@@ -10,7 +10,7 @@ import { messageToChannelToUser, messageToDriver, unreadAllMessage, unreadAllUse
 
 let io: Server;
 interface User {
-  id: string;
+ 
   name: string;
   socketId: string;
   role?: string;
@@ -18,7 +18,7 @@ interface User {
 
 
 interface staffActiveChannel {
-  staffId: string;
+  
   channelId: string;
   role: string;
 }
@@ -31,7 +31,7 @@ interface driver_open_chat{
 }
 
 interface staff_open_chat{
-  staffId: string;
+  
   channelId: string;
   userId:string
 }
@@ -41,10 +41,11 @@ declare global {
   var userSockets: Record<string, Socket>;
   var socketIO: Server;
   var userActiveRoom: Record<string, string>;
-  var staffActiveChannel: staffActiveChannel[];
-  var onlineUsers: User[];
+  var staffActiveChannel: Record<string,staffActiveChannel>;
+  var staffOpenChat:Record<string,staff_open_chat>;
+  var onlineUsers: Record<string,User>;
   var driverOpenChat:driver_open_chat[];
-  var staffOpenChat:staff_open_chat[];
+
 
 
 }
@@ -65,15 +66,15 @@ export const initSocket = (httpServer: any) => {
   global.userSockets = {};
   global.socketIO = io;
   global.userActiveRoom = {};
-  global.onlineUsers = [];
+  global.onlineUsers = {};
  
 
 
-  global.staffActiveChannel = [];
+  global.staffActiveChannel = {};
 
 
   global.driverOpenChat = [];
-  global.staffOpenChat = [];
+  global.staffOpenChat = {};
 
   //Validate User Connect With Socket
 
@@ -106,71 +107,121 @@ export const initSocket = (httpServer: any) => {
           global.userSockets[userProfile.id] = socket;
 
           //Store All onlineUsers in global variable with role
-          if (
-            !global.onlineUsers.find((user: any) => user.id === userProfile.id)
-          ) {
+          // if (
+          //   !global.onlineUsers.find((user: any) => user.id === userProfile.id)
+          // ) {
           
-            global.onlineUsers.push({
-              id: userProfile.id,
-              name: userProfile?.username || "",
-              socketId: socket.id,
-              role: userProfile?.role?.name || "admin",
-            });
-          } else {
+          //   global.onlineUsers.push({
+          //     id: userProfile.id,
+          //     name: userProfile?.username || "",
+          //     socketId: socket.id,
+          //     role: userProfile?.role?.name || "admin",
+          //   });
+          // } else {
            
-            const existingUser = global.onlineUsers.find(
-              (user: any) => user.id === userProfile.id
-            );
+          //   const existingUser = global.onlineUsers.find(
+          //     (user: any) => user.id === userProfile.id
+          //   );
           
-            if (existingUser) {
-              existingUser.socketId = socket.id; 
-              existingUser.role = userProfile?.role?.name || "admin"; 
-              console.log(`Updated socketId for user ${userProfile.id}`);
-            }
-          }
+          //   if (existingUser) {
+          //     existingUser.socketId = socket.id; 
+          //     existingUser.role = userProfile?.role?.name || "admin"; 
+          //     console.log(`Updated socketId for user ${userProfile.id}`);
+          //   }
+          // }
+
+
 
           //Store Staff into global variable with matched role staff with active channel
 
+
           if (
-            !global.staffActiveChannel.find(
-              (user) => user.staffId === userProfile.id
-            ) &&
+            !global.staffActiveChannel[userProfile.id] &&
             userProfile?.role?.name === "staff"
           ) {
             if (userProfile?.channelId) {
-              global.staffActiveChannel.push({
-                staffId: userProfile.id,
-                channelId: userProfile?.channelId!,
-                role: userProfile?.role?.name,
-              });
-              await UserProfile.update({
-                channelId:userProfile?.channelId!,
-            
-              },{
-                where:{
-                    id:userProfile.id
+              // Add staff to the global object
+              global.staffActiveChannel[userProfile.id] = {
+                channelId: userProfile.channelId,
+                role: userProfile.role?.name,
+              };
+              
+              // Update the UserProfile with the channelId
+              await UserProfile.update(
+                {
+                  channelId: userProfile?.channelId!,
+                },
+                {
+                  where: {
+                    id: userProfile.id,
+                  },
                 }
-              })
+              );
             }
           } else {
-            const existingUser = global.staffActiveChannel.find(
-              (user) =>
-                user.staffId === userProfile.id && user.role === "driver"
-            );
-
-            if (existingUser) {
-              existingUser.channelId = userProfile.channelId!; // Update the channelId
-              await UserProfile.update({
-                channelId:userProfile?.channelId!,
+            // Check if the user is a driver and update their channelId
+            const existingUser = global.staffActiveChannel[userProfile.id];
             
-              },{
-                where:{
-                    id:userProfile.id
+            if (existingUser && existingUser.role === "driver") {
+              existingUser.channelId = userProfile.channelId!; // Update the channelId
+              
+              // Update the UserProfile with the new channelId
+              await UserProfile.update(
+                {
+                  channelId: userProfile?.channelId!,
+                },
+                {
+                  where: {
+                    id: userProfile.id,
+                  },
                 }
-              })
+              );
               console.log(`Updated channelId for staff ${userProfile.id}`);
             }
           }
+
+
+
+          // if (
+          //   !global.staffActiveChannel.find(
+          //     (user) => user.staffId === userProfile.id
+          //   ) &&
+          //   userProfile?.role?.name === "staff"
+          // ) {
+          //   if (userProfile?.channelId) {
+          //     global.staffActiveChannel.push({
+          //       staffId: userProfile.id,
+          //       channelId: userProfile?.channelId!,
+          //       role: userProfile?.role?.name,
+          //     });
+          //     await UserProfile.update({
+          //       channelId:userProfile?.channelId!,
+            
+          //     },{
+          //       where:{
+          //           id:userProfile.id
+          //       }
+          //     })
+          //   }
+          // } else {
+          //   const existingUser = global.staffActiveChannel.find(
+          //     (user) =>
+          //       user.staffId === userProfile.id && user.role === "driver"
+          //   );
+
+          //   if (existingUser) {
+          //     existingUser.channelId = userProfile.channelId!; // Update the channelId
+          //     await UserProfile.update({
+          //       channelId:userProfile?.channelId!,
+            
+          //     },{
+          //       where:{
+          //           id:userProfile.id
+          //       }
+          //     })
+          //     console.log(`Updated channelId for staff ${userProfile.id}`);
+          //   }
+          // }
 
           //Store Driver into global variable with matched role driver
           if (
@@ -253,7 +304,7 @@ export const initSocket = (httpServer: any) => {
   io.on("connection", (socket: CustomSocket) => {
     
 
-    console.log(onlineUsers,driverOpenChat)
+    console.log(global.staffActiveChannel,global.staffOpenChat)
     //Staff Open Chat 
 
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
@@ -279,17 +330,20 @@ export const initSocket = (httpServer: any) => {
       console.log("hello driver logout")
       const userId = socket?.user?.id!
       console.log("hello driver logout",userId)
-    global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
-   global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
-   global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+      delete global.staffOpenChat[userId];
+         delete global.staffActiveChannel[userId];
+         delete global.userSockets[userId]
+
+  //  global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
     })
 
     socket.on("logout",async ()=>{
       const userId = socket?.user?.id!
  
-      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
-      global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
-      global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+      delete global.staffOpenChat[userId];
+      delete global.staffActiveChannel[userId];
+      delete global.userSockets[userId]
+      // global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
 
       
@@ -317,11 +371,14 @@ export const initSocket = (httpServer: any) => {
 
       const userId = socket?.user?.id!
 
-      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== userId);
-      global.staffActiveChannel = global.staffActiveChannel.filter((chat) => chat.staffId !== userId);
-      global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
+      delete global.staffOpenChat[userId];
+      delete global.staffActiveChannel[userId];
+
+      delete global.userSockets[userId]
+      // global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter((user) => user.driverId !== userId);
-      console.log(global.onlineUsers,global.driverOpenChat)
+
+
       const isUser = await UserProfile.findByPk(userId,{
         include:[
           {

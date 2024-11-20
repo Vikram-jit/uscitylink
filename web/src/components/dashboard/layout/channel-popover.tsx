@@ -42,6 +42,8 @@ export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps)
               }
             }}   onClick={async()=>{
 
+
+
               socket.emit("staff_channel_update",e.id);
 
                const res = await updateActiveChannel({channelId:e.id})

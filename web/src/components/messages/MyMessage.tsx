@@ -8,7 +8,7 @@ import { useGetChannelMembersQuery } from '@/redux/ChannelApiSlice';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { useSocket } from '@/lib/socketProvider';
 import { MessageModel } from '@/redux/models/MessageModel';
-import { toast } from 'react-toastify';
+
 import { useDispatch } from 'react-redux';
 
 export default function MyMessage() {
@@ -46,15 +46,12 @@ export default function MyMessage() {
     if (socket) {
 
       socket.on("new_message_count_update_staff", ({ channelId, userId,message }: { channelId: string; userId: string,message:MessageModel }) => {
-
-
-
+        console.log(channelId,userId,message)
         if (userList && userList.id === channelId) {
 
           setUserList((prevUserList) => {
 
             if (!prevUserList) return prevUserList;
-
 
             const updatedUserChannels = prevUserList.user_channels.map((channel) => {
 
@@ -93,7 +90,7 @@ export default function MyMessage() {
         if (userList && userList.id === channelId) {
 
           setUserList((prevUserList) => {
-            console.log(prevUserList);
+
             if (!prevUserList) return prevUserList;
 
 
@@ -113,11 +110,12 @@ export default function MyMessage() {
           });
         }
       })
-
+      return () => {
+        // socket.off('update_channel_sent_message_count');
+        // socket.off('new_message_count_update_staff')
+      }
     }
-    // return () => {
-    //   socket?.emit('staff_open_chat', "");
-    // }
+
   }, [socket, userList]);
 
 
@@ -160,7 +158,7 @@ export default function MyMessage() {
           setSelectedUserId={setSelectedUserId}
         />
       </Box>
-      <MessagesPane userId={selectedUserId} setUserList={setUserList} userList={userList ||null}/>
+       {selectedUserId && <MessagesPane userId={selectedUserId} setUserList={setUserList} userList={userList ||null}/> }
     </Box>
   );
 }

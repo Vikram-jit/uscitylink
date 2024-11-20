@@ -57,17 +57,19 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   }, [data, isLoading]);
 
-  React.useEffect(() => {
-    if (userId == '') {
-      setMessages([]);
-    }
-  }, [userId]);
+  // React.useEffect(() => {
+  //   if (userId == '') {
+  //     setMessages([]);
+  //   }
+  // }, [userId]);
 
   React.useEffect(() => {
+
     if (socket) {
       socket.emit('staff_active_channel_user_update', userId);
 
       socket.on('receive_message_channel', (message: MessageModel) => {
+
         setMessages((prevMessages) => [...prevMessages, message]);
 
         if (message) {
@@ -94,8 +96,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
     return () => {
       if (socket) {
-        //socket.off('receive_message_channel');
-        // socket?.emit('staff_open_chat', "");
+        socket.off('receive_message_channel');
+        socket?.off('staff_open_chat', null);
       }
     };
   }, [socket, userId]);

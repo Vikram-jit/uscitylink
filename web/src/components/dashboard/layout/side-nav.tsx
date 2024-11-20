@@ -172,7 +172,8 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title}: Na
 
   return (
     <li onClick={()=>{
-      socket?.emit('staff_open_chat', "");
+     console.log(socket)
+      socket?.emit('staff_open_chat', null);
     }}>
       <Box
         {...(href

@@ -5,78 +5,81 @@ export async function staffActiveChannelUpdate(
   socket: CustomSocket,
   channelId: string
 ) {
-  if (
-    !global.staffActiveChannel.find((user) => user.staffId === socket?.user?.id)
-  ) {
+  const userId = socket?.user?.id!;
+
+  // Check if the staffId already exists in the global.staffActiveChannel object
+  if (!global.staffActiveChannel[userId]) {
+    // If the staffId doesn't exist, add it
     if (channelId) {
-      global.staffActiveChannel.push({
-        staffId: socket?.user?.id!,
+      global.staffActiveChannel[userId] = {
         channelId: channelId,
         role: "staff",
-      });
-      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== socket?.user?.id);
+      };
+      // Remove from staffOpenChat if the user is being activated
+      delete global.staffOpenChat[userId!]; 
     }
   } else {
-    const existingUser = global.staffActiveChannel.find(
-      (user) => user.staffId === socket?.user?.id
-    );
+    // If the staffId exists, update the channelId
+    const existingUser = global.staffActiveChannel[userId];
 
     if (existingUser) {
       existingUser.channelId = channelId;
-      global.staffOpenChat = global.staffOpenChat.filter((chat) => chat.staffId !== socket?.user?.id);
-      console.log(`Updated channelId for staff ${socket?.user?.id}`);
+      // Remove from staffOpenChat if the user is being updated
+      delete global.staffOpenChat[userId!]; 
+      console.log(`Updated channelId for staff ${userId}`);
     }
   }
-  socket.emit("update_channel",{channelId,userId:socket?.user?.id})
-  await UserProfile.update({
-    channelId:channelId,
 
-  },{
-    where:{
-        id:socket?.user?.id!
+  // Emit the update to the client
+  socket.emit("update_channel", { channelId, userId });
+
+  // Update the UserProfile in the database
+  await UserProfile.update(
+    {
+      channelId: channelId,
+    },
+    {
+      where: {
+        id: userId!,
+      },
     }
-  })
-}
+  );
 
+  console.log(global.staffActiveChannel)
+
+}
 export async function staffOpenChatUpdate(
   socket: CustomSocket,
   userId: string | null | undefined
 ) {
-  
+
+  console.log(userId,"staff_open_chat")
+  const staffId = socket?.user?.id!;
+
   // Check if userId is empty (null or undefined)
   if (!userId) {
     // If userId is empty, remove the entry from staffOpenChat if it exists
-    const index = global.staffOpenChat.findIndex(
-      (chat) => chat.staffId === socket.user?.id
-    );
-    if (index !== -1) {
-      global.staffOpenChat.splice(index, 1); // Remove the staff entry
-    }
+    delete global.staffOpenChat[staffId!]; // Remove the staff entry from the object
+    console.log(global.staffOpenChat,"after remove")
     return;
   }
 
-  // Find the active channel for the current staff
-  const isActiveChannel = global.staffActiveChannel.find(
-    (user) => user.staffId === socket?.user?.id
-  );
+  // Find the active channel for the current staff using the staffId (now the staffId is the key)
+  const isActiveChannel = global.staffActiveChannel[staffId!];
 
   if (isActiveChannel) {
     // Check if this staff member does not yet have an open chat
-    const existingChat = global.staffOpenChat.find(
-      (staff) => staff.staffId === socket.user?.id
-    );
-
-    if (!existingChat) {
+    if (!global.staffOpenChat[staffId!]) {
       // Add a new open chat for this staff member
-      global.staffOpenChat.push({
-        staffId: socket.user?.id!,
+      global.staffOpenChat[staffId!] = {
         channelId: isActiveChannel.channelId,
         userId: userId,
-      });
+      };
     } else {
       // Update the existing open chat with the new userId
-      existingChat.channelId = isActiveChannel.channelId;
-      existingChat.userId = userId;
+      global.staffOpenChat[staffId!].channelId = isActiveChannel.channelId;
+      global.staffOpenChat[staffId!].userId = userId;
     }
   }
+  console.log(global.staffOpenChat)
 }

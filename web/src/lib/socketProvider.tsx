@@ -62,11 +62,11 @@ export const SocketProvider = ({
       dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
     })
     return () => {
-     // const user =""
-      // socketServer.off("new_message_count_update_staff");
-      // socketServer.off("notification_new_message");
-      // socketServer.off("update_channel_sent_message_count");
-     //socketServer.emit('staff_open_chat', user);
+
+       socketServer.off("new_message_count_update_staff");
+       socketServer.off("notification_new_message");
+       socketServer.off("update_channel_sent_message_count");
+     socketServer.off('staff_open_chat');
 
     };
   }, []);
