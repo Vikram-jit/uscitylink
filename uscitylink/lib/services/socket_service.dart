@@ -18,7 +18,7 @@ class SocketService extends GetxController {
   var isConnected = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300?token=$token';
+    return 'http://52.8.75.98:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -81,6 +81,19 @@ class SocketService extends GetxController {
 
     socket.on("new_message_count_update", (data) {
       Get.find<ChannelController>().incrementCount(data);
+    });
+
+    socket.on("update_all_message_seen", (data) {
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().updateSeenStatus(data);
+      }
+    });
+
+    socket.on("typingStaff", (data) {
+      print(data);
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().updateTypingStatus(data);
+      }
     });
 
     socket.on('disconnect', (_) {

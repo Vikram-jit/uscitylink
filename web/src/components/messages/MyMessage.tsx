@@ -46,7 +46,7 @@ export default function MyMessage() {
     if (socket) {
 
       socket.on("new_message_count_update_staff", ({ channelId, userId,message }: { channelId: string; userId: string,message:MessageModel }) => {
-        console.log(channelId,userId,message)
+
         if (userList && userList.id === channelId) {
 
           setUserList((prevUserList) => {
@@ -56,6 +56,7 @@ export default function MyMessage() {
             const updatedUserChannels = prevUserList.user_channels.map((channel) => {
 
               if (channel.userProfileId === userId) {
+                console.log(channel,"data")
                 return {
                   ...channel,
                   sent_message_count: channel.sent_message_count + 1,
@@ -111,12 +112,12 @@ export default function MyMessage() {
         }
       })
       return () => {
-        // socket.off('update_channel_sent_message_count');
-        // socket.off('new_message_count_update_staff')
+        socket.off('update_channel_sent_message_count');
+         socket.off('new_message_count_update_staff')
       }
     }
 
-  }, [socket, userList]);
+  }, [socket]);
 
 
 

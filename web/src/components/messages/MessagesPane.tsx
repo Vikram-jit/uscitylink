@@ -2,13 +2,11 @@ import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
-import { updateMessageList } from '@/redux/slices/messageSlice';
 import { WavingHand } from '@mui/icons-material';
 import { CircularProgress, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 
@@ -16,6 +14,7 @@ import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
+import MediaPane from './MediaPane';
 
 type MessagesPaneProps = {
   userId: string;
@@ -24,12 +23,13 @@ type MessagesPaneProps = {
 };
 
 export default function MessagesPane(props: MessagesPaneProps) {
-  const { userId, userList, setUserList } = props;
+  const { userId,  setUserList } = props;
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
   const { socket } = useSocket();
-  const dispatch = useDispatch();
+  const [mediaPanel,setMediaPanel] = React.useState<boolean>(false)
+  const [isTyping, setIsTyping] = React.useState<boolean>(false);
 
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
     { id: userId },
@@ -92,6 +92,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
           });
         }
       });
+      socket.on('typing', (data:any) => {
+        setIsTyping(data.isTyping);
+      });
+
+      socket.on('stopTyping', () => {
+        setIsTyping(false);
+      });
     }
 
     return () => {
@@ -115,8 +122,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: 'background.default',
       }}
     >
-      {data?.data && userId && <MessagesPaneHeader sender={data?.data?.userProfile} />}
-      {data?.data && messages?.length > 0 ? (
+      {data?.data && userId && <MessagesPaneHeader mediaPanel={mediaPanel} sender={data?.data?.userProfile} setMediaPanel={setMediaPanel}/>}
+
+      {mediaPanel ?  <><MediaPane userId={props.userId}/></> :  <>
+        {data?.data && messages?.length > 0 ? (
         <>
           <Box
             sx={{
@@ -156,6 +165,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           </Box>
           {messages.length > 0 && (
             <MessageInput
+              isTyping={isTyping}
               textAreaValue={textAreaValue}
               setTextAreaValue={setTextAreaValue}
               userId={userId}
@@ -185,6 +195,10 @@ export default function MessagesPane(props: MessagesPaneProps) {
           </Box>
         </>
       )}
+
+      </>}
+
+
     </Paper>
   );
 }

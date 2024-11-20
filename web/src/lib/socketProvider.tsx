@@ -57,9 +57,14 @@ export const SocketProvider = ({
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
     socketServer.on("notification_new_message",(message:string)=>{
-
+      socketServer.on("typingUser",(data:any)=>{
+        console.log(data.userId)
+        // if(data.userId == props.userId){
+        //   setUserTyping(data?.isTyping)
+        // }
+      })
       toast.success(message)
-      dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
+      //dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
     })
     return () => {
 

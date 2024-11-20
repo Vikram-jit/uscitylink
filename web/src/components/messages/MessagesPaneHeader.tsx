@@ -14,10 +14,12 @@ import { UserProfile } from '@/redux/models/ChannelModel';
 
 type MessagesPaneHeaderProps = {
   sender?: UserProfile;
+  mediaPanel:boolean
+  setMediaPanel:React.Dispatch<React.SetStateAction<boolean>>
 };
 
 export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
-  const { sender } = props;
+  const { sender,setMediaPanel,mediaPanel } = props;
 
   return (
     <Stack
@@ -68,12 +70,12 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
 
         <Button
-
+          onClick={()=>setMediaPanel((prev) => !prev)}
           variant="outlined"
           size="small"
           sx={{ display: { xs: 'none', md: 'inline-flex' } }}
         >
-          View profile
+         {mediaPanel ? "View Messages"  : "View Media"}
         </Button>
         <IconButton size="small" color="default">
           <MoreVertRoundedIcon />

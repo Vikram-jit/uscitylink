@@ -6,7 +6,7 @@ export async function staffActiveChannelUpdate(
   channelId: string
 ) {
   const userId = socket?.user?.id!;
-
+  
   // Check if the staffId already exists in the global.staffActiveChannel object
   if (!global.staffActiveChannel[userId]) {
     // If the staffId doesn't exist, add it
@@ -45,7 +45,7 @@ export async function staffActiveChannelUpdate(
     }
   );
 
-  console.log(global.staffActiveChannel)
+  
 
 }
 export async function staffOpenChatUpdate(

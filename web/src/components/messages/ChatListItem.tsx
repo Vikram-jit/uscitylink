@@ -39,9 +39,9 @@ export default function ChatListItem(props: ChatListItemProps) {
 
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
-            // if (user.sent_message_count > 0) {
-            //   socket.emit('update_channel_sent_message_count', { channelId, userId: id });
-            // }
+            if (user.sent_message_count > 0) {
+              socket.emit('update_channel_sent_message_count', { channelId, userId: id });
+            }
             toggleMessagesPane();
           }}
           selected={selected}

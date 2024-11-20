@@ -32,6 +32,15 @@ const upload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB file size limit (adjust as needed)
   },
+  // fileFilter: function (req: Request, file, cb) {
+  //   const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+
+  //   if (allowedMimeTypes.includes(file.mimetype)) {
+  //     cb(null, true); // Allow the file
+  //   } else {
+      
+  //   }
+  // },
 });
 
 export const createMessage = async (
@@ -136,13 +145,14 @@ export const getMessagesByUserId = async (
 
 export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
-    
+     const channelId = req.body.channelId ?? req.activeChannel
+     const userId = req.body.userId ?? req.user?.id    
     if (req.file) {
       const file = req.file as any
 
       await Media.create({
-        user_profile_id: req.user?.id,
-        channelId:req.body.channelId,
+        user_profile_id: userId,
+        channelId:channelId,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
@@ -169,11 +179,14 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit  +  '') || 10; // Default to limit of 10 items per page
     const offset = (page - 1) * limit; // Calculate the offset
     const channel = await Channel.findByPk(req.params.channelId)
-
+    const channelId = req.params.channelId == "null"  ? req.activeChannel : req.params.channelId
+    const userId = req.query.userId ?? req.user?.id
+    console.log(userId)
+    console.log(channelId)
     const media = await Media.findAndCountAll({
       where:{
-        channelId:req.params.channelId,
-        user_profile_id:req.user?.id,
+        channelId:channelId,
+        user_profile_id:userId,
         file_type:req.query.type || "media"
       },
       limit: limit,  

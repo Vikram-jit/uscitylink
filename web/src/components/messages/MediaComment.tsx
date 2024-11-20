@@ -3,23 +3,24 @@ import React from 'react'
 
 import Image from 'next/image'
 
-import { IconButton } from '@mui/material'
+import { IconButton, Typography } from '@mui/material'
 
 
 import 'react-medium-image-zoom/dist/styles.css'
 import { DocumentScanner } from '@mui/icons-material'
 import { FilePdf } from '@phosphor-icons/react'
+import { Box } from '@mui/system'
 
 
 
 interface MediaComponent {
   url: string
-
+  file_name?:string
   width?:number,
   height?:number
 }
 
-export default function MediaComponent({ url,width,height }: MediaComponent) {
+export default function MediaComponent({ url,width,height ,file_name}: MediaComponent) {
 
 
   switch (getFileExtension(url)) {
@@ -80,7 +81,10 @@ export default function MediaComponent({ url,width,height }: MediaComponent) {
           target='_blank'
 
         >
-          <FilePdf style={{color:"red"}}/>
+          <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
+          <FilePdf style={{color:"red"}} size={45}/>
+          <Typography variant='subtitle2'>{file_name}</Typography>
+          </Box>
         </IconButton>
       )
 

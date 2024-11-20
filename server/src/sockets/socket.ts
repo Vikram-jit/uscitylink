@@ -304,7 +304,6 @@ export const initSocket = (httpServer: any) => {
   io.on("connection", (socket: CustomSocket) => {
     
 
-    console.log(global.staffActiveChannel,global.staffOpenChat)
     //Staff Open Chat 
 
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
@@ -326,6 +325,37 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async ({body,url=null}) => await messageToChannelToUser(io,socket,body,url));
 
+
+    //Typing Staff Event
+
+    socket.on("typing",(data)=>{
+      const driver = global.driverOpenChat.find((e)=>e.driverId == data.userId)
+      if(driver){
+        const isSocket = global.userSockets[driver.driverId]
+       
+        if(isSocket){
+          //driver emit typing
+          io.to(isSocket.id).emit('typingStaff',data.isTyping)
+        }
+      } 
+     
+    })
+
+    socket.on("driverTyping",(data)=>{
+     
+      const userId = socket?.user?.id
+     
+      Object.entries(global.staffOpenChat).map(([key,value])=>{
+        if(value.channelId == data.channelId && value.userId == userId){
+          const isStaffSocket = global.userSockets[key]
+        
+          io.to(isStaffSocket.id).emit("typingUser",{...data,userId})
+
+        }
+      })
+
+    })
+ 
     socket.on("driverLogout",()=>{
       console.log("hello driver logout")
       const userId = socket?.user?.id!

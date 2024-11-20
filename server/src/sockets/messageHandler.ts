@@ -426,6 +426,25 @@ export async function unreadAllUserMessage(
         },
       }
     );
+
+    //check driver active channel
+
+   const isDriverActiveChat = global.driverOpenChat.find((driver) => driver.channelId  == channelId);
+
+    if(isDriverActiveChat){
+      const isDriverSocket =  global.userSockets[isDriverActiveChat.driverId];
+      console.log(isDriverActiveChat,isDriverSocket);
+      if(isDriverSocket){
+        io.to(isDriverSocket.id).emit("update_all_message_seen", {
+          channelId,
+          userId,
+          
+        });
+      }
+
+    }
+
+
     io.to(socket.id).emit("update_channel_sent_message_count", {
       channelId,
       userId,

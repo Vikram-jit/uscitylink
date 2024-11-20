@@ -154,6 +154,24 @@ class _MessageuiState extends State<Messageui> {
                   }),
                 ),
               ),
+              Obx(() {
+                return messageController.typing.value
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade300,
+                          ),
+                          width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                          child: const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text("Typing..."),
+                          ),
+                        ),
+                      )
+                    : Container();
+              }),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -161,6 +179,15 @@ class _MessageuiState extends State<Messageui> {
                     // Text Field for typing the message
                     Expanded(
                       child: TextField(
+                        onChanged: (text) {
+                          if (text.isNotEmpty) {
+                            messageController
+                                .startTyping(widget.channelId); // Start typing
+                          } else {
+                            messageController.stopTyping(widget
+                                .channelId); // Stop typing if text is empty
+                          }
+                        },
                         controller: _controller,
                         decoration: InputDecoration(
                           hintText: "Type your message...",
