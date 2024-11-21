@@ -31,7 +31,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const { socket } = useSocket();
   const [mediaPanel,setMediaPanel] = React.useState<boolean>(false)
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null); // Create a reference for the scroll container
 
+  // Scroll to the bottom when messages change
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: 'smooth', // Smooth scrolling
+        block: 'end', // Scroll to the bottom
+      });
+    }
+  };
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
     { id: userId },
     {
@@ -51,6 +61,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
       refetch(); // Manually trigger refetch to reload data
     }
   }, [userId, refetch]); // Trigger the effect when userId changes
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages]); // Dependency array ensures scrolls only when messages change
 
   React.useEffect(() => {
     if (data && data?.status) {
@@ -70,7 +83,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       socket.emit('staff_active_channel_user_update', userId);
 
       socket.on('receive_message_channel', (message: MessageModel) => {
-
+        scrollToBottom();
         setMessages((prevMessages) => [...prevMessages, message]);
 
         if (message) {
@@ -138,6 +151,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
               overflowY: 'scroll',
               flexDirection: 'column-reverse',
             }}
+
           >
              <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
       {messages &&
@@ -177,11 +191,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
               {isDifferentDay && (
                 <Divider>{isToday ? 'Today' : previousDate}</Divider>
               )}
+
+
             </>
           );
         })}
     </Stack>
           </Box>
+          <div ref={messagesEndRef} />
           {messages.length > 0 && (
             <MessageInput
               isTyping={isTyping}

@@ -50,17 +50,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
 
           }}
         >
-            <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`}/>
+            <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`} name={url ? url : ' '}/>
             {body &&  <Typography  variant="body2">{body}</Typography>}
-          {/* <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <Avatar color="primary" sx={{ width: 40, height: 40 }}>
-              <InsertDriveFileRoundedIcon />
-            </Avatar>
-            <div> */}
-              {/* <Typography variant="body2">{attachment.fileName}</Typography>
-              <Typography variant="caption">{attachment.size}</Typography> */}
-            {/* </div>
-          </Stack> */}
+
         </Paper>
       ) : (
         <Box

@@ -164,9 +164,12 @@ class _MessageuiState extends State<Messageui> {
                             color: Colors.grey.shade300,
                           ),
                           width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                          child: const Padding(
+                          child: Padding(
                             padding: EdgeInsets.all(8.0),
-                            child: Text("Typing..."),
+                            child: Obx(() {
+                              return Text(
+                                  "${messageController.typingMessage.value}");
+                            }),
                           ),
                         ),
                       )

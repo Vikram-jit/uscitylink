@@ -72,7 +72,9 @@ export const SocketProvider = ({
     function onDisconnect() {
       setIsConnected(false);
     }
-
+    socketServer.on('user_online', () => {
+      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
+    });
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
     socketServer.on('notification_new_message', (message: string) => {
@@ -105,7 +107,7 @@ export const SocketProvider = ({
       socketServer.off('reconnect_error', onReconnectError);
       socketServer.off('reconnect_failed', onReconnectFailed);
       clearInterval(pingInterval);
-      socket.off('pong');
+      socketServer.off('pong');
       socketServer.disconnect();
     };
   }, [token, dispatch]);

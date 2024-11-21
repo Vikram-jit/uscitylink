@@ -9,10 +9,11 @@ export async function driverActiveChannelUpdate(
       !global.driverOpenChat.find((driver) => driver.driverId === socket?.user?.id)
     ) {
       if (channelId) {
+        const userProfile  = await UserProfile.findByPk(socket?.user?.id);
         global.driverOpenChat.push({
           driverId: socket?.user?.id!,
           channelId: channelId,
-      
+          name:userProfile?.username ?? ''
         });
       }
     } else {

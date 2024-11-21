@@ -11,9 +11,11 @@ export async function staffActiveChannelUpdate(
   if (!global.staffActiveChannel[userId]) {
     // If the staffId doesn't exist, add it
     if (channelId) {
+      const  userProfile = await UserProfile.findByPk(userId)
       global.staffActiveChannel[userId] = {
         channelId: channelId,
         role: "staff",
+        name:userProfile?.username  ?? ' '
       };
       // Remove from staffOpenChat if the user is being activated
       delete global.staffOpenChat[userId!]; 

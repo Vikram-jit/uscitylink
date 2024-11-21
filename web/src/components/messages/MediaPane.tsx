@@ -43,7 +43,7 @@ export default function MediaPane({ userId }: { userId: string }) {
 
              data.data.media.map((item) => (
                <ImageListItem key={item.key} style={{border:"1px solid #d9d9d9"}}>
-                 <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${item.key}`} file_name={item.file_name}/>
+                 <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${item.key}`} name={item.key} file_name={item.file_name}/>
                </ImageListItem>
              ))
 

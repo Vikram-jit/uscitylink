@@ -27,6 +27,7 @@ export default function MessageInput(props: MessageInputProps) {
   const [isTyping, setIsTyping] = React.useState<boolean>(false);  // Whether the user is typing
   const [typingStartTime, setTypingStartTime] = React.useState<number>(0);  // Time when typing started
   const [userTyping,setUserTyping]  = React.useState<boolean>(false)
+  const [userTypingMessage,setUserTypingMessage]  = React.useState<string>("");
   const handleClick = () => {
     if (textAreaValue.trim() !== '') {
       onSubmit();
@@ -42,7 +43,14 @@ export default function MessageInput(props: MessageInputProps) {
       socket.on("typingUser",(data:any)=>{
 
         if(data.userId == props.userId){
-          setUserTyping(data?.isTyping)
+          if(data?.isTyping){
+            setUserTyping(data?.isTyping)
+            setUserTypingMessage(data?.message);
+          }else{
+            setUserTyping(data?.isTyping)
+          setUserTypingMessage("");
+          }
+
         }
       })
     }
@@ -143,7 +151,7 @@ export default function MessageInput(props: MessageInputProps) {
 
   return (
     <Box sx={{ px: 2, pb: 3 }}>
-      {userTyping && <div style={{display:"flex",justifyContent:"start",marginBottom:"5px",marginRight:"10px"}}>Typing...</div>}
+      {userTyping && <div style={{display:"flex",justifyContent:"start",marginBottom:"5px",marginRight:"10px"}}>{userTypingMessage  ?? 'Typing...'}</div>}
       <TextField
         fullWidth
         placeholder="Type something here…"

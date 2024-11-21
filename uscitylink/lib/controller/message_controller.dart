@@ -13,6 +13,7 @@ class MessageController extends GetxController {
   SocketService socketService = Get.put(SocketService());
   var messages = <MessageModel>[].obs;
   var typing = false.obs;
+  var typingMessage = "".obs;
   final __messageService = MessageService();
   var currentIndex = 0.obs;
 
@@ -91,7 +92,8 @@ class MessageController extends GetxController {
     messages.refresh();
   }
 
-  void updateTypingStatus(bool data) {
-    typing.value = data;
+  void updateTypingStatus(dynamic data) {
+    typing.value = data['typing'];
+    typingMessage.value = data['message'];
   }
 }

@@ -18,17 +18,19 @@ interface MediaComponent {
   file_name?:string
   width?:number,
   height?:number
+  name:string
 }
 
-export default function MediaComponent({ url,width,height ,file_name}: MediaComponent) {
+export default function MediaComponent({ url,width,height ,file_name,name}: MediaComponent) {
 
+  const file = name?.split("/")
 
   switch (getFileExtension(url)) {
     case '.3gpp':
       return (
         <IconButton
           LinkComponent={'a'}
-          href={url}
+          href={`/dashboard/document-viewer/${file?.[1]}`}
           target='_blank'
 
         >
@@ -40,7 +42,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
       return (
         <IconButton
           LinkComponent={'a'}
-          href={url}
+          href={`/dashboard/document-viewer/${file?.[1]}`}
           target='_blank'
           onClick={async () => {
 
@@ -53,7 +55,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
         return (
           <IconButton
             LinkComponent={'a'}
-            href={url}
+            href={`/dashboard/document-viewer/${file?.[1]}`}
             target='_blank'
             onClick={async () => {
 
@@ -66,7 +68,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
       return (
         <IconButton
           LinkComponent={'a'}
-          href={url}
+           href={`/dashboard/document-viewer/${file?.[1]}`}
           target='_blank'
 
         >
@@ -77,7 +79,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
       return (
         <IconButton
           LinkComponent={'a'}
-          href={url}
+          href={`/dashboard/document-viewer/${file?.[1]}`}
           target='_blank'
 
         >
@@ -94,7 +96,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
           return (
             <IconButton
               LinkComponent={'a'}
-              href={url}
+              href={`/dashboard/document-viewer/${file?.[1]}`}
               target='_blank'
 
             >
@@ -105,7 +107,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
             return (
               <IconButton
                 LinkComponent={'a'}
-                href={url}
+                href={`/dashboard/document-viewer/${file?.[1]}`}
                 target='_blank'
 
               >
@@ -116,7 +118,7 @@ export default function MediaComponent({ url,width,height ,file_name}: MediaComp
             return (
               <IconButton
                 LinkComponent={'a'}
-                href={url}
+                href={`/dashboard/document-viewer/${file?.[1]}`}
                 target='_blank'
 
               >
