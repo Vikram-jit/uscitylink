@@ -145,8 +145,37 @@ export const getMessagesByUserId = async (
 
 export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
-     const channelId = req.body.channelId ?? req.activeChannel
-     const userId = req.body.userId ?? req.user?.id    
+     const channelId = req.body.channelId 
+     const userId = req.user?.id        
+    if (req.file) {
+      const file = req.file as any
+
+      await Media.create({
+        user_profile_id: userId,
+        channelId:channelId,
+        file_name: req.file?.originalname,
+        file_size: req.file.size,
+        mime_type: req.file.mimetype,
+        key: file?.key,
+        file_type:req.body.type
+      });
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: `Message sent successfully`,
+      data: req.file,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
+export const fileUploadWeb = async (req: Request, res: Response): Promise<any> => {
+  try {
+     const channelId = req.activeChannel
+     const userId = req.body.userId 
     if (req.file) {
       const file = req.file as any
 

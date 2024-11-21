@@ -47,7 +47,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       FormData
     >({
       query: (formData) => ({
-        url: 'message/fileUpload',
+        url: 'message/fileUploadWeb',
         method: 'POST',
         body: formData,
         formData: true,
