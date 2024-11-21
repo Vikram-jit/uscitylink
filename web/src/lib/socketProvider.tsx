@@ -31,12 +31,18 @@ export const SocketProvider = ({
 }) => {
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0); // Track number of reconnection attempts
 
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch  = useDispatch()
   useEffect(() => {
     const socketServer = io('http://52.8.75.98:4300', {
       query: { token: token },
+      reconnection: true, // Ensure reconnection is enabled
+      reconnectionAttempts: Infinity, // Unlimited attempts
+      reconnectionDelay: 1000, // Delay between each attempt
+      reconnectionDelayMax: 5000, // Maximum delay between attempts
+      timeout: 20000, // Timeout for initial connection
 
     });
 
@@ -44,9 +50,23 @@ export const SocketProvider = ({
       onConnect();
     }
 
+    const onReconnectAttempt = (attempt: number) => {
+      setReconnectAttempts(attempt);
+      console.log(`Attempting to reconnect... Attempt ${attempt}`);
+    };
+
+    const onReconnectError = (error: any) => {
+      console.error('Reconnection error:', error);
+    };
+
+    const onReconnectFailed = () => {
+      console.error('Failed to reconnect after multiple attempts');
+      toast.error('Unable to reconnect to the server.');
+    };
+
     function onConnect() {
       setIsConnected(true);
-
+      setReconnectAttempts(0); //
       setSocket(socketServer);
     }
 
@@ -57,7 +77,9 @@ export const SocketProvider = ({
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
     socketServer.on("notification_new_message",(message:string)=>{
-
+      socketServer.on('reconnect_attempt', onReconnectAttempt);
+      socketServer.on('reconnect_error', onReconnectError);
+      socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message)
       dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
     })
@@ -73,9 +95,12 @@ export const SocketProvider = ({
     //    socketServer.off("notification_new_message");
     //    socketServer.off("update_channel_sent_message_count");
     //  socketServer.off('staff_open_chat');
-
+    socketServer.off('reconnect_attempt', onReconnectAttempt);
+    socketServer.off('reconnect_error', onReconnectError);
+    socketServer.off('reconnect_failed', onReconnectFailed);
+    socketServer.close();
     };
-  }, []);
+  }, [token,dispatch]);
 
   return <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>;
 };

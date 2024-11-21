@@ -59,8 +59,12 @@ export const initSocket = (httpServer: any) => {
       origin: "*",  // Allow requests from your React app (localhost:3000)
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
-    
+  
     },
+    
+ 
+   
+  
   });
 
   global.userSockets = {};
@@ -303,7 +307,7 @@ export const initSocket = (httpServer: any) => {
 
   io.on("connection", (socket: CustomSocket) => {
     
-
+    
     //Staff Open Chat 
 
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
@@ -396,7 +400,17 @@ export const initSocket = (httpServer: any) => {
       }
 
     })
-
+    socket.on("reconnect_attempt", (attemptNumber) => {
+      console.log(`Reconnection attempt #${attemptNumber}`);
+    });
+  
+    socket.on("reconnect", () => {
+      console.log("Successfully reconnected!");
+    });
+  
+    socket.on("reconnect_failed", () => {
+      console.log("Reconnection failed");
+    });
     socket.on("disconnect", async() => {
 
       const userId = socket?.user?.id!
@@ -426,6 +440,8 @@ export const initSocket = (httpServer: any) => {
         }
       }
     });
+
+
   });
 };
 

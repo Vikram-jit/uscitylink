@@ -17,8 +17,12 @@ class SocketService extends GetxController {
   // Variable to track the connection state
   var isConnected = false.obs;
 
+  // Reconnection state tracking
+  var reconnectAttempts = 0.obs;
+  var isReconnecting = false.obs;
+
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300?token=$token';
+    return 'http://52.8.75.98:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -43,11 +47,15 @@ class SocketService extends GetxController {
           .setTransports(['websocket'])
           .enableForceNewConnection()
           .enableAutoConnect()
+          .setReconnectionAttempts(5)
+          .setReconnectionDelay(1000)
+          .setReconnectionDelayMax(5000)
           .build(),
     );
 
     socket.on('connect', (_) {
       print('Connected to socket server');
+      reconnectAttempts.value = 0; // Reset reconnection attempts
       isConnected.value = true;
     });
 
@@ -98,7 +106,27 @@ class SocketService extends GetxController {
 
     socket.on('disconnect', (_) {
       print('Disconnected from socket server');
+      isReconnecting.value = true; // Start tracking reconnection attempts
       isConnected.value = false; // Update connection status
+    });
+
+    socket.on('reconnect_attempt', (attempt) {
+      reconnectAttempts.value = attempt;
+      print('Reconnecting... Attempt $reconnectAttempts');
+    });
+
+    // Reconnected successfully
+    socket.on('reconnect', (_) {
+      print('Reconnected successfully');
+      isConnected.value = true;
+      isReconnecting.value = false;
+    });
+
+    // Reconnection failed
+    socket.on('reconnect_failed', (_) {
+      print('Reconnection failed');
+      isReconnecting.value = false;
+      // Optionally, notify user or handle failure
     });
   }
 
