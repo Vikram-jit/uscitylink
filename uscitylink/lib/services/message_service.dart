@@ -41,7 +41,7 @@ class MessageService {
       String channelId, String type) async {
     try {
       dynamic response = await _apiService
-          .getApi('${Constant.url}/media/$channelId?type=${type}');
+          .getApi('${Constant.url}/media/$channelId?type=$type');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

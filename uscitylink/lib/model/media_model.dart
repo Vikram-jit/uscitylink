@@ -67,12 +67,12 @@ class Channel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['name'] = this.name;
-    data['description'] = this.description;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['name'] = name;
+    data['description'] = description;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
     return data;
   }
 }
@@ -118,18 +118,18 @@ class Media {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['channelId'] = this.channelId;
-    data['user_profile_id'] = this.userProfileId;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['channelId'] = channelId;
+    data['user_profile_id'] = userProfileId;
     // data['groupId'] = this.groupId;
-    data['file_name'] = this.fileName;
+    data['file_name'] = fileName;
     // data['file_type'] = this.fileType;
-    data['file_size'] = this.fileSize;
-    data['mime_type'] = this.mimeType;
-    data['key'] = this.key;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
+    data['file_size'] = fileSize;
+    data['mime_type'] = mimeType;
+    data['key'] = key;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
     return data;
   }
 }

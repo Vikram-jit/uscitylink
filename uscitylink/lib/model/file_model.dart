@@ -38,18 +38,18 @@ class FileModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['fieldname'] = this.fieldname;
-    data['originalname'] = this.originalname;
-    data['encoding'] = this.encoding;
-    data['mimetype'] = this.mimetype;
-    data['size'] = this.size;
-    data['bucket'] = this.bucket;
-    data['key'] = this.key;
-    data['acl'] = this.acl;
-    data['contentType'] = this.contentType;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['fieldname'] = fieldname;
+    data['originalname'] = originalname;
+    data['encoding'] = encoding;
+    data['mimetype'] = mimetype;
+    data['size'] = size;
+    data['bucket'] = bucket;
+    data['key'] = key;
+    data['acl'] = acl;
+    data['contentType'] = contentType;
 
-    data['location'] = this.location;
+    data['location'] = location;
 
     return data;
   }

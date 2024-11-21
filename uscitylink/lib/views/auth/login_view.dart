@@ -13,7 +13,7 @@ import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class LoginView extends StatefulWidget {
-  LoginView({super.key});
+  const LoginView({super.key});
 
   @override
   _LoginViewState createState() => _LoginViewState();

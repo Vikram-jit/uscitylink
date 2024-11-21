@@ -19,12 +19,16 @@ class NavigationMenu extends StatelessWidget {
           currentIndex: controller.selectedIndex.value,
           onTap: (index) => controller.selectedIndex.value = index,
           items: [
-            SalomonBottomBarItem(icon: Icon(Icons.home), title: Text("Home")),
-            SalomonBottomBarItem(icon: Icon(Icons.chat), title: Text("Chat")),
             SalomonBottomBarItem(
-                icon: Icon(Icons.edit_document), title: Text("Documents")),
+                icon: const Icon(Icons.home), title: const Text("Home")),
             SalomonBottomBarItem(
-                icon: Icon(Icons.settings), title: Text("Settings")),
+                icon: const Icon(Icons.chat), title: const Text("Chat")),
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.edit_document),
+                title: const Text("Documents")),
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.settings),
+                title: const Text("Settings")),
           ],
         ),
       ),
@@ -37,9 +41,9 @@ class NavigationController extends GetxController {
   final Rx<int> selectedIndex = 0.obs;
 
   final screens = [
-    DriverDashboard(),
-    ChatView(),
-    DocumentView(),
-    SettingView(),
+    const DriverDashboard(),
+    const ChatView(),
+    const DocumentView(),
+    const SettingView(),
   ];
 }

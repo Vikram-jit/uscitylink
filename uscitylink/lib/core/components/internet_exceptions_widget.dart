@@ -24,10 +24,10 @@ class _InternetExceptionsWidgetState extends State<InternetExceptionsWidget> {
             height: TDeviceUtils.getScreenHeight() * .15,
           ),
           const Icon(Icons.cloud_off, color: Colors.red),
-          Center(
+          const Center(
             child: Padding(
-              padding: const EdgeInsets.only(top: 30),
-              child: const Text(
+              padding: EdgeInsets.only(top: 30),
+              child: Text(
                 "We're unable to show results.\n Please check your data\nconnection",
                 textAlign: TextAlign.center,
               ),

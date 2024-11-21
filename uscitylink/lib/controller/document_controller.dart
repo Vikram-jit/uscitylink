@@ -117,7 +117,7 @@ class DocumentController extends GetxController {
       final now = DateTime.now();
       // Get the path where the file will be saved
       final directory = await getApplicationDocumentsDirectory();
-      final folderPath = '${directory.path}';
+      final folderPath = directory.path;
       final filePath =
           '$folderPath/${now}_myfile.pdf'; // Change filename as needed
 
@@ -161,7 +161,7 @@ class DocumentController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
-        icon: Icon(Icons.check_circle, color: Colors.white),
+        icon: const Icon(Icons.check_circle, color: Colors.white),
       );
     }
   }
@@ -176,7 +176,7 @@ class DocumentController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        icon: Icon(Icons.error, color: Colors.white),
+        icon: const Icon(Icons.error, color: Colors.white),
       );
     }
   }

@@ -38,7 +38,7 @@ class StatCard extends StatelessWidget {
             children: [
               Container(
                 decoration: BoxDecoration(
-                    color: Color(0XFFd5d5d5),
+                    color: const Color(0XFFd5d5d5),
                     borderRadius: BorderRadius.circular(5)),
                 width: 45,
                 height: 45,

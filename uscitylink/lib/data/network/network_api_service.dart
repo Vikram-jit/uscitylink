@@ -95,7 +95,7 @@ class NetworkApiService extends BaseApiServices {
       request.fields['channelId'] = channelId;
       request.fields['type'] = type;
       // Add the file to the request
-      if (data != null && data is File) {
+      if (data is File) {
         // Add file to the request (assumes 'file' is the key for the file in your form)
         var file = await http.MultipartFile.fromPath(
           'file',

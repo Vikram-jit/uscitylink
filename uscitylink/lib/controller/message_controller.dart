@@ -50,7 +50,7 @@ class MessageController extends GetxController {
     typingStartTime = DateTime.now();
 
     // Stop typing after 1.5 seconds of inactivity
-    typingTimer = Timer(Duration(seconds: 1), () {
+    typingTimer = Timer(const Duration(seconds: 1), () {
       if (DateTime.now().difference(typingStartTime).inSeconds >= 1) {
         stopTyping(channelId);
       }

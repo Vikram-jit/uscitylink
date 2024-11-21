@@ -9,7 +9,7 @@ class DocumentView extends StatelessWidget {
     return Scaffold(
       backgroundColor: TColors.white,
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(

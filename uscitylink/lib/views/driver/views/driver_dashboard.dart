@@ -10,7 +10,7 @@ class DriverDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
@@ -42,7 +42,7 @@ class DriverDashboard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      SizedBox(
+                      const SizedBox(
                           width:
                               10), // Add some space between the image and the notification icon
                       // Notification Icon Container

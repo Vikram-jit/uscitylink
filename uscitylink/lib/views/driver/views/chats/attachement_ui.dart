@@ -9,7 +9,7 @@ class AttachementUi extends StatelessWidget {
   final String fileUrl; // URL of the file to preview
   final controller = PdfViewerController();
 
-  AttachementUi({required this.fileUrl});
+  AttachementUi({super.key, required this.fileUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class AttachementUi extends StatelessWidget {
           if (loadingProgress == null) {
             return child; // Image loaded
           } else {
-            return Container(
+            return SizedBox(
               width: double.infinity,
               height: 200.0,
               child: Center(
@@ -88,9 +88,9 @@ class AttachementUi extends StatelessWidget {
           future: DefaultCacheManager().getSingleFile(pdfUrl),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(
+              return const Center(
                   child: Icon(Icons.error, size: 40, color: Colors.red));
             } else if (snapshot.hasData) {
               // If the file is cached, show the PDF thumbnail
@@ -100,7 +100,7 @@ class AttachementUi extends StatelessWidget {
                 params: const PdfViewerParams(padding: 0),
               );
             } else {
-              return Center(child: Text('Failed to load PDF'));
+              return const Center(child: Text('Failed to load PDF'));
             }
           },
         ),
@@ -110,7 +110,7 @@ class AttachementUi extends StatelessWidget {
 
   // Widget for unsupported file types
   Widget _buildUnsupportedFile() {
-    return Center(
+    return const Center(
       child: Text(
         "Unsupported File Type",
         style: TextStyle(fontSize: 18, color: Colors.red),

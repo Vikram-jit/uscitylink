@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:get/get.dart';
-import 'package:uscitylink/model/channel_model.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/services/channel_service.dart';

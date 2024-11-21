@@ -9,7 +9,7 @@ import 'package:uscitylink/views/widgets/document_download.dart';
 
 class ProfileView extends StatelessWidget {
   final String channelId;
-  ProfileView({super.key, required this.channelId});
+  const ProfileView({super.key, required this.channelId});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,7 @@ class ProfileView extends StatelessWidget {
           );
         }),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -98,8 +98,8 @@ class ProfileView extends StatelessWidget {
 
   // Build a GridView for Media tab
   Widget _buildMediaGrid(MediaController mediaController) {
-    if (mediaController.mediaList.length == 0) {
-      return Center(
+    if (mediaController.mediaList.isEmpty) {
+      return const Center(
         child: Text("No Media"),
       );
     }
@@ -107,8 +107,8 @@ class ProfileView extends StatelessWidget {
     return GridView.builder(
       padding: const EdgeInsets.all(10),
       shrinkWrap: true,
-      physics: AlwaysScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      physics: const AlwaysScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
@@ -119,8 +119,8 @@ class ProfileView extends StatelessWidget {
         if (index == mediaController.mediaList.length) {
           // Show loading indicator if the page is still loading
           return mediaController.isLoading.value
-              ? Center(child: CircularProgressIndicator())
-              : SizedBox.shrink();
+              ? const Center(child: CircularProgressIndicator())
+              : const SizedBox.shrink();
         }
 
         final mediaItem = mediaController.mediaList[index];
@@ -174,7 +174,7 @@ class ProfileView extends StatelessWidget {
   // Build a GridView for Docs tab
   Widget _buildDocsGrid(MediaController mediaController) {
     final controller = PdfViewerController();
-    if (mediaController.mediaList.length == 0) {
+    if (mediaController.mediaList.isEmpty) {
       return const Center(
         child: Text("No Document"),
       );
@@ -207,9 +207,9 @@ class ProfileView extends StatelessWidget {
                   .getSingleFile('${Constant.aws}/${mediaItem.key}'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
-                  return Center(
+                  return const Center(
                       child: Icon(Icons.error, size: 40, color: Colors.red));
                 } else if (snapshot.hasData) {
                   // If the file is cached, show the PDF thumbnail
@@ -219,7 +219,7 @@ class ProfileView extends StatelessWidget {
                     params: const PdfViewerParams(padding: 0),
                   );
                 } else {
-                  return Center(child: Text('Failed to load PDF'));
+                  return const Center(child: Text('Failed to load PDF'));
                 }
               },
             ),

@@ -29,10 +29,10 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   final List<Widget> _screens = [
-    DriverDashboard(),
-    ChatView(),
-    DocumentView(),
-    SettingView(),
+    const DriverDashboard(),
+    const ChatView(),
+    const DocumentView(),
+    const SettingView(),
   ];
 
   @override

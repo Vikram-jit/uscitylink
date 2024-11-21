@@ -20,7 +20,7 @@ class PhotoPreviewScreen extends StatelessWidget {
         child: Obx(() {
           // If the image is still loading, show the loader
           if (controller.isLoading.value) {
-            return Center(
+            return const Center(
               child: CircularProgressIndicator(
                 color: TColors.secondary, // Custom loader color
               ),
@@ -40,7 +40,7 @@ class PhotoPreviewScreen extends StatelessWidget {
                       width: double.infinity, // Take up the full screen width
                     );
                   } else {
-                    return SizedBox();
+                    return const SizedBox();
                   }
                 }),
               ),
@@ -113,7 +113,7 @@ class PhotoPreviewScreen extends StatelessWidget {
                       color: Colors.black38.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.close, // Use a different icon if needed
                       color: Colors.white,
                       size: 20,

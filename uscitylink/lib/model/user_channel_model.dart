@@ -38,18 +38,18 @@ class UserChannelModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['userProfileId'] = this.userProfileId;
-    data['channelId'] = this.channelId;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
-    data['recieve_message_count'] = this.recieve_message_count;
-    if (this.channel != null) {
-      data['Channel'] = this?.channel?.toJson();
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['userProfileId'] = userProfileId;
+    data['channelId'] = channelId;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
+    data['recieve_message_count'] = recieve_message_count;
+    if (channel != null) {
+      data['Channel'] = this.channel?.toJson();
     }
-    if (this.last_message != null) {
-      data['last_message'] = this?.last_message?.toJson();
+    if (last_message != null) {
+      data['last_message'] = this.last_message?.toJson();
     }
     return data;
   }

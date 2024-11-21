@@ -70,7 +70,7 @@ class LoginController extends GetxController {
               onPressed: (_) {
                 Get.to(() => PasswordView(
                     email: emailController.value.text,
-                    role: value.data.profiles?[0]?.role?.name as String));
+                    role: value.data.profiles?[0].role?.name as String));
                 //Navigator.of(context).pop();
                 // Pass email to Password view
               },

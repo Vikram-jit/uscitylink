@@ -56,16 +56,14 @@ class ImagePickerController extends GetxController {
 
   void uploadFile(String channelId, String type) async {
     try {
-      if (selectedImage != null) {
-        var res = await _apiService.fileUpload(selectedImage.value!,
-            "${Constant.url}/message/fileUpload", channelId, type);
-        if (res.status) {
-          socketService.sendMessage(caption.value, res.data.key!);
+      var res = await _apiService.fileUpload(selectedImage.value!,
+          "${Constant.url}/message/fileUpload", channelId, type);
+      if (res.status) {
+        socketService.sendMessage(caption.value, res.data.key!);
 
+        Get.back();
+        while (Get.isBottomSheetOpen == true) {
           Get.back();
-          while (Get.isBottomSheetOpen == true) {
-            Get.back();
-          }
         }
       }
     } catch (e) {

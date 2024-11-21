@@ -83,17 +83,15 @@ class FilePickerController extends GetxController {
 
   void uploadFile(String channelId, String type) async {
     try {
-      if (filePath != null) {
-        var file = File(filePath.value);
-        var res = await _apiService.fileUpload(
-            file, "${Constant.url}/message/fileUpload", channelId, type);
-        if (res.status) {
-          socketService.sendMessage(caption.value, res.data.key!);
+      var file = File(filePath.value);
+      var res = await _apiService.fileUpload(
+          file, "${Constant.url}/message/fileUpload", channelId, type);
+      if (res.status) {
+        socketService.sendMessage(caption.value, res.data.key!);
 
+        Get.back();
+        while (Get.isBottomSheetOpen == true) {
           Get.back();
-          while (Get.isBottomSheetOpen == true) {
-            Get.back();
-          }
         }
       }
     } catch (e) {

@@ -12,7 +12,7 @@ import 'package:share_plus/share_plus.dart';
 
 class DocumentDownload extends StatelessWidget {
   final String file; // URL of the file
-  DocumentDownload({required this.file});
+  DocumentDownload({super.key, required this.file});
   final DocumentController _documentController = Get.put(DocumentController());
 
   @override
@@ -27,7 +27,7 @@ class DocumentDownload extends StatelessWidget {
             onPressed: () {
               Get.back();
             },
-            icon: Icon(
+            icon: const Icon(
               Icons.close,
               color: Colors.white,
             ),
@@ -44,22 +44,22 @@ class DocumentDownload extends StatelessWidget {
                   Get.snackbar("Error", "Unsupported file type");
                 }
               },
-              icon: Icon(
+              icon: const Icon(
                 Icons.download,
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             IconButton(
               onPressed: () {
                 _shareFile(file);
               },
-              icon: Icon(
+              icon: const Icon(
                 Icons.share,
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
           ],
         ),
         body: Padding(
@@ -95,7 +95,7 @@ class DocumentDownload extends StatelessWidget {
 
       // Show a confirmation message
       ScaffoldMessenger.of(Get.context!).showSnackBar(
-        SnackBar(content: Text("Sharing file...")),
+        const SnackBar(content: Text("Sharing file...")),
       );
     } catch (e) {
       // Handle errors
@@ -111,11 +111,11 @@ class DocumentDownload extends StatelessWidget {
       var fileInfo = await DefaultCacheManager().getSingleFile(file);
       print('File downloaded: ${fileInfo.path}');
       ScaffoldMessenger.of(Get.context!).showSnackBar(
-          SnackBar(content: Text("File downloaded successfully!")));
+          const SnackBar(content: Text("File downloaded successfully!")));
     } catch (e) {
       print("Download failed: $e");
       ScaffoldMessenger.of(Get.context!)
-          .showSnackBar(SnackBar(content: Text("Download failed")));
+          .showSnackBar(const SnackBar(content: Text("Download failed")));
     }
   }
 
@@ -180,7 +180,7 @@ class DocumentDownload extends StatelessWidget {
           return const Center(child: Text('Error loading PDF'));
         } else if (snapshot.hasData) {
           // You can now use PDFView from the flutter_pdfview package
-          return Container(
+          return SizedBox(
             width: double.infinity,
             height:
                 TDeviceUtils.getScreenHeight() * 0.8, // Adjust height as needed

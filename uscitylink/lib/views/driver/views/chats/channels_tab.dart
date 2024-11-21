@@ -12,7 +12,7 @@ class ChannelTab extends StatelessWidget {
 
   SocketService socketServive = Get.put(SocketService());
 
-  ChannelTab({required this.channelController});
+  ChannelTab({super.key, required this.channelController});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class ChannelTab extends StatelessWidget {
         child: Obx(() {
           // If no channels are available, show loading indicator
           if (channelController.channels.isEmpty) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else {
             return ListView.builder(
               itemCount: channelController.channels.length,
@@ -81,34 +81,34 @@ class ChannelTab extends StatelessWidget {
                             // Formatted time (UTC converted to local time)
                             Text(
                               Utils.formatUtcTime(channel
-                                      ?.last_message?.messageTimestampUtc) ??
+                                      .last_message?.messageTimestampUtc) ??
                                   '',
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.black45),
                             ),
 
                             // Badge showing unread message count
-                            channel?.recieve_message_count != 0
+                            channel.recieve_message_count != 0
                                 ? Badge(
                                     label: Text(
-                                      channel?.recieve_message_count == 0
+                                      channel.recieve_message_count == 0
                                           ? ""
-                                          : '${channel?.recieve_message_count}', // Example unread count, replace with actual count
-                                      style: TextStyle(fontSize: 11),
+                                          : '${channel.recieve_message_count}', // Example unread count, replace with actual count
+                                      style: const TextStyle(fontSize: 11),
                                     ),
                                     backgroundColor: TColors.primary,
                                   )
-                                : SizedBox(),
+                                : const SizedBox(),
                           ],
                         ),
                       ],
                     ),
                     subtitle: Text(
-                      channel?.last_message?.body ??
+                      channel.last_message?.body ??
                           "Not message yet", // Message body or description
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.black54),
+                      style: const TextStyle(color: Colors.black54),
                     ),
                     onTap: () {
                       socketServive.updateActiveChannel(channel.channel!.id!);
@@ -116,8 +116,8 @@ class ChannelTab extends StatelessWidget {
                       Get.toNamed(
                         AppRoutes.driverMessage,
                         arguments: {
-                          'channelId': channel?.channel?.id,
-                          'name': channel?.channel?.name
+                          'channelId': channel.channel?.id,
+                          'name': channel.channel?.name
                         },
                       );
                       // Handle navigation to the message screen (pass channel as an argument)

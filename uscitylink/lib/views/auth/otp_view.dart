@@ -8,7 +8,7 @@ import 'package:uscitylink/views/widgets/logo_widgets.dart'; // For navigation (
 class OtpView extends StatefulWidget {
   final String email;
 
-  OtpView({Key? key, required this.email}) : super(key: key);
+  const OtpView({super.key, required this.email});
   @override
   _OtpViewState createState() => _OtpViewState();
 }
@@ -26,7 +26,7 @@ class _OtpViewState extends State<OtpView> {
     } else {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid OTP')),
+        const SnackBar(content: Text('Please enter a valid OTP')),
       );
     }
   }
@@ -35,9 +35,9 @@ class _OtpViewState extends State<OtpView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Enter OTP'),
+        title: const Text('Enter OTP'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Get.back(), // Go back to the previous screen
         ),
       ),
@@ -47,7 +47,7 @@ class _OtpViewState extends State<OtpView> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const LogoWidgets(),
-            Text(
+            const Text(
               'Verification Code',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
@@ -70,14 +70,14 @@ class _OtpViewState extends State<OtpView> {
                 onPressed: () {
                   Get.offNamed(AppRoutes.driverDashboard);
                 }),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: TextButton(
                 onPressed: () {
                   // Resend OTP logic
                 },
-                child: Text('Resend OTP'),
+                child: const Text('Resend OTP'),
               ),
             ),
           ],
@@ -88,13 +88,15 @@ class _OtpViewState extends State<OtpView> {
 }
 
 class OtpInputField extends StatefulWidget {
+  const OtpInputField({super.key});
+
   @override
   _OtpInputFieldState createState() => _OtpInputFieldState();
 }
 
 class _OtpInputFieldState extends State<OtpInputField> {
   final int _otpLength = 6;
-  List<TextEditingController> _controllers =
+  final List<TextEditingController> _controllers =
       List.generate(6, (index) => TextEditingController());
 
   void _onChanged(String value, int index) {

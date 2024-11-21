@@ -9,7 +9,7 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 
 class AccountView extends StatefulWidget {
-  const AccountView({Key? key}) : super(key: key);
+  const AccountView({super.key});
 
   @override
   _AccountViewState createState() => _AccountViewState();

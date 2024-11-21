@@ -46,7 +46,7 @@ class _ChatViewState extends State<ChatView>
         title: Text("Chats", style: Theme.of(context).textTheme.headlineMedium),
         bottom: TabBar(
           controller: _tabController,
-          tabs: [
+          tabs: const [
             Tab(text: "Channels"),
             Tab(text: "Groups"),
           ],
@@ -72,7 +72,7 @@ class _ChatViewState extends State<ChatView>
         itemCount: 10, // Example count
         itemBuilder: (context, index) {
           return ListTile(
-            contentPadding: EdgeInsets.all(
+            contentPadding: const EdgeInsets.all(
                 0), // Remove default padding for better alignment
             leading: Stack(
               clipBehavior:
@@ -84,7 +84,7 @@ class _ChatViewState extends State<ChatView>
                   backgroundColor: Colors.grey.shade400,
                   child: Text(
                     "G$index", // Placeholder text for avatar, can be replaced with an image
-                    style: TextStyle(color: Colors.black, fontSize: 18),
+                    style: const TextStyle(color: Colors.black, fontSize: 18),
                   ),
                 ),
                 // Online Status (Green Circle) on top of the Avatar
@@ -112,13 +112,13 @@ class _ChatViewState extends State<ChatView>
                 Expanded(
                   child: Text(
                     "Group $index", // Channel name
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                     overflow: TextOverflow
                         .ellipsis, // Handles overflow if the text is too long
                   ),
                 ),
                 // Message time (right side of title)
-                Row(
+                const Row(
                   children: [
                     // Message time
                     Text(
@@ -133,7 +133,7 @@ class _ChatViewState extends State<ChatView>
               "Description of Group $index",
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.black54),
+              style: const TextStyle(color: Colors.black54),
             ),
             onTap: () {
               Get.toNamed(AppRoutes.driverMessage);

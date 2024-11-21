@@ -14,7 +14,7 @@ import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 class Messageui extends StatefulWidget {
   final dynamic channelId;
   final String name;
-  Messageui({required this.channelId, super.key, required this.name});
+  const Messageui({required this.channelId, super.key, required this.name});
 
   @override
   _MessageuiState createState() => _MessageuiState();
@@ -49,7 +49,7 @@ class _MessageuiState extends State<Messageui> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
@@ -75,7 +75,7 @@ class _MessageuiState extends State<Messageui> {
                 ),
               ),
               leading: IconButton(
-                icon: Icon(Icons.arrow_back), // Back icon
+                icon: const Icon(Icons.arrow_back), // Back icon
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
                   socketService.updateActiveChannel("");
@@ -89,8 +89,8 @@ class _MessageuiState extends State<Messageui> {
                       imagePickerController
                           .pickImageFromCamera(widget.channelId);
                     },
-                    child: Icon(Icons.add_a_photo)),
-                SizedBox(
+                    child: const Icon(Icons.add_a_photo)),
+                const SizedBox(
                   width: 20,
                 )
               ],
@@ -115,7 +115,7 @@ class _MessageuiState extends State<Messageui> {
                   child: Obx(() {
                     if (messageController.messages.isEmpty) {
                       return Center(
-                          child: Container(
+                          child: SizedBox(
                         height: 100,
                         width: 100,
                         child: InkWell(
@@ -165,10 +165,10 @@ class _MessageuiState extends State<Messageui> {
                           ),
                           width: TDeviceUtils.getScreenWidth(context) * 0.5,
                           child: Padding(
-                            padding: EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(8.0),
                             child: Obx(() {
                               return Text(
-                                  "${messageController.typingMessage.value}");
+                                  messageController.typingMessage.value);
                             }),
                           ),
                         ),
@@ -200,7 +200,7 @@ class _MessageuiState extends State<Messageui> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
                           suffixIcon: IconButton(
-                            icon: Icon(
+                            icon: const Icon(
                                 Icons.attachment), // You can use any icon here
                             onPressed: () {
                               // Handle the icon press action
@@ -227,7 +227,7 @@ class _MessageuiState extends State<Messageui> {
                           color: Colors.blue,
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.send,
                           color: Colors.white,
                         ),
@@ -321,7 +321,7 @@ class AttachmentBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       height: 150,
       width: double.infinity,
       child: Column(

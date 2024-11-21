@@ -23,12 +23,12 @@ class FilePickerPreview extends StatelessWidget {
             onPressed: () {
               Get.back();
             },
-            icon: Icon(Icons.close),
+            icon: const Icon(Icons.close),
             color: Colors.white,
           ),
           title: Text(
             "${_controller.fileName}",
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
           ),
         ),
         body: Padding(
@@ -39,7 +39,7 @@ class FilePickerPreview extends StatelessWidget {
               Obx(() {
                 if (_controller.filePath.value.isNotEmpty &&
                     _controller.fileType.value == 'pdf') {
-                  return Container(
+                  return SizedBox(
                     height: TDeviceUtils.getScreenHeight() * 0.65,
                     child: PDFView(
                       filePath: _controller.filePath.value,
@@ -51,21 +51,21 @@ class FilePickerPreview extends StatelessWidget {
                     ),
                   );
                 } else {
-                  return SizedBox(); // No preview for non-PDF files
+                  return const SizedBox(); // No preview for non-PDF files
                 }
               }),
 
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
 
               // Display the current page and total pages for PDF
               Obx(() {
                 if (_controller.fileType.value == 'pdf') {
                   return Text(
                     "Page ${_controller.currentPage.value + 1} of ${_controller.totalPages.value}",
-                    style: TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.white),
                   );
                 }
-                return SizedBox(); // Hide for non-PDF files
+                return const SizedBox(); // Hide for non-PDF files
               }),
               Container(
                 padding: const EdgeInsets.all(16.0),

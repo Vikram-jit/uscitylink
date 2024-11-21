@@ -16,8 +16,7 @@ class PasswordView extends StatefulWidget {
   final String email;
   final String role;
 
-  PasswordView({Key? key, required this.email, required this.role})
-      : super(key: key);
+  const PasswordView({super.key, required this.email, required this.role});
 
   @override
   _PasswordViewState createState() => _PasswordViewState();
@@ -51,9 +50,9 @@ class _PasswordViewState extends State<PasswordView>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Enter Password'),
+        title: const Text('Enter Password'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Get.back(), // Go back to the previous screen
         ),
       ),
@@ -71,7 +70,7 @@ class _PasswordViewState extends State<PasswordView>
               TextField(
                 readOnly: true, // Make the TextField read-only
                 controller: TextEditingController(
-                    text: widget.email?.toString()), // Set the initial value
+                    text: widget.email.toString()), // Set the initial value
                 decoration: const InputDecoration(
                   hintText:
                       "Email Address", // Change hint text to reflect email
@@ -145,7 +144,7 @@ Widget _buildDividerWithText(String text) {
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0),
-        child: Text(text, style: TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       const Expanded(
         child: Divider(thickness: 1),

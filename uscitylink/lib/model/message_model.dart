@@ -48,21 +48,21 @@ class MessageModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['channelId'] = this.channelId;
-    data['userProfileId'] = this.userProfileId;
-    data['groupId'] = this.groupId;
-    data['body'] = this.body;
-    data['messageDirection'] = this.messageDirection;
-    data['deliveryStatus'] = this.deliveryStatus;
-    data['messageTimestampUtc'] = this.messageTimestampUtc;
-    data['senderId'] = this.senderId;
-    data['isRead'] = this.isRead;
-    data['status'] = this.status;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
-    data['url'] = this.url;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['channelId'] = channelId;
+    data['userProfileId'] = userProfileId;
+    data['groupId'] = groupId;
+    data['body'] = body;
+    data['messageDirection'] = messageDirection;
+    data['deliveryStatus'] = deliveryStatus;
+    data['messageTimestampUtc'] = messageTimestampUtc;
+    data['senderId'] = senderId;
+    data['isRead'] = isRead;
+    data['status'] = status;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
+    data['url'] = url;
     return data;
   }
 }

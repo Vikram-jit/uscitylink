@@ -1,3 +1,3 @@
 class SocketEvents {
-  static final ACTIVE_CHANNEL = "active_channel";
+  static const ACTIVE_CHANNEL = "active_channel";
 }

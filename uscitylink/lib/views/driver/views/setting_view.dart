@@ -28,7 +28,7 @@ class _SettingViewState extends State<SettingView> {
     return Scaffold(
         backgroundColor: TColors.white,
         appBar: PreferredSize(
-          preferredSize: Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(60),
           child: Column(
             children: [
               AppBar(
@@ -45,7 +45,7 @@ class _SettingViewState extends State<SettingView> {
           ),
         ),
         body: ListView(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
           children: [
             // Profile Section
             Center(
@@ -59,7 +59,7 @@ class _SettingViewState extends State<SettingView> {
                   SizedBox(height: TDeviceUtils.getScreenHeight() * 0.01),
                   Obx(() {
                     return Text(
-                        "${loginController.userProfile.isNotEmpty ? loginController.userProfile?.first.username : ""}",
+                        "${loginController.userProfile.isNotEmpty ? loginController.userProfile.first.username : ""}",
                         style: Theme.of(context).textTheme.headlineLarge);
                   }),
                 ],
@@ -78,39 +78,39 @@ class _SettingViewState extends State<SettingView> {
                   // First ListTile for Account
                   ListTile(
                     minTileHeight: 20,
-                    leading: Icon(Icons.account_circle, size: 18),
+                    leading: const Icon(Icons.account_circle, size: 18),
                     title: Text('Account',
                         style: Theme.of(context).textTheme.labelLarge),
                     onTap: () {
                       Get.toNamed(AppRoutes.driverAccount);
                     },
-                    trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                   ),
                   Divider(thickness: 1, color: Colors.grey.shade300),
 
                   // Second ListTile for Change Password
                   ListTile(
                     minTileHeight: 20,
-                    leading: Icon(Icons.password, size: 18),
+                    leading: const Icon(Icons.password, size: 18),
                     title: Text('Change Password',
                         style: Theme.of(context).textTheme.labelLarge),
                     onTap: () {
                       Get.toNamed(AppRoutes.driverChangePassword);
                     },
-                    trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                   ),
                   Divider(thickness: 1, color: Colors.grey.shade300),
 
                   // Third ListTile for Pin Messages
                   ListTile(
                     minTileHeight: 20,
-                    leading: Icon(Icons.message, size: 18),
+                    leading: const Icon(Icons.message, size: 18),
                     title: Text('Pin Messages',
                         style: Theme.of(context).textTheme.labelLarge),
                     onTap: () {
                       print("Pin Messages tapped");
                     },
-                    trailing: Icon(Icons.arrow_forward_ios, size: 18),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                   ),
                   Divider(thickness: 1, color: Colors.grey.shade300),
                 ],
