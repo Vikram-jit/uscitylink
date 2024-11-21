@@ -13,6 +13,19 @@ const config = {
       // You can add other allowed image domains here if necessary
     ],
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)', // applies to all routes, adjust if needed
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store', // Prevents browser caching
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default config;

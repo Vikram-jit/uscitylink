@@ -12,11 +12,13 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-      providesTags: ['channels'],
+
       query: () => ({
         url: 'channel',
         method: 'GET',
       }),
+      keepUnusedDataFor: 0,
+      providesTags: ['channels'],
     }),
     getActiveChannel: builder.query<
       {
@@ -26,11 +28,13 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-      providesTags: ['channels'],
+
       query: () => ({
         url: 'channel/activeChannel',
         method: 'GET',
       }),
+      keepUnusedDataFor: 0,
+      providesTags: ['channels'],
     }),
     addChannel: builder.mutation<
       {
@@ -54,11 +58,13 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-      providesTags: ['channel',"members"],
+
       query: () => ({
         url: 'channel/members',
         method: 'GET',
       }),
+      keepUnusedDataFor: 0,
+      providesTags: ['channel',"members"],
 
     }),
     addMemberToChannel: builder.mutation<

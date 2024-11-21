@@ -19,6 +19,9 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <html lang="en">
+       <meta httpEquiv="Cache-Control" content="no-store" />
+      <meta httpEquiv="Pragma" content="no-cache" />
+      <meta httpEquiv="Expires" content="0" />
       <body>
         <StoreProvider>
           <LocalizationProvider>

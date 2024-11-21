@@ -1,8 +1,6 @@
 'use client';
 
-import { apiSlice } from '@/redux/apiSlice';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 
@@ -33,7 +31,7 @@ export const SocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
 
   const token: any = localStorage.getItem('custom-auth-token');
-  const dispatch  = useDispatch()
+
   useEffect(() => {
     const socketServer = io('http://52.8.75.98:4300', {
       query: { token: token },
@@ -57,21 +55,22 @@ export const SocketProvider = ({
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
     socketServer.on("notification_new_message",(message:string)=>{
-      socketServer.on("typingUser",(data:any)=>{
-        console.log(data.userId)
-        // if(data.userId == props.userId){
-        //   setUserTyping(data?.isTyping)
-        // }
-      })
+
       toast.success(message)
       //dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
     })
+    socketServer.on("typingUser",(data:any)=>{
+      console.log(data.userId)
+      // if(data.userId == props.userId){
+      //   setUserTyping(data?.isTyping)
+      // }
+    })
     return () => {
 
-       socketServer.off("new_message_count_update_staff");
-       socketServer.off("notification_new_message");
-       socketServer.off("update_channel_sent_message_count");
-     socketServer.off('staff_open_chat');
+    //    socketServer.off("new_message_count_update_staff");
+    //    socketServer.off("notification_new_message");
+    //    socketServer.off("update_channel_sent_message_count");
+    //  socketServer.off('staff_open_chat');
 
     };
   }, []);

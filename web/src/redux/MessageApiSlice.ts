@@ -14,12 +14,13 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       },
       { id: string }
     >({
-      providesTags: ['messages'],
+
       query: (payload) => ({
         url: `message/byUserId/${payload.id}`,
         method: 'GET',
       }),
-      keepUnusedDataFor: 60, // Keep data in the cache for 60 seconds
+      keepUnusedDataFor: 0,
+      providesTags: ['messages'],
     }),
     getMedia: builder.query<
       {
@@ -29,11 +30,13 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       },
       { channelId?: string; type: string,userId: string }
     >({
-      providesTags: ['messages'],
+
       query: (payload) => ({
         url: `media/${null}?type=${payload.type}&userId=${payload.userId}`,
         method: 'GET',
       }),
+      keepUnusedDataFor: 0,
+      providesTags: ['messages','media'],
     }),
     fileUpload: builder.mutation<
       {
@@ -54,7 +57,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         // },
       }),
 
-      invalidatesTags: ['messages'],
+      invalidatesTags: ['media','messages'],
     }),
   }),
 });

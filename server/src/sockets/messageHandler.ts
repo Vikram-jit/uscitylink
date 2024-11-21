@@ -184,42 +184,7 @@ export async function messageToChannelToUser(
         );
       }
 
-      // if (isCheckAnyStaffOpenChat == 0) {
-      //   const newPromise = global.staffActiveChannel.map(async (el) => {
-      //     const isSocket = global.onlineUsers.find(
-      //       (user) => user.id === el.staffId
-      //     );
-      //     if (el.role == "staff" && el.channelId == findUserChannel.channelId) {
-           
-      //       if (isSocket) {
-              
-      //         io.to(isSocket?.socketId).emit("new_message_count_update_staff", {
-      //           channelId: message?.channelId,
-      //           userId: message?.userProfileId,
-      //           message,
-      //         });
-      //         io.to(isSocket?.socketId).emit(
-      //           "notification_new_message",
-      //           `New Message received`
-      //         );
-      //       }
-      //     } else {
-      //       if (
-      //         el.role == "staff" &&
-      //         el.channelId != findUserChannel.channelId
-      //       ) {
-      //         const channel = await Channel.findByPk(message?.channelId);
-      //         if (isSocket) {
-      //           io.to(isSocket?.socketId).emit(
-      //             "notification_new_message",
-      //             `New Message received on ${channel?.name} channel`
-      //           );
-      //         }
-      //       }
-      //     }
-      //   });
-      //   await Promise.all(newPromise);
-      // }
+ 
 
       if (isCheckAnyStaffOpenChat == 0) {
         const newPromise = Object.entries(global.staffActiveChannel).map(
