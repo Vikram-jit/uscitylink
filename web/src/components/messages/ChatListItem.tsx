@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { ChannelModel, UserChannel } from '@/redux/models/ChannelModel';
-import CircleIcon from '@mui/icons-material/Circle';
-import { Badge, Chip } from '@mui/material';
+import {  UserChannel } from '@/redux/models/ChannelModel';
+import {  Chip } from '@mui/material';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import ListItem from '@mui/material/ListItem';
@@ -12,8 +11,8 @@ import Typography from '@mui/material/Typography';
 import { useSocket } from '@/lib/socketProvider';
 
 import AvatarWithStatus from './AvatarWithStatus';
-import { ChatProps, MessageProps, UserProps } from './types';
-import { formatDate, formatUtcTime, toggleMessagesPane } from './utils';
+import {  MessageProps, } from './types';
+import { formatDate,  toggleMessagesPane } from './utils';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
@@ -28,21 +27,24 @@ type ChatListItemProps = ListItemButtonProps & {
 };
 
 export default function ChatListItem(props: ChatListItemProps) {
-  const { id, user, messages, setSelectedChannelId, selectedUserId, setSelectedUserId, channelId } = props;
+  const { id, user,   selectedUserId, setSelectedUserId, channelId } = props;
   const selected = selectedUserId === id;
   const { socket } = useSocket();
+  React.useEffect(()=>{
+
+  },[socket])
   return (
     <>
       <ListItem sx={{ padding: 0 }}>
         <ListItemButton
           onClick={() => {
-
+            toggleMessagesPane();
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
             if (user.sent_message_count > 0) {
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
             }
-            toggleMessagesPane();
+
           }}
           selected={selected}
           sx={{

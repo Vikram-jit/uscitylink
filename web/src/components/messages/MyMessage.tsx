@@ -56,7 +56,7 @@ export default function MyMessage() {
             const updatedUserChannels = prevUserList.user_channels.map((channel) => {
 
               if (channel.userProfileId === userId) {
-                console.log(channel,"data")
+
                 return {
                   ...channel,
                   sent_message_count: channel.sent_message_count + 1,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/controller/channel_controller.dart';
@@ -10,6 +12,7 @@ class SocketService extends GetxController {
       UserPreferenceController();
 
   late IO.Socket socket;
+  var pingResponse = "No pong received yet".obs;
 
   // Reactive state for message updates
   var message = "".obs;
@@ -57,6 +60,7 @@ class SocketService extends GetxController {
       print('Connected to socket server');
       reconnectAttempts.value = 0; // Reset reconnection attempts
       isConnected.value = true;
+      startPing();
     });
 
     socket.on('message', (data) {
@@ -103,6 +107,10 @@ class SocketService extends GetxController {
         Get.find<MessageController>().updateTypingStatus(data);
       }
     });
+    socket.on('pong', (_) {
+      pingResponse.value = 'Pong received!';
+      print('Received pong from server');
+    });
 
     socket.on('disconnect', (_) {
       print('Disconnected from socket server');
@@ -130,6 +138,20 @@ class SocketService extends GetxController {
     });
   }
 
+  void startPing() {
+    if (isConnected.value) {
+      // Use Timer.periodic to send the ping every 5 seconds
+      Timer.periodic(Duration(seconds: 5), (timer) {
+        if (isConnected.value) {
+          print('Sending ping...');
+          socket.emit('ping'); // Send the ping message to the server
+        } else {
+          timer.cancel(); // Stop pinging if disconnected
+        }
+      });
+    }
+  }
+
   // Method to send a message to the server
   void sendMessage(String body, String? url) {
     if (isConnected.value) {
@@ -147,6 +169,15 @@ class SocketService extends GetxController {
       }
     } else {
       print("Not connected to socket.");
+    }
+  }
+
+  void sendPing() {
+    if (isConnected.value) {
+      print('Sending ping...');
+      socket.emit('ping');
+    } else {
+      print('Not connected to socket');
     }
   }
 

@@ -411,6 +411,10 @@ export const initSocket = (httpServer: any) => {
     socket.on("reconnect_failed", () => {
       console.log("Reconnection failed");
     });
+    socket.on('ping', () => {
+      console.log('Received ping from client');
+      socket.emit('pong'); // Send back pong message
+    });
     socket.on("disconnect", async() => {
 
       const userId = socket?.user?.id!
