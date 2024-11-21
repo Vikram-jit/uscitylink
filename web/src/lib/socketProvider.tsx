@@ -1,6 +1,8 @@
 'use client';
 
+import { apiSlice } from '@/redux/apiSlice';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 
@@ -31,7 +33,7 @@ export const SocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
 
   const token: any = localStorage.getItem('custom-auth-token');
-
+  const dispatch  = useDispatch()
   useEffect(() => {
     const socketServer = io('http://52.8.75.98:4300', {
       query: { token: token },
@@ -57,7 +59,7 @@ export const SocketProvider = ({
     socketServer.on("notification_new_message",(message:string)=>{
 
       toast.success(message)
-      //dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
+      dispatch(apiSlice.util.invalidateTags(['channelUsers',"channels","members"]))
     })
     socketServer.on("typingUser",(data:any)=>{
       console.log(data.userId)

@@ -3,7 +3,7 @@ import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { WavingHand } from '@mui/icons-material';
-import { CircularProgress, IconButton, Typography } from '@mui/material';
+import { CircularProgress, Divider, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -15,6 +15,7 @@ import ChatBubble from './ChatBubble';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import MediaPane from './MediaPane';
+import moment from 'moment';
 
 type MessagesPaneProps = {
   userId: string;
@@ -138,30 +139,48 @@ export default function MessagesPane(props: MessagesPaneProps) {
               flexDirection: 'column-reverse',
             }}
           >
-            <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
-              {messages &&
-                messages.map((message: MessageModel, index: number) => {
-                  const isYou = message.messageDirection === 'S';
-                  return (
-                    <Stack
-                      key={index}
-                      direction="row"
-                      spacing={2}
-                      sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
-                    >
-                      {message.messageDirection !== 'S' && (
-                        <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
-                      )}
-                      <ChatBubble
-                        variant={isYou ? 'sent' : 'received'}
-                        {...message}
-                        attachment={false}
-                        sender={message?.sender}
-                      />
-                    </Stack>
-                  );
-                })}
-            </Stack>
+             <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
+      {messages &&
+        messages.map((message: MessageModel, index: number) => {
+          const currentDate = moment.utc(message.messageTimestampUtc).format('MM-DD-YYYY');
+
+          const previousDate =
+            index > 0
+              ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY')
+              : null;
+
+          const isDifferentDay = previousDate && currentDate !== previousDate;
+          const isToday = currentDate === moment.utc().format('MM-DD-YYYY');  // Adjusted for correct logic
+
+          const isYou = message.messageDirection === 'S';
+
+          return (
+            <>
+              <Stack
+                key={index}
+                direction="row"
+                spacing={2}
+                sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
+              >
+                {message.messageDirection !== 'S' && (
+                  <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                )}
+                <ChatBubble
+                  variant={isYou ? 'sent' : 'received'}
+                  {...message}
+                  attachment={false}
+                  sender={message?.sender}
+                />
+              </Stack>
+
+              {/* Render divider only if it's a different day */}
+              {isDifferentDay && (
+                <Divider>{isToday ? 'Today' : previousDate}</Divider>
+              )}
+            </>
+          );
+        })}
+    </Stack>
           </Box>
           {messages.length > 0 && (
             <MessageInput

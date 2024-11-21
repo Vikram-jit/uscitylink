@@ -112,8 +112,8 @@ export default function MyMessage() {
         }
       })
       return () => {
-        socket.off('update_channel_sent_message_count');
-         socket.off('new_message_count_update_staff')
+        // socket.off('update_channel_sent_message_count');
+        //  socket.off('new_message_count_update_staff')
       }
     }
 
