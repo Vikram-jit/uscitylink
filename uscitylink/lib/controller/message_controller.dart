@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:ffi';
 
 import 'package:get/get.dart';
 import 'package:uscitylink/model/message_model.dart';
-import 'package:uscitylink/model/user_channel_model.dart';
-import 'package:uscitylink/services/channel_service.dart';
 import 'package:uscitylink/services/message_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';

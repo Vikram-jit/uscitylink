@@ -61,7 +61,7 @@ class _OtpViewState extends State<OtpView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            OtpInputField(),
+            const OtpInputField(),
             SizedBox(
               height: TDeviceUtils.getScreenHeight() * 0.02,
             ),

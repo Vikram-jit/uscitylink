@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:uscitylink/core/components/internet_exceptions_widget.dart';
 import 'package:uscitylink/services/splash_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/utils/constant/image_strings.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});

@@ -32,7 +32,7 @@ class AppRoutes {
   static final routes = [
     GetPage(
         name: login,
-        page: () => LoginView(),
+        page: () => const LoginView(),
         transitionDuration: const Duration(milliseconds: 250),
         transition: Transition.leftToRightWithFade),
     GetPage(name: navigationMenu, page: () => const NavigationMenu()),

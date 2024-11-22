@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
-import 'package:uscitylink/views/driver/views/chats/message_ui.dart';
 
 class ChatView extends StatefulWidget {
   const ChatView({super.key});

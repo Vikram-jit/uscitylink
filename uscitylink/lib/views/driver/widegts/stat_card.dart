@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:uscitylink/utils/device/device_utility.dart';
 
 class StatCard extends StatelessWidget {
   final String title;

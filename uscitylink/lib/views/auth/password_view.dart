@@ -118,7 +118,7 @@ class _PasswordViewState extends State<PasswordView>
               CustomButton(
                 label: "Send OTP",
                 onPressed: () {
-                  Get.to(() => OtpView(email: 'user@example.com'));
+                  Get.to(() => const OtpView(email: 'user@example.com'));
                 },
                 backgroundColor: TColors.white,
                 textColor: TColors.primary,

@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/document_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 
 class DocumentDownload extends StatelessWidget {

@@ -46,10 +46,10 @@ class UserChannelModel {
     data['updatedAt'] = updatedAt;
     data['recieve_message_count'] = recieve_message_count;
     if (channel != null) {
-      data['Channel'] = this.channel?.toJson();
+      data['Channel'] = channel?.toJson();
     }
     if (last_message != null) {
-      data['last_message'] = this.last_message?.toJson();
+      data['last_message'] = last_message?.toJson();
     }
     return data;
   }

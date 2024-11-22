@@ -5,7 +5,6 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
-import 'package:uscitylink/events/socket_events.dart';
 
 class SocketService extends GetxController {
   UserPreferenceController userPreferenceController =

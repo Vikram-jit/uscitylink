@@ -36,7 +36,7 @@ export const SocketProvider = ({
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
   useEffect(() => {
-    const socketServer = io('http://52.8.75.98:4300', {
+    const socketServer = io(process.env.SOCKET_URL, {
       query: { token: token },
       reconnection: true, // Ensure reconnection is enabled
       reconnectionAttempts: Infinity, // Unlimited attempts

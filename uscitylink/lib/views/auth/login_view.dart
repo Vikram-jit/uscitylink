@@ -2,14 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/utils/constant/image_strings.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
-import 'package:uscitylink/utils/utils.dart';
-import 'package:uscitylink/views/auth/otp_view.dart';
-import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class LoginView extends StatefulWidget {
