@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Download } from '@mui/icons-material';
 import { Box, Button, Grid, IconButton, Paper, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -10,9 +10,6 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 
-// Set PDF.js worker source
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
-
 const options = {
   cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
 };
@@ -21,6 +18,7 @@ export default function Viewer() {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
+  const [isClient, setIsClient] = useState(false); // To track if we're on the client-side
 
   const { key }: { key: string } = useParams();
 
@@ -39,13 +37,26 @@ export default function Viewer() {
   };
 
   // Adjust the layout when the window size changes
-  React.useEffect(() => {
-    window.addEventListener('resize', handleResize);
-    handleResize();
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsClient(true); // We are now on the client-side
+      window.addEventListener('resize', handleResize);
+      handleResize();
+    }
+
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
     };
   }, []);
+
+  // Load PDF.js worker only on the client
+  useEffect(() => {
+    if (isClient) {
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
+    }
+  }, [isClient]);
 
   // Handle downloading the PDF
   const handleDownload = () => {
@@ -54,10 +65,11 @@ export default function Viewer() {
     link.download = 'MANISH-K-VERMA-30414869.pdf';
     link.click();
   };
+
   const pdfRef = useRef<any>(null);
+
   // Handle printing the PDF
   const handlePrint = () => {
-    // Create an iframe to load the entire document for printing
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.top = '-9999px'; // Hide iframe offscreen
@@ -69,13 +81,14 @@ export default function Viewer() {
       doc.open();
       doc.write('<html><head><title>Print PDF</title></head><body>');
       doc.write(
-        '<embed width="100%" height="100%" src=`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}` type="application/pdf">'
+        `<embed width="100%" height="100%" src="https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}" type="application/pdf">`
       );
       doc.write('</body></html>');
       doc.close();
       iframeWindow.print(); // Trigger print
     }
   };
+
   if (key.split('.')?.[key.split('.').length - 1] != 'pdf') {
     return (
       <Box
@@ -158,16 +171,18 @@ export default function Viewer() {
         </Grid>
 
         {/* PDF Document Rendering */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-          <Document
-            ref={pdfRef}
-            options={options}
-            file={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
-            onLoadSuccess={onDocumentLoadSuccess}
-          >
-            <Page pageNumber={pageNumber} width={pdfWidth} renderTextLayer={false} scale={2} />
-          </Document>
-        </Box>
+        {isClient && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
+            <Document
+              ref={pdfRef}
+              options={options}
+              file={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
+              onLoadSuccess={onDocumentLoadSuccess}
+            >
+              <Page pageNumber={pageNumber} width={pdfWidth} renderTextLayer={false} scale={2} />
+            </Document>
+          </Box>
+        )}
       </Paper>
     </Box>
   );
