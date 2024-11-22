@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "786206543025",
+    "project_id": "uscitylink-adb9f",
+    "storage_bucket": "uscitylink-adb9f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:786206543025:android:4fdf11bd70dca809716690",
+        "android_client_info": {
+          "package_name": "com.uscitylink.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCny317l55j20c1BGFXshw75y1xO0750xk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

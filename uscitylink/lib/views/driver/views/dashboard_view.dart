@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
+import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
@@ -16,7 +17,6 @@ class DashboardView extends StatefulWidget {
 
 class _DashboardViewState extends State<DashboardView> {
   int _currentIndex = 0;
-
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
 

@@ -59,6 +59,21 @@ class AuthService {
       throw Exception('Failed to log in: No valid data received.');
     }
   }
+
+  Future<ApiResponse<dynamic>> updateDeviceToken(DeviceTokenUpdate data) async {
+    dynamic response = await _apiService.putApi(
+        data.toJson(), '${Constant.url}/user/updateDeviceToken');
+
+    if (response != null && response['status']) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Device Token Updated successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in: No valid data received.');
+    }
+  }
 }
 
 class LoginWithPassword {
@@ -74,6 +89,23 @@ class LoginWithPassword {
       'email': email,
       'password': password,
       'role': role,
+    };
+  }
+}
+
+class DeviceTokenUpdate {
+  final String token;
+  final String platform;
+
+  DeviceTokenUpdate({
+    required this.token,
+    required this.platform,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'device_token': token,
+      'platform': platform,
     };
   }
 }

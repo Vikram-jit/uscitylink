@@ -72,6 +72,37 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
+  Future putApi(dynamic data, String url) async {
+    try {
+      print(jsonEncode(data));
+      Utils.showLoader();
+      dynamic responseJson;
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+
+      String? token = await userPreferenceController.getToken();
+
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http
+          .put(Uri.parse(url), body: jsonEncode(data), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      responseJson = returnResponse(response);
+
+      return responseJson;
+    } on SocketException {
+      Utils.hideLoader();
+      throw InternetException();
+    } on RequestTimeout {
+      Utils.hideLoader();
+      throw RequestTimeout();
+    }
+  }
+
   Future<ApiResponse<FileModel>> fileUpload(
       File data, String url, String channelId, String type) async {
     try {

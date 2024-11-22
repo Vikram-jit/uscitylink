@@ -1,29 +1,37 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/firebase_options.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/background_service.dart';
+import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Step 1: Initialize SocketService
   final socketService = Get.put(SocketService());
 
-  // Step 2: Get the access token if it exists
   String? accessToken = await UserPreferenceController().getToken();
 
-  // Step 3: If the token exists, connect to the socket
   if (accessToken != null) {
     socketService.connectSocket();
+    final fcmService = Get.put(FCMService());
+
+    // Explicitly update the FCM token after login
+    String? token = fcmService.fcmToken.value;
+    if (token != null && token.isNotEmpty) {
+      await fcmService.updateDeviceToken(token);
+    }
   }
 
-  // Step 4: Lazily load the MessageController
   Get.lazyPut(() => MessageController());
+  BackgroundService.start();
 
-  // Step 5: Run the app
   runApp(const MyApp());
 }
 

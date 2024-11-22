@@ -178,3 +178,34 @@ export async function getUserProfile( req: Request,
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+export async function updateDeviceToken(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    console.log(req.body)
+    await UserProfile.update(
+      {
+        device_token: req.body.device_token,
+        platform:req.body.platform
+      },
+      {
+        where: {
+          id: req.user?.id,
+        },
+        returning: true,
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: `Update Device Token Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}

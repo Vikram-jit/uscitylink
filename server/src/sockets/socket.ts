@@ -7,6 +7,7 @@ import Role from "../models/Role";
 import { staffActiveChannelUpdate, staffOpenChatUpdate } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
 import { messageToChannelToUser, messageToDriver, unreadAllMessage, unreadAllUserMessage } from "./messageHandler";
+import moment from "moment";
 
 let io: Server;
 interface User {
@@ -98,7 +99,8 @@ export const initSocket = (httpServer: any) => {
 
           await UserProfile.update(
             {
-              isOnline:true
+              isOnline:true,
+              last_login:moment.utc()
             },
             {
               where: {
@@ -316,9 +318,9 @@ message = `${driver.name} Typing....`
     })
  
     socket.on("driverLogout",()=>{
-      console.log("hello driver logout")
+     
       const userId = socket?.user?.id!
-      console.log("hello driver logout",userId)
+   
       delete global.staffOpenChat[userId];
          delete global.staffActiveChannel[userId];
          delete global.userSockets[userId]
@@ -350,7 +352,8 @@ message = `${driver.name} Typing....`
         if(isUser?.role?.name == "driver"){
          await isUser.update({
             isOnline:false,
-            channelId:null
+            channelId:null,
+            last_login:moment.utc()
           })
           Object.entries(global.staffActiveChannel).map(([key,value])=>{
             const isSocket = global.userSockets[key]
@@ -402,7 +405,8 @@ message = `${driver.name} Typing....`
         if(isUser?.role?.name == "driver"){
          await isUser.update({
             isOnline:false,
-            channelId:null
+            channelId:null,
+            last_login:moment.utc()
           })
           
             Object.entries(global.staffActiveChannel).map(([key,value])=>{

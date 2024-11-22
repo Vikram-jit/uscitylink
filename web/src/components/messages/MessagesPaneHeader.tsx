@@ -64,7 +64,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
               />
             )}
           </Typography>
-          <Typography variant="body2">{sender?.username}</Typography>
+          <Typography variant="body2">{sender?.isOnline ? "online" : sender?.last_login}</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
