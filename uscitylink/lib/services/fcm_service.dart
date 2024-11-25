@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-
 import 'dart:io' show Platform;
 
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
 
 class FCMService extends GetxController {
@@ -12,15 +14,76 @@ class FCMService extends GetxController {
       FlutterLocalNotificationsPlugin();
 
   AuthService _authService = AuthService();
-  // The token for FCM
   RxString fcmToken = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
+    _initializeNotifications();
     _initializeFCM();
   }
 
+  // Initialize local notifications for both iOS and Android
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings androidInitializationSettings =
+        AndroidInitializationSettings(
+            'app_icon'); // Make sure to add an icon to your assets
+
+    const DarwinInitializationSettings iosInitializationSettings =
+        DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+            android: androidInitializationSettings,
+            iOS: iosInitializationSettings);
+
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings,
+        onDidReceiveNotificationResponse:
+            (NotificationResponse notificationResponse) async {
+      String payload = notificationResponse?.payload ?? '';
+
+      if (payload.isNotEmpty) {
+        try {
+          var decodedPayload = jsonDecode(payload);
+
+          if (AppRoutes.driverMessage.isNotEmpty) {
+            // If already on the target screen, just update the state or pop the stack
+            if (Get.currentRoute == AppRoutes.driverMessage) {
+              Get.back();
+              Get.toNamed(
+                AppRoutes.driverMessage,
+                arguments: {
+                  'channelId': decodedPayload['channelId'],
+                  'name': decodedPayload['title']
+                },
+              );
+              // Update screen data or refresh
+              // print('Already on $AppRoutes.driverMessage, refreshing the screen with data: $extraData');
+              // Handle any state changes you want to make based on the extraData
+            } else {
+              Get.toNamed(
+                AppRoutes.driverMessage,
+                arguments: {
+                  'channelId': decodedPayload['channelId'],
+                  'name': decodedPayload['title']
+                },
+              );
+            }
+          }
+        } catch (e) {
+          print('Error decoding payload: $e');
+        }
+      } else {
+        print('Notification clicked, but no payload');
+      }
+    });
+  }
+
+  // Initialize Firebase Cloud Messaging (FCM)
   Future<void> _initializeFCM() async {
     // Request permissions for iOS or Android
     await _requestPermissions();
@@ -35,15 +98,20 @@ class FCMService extends GetxController {
     // Listen to token refresh events
     _firebaseMessaging.onTokenRefresh.listen((newToken) async {
       fcmToken.value = newToken;
-
       await updateDeviceToken(newToken); // Update token if it changes
     });
 
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print(
-          'Received a message in the foreground: ${message.notification?.title}');
-      // Handle foreground messages, you can show a local notification here
+      print('Received a message in the foreground:');
+
+      var data = jsonEncode(message.data);
+      print(data);
+      // if (data) {
+
+      _showNotification(data, message.notification?.title ?? '',
+          message.notification?.body ?? '');
+      // }
     });
 
     // Handle background messages
@@ -51,8 +119,12 @@ class FCMService extends GetxController {
 
     // Handle when the app is opened from a notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('Message clicked!');
-      // Navigate to the appropriate screen
+      var data = message.data;
+      Get.toNamed(
+        AppRoutes.driverMessage,
+        arguments: {'channelId': data['channelId'], 'name': data['title']},
+      );
+      // Navigate to the appropriate screen or handle payload
     });
   }
 
@@ -86,29 +158,38 @@ class FCMService extends GetxController {
     }
   }
 
-  // Handler for background messages
-  static Future<void> _firebaseMessagingBackgroundHandler(
-      RemoteMessage message) async {
-    print('Handling a background message: ${message.notification?.title}');
-    // You can show a local notification or handle the data here
-  }
-
-  // Method to show local notifications (optional)
-  Future<void> _showNotification(String title, String body) async {
+  // Show local notification (Android & iOS)
+  Future<void> _showNotification(
+      String payload, String title, String body) async {
+    // Android specific details
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'your_channel_id',
       'your_channel_name',
       importance: Importance.high,
       priority: Priority.high,
+      playSound: true,
     );
 
-    const NotificationDetails platformDetails =
-        NotificationDetails(android: androidDetails);
+    // iOS specific details
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
 
-    await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails);
+    // Platform-specific notification details
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Show the notification (ID 0 is the notification ID, can be changed)
+    await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails,
+        payload: payload);
   }
 
+  // Update the device token to the server (Assuming you have an `updateDeviceToken` method)
   Future<void> updateDeviceToken(String token) async {
     try {
       final data = DeviceTokenUpdate(
@@ -121,5 +202,44 @@ class FCMService extends GetxController {
     } catch (e) {
       print('Error updating device token: $e');
     }
+  }
+
+  // Handler for background messages
+  static Future<void> _firebaseMessagingBackgroundHandler(
+      RemoteMessage message) async {
+    print('Handling a background message: ${message.notification?.title}');
+
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'your_channel_id',
+      'your_channel_name',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    String? channelId = message.data['channelId'];
+    String? title = message.data['title'];
+    String? body = message.data['message'];
+    // Show the notification
+    await flutterLocalNotificationsPlugin.show(
+      0, // Notification ID
+      title ?? 'No Title',
+      body ?? 'No Body',
+      platformDetails,
+    );
   }
 }
