@@ -37,6 +37,12 @@ class _MessageuiState extends State<Messageui> {
         widget.channelId); // Fetch the messages for the given channelId
   }
 
+  @override
+  void dispose() {
+    socketService.updateActiveChannel("");
+    super.dispose();
+  }
+
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {

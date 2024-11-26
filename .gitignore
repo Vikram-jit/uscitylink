@@ -3,3 +3,4 @@ server/dist
 server/.env
 
 server/src/config/firebase.json
+server/config/firebase.json

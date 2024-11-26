@@ -266,6 +266,28 @@ export async function messageToDriver(
             })
           }
       }
+    }else{
+      const isUser = await UserProfile.findOne({
+        where:{
+          id:userId
+        }
+      })
+      if(isUser){
+          if(isUser.device_token){
+            const isChannel = await Channel.findByPk(findStaffActiveChannel?.channelId)
+
+            await sendNotificationToDevice(isUser.device_token,{
+              title:isChannel?.name ||'',
+              body:body,
+              data:{
+                channelId:isChannel?.id,
+                
+                type:"NEW MESSAGE",
+                title:isChannel?.name
+              }
+            })
+          }
+      }
     }
 
     await UserChannel.update(

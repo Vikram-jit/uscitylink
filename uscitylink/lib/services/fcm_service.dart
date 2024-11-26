@@ -7,6 +7,7 @@ import 'dart:io' show Platform;
 
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
+import 'package:uscitylink/services/socket_service.dart';
 
 class FCMService extends GetxController {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -15,6 +16,8 @@ class FCMService extends GetxController {
 
   AuthService _authService = AuthService();
   RxString fcmToken = ''.obs;
+
+  SocketService socketService = Get.put(SocketService());
 
   @override
   void onInit() {
@@ -51,6 +54,7 @@ class FCMService extends GetxController {
           var decodedPayload = jsonDecode(payload);
 
           if (AppRoutes.driverMessage.isNotEmpty) {
+            socketService.updateActiveChannel(decodedPayload['channelId']);
             // If already on the target screen, just update the state or pop the stack
             if (Get.currentRoute == AppRoutes.driverMessage) {
               Get.back();
@@ -61,9 +65,6 @@ class FCMService extends GetxController {
                   'name': decodedPayload['title']
                 },
               );
-              // Update screen data or refresh
-              // print('Already on $AppRoutes.driverMessage, refreshing the screen with data: $extraData');
-              // Handle any state changes you want to make based on the extraData
             } else {
               Get.toNamed(
                 AppRoutes.driverMessage,
@@ -120,11 +121,22 @@ class FCMService extends GetxController {
     // Handle when the app is opened from a notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var data = message.data;
-      Get.toNamed(
-        AppRoutes.driverMessage,
-        arguments: {'channelId': data['channelId'], 'name': data['title']},
-      );
-      // Navigate to the appropriate screen or handle payload
+      if (AppRoutes.driverMessage.isNotEmpty) {
+        socketService.updateActiveChannel(data['channelId']);
+        // If already on the target screen, just update the state or pop the stack
+        if (Get.currentRoute == AppRoutes.driverMessage) {
+          Get.back();
+          Get.toNamed(
+            AppRoutes.driverMessage,
+            arguments: {'channelId': data['channelId'], 'name': data['title']},
+          );
+        } else {
+          Get.toNamed(
+            AppRoutes.driverMessage,
+            arguments: {'channelId': data['channelId'], 'name': data['title']},
+          );
+        }
+      }
     });
   }
 

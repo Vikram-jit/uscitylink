@@ -48,6 +48,7 @@ class AppRoutes {
         page: () => const DashboardView(),
         transitionDuration: const Duration(milliseconds: 250),
         transition: Transition.leftToRightWithFade),
+
     GetPage(
       name: AppRoutes.driverAccount,
       page: () => const AccountView(),

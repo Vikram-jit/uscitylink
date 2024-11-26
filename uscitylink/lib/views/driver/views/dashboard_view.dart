@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/services/fcm_service.dart';
@@ -42,31 +43,32 @@ class _DashboardViewState extends State<DashboardView> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chats',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_document),
-            label: 'Document',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: SalomonBottomBar(
         currentIndex: _currentIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
         onTap: _onItemTapped,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
+        items: [
+          SalomonBottomBarItem(
+              icon: const Icon(Icons.home), title: const Text("Home")),
+          SalomonBottomBarItem(
+              icon: const Icon(Icons.chat), title: const Text("Chat")),
+          SalomonBottomBarItem(
+              icon: const Icon(Icons.edit_document),
+              title: const Text("Documents")),
+          SalomonBottomBarItem(
+              icon: const Icon(Icons.settings), title: const Text("Settings")),
+        ],
       ),
     );
   }
+}
+
+class NavigationController extends GetxController {
+  final Rx<int> selectedIndex = 0.obs;
+
+  final screens = [
+    const DriverDashboard(),
+    const ChatView(),
+    const DocumentView(),
+    const SettingView(),
+  ];
 }

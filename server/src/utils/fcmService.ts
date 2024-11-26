@@ -1,6 +1,14 @@
 // /src/services/fcmService.ts
-import admin from '../config/firebase';  // Import the initialized Firebase Admin SDK
+import * as admin from 'firebase-admin';
+import * as path from 'path';
 
+// Initialize Firebase Admin SDK with a service account
+const serviceAccount = require(path.resolve(__dirname, '../../config/firebase.json'));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+ 
+});
 interface NotificationMessage {
   title: string;
   body: string;
@@ -47,9 +55,9 @@ export const sendNotificationToMultipleDevices = async (deviceTokens: string[], 
   };
 
   try {
-    const response = await admin.messaging().sendEachForMulticast(messagePayload);
-    console.log(`${response.successCount} notifications sent successfully`);
-    return response;
+    // const response = await admin.messaging().sendEachForMulticast(messagePayload);
+    // console.log(`${response.successCount} notifications sent successfully`);
+    // return response;
   } catch (error) {
     console.error('Error sending notifications:', error);
     throw error;
@@ -64,9 +72,9 @@ export const sendDataMessage = async (deviceToken: string, data: DataMessage) =>
   };
 
   try {
-    const response = await admin.messaging().send(messagePayload);
-    console.log('Successfully sent data message:', response);
-    return response;
+    // const response = await admin.messaging().send(messagePayload);
+    // console.log('Successfully sent data message:', response);
+    // return response;
   } catch (error) {
     console.error('Error sending data message:', error);
     throw error;
