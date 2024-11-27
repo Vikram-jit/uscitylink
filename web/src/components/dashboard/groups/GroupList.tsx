@@ -12,7 +12,7 @@ export default function GroupList() {
   const page = 0;
   const rowsPerPage = 5;
 
-  const { data, isLoading } = useGetGroupsQuery();
+  const { data, isLoading } = useGetGroupsQuery({type:"group"});
 
   return (
     <>
