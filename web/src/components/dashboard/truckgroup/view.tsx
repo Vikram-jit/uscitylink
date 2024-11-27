@@ -398,7 +398,7 @@ const ChatInterface: React.FC = () => {
           </HeaderContainer>
           <Divider />
 
-          {group && <GroupDetail group={group.data} />}
+          {group && <GroupDetail group={group.data} setViewDetailGroup={setViewDetailGroup} setSelectedGroup={setSelectedGroup}/>}
         </Grid>
       ) : (
         <Grid item xs={12} md={9}>

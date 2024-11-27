@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useCreateGroupMutation } from '@/redux/GroupApiSlice';
+import { useCreateGroupMutation, useGetTrucksQuery } from '@/redux/GroupApiSlice';
 import { UserModel } from '@/redux/models/UserModel';
 import { useGetUsersQuery } from '@/redux/UserApiSlice';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
@@ -40,6 +40,8 @@ export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
   };
 
   const [createGroup] = useCreateGroupMutation();
+
+  const { data: truckList, isLoading } = useGetTrucksQuery();
 
   const [state, setState] = React.useState({
     name: '',
@@ -82,15 +84,29 @@ export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
         onClose={handleClose}
         aria-describedby="alert-dialog-slide-description"
       >
-        <DialogTitle>{'Add Group'}</DialogTitle>
+        <DialogTitle>{'Add Truck Group'}</DialogTitle>
         <DialogContent>
           <Grid container>
             <Grid item xs={12} mt={1}>
-              <TextField
-                value={state.name}
+              <Autocomplete
+                id="checkboxes-tags-demo"
+                options={truckList?.data || []}
+                disableCloseOnSelect
+                onChange={(e,v)=>{
+                    setState({...state,name:v?.number||''})
+                }}
+                getOptionLabel={(option) => option.number}
+                renderOption={(props: any, option, { selected }) => {
+                  const { key, ...optionProps } = props;
+                  return (
+                    <li key={key} {...optionProps}>
+                      <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
+                      {option.number}
+                    </li>
+                  );
+                }}
                 fullWidth
-                placeholder="Enter Group name"
-                onChange={(e) => setState({ ...state, name: e.target.value })}
+                renderInput={(params) => <TextField {...params} placeholder='Select Truck ' />}
               />
             </Grid>
             <Grid item xs={12} mt={1}>

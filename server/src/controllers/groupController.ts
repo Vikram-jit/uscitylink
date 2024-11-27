@@ -7,6 +7,7 @@ import GroupUser from "../models/GroupUser";
 import { Message } from "../models/Message";
 import { UserProfile } from "../models/UserProfile";
 import GroupMessage from "../models/GroupMessage";
+import User from "../models/User";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -170,6 +171,76 @@ export async function groupRemoveMember(
   }
 }
 
+export async function groupRemove(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    await Message.destroy({
+      where:{
+        groupId:req.params.id
+      }
+    })
+    await GroupUser.destroy({
+      where:{
+        groupId: req.params.id
+      }
+    })
+    await GroupChannel.destroy({
+      where:{
+        groupId: req.params.id
+      }
+    })
+    await GroupMessage.destroy({
+      where:{
+        groupId: req.params.id
+      }
+    })
+    await Group.destroy({
+      where: {
+        id: req.params.id,
+      },
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: `Deleted Group Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function groupUpdate(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    await Group.update({
+      name:req.body.name,
+      description:req.body.description
+    },{
+      
+      where: {
+        id: req.params.id,
+      },
+      
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: `Updated Group Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
 export const getMessagesByGroupId = async (
   req: Request,
   res: Response
@@ -185,6 +256,12 @@ export const getMessagesByGroupId = async (
       include: [
         {
           model: UserProfile,
+          include:[
+            {
+              model:User,
+              as:"user"
+            }
+          ]
         },
       ],
     });

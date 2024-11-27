@@ -208,6 +208,7 @@ class FCMService extends GetxController {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      sound: "",
     );
 
     // Platform-specific notification details
@@ -257,6 +258,7 @@ class FCMService extends GetxController {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      sound: "",
     );
 
     const NotificationDetails platformDetails = NotificationDetails(

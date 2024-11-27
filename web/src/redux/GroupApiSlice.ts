@@ -1,5 +1,6 @@
 import { ApiResponse, apiSlice } from './apiSlice';
 import { GroupModel, SingleGroupModel } from './models/GroupModel';
+import { TruckModel } from './models/TruckModel';
 
 export const GroupApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -32,7 +33,20 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         method: 'GET',
       }),
     }),
-
+    getTrucks: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: TruckModel[];
+      },
+      Partial<void>
+    >({
+      providesTags: ['trucks'],
+      query: (payload) => ({
+        url: `yard/trucks`,
+        method: 'GET',
+      }),
+    }),
     createGroup: builder.mutation<ApiResponse, { name: string; description?: string; type?: string }>({
       invalidatesTags: ['groups'],
       query: (payload) => ({
@@ -56,8 +70,31 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         method: 'DELETE',
       }),
     }),
+    removeGroup: builder.mutation<ApiResponse, { groupId: string }>({
+      invalidatesTags: ['groups'],
+      query: (payload) => ({
+        url: `group/${payload.groupId}`,
+        method: 'DELETE',
+      }),
+    }),
+    updateGroup: builder.mutation<ApiResponse, { groupId: string; name: string; description: string }>({
+      invalidatesTags: ['groups', 'group'],
+      query: (payload) => ({
+        url: `group/${payload.groupId}`,
+        method: 'PUT',
+        body: payload,
+      }),
+    }),
   }),
 });
 
-export const { useGetGroupsQuery, useCreateGroupMutation, useGetGroupByIdQuery, useAddGroupMemberMutation,useRemoveGroupMemberMutation } =
-  GroupApiSlice;
+export const {
+  useGetGroupsQuery,
+  useCreateGroupMutation,
+  useGetTrucksQuery,
+  useGetGroupByIdQuery,
+  useAddGroupMemberMutation,
+  useRemoveGroupMemberMutation,
+  useRemoveGroupMutation,
+  useUpdateGroupMutation,
+} = GroupApiSlice;

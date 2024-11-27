@@ -1,3 +1,5 @@
+import { User } from "./UserModel";
+
 export interface GroupModel {
   id:          string;
   name:        string;
@@ -49,4 +51,5 @@ export interface UserProfile {
   channelId:       null;
   createdAt:       Date;
   updatedAt:       Date;
+  user: User
 }
