@@ -11,7 +11,7 @@ export default function UserList() {
   const page = 0;
   const rowsPerPage = 5;
 
-  const { data, isLoading } = useGetUsersQuery();
+  const { data, isLoading } = useGetUsersQuery({});
 
   return (
     <>
