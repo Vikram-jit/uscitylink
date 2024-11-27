@@ -1,6 +1,6 @@
 import * as React from 'react';
-import {  UserChannel } from '@/redux/models/ChannelModel';
-import {  Chip } from '@mui/material';
+import { UserChannel } from '@/redux/models/ChannelModel';
+import { Chip } from '@mui/material';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import ListItem from '@mui/material/ListItem';
@@ -11,8 +11,8 @@ import Typography from '@mui/material/Typography';
 import { useSocket } from '@/lib/socketProvider';
 
 import AvatarWithStatus from './AvatarWithStatus';
-import {  MessageProps, } from './types';
-import { formatDate,  toggleMessagesPane } from './utils';
+import { MessageProps } from './types';
+import { formatDate, toggleMessagesPane } from './utils';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
@@ -27,12 +27,10 @@ type ChatListItemProps = ListItemButtonProps & {
 };
 
 export default function ChatListItem(props: ChatListItemProps) {
-  const { id, user,   selectedUserId, setSelectedUserId, channelId } = props;
+  const { id, user, selectedUserId, setSelectedUserId, channelId } = props;
   const selected = selectedUserId === id;
   const { socket } = useSocket();
-  React.useEffect(()=>{
-
-  },[socket])
+  React.useEffect(() => {}, [socket]);
   return (
     <>
       <ListItem sx={{ padding: 0 }}>
@@ -44,7 +42,6 @@ export default function ChatListItem(props: ChatListItemProps) {
             if (user.sent_message_count > 0) {
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
             }
-
           }}
           selected={selected}
           sx={{
@@ -66,17 +63,17 @@ export default function ChatListItem(props: ChatListItemProps) {
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1">{user?.UserProfile?.username}</Typography>
               <Typography
-  variant="body2"
-  sx={{
-    display: 'block',
-    maxWidth: '250px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  }}
->
-  {user?.last_message?.body}
-</Typography>
+                variant="body2"
+                sx={{
+                  display: 'block',
+                  maxWidth: '250px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user?.last_message?.body}
+              </Typography>
             </Box>
             <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
               {user?.sent_message_count > 0 && (

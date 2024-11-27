@@ -4,3 +4,4 @@ server/.env
 
 server/src/config/firebase.json
 server/config/firebase.json
+server/config/config.json
