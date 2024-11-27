@@ -66,16 +66,17 @@ export default function ChatListItem(props: ChatListItemProps) {
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1">{user?.UserProfile?.username}</Typography>
               <Typography
-                variant="body2"
-                sx={{
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user?.last_message?.body}
-              </Typography>
+  variant="body2"
+  sx={{
+    display: 'block',
+    maxWidth: '250px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }}
+>
+  {user?.last_message?.body}
+</Typography>
             </Box>
             <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
               {user?.sent_message_count > 0 && (
