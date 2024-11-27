@@ -5,6 +5,7 @@ import { primarySequelize } from "../sequelize";
 export interface GroupAttributes {
   id?: string; // Assuming you have an auto-incremented primary key
   name: string;
+  type?:string
   description?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -20,6 +21,7 @@ class Group
 {
   public id!: string; // Assuming you have an auto-incremented primary key
   public name!: string;
+  public type?: string;
   public createdAt!: Date;
   public updatedAt!: Date;
   public description?: string | undefined;
@@ -45,6 +47,11 @@ Group.init(
         type: DataTypes.STRING,
         allowNull: false,
         unique: true, 
+      },
+      type: {
+        type: DataTypes.ENUM,
+        values: ['group', 'truck'],  // Enum values
+      defaultValue: 'group',  
       },
   },
   {

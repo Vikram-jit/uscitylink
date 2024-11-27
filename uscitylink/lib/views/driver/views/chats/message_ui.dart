@@ -12,7 +12,7 @@ import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 
 class Messageui extends StatefulWidget {
-  final dynamic channelId;
+  final String channelId;
   final String name;
   const Messageui({required this.channelId, super.key, required this.name});
 
@@ -20,7 +20,7 @@ class Messageui extends StatefulWidget {
   _MessageuiState createState() => _MessageuiState();
 }
 
-class _MessageuiState extends State<Messageui> {
+class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
 
   late MessageController messageController;
@@ -31,14 +31,43 @@ class _MessageuiState extends State<Messageui> {
   void initState() {
     super.initState();
 
+    WidgetsBinding.instance.addObserver(this);
     // Initialize the MessageController and fetch messages for the given channelId
     messageController = Get.put(MessageController());
     messageController.getChannelMessages(
         widget.channelId); // Fetch the messages for the given channelId
+
+    if (widget.channelId.isNotEmpty) {
+      socketService.updateActiveChannel(widget.channelId);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Handle app lifecycle changes (background/foreground)
+    if (state == AppLifecycleState.paused) {
+      // App is in the background
+      socketService.updateActiveChannel("");
+      print("App is in the background");
+      // socketService.disconnect(); // Disconnect the socket when the app goes to background
+    } else if (state == AppLifecycleState.resumed) {
+      // App is in the foreground
+      if (!socketService.isConnected.value) {
+        socketService.connectSocket();
+      }
+      if (!widget.channelId.isNotEmpty) {
+        socketService.updateActiveChannel(widget.channelId);
+      }
+      messageController.getChannelMessages(widget.channelId);
+      print("App is in the foreground");
+      // socketService.connect(); // Reconnect the socket when the app comes back to foreground
+    }
   }
 
   @override
   void dispose() {
+    messageController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     socketService.updateActiveChannel("");
     super.dispose();
   }
@@ -46,6 +75,7 @@ class _MessageuiState extends State<Messageui> {
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
+      socketService.updateActiveChannel(widget.channelId);
       socketService.sendMessage(_controller.text, null);
       _controller.clear();
     }
@@ -85,8 +115,7 @@ class _MessageuiState extends State<Messageui> {
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
                   socketService.updateActiveChannel("");
-                  Navigator.pop(
-                      context); // This will pop the current screen and go back to the previous screen
+                  Get.back();
                 },
               ),
               actions: [

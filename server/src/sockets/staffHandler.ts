@@ -85,3 +85,41 @@ export async function staffOpenChatUpdate(
   }
   console.log(global.staffOpenChat)
 }
+
+
+export async function staffOpenTruckGroupUpdate(
+  socket: CustomSocket,
+  groupId: string | null | undefined
+) {
+
+  console.log(groupId,"staff_open_truckGroup")
+  
+  const staffId = socket?.user?.id!;
+  
+  // Check if userId is empty (null or undefined)
+  if (!groupId) {
+    // If userId is empty, remove the entry from staffOpenChat if it exists
+    delete global.staffOpenTruckGroup[staffId!]; // Remove the staff entry from the object
+    console.log(global.staffOpenTruckGroup,"after remove")
+    return;
+  }
+
+  // Find the active channel for the current staff using the staffId (now the staffId is the key)
+   const isActiveChannel = global.staffActiveChannel[staffId!];
+
+  if (isActiveChannel) {
+    // Check if this staff member does not yet have an open chat
+    if (!global.staffOpenTruckGroup[staffId!]) {
+      // Add a new open chat for this staff member
+      global.staffOpenTruckGroup[staffId!] = {
+        channelId: isActiveChannel.channelId,
+        groupId: groupId,
+      };
+    } else {
+      // Update the existing open chat with the new userId
+      global.staffOpenTruckGroup[staffId!].channelId = isActiveChannel.channelId;
+      global.staffOpenTruckGroup[staffId!].groupId = groupId;
+    }
+  }
+  console.log(global.staffOpenTruckGroup)
+}

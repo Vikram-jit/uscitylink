@@ -12,6 +12,7 @@ export const paths = {
     channels: '/dashboard/channels',
     groups: '/dashboard/groups',
     messages: '/dashboard/messages',
+    truck_group: '/dashboard/truckgroup',
   },
   user:{
     "add":'/dashboard/users/add'

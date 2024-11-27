@@ -1,5 +1,5 @@
 import { ApiResponse, apiSlice } from './apiSlice';
-import { GroupModel } from './models/GroupModel';
+import { GroupModel, SingleGroupModel } from './models/GroupModel';
 
 export const GroupApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -9,19 +9,31 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: GroupModel[];
       },
-      Partial<void>
+      Partial<{ type: string }>
     >({
       providesTags: ['groups'],
-      query: () => ({
-        url: 'group',
+      query: (payload) => ({
+        url: `group`,
+        method: 'GET',
+        params: payload?.type ? { type: payload.type } : {},
+      }),
+    }),
+    getGroupById: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: SingleGroupModel;
+      },
+      Partial<{ id: string }>
+    >({
+      providesTags: ['group'],
+      query: (payload) => ({
+        url: `group/messages/${payload.id}`,
         method: 'GET',
       }),
     }),
 
-    createGroup: builder.mutation<
-      ApiResponse,
-      {name:string, description?:string}
-    >({
+    createGroup: builder.mutation<ApiResponse, { name: string; description?: string; type?: string }>({
       invalidatesTags: ['groups'],
       query: (payload) => ({
         url: 'group',
@@ -29,7 +41,23 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
+    addGroupMember: builder.mutation<ApiResponse, { groupId: string; members: string }>({
+      invalidatesTags: ['group'],
+      query: (payload) => ({
+        url: `group/member/${payload.groupId}`,
+        method: 'POST',
+        body: payload,
+      }),
+    }),
+    removeGroupMember: builder.mutation<ApiResponse, { groupId: string }>({
+      invalidatesTags: ['group'],
+      query: (payload) => ({
+        url: `group/member/${payload.groupId}`,
+        method: 'DELETE',
+      }),
+    }),
   }),
 });
 
-export const { useGetGroupsQuery,useCreateGroupMutation } = GroupApiSlice;
+export const { useGetGroupsQuery, useCreateGroupMutation, useGetGroupByIdQuery, useAddGroupMemberMutation,useRemoveGroupMemberMutation } =
+  GroupApiSlice;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -118,6 +119,24 @@ class FCMService extends GetxController {
     // Handle background messages
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+    FirebaseMessaging.instance
+        .getInitialMessage()
+        .then((RemoteMessage? message) {
+      if (message != null) {
+        // Handle the notification and navigate to the desired screen
+        var data = message.data;
+        Timer(
+            const Duration(seconds: 1),
+            () => Get.toNamed(
+                  AppRoutes.driverMessage,
+                  arguments: {
+                    'channelId': data['channelId'],
+                    'name': data['title']
+                  },
+                ));
+      }
+    });
+
     // Handle when the app is opened from a notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var data = message.data;
@@ -131,6 +150,7 @@ class FCMService extends GetxController {
             arguments: {'channelId': data['channelId'], 'name': data['title']},
           );
         } else {
+          Get.back();
           Get.toNamed(
             AppRoutes.driverMessage,
             arguments: {'channelId': data['channelId'], 'name': data['title']},

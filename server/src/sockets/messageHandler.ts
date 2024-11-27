@@ -10,6 +10,7 @@ import moment from "moment";
 import Channel from "../models/Channel";
 import { UserProfile } from "../models/UserProfile";
 import { sendNotificationToDevice } from "../utils/fcmService";
+import GroupMessage from "../models/GroupMessage";
 
 export async function messageToChannelToUser(
   io: Server,
@@ -17,7 +18,6 @@ export async function messageToChannelToUser(
   body: string,
   url: string | null
 ) {
- 
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -33,89 +33,93 @@ export async function messageToChannelToUser(
       senderId: socket?.user?.id,
       isRead: false,
       status: "sent",
-      url: url ,
+      url: url,
     });
 
     if (message) {
-    
       const utcTime = moment.utc().toDate();
 
-     
       //Find Active Driver With Channel
       let isCheckAnyStaffOpenChat = 0;
-      
-      const promises = Object.entries(global.staffOpenChat).map(async ([staffId, e]) => {
-        const isSocket = global.userSockets[staffId]
-      
-        if (
-          e.channelId === findUserChannel.channelId &&
-          socket?.user?.id === e.userId
-        ) {
-          if (isSocket) {
-            await message.update(
-              {
-                deliveryStatus: "seen",
-              },
-              {
-                where: {
-                  id: message.id,
-                },
-              }
-            );
-            isCheckAnyStaffOpenChat += 1;
-            io.to(isSocket.id).emit(
-              SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-              message
-            );
-          }
-        } else {
-          if (e.channelId !== findUserChannel.channelId) {
+
+      const promises = Object.entries(global.staffOpenChat).map(
+        async ([staffId, e]) => {
+          const isSocket = global.userSockets[staffId];
+
+          if (
+            e.channelId === findUserChannel.channelId &&
+            socket?.user?.id === e.userId
+          ) {
             if (isSocket) {
-              const channel = await Channel.findByPk(message?.channelId);
-              io.to(isSocket.id).emit(
-                "notification_new_message",
-                `New Message received on ${channel?.name} channel`
-              );
-              await UserChannel.update(
+              await message.update(
                 {
-                  sent_message_count: Sequelize.literal("sent_message_count + 1"),
+                  deliveryStatus: "seen",
                 },
                 {
                   where: {
-                    userProfileId: socket?.user?.id, // The user you want to update
-                    channelId: findUserChannel.channelId, // The channel to target
+                    id: message.id,
                   },
                 }
               );
               isCheckAnyStaffOpenChat += 1;
+              io.to(isSocket.id).emit(
+                SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+                message
+              );
             }
           } else {
-            if (isSocket) {
-              io.to(isSocket.id).emit("new_message_count_update_staff", {
-                channelId: message?.channelId,
-                userId: message?.userProfileId,
-                message,
-              });
-              await UserChannel.update(
-                {
-                  sent_message_count: Sequelize.literal("sent_message_count + 1"),
-                },
-                {
-                  where: {
-                    userProfileId: socket?.user?.id, // The user you want to update
-                    channelId: findUserChannel.channelId, // The channel to target
+            if (e.channelId !== findUserChannel.channelId) {
+              if (isSocket) {
+                const channel = await Channel.findByPk(message?.channelId);
+                io.to(isSocket.id).emit(
+                  "notification_new_message",
+                  `New Message received on ${channel?.name} channel`
+                );
+                await UserChannel.update(
+                  {
+                    sent_message_count: Sequelize.literal(
+                      "sent_message_count + 1"
+                    ),
                   },
-                }
-              );
-              io.to(isSocket.id).emit(
-                "notification_new_message",
-                `New Message received --`
-              );
-              isCheckAnyStaffOpenChat += 1;
+                  {
+                    where: {
+                      userProfileId: socket?.user?.id, // The user you want to update
+                      channelId: findUserChannel.channelId, // The channel to target
+                    },
+                  }
+                );
+                isCheckAnyStaffOpenChat += 1;
+              }
+            } else {
+              if (isSocket) {
+                io.to(isSocket.id).emit("new_message_count_update_staff", {
+                  channelId: message?.channelId,
+                  userId: message?.userProfileId,
+                  message,
+                });
+                await UserChannel.update(
+                  {
+                    sent_message_count: Sequelize.literal(
+                      "sent_message_count + 1"
+                    ),
+                  },
+                  {
+                    where: {
+                      userProfileId: socket?.user?.id, // The user you want to update
+                      channelId: findUserChannel.channelId, // The channel to target
+                    },
+                  }
+                );
+                io.to(isSocket.id).emit(
+                  "notification_new_message",
+                  `New Message received --`
+                );
+                isCheckAnyStaffOpenChat += 1;
+              }
             }
           }
         }
-      });
+      );
 
       await Promise.all(promises);
 
@@ -133,14 +137,15 @@ export async function messageToChannelToUser(
         );
       }
 
- 
-
       if (isCheckAnyStaffOpenChat == 0) {
         const newPromise = Object.entries(global.staffActiveChannel).map(
           async ([staffId, el]) => {
             const isSocket = global.userSockets[staffId];
-            
-            if (el.role == "staff" && el.channelId == findUserChannel.channelId) {
+
+            if (
+              el.role == "staff" &&
+              el.channelId == findUserChannel.channelId
+            ) {
               if (isSocket) {
                 io.to(isSocket?.id).emit("new_message_count_update_staff", {
                   channelId: message?.channelId,
@@ -204,7 +209,6 @@ export async function messageToDriver(
     (driver) => driver?.driverId === userId
   );
 
-  
   const message = await Message.create({
     channelId: findStaffActiveChannel?.channelId,
     userProfileId: userId,
@@ -215,24 +219,27 @@ export async function messageToDriver(
     senderId: socket?.user?.id,
     isRead: false,
     status: "sent",
-    url:url || null
+    url: url || null,
   });
 
   //Check Before send driver active room channel
-  const isDriverSocket = global.userSockets[findDriverSocket?.driverId!]
+  const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
 
   if (
     findDriverSocket &&
     findDriverSocket?.channelId == findStaffActiveChannel?.channelId
   ) {
     if (isDriverSocket) {
-      await message.update({
-        deliveryStatus: "seen",
-      },{
-        where:{
-          id:message.id
+      await message.update(
+        {
+          deliveryStatus: "seen",
+        },
+        {
+          where: {
+            id: message.id,
+          },
         }
-      })
+      );
       io.to(isDriverSocket?.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
         message
@@ -246,47 +253,51 @@ export async function messageToDriver(
         message?.channelId
       );
       const isUser = await UserProfile.findOne({
-        where:{
-          id:userId
-        }
-      })
-      if(isUser){
-          if(isUser.device_token){
-            const isChannel = await Channel.findByPk(findStaffActiveChannel?.channelId)
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId
+          );
 
-            await sendNotificationToDevice(isUser.device_token,{
-              title:isChannel?.name ||'',
-              body:body,
-              data:{
-                channelId:isChannel?.id,
-                
-                type:"NEW MESSAGE",
-                title:isChannel?.name
-              }
-            })
-          }
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
       }
-    }else{
+    } else {
       const isUser = await UserProfile.findOne({
-        where:{
-          id:userId
-        }
-      })
-      if(isUser){
-          if(isUser.device_token){
-            const isChannel = await Channel.findByPk(findStaffActiveChannel?.channelId)
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId
+          );
 
-            await sendNotificationToDevice(isUser.device_token,{
-              title:isChannel?.name ||'',
-              body:body,
-              data:{
-                channelId:isChannel?.id,
-                
-                type:"NEW MESSAGE",
-                title:isChannel?.name
-              }
-            })
-          }
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
       }
     }
 
@@ -320,11 +331,155 @@ export async function messageToDriver(
   Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
     if (e.channelId === findStaffActiveChannel?.channelId) {
       const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
-  
+
       if (isSocket) {
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
           message
+        );
+      }
+    }
+  });
+}
+
+export async function messageToDriverByTruckGroup(
+  io: Server,
+  socket: CustomSocket,
+  userId: string,
+  groupId: string,
+  body: string,
+  direction: string,
+  url: string | null
+) {
+  const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
+  const utcTime = moment.utc().toDate();
+  const userIds = userId.split(",");
+ 
+  for (const driverId of userIds || []) {
+    const findDriverSocket = global.driverOpenChat.find(
+      (driver) => driver?.driverId === driverId
+    );
+    const message = await Message.create({
+      channelId: findStaffActiveChannel?.channelId,
+      groupId: groupId,
+      userProfileId: driverId,
+      body,
+      messageDirection: direction,
+      deliveryStatus: "sent",
+      messageTimestampUtc: utcTime,
+      senderId: socket?.user?.id,
+      isRead: false,
+      status: "sent",
+      url: url || null,
+    });
+  
+    const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+  
+    // Process each driver and emit message or update database sequentially
+    if (findDriverSocket && findDriverSocket?.channelId == findStaffActiveChannel?.channelId) {
+      if (isDriverSocket) {
+        await message.update(
+          {
+            deliveryStatus: "seen",
+          },
+          {
+            where: {
+              id: message.id,
+            },
+          }
+        );
+        io.to(isDriverSocket?.id).emit(
+          SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+          message
+        );
+      }
+    } else {
+      if (isDriverSocket) {
+        io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
+        io.to(isDriverSocket?.id).emit(
+          "new_message_count_update",
+          message?.channelId
+        );
+        const isUser = await UserProfile.findOne({
+          where: {
+            id: driverId,
+          },
+        });
+        if (isUser && isUser.device_token) {
+          const isChannel = await Channel.findByPk(findStaffActiveChannel?.channelId);
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      } else {
+        const isUser = await UserProfile.findOne({
+          where: {
+            id: driverId,
+          },
+        });
+        if (isUser && isUser.device_token) {
+          const isChannel = await Channel.findByPk(findStaffActiveChannel?.channelId);
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      }
+  
+      await UserChannel.update(
+        {
+          recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
+        },
+        {
+          where: {
+            userProfileId: driverId, // The user you want to update
+            channelId: findStaffActiveChannel?.channelId, // The channel to target
+          },
+        }
+      );
+    }
+  
+    await UserChannel.update(
+      {
+        last_message_id: message?.id,
+        last_message_utc: utcTime,
+      },
+      {
+        where: {
+          userProfileId: driverId,
+          channelId: findStaffActiveChannel?.channelId,
+        },
+      }
+    );
+  }
+
+  const group_message = await GroupMessage.create({
+    groupId: groupId,
+    body: body,
+    senderId: socket?.user?.id,
+    deliveryStatus: "sent",
+    messageTimestampUtc: utcTime,
+  });
+
+  Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
+    if (e.channelId === findStaffActiveChannel?.channelId && groupId == e.groupId) {
+      const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+
+      if (isSocket) {
+        io.to(isSocket.id).emit(
+          SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
+          group_message
         );
       }
     }
@@ -360,7 +515,6 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
-   
     await UserChannel.update(
       {
         sent_message_count: 0,
@@ -387,21 +541,20 @@ export async function unreadAllUserMessage(
 
     //check driver active channel
 
-   const isDriverActiveChat = global.driverOpenChat.find((driver) => driver.channelId  == channelId);
+    const isDriverActiveChat = global.driverOpenChat.find(
+      (driver) => driver.channelId == channelId
+    );
 
-    if(isDriverActiveChat){
-      const isDriverSocket =  global.userSockets[isDriverActiveChat.driverId];
-      console.log(isDriverActiveChat,isDriverSocket);
-      if(isDriverSocket){
+    if (isDriverActiveChat) {
+      const isDriverSocket = global.userSockets[isDriverActiveChat.driverId];
+      console.log(isDriverActiveChat, isDriverSocket);
+      if (isDriverSocket) {
         io.to(isDriverSocket.id).emit("update_all_message_seen", {
           channelId,
           userId,
-          
         });
       }
-
     }
-
 
     io.to(socket.id).emit("update_channel_sent_message_count", {
       channelId,

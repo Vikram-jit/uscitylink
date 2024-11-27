@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/model/login_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
+import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
@@ -100,6 +101,11 @@ class LoginController extends GetxController {
         if (value.data.access_token!.isNotEmpty) {
           userPreferenceController.storeToken(value.data).then((value) async {
             Utils.toastMessage("Login Successfully");
+            final fcmService = Get.put(FCMService());
+            String? token = fcmService.fcmToken.value;
+            if (token != null && token.isNotEmpty) {
+              await fcmService.updateDeviceToken(token);
+            }
             await socketService.connectSocket();
             Get.offAllNamed(AppRoutes.driverDashboard);
           });

@@ -8,12 +8,12 @@ export const UserApiSlice = apiSlice.injectEndpoints({
       status:boolean,
       message:string,
       data:UserModel[]
-    }, Partial<void>>({
+    }, Partial<{role?:string}>>({
       providesTags:['users'],
-      query: () => ({
+      query: (payload) => ({
         url: 'user',
         method: 'GET',
-
+        params: payload?.role ? { role: payload.role } : {},
       }),
     }),
     addUser: builder.mutation< ApiResponse,{email?:string,password?:string,role?:string,phone_number?:string}>({

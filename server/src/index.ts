@@ -22,6 +22,7 @@ import GroupChannel from "./models/GroupChannel";
 import Group from "./models/Group";
 
 import { verifyToken } from "./utils/jwt";
+import GroupUser from "./models/GroupUser";
 
 
 
@@ -77,10 +78,11 @@ server.listen(PORT, async () => {
   //Manage Relations
 
   User.associate({ UserProfile });
-  UserProfile.associate({ User, Role,UserChannel,Channel });
+  UserProfile.associate({ User, Role,UserChannel,Channel,GroupUser });
   Role.associate({ UserProfile });
   Channel.associate({ UserChannel,GroupChannel });
   UserChannel.associate({ UserProfile, Channel });
+  GroupUser.associate({ UserProfile, Group });
   GroupChannel.associate({ Group, Channel });
 
   // UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });

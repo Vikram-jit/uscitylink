@@ -27,8 +27,10 @@ export const sendNotificationToDevice = async (deviceToken: string, message: Not
     notification: {
       title: title,
       body: body,
+      // sound: "default"
     },
     token: deviceToken,
+    // priority: "high",  
     data:data
   };
 

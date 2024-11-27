@@ -4,9 +4,9 @@ import { UserProfile } from "../models/UserProfile";
 import SocketEvents from "./socketEvents";
 import { Message } from "../models/Message";
 import Role from "../models/Role";
-import { staffActiveChannelUpdate, staffOpenChatUpdate } from "./staffHandler";
+import { staffActiveChannelUpdate, staffOpenChatUpdate, staffOpenTruckGroupUpdate } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
-import { messageToChannelToUser, messageToDriver, unreadAllMessage, unreadAllUserMessage } from "./messageHandler";
+import { messageToChannelToUser, messageToDriver, messageToDriverByTruckGroup, unreadAllMessage, unreadAllUserMessage } from "./messageHandler";
 import moment from "moment";
 
 let io: Server;
@@ -33,9 +33,14 @@ interface driver_open_chat{
 }
 
 interface staff_open_chat{
-  
   channelId: string;
-  userId:string
+  userId:string;
+}
+
+
+interface staff_open_truck_group{
+  groupId: string;
+  channelId: string;
 }
 
 declare global {
@@ -45,6 +50,7 @@ declare global {
   var userActiveRoom: Record<string, string>;
   var staffActiveChannel: Record<string,staffActiveChannel>;
   var staffOpenChat:Record<string,staff_open_chat>;
+  var staffOpenTruckGroup:Record<string,staff_open_truck_group>;
   var onlineUsers: Record<string,User>;
   var driverOpenChat:driver_open_chat[];
 
@@ -72,9 +78,9 @@ export const initSocket = (httpServer: any) => {
   global.staffActiveChannel = {};
   global.driverOpenChat = [];
   global.staffOpenChat = {};
+  global.staffOpenTruckGroup = {};
 
   //Validate User Connect With Socket
-
   io.use(async (socket: CustomSocket, next) => {
     const token = socket.handshake.query.token as string;
 
@@ -263,6 +269,7 @@ export const initSocket = (httpServer: any) => {
     //Staff Open Chat 
 
     socket.on("staff_open_chat", async (userId) => await staffOpenChatUpdate(socket,userId));
+    socket.on("staff_open_truck_group", async (groupId) => await staffOpenTruckGroupUpdate(socket,groupId));
     socket.on("staff_channel_update",async (channelId) => await staffActiveChannelUpdate(socket,channelId))
 
     socket.on("update_channel_sent_message_count",async ({channelId,userId}) => await unreadAllUserMessage(io,socket,channelId,userId))
@@ -277,6 +284,11 @@ export const initSocket = (httpServer: any) => {
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
       async ({ userId, body, direction,url }) => await messageToDriver(io,socket,userId,body,direction,url)
+    );
+
+    socket.on(
+      SocketEvents.SEND_MESSAGE_TO_USER_BY_GROUP,
+      async ({ userId,groupId, body, direction,url }) => await messageToDriverByTruckGroup(io,socket,userId,groupId,body,direction,url)
     );
 
     socket.on(SocketEvents.SEND_MESSAGE_TO_CHANNEL, async ({body,url=null}) => await messageToChannelToUser(io,socket,body,url));

@@ -210,8 +210,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const channel = await Channel.findByPk(req.params.channelId)
     const channelId = req.params.channelId == "null"  ? req.activeChannel : req.params.channelId
     const userId = req.query.userId ?? req.user?.id
-    console.log(userId)
-    console.log(channelId)
+
     const media = await Media.findAndCountAll({
       where:{
         channelId:channelId,

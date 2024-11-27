@@ -8,6 +8,29 @@ import { Message } from "../models/Message";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
+
+    const  role  = req.query.role as string;
+
+    let whereCondition = {};
+    if (role) {
+      const isDriverRole = await Role.findOne({
+        where: { name: role }, 
+      });
+
+      
+      if (!isDriverRole) {
+        return res.status(404).json({
+          status: false,
+          message: `Role '${role}' not found.`,
+        });
+      }
+
+     
+      whereCondition = {
+        role_id: isDriverRole.id, 
+      };
+    }
+
     const users = await UserProfile.findAll({
       attributes: {
         exclude: ["password"],
@@ -22,6 +45,7 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
           as: "role",
         },
       ],
+      where:whereCondition,
       order: [["id", "DESC"]],
     });
 
