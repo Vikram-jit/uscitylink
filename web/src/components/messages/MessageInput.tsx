@@ -9,6 +9,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 
 import { useSocket } from '@/lib/socketProvider';
+import { useDispatch } from 'react-redux';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -23,9 +25,9 @@ export default function MessageInput(props: MessageInputProps) {
   const { socket } = useSocket();
   const { textAreaValue, setTextAreaValue, onSubmit } = props;
   const [caption, setCaption] = React.useState('');
-  const [timer, setTimer] = React.useState<NodeJS.Timeout | null>(null)
-  const [isTyping, setIsTyping] = React.useState<boolean>(false);  // Whether the user is typing
-  const [typingStartTime, setTypingStartTime] = React.useState<number>(0);  // Time when typing started
+  const dispatch = useDispatch()
+  const [isTyping, setIsTyping] = React.useState<boolean>(false);
+  const [typingStartTime, setTypingStartTime] = React.useState<number>(0);
   const [userTyping,setUserTyping]  = React.useState<boolean>(false)
   const [userTypingMessage,setUserTypingMessage]  = React.useState<string>("");
   const handleClick = () => {
@@ -34,8 +36,8 @@ export default function MessageInput(props: MessageInputProps) {
       setTextAreaValue('');
     }
   };
-  const [file, setFile] = React.useState<any>(null); // Track the selected file
-  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false); // State for dialog visibility
+  const [file, setFile] = React.useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
 
   React.useEffect(()=>{
     if(socket){
@@ -62,8 +64,8 @@ export default function MessageInput(props: MessageInputProps) {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setPreviewDialogOpen(true); // Open the dialog after file selection
-    } // Open the dialog after file selection
+      setPreviewDialogOpen(true);
+    }
   };
 
   // Trigger file input dialog when the IconButton is clicked
@@ -97,6 +99,7 @@ export default function MessageInput(props: MessageInputProps) {
 
   async function sendMessage() {
     try {
+      dispatch(showLoader())
       let formData = new FormData();
       formData.append('file', file);
       formData.append('userId', props.userId);
@@ -112,9 +115,12 @@ export default function MessageInput(props: MessageInputProps) {
         setFile(null);
         setCaption('');
         setPreviewDialogOpen(false);
+        dispatch(hideLoader())
       }
+      dispatch(hideLoader())
       console.log(res);
     } catch (error) {
+      dispatch(hideLoader())
       console.log(error);
     }
   }
@@ -129,19 +135,19 @@ export default function MessageInput(props: MessageInputProps) {
   // Function to check if the user has stopped typing
   const checkIfTypingStopped = () => {
     if (isTyping && Date.now() - typingStartTime > 1500) {
-      setIsTyping(false);  // Stop typing after 1.5 seconds of inactivity
-      sendTypingStatus(false);  // Notify the server that the user stopped typing
+      setIsTyping(false);
+      sendTypingStatus(false);
     }
   };
 
-  // Polling interval to detect when the user stops typing
+
   React.useEffect(() => {
     const interval = setInterval(() => {
       checkIfTypingStopped();
     }, 500);  // Check every 500ms
 
     return () => {
-      clearInterval(interval);  // Clean up the interval on component unmount
+      clearInterval(interval);
     };
   }, [isTyping, typingStartTime]);
 
@@ -161,11 +167,7 @@ export default function MessageInput(props: MessageInputProps) {
 
         value={textAreaValue}
         onChange={(event) => {
-          // if(event.target.value.length > 0 ){
-          //   sendTypingStatus(true)
-          // }else{
-          //   sendTypingStatus(false)
-          // }
+
           setTextAreaValue(event.target.value);
         }}
         InputProps={{

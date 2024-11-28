@@ -26,8 +26,8 @@ class Group
   public updatedAt!: Date;
   public description?: string | undefined;
   static associate(models: any) {
-   
-  
+    Group.hasOne(models.GroupChannel, { foreignKey: 'groupId', as: 'group_channel' });
+    
   }
 }
 

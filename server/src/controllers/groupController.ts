@@ -8,10 +8,28 @@ import { Message } from "../models/Message";
 import { UserProfile } from "../models/UserProfile";
 import GroupMessage from "../models/GroupMessage";
 import User from "../models/User";
+import { getSocketInstance } from "../sockets/socket";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
     const { name, description, type, members } = req.body;
+
+    const isGroup = await Group.findOne({
+      where: {
+        name: name,
+      },
+    });
+    if(isGroup){
+      const isCheck = await GroupChannel.findOne({
+        where: {
+          groupId: isGroup?.id,
+          channelId: req.activeChannel,
+        },
+      });
+  
+      if (isCheck) throw new Error("Group already exist");
+    }
+   
 
     const group = await Group.create({
       name: name,
@@ -37,6 +55,35 @@ export async function create(req: Request, res: Response): Promise<any> {
         groupId: group?.id,
         channelId: req.activeChannel,
       });
+    }
+    if (group?.type == "group") {
+      const memberList = members?.split(",") || [];
+      if (memberList.length === 0) return;
+
+      for (const user_id of memberList) {
+        const userSocket = global.userSockets[user_id];
+
+        try {
+          const groupUser = await GroupUser.findOne({
+            where: {
+              userProfileId: user_id,
+              groupId: group.id,
+            },
+            include: [{ model: Group , include:[{
+              model:GroupChannel,
+              as:"group_channel"
+            }]}],
+          });
+
+          if (userSocket && groupUser) {
+            getSocketInstance()
+              .to(userSocket.id)
+              .emit("user_added_to_group", groupUser);
+          }
+        } catch (err) {
+          console.error(`Error processing user ${user_id}:`, err);
+        }
+      }
     }
 
     return res.status(201).json({
@@ -69,6 +116,12 @@ export async function get(req: Request, res: Response): Promise<any> {
           [Op.in]: groupIds,
         },
       },
+      
+        include:[{
+          model:GroupChannel,
+          as:"group_channel"
+        }],
+      
       order: [["id", "DESC"]],
     });
 
@@ -86,7 +139,12 @@ export async function get(req: Request, res: Response): Promise<any> {
 
 export async function getById(req: Request, res: Response): Promise<any> {
   try {
-    const group = await Group.findByPk(req.params.id);
+    const group = await Group.findByPk(req.params.id,{
+      include:[{
+        model:GroupChannel,
+        as:"group_channel"
+      }]
+    });
 
     const groupMembers = await GroupUser.findAll({
       where: {
@@ -112,34 +170,94 @@ export async function groupAddMember(
 ): Promise<any> {
   try {
     const group = await Group.findByPk(req.params.id);
+
     const { members } = req.body;
-    await GroupUser.destroy({
-      where:{
+
+    //check member active count
+
+    const isCheckCount = await GroupUser.findAndCountAll({
+      where: {
         groupId: group?.id,
-      }
-    })
+        status: "active",
+      },
+    });
+
+    if (isCheckCount.count == 2)
+      throw new Error(
+        "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+      );
+
+    await GroupUser.destroy({
+      where: {
+        groupId: group?.id,
+        status: "active",
+      },
+    });
+
     if (members?.split(",")?.length > 0) {
       if (group) {
         await Promise.all(
           members?.split(",")?.map(async (e: string) => {
             const isCheck = await GroupUser.findOne({
-              where:{
+              where: {
                 groupId: group?.id,
                 userProfileId: e,
-              }
+              },
             });
             if (!isCheck) {
               await GroupUser.create({
                 groupId: group?.id,
                 userProfileId: e,
               });
+            } else {
+              await GroupUser.update(
+                {
+                  status: "active",
+                },
+                {
+                  where: {
+                    groupId: group?.id,
+                    userProfileId: e,
+                  },
+                }
+              );
             }
           })
         );
       }
     }
 
-    return res.status(201).json({
+    if (group?.type == "group") {
+      const memberList = members?.split(",") || [];
+      if (memberList.length === 0) return;
+
+      for (const user_id of memberList) {
+        const userSocket = global.userSockets[user_id];
+
+        try {
+          const groupUser = await GroupUser.findOne({
+            where: {
+              userProfileId: user_id,
+              groupId: group.id,
+            },
+            include: [{ model: Group, include:[{
+              model:GroupChannel,
+              as:"group_channel"
+            }] }],
+          });
+
+          if (userSocket && groupUser) {
+            getSocketInstance()
+              .to(userSocket.id)
+              .emit("user_added_to_group", groupUser);
+          }
+        } catch (err) {
+          console.error(`Error processing user ${user_id}:`, err);
+        }
+      }
+    }
+
+    return res.status(200).json({
       status: true,
       message: `Add Members Successfully.`,
     });
@@ -171,32 +289,53 @@ export async function groupRemoveMember(
   }
 }
 
-export async function groupRemove(
+export async function groupStatusMember(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
+    await GroupUser.update(
+      { status: req.body.status },
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
 
+    return res.status(200).json({
+      status: true,
+      message: `Updated Members Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function groupRemove(req: Request, res: Response): Promise<any> {
+  try {
     await Message.destroy({
-      where:{
-        groupId:req.params.id
-      }
-    })
+      where: {
+        groupId: req.params.id,
+      },
+    });
     await GroupUser.destroy({
-      where:{
-        groupId: req.params.id
-      }
-    })
+      where: {
+        groupId: req.params.id,
+      },
+    });
     await GroupChannel.destroy({
-      where:{
-        groupId: req.params.id
-      }
-    })
+      where: {
+        groupId: req.params.id,
+      },
+    });
     await GroupMessage.destroy({
-      where:{
-        groupId: req.params.id
-      }
-    })
+      where: {
+        groupId: req.params.id,
+      },
+    });
     await Group.destroy({
       where: {
         id: req.params.id,
@@ -214,21 +353,19 @@ export async function groupRemove(
   }
 }
 
-export async function groupUpdate(
-  req: Request,
-  res: Response
-): Promise<any> {
+export async function groupUpdate(req: Request, res: Response): Promise<any> {
   try {
-    await Group.update({
-      name:req.body.name,
-      description:req.body.description
-    },{
-      
-      where: {
-        id: req.params.id,
+    await Group.update(
+      {
+        name: req.body.name,
+        description: req.body.description,
       },
-      
-    });
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
 
     return res.status(201).json({
       status: true,
@@ -256,12 +393,12 @@ export const getMessagesByGroupId = async (
       include: [
         {
           model: UserProfile,
-          include:[
+          include: [
             {
-              model:User,
-              as:"user"
-            }
-          ]
+              model: User,
+              as: "user",
+            },
+          ],
         },
       ],
     });

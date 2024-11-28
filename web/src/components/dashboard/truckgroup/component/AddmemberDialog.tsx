@@ -17,6 +17,9 @@ import { TransitionProps } from '@mui/material/transitions';
 import { toast } from 'react-toastify';
 import { useAddGroupMemberMutation } from '@/redux/GroupApiSlice';
 import { SingleGroupModel } from '@/redux/models/GroupModel';
+import useErrorHandler from '@/hooks/use-error-handler';
+import { useDispatch } from 'react-redux';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
@@ -42,7 +45,7 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
   const handleClose = () => {
     setOpen(false);
   };
-
+  const dispatch = useDispatch();
   const [addGroupMember] = useAddGroupMemberMutation();
 
 
@@ -52,11 +55,16 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
     setSelectedUsers(value);
   };
   const { data, isFetching } = useGetUsersQuery({ role: 'driver' });
-
+  const [message,setApiResponse] = useErrorHandler()
   React.useEffect(() => {
     if (data?.data) {
       if(group){
-        const defaultSelectedUsers = data.data.filter(user => group?.members.map((e)=>e.userProfileId).includes(user.id));
+        const defaultSelectedUsers = data.data.filter(user =>
+          group?.members
+            .filter(e => e.status === "active")
+            .map(e => e.userProfileId)
+            .includes(user.id)
+        );
         setSelectedUsers(defaultSelectedUsers);
       }
 
@@ -65,10 +73,13 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
 
   async function onSubmit() {
     try {
+
+      dispatch(showLoader())
       const selectedMember = selectedUsers.map((user) => user.id);
 
       if(selectedMember.length == 0){
         alert("Please select at least one member to add into group.");
+        dispatch(hideLoader())
         return;
       }
 
@@ -80,9 +91,16 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
       const res = await addGroupMember(data);
       if (res.data?.status) {
         toast.success('Add Group Member Successfully.');
+        dispatch(hideLoader())
         setOpen(false);
+        return
       }
+      setApiResponse(res.error as any)
+      setOpen(false);
+      dispatch(hideLoader())
+      return
     } catch (error) {
+      dispatch(hideLoader())
       console.log(error);
     }
   }

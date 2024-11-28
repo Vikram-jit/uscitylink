@@ -5,6 +5,9 @@ import Role from "../models/Role";
 import UserChannel from "../models/UserChannel";
 import Channel from "../models/Channel";
 import { Message } from "../models/Message";
+import GroupUser from "../models/GroupUser";
+import Group from "../models/Group";
+import GroupChannel from "../models/GroupChannel";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -95,6 +98,50 @@ export async function getChannelList(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+export async function getGroupList(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const users = await GroupUser.findAll({
+      where: {
+        userProfileId: req.user?.id,
+      },
+      include: [
+        {
+          model: Group,
+          where:{
+            type:"group"
+          },
+          include:[{
+            model:GroupChannel,
+            as:"group_channel"
+          }]
+        },
+        // {
+        //   model: Message,
+        //  as:"last_message"
+        
+        // }
+        
+      ],
+     // order: [["recieve_message_count", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Users Successfully.`,
+      data: users,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
 
 export async function updateUserActiveChannel(
   req: Request,

@@ -8,6 +8,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"; // AWS SDK v3 i
 import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import Channel from "../models/Channel";
+import { Op } from "sequelize";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -93,6 +94,9 @@ export const getMessages = async (
       where: {
         channelId: channelId,
         userProfileId: req.user?.id,
+        type: {
+          [Op.ne]: 'group', 
+        },
       },
       order: [["messageTimestampUtc", "DESC"]],
     });
@@ -108,6 +112,38 @@ export const getMessages = async (
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
+
+export const getGroupMessages = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+
+    const senderId = req.user?.id
+
+    const { channelId,groupId } = req.params;
+
+    const messages = await Message.findAll({
+      where: {
+        channelId: channelId,
+        groupId: groupId,
+        type:"group"
+      },
+      order: [["messageTimestampUtc", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Fetch message successfully`,
+      data: {senderId,messages},
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
+
 
 export const getMessagesByUserId = async (
   req: Request,
@@ -175,13 +211,16 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
 export const fileUploadWeb = async (req: Request, res: Response): Promise<any> => {
   try {
      const channelId = req.activeChannel
-     const userId = req.body.userId 
+     const userId = req.body.userId?.length > 0 ?  req.body.userId :  req.user?.id
+     const groupId = req.body.groupId as string
+    
     if (req.file) {
       const file = req.file as any
 
       await Media.create({
         user_profile_id: userId,
         channelId:channelId,
+        groupId:groupId ?? null,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,

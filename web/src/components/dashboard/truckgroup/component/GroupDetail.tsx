@@ -5,19 +5,24 @@ import {
   useGetTrucksQuery,
   useRemoveGroupMemberMutation,
   useRemoveGroupMutation,
+  useUpdateGroupMemberMutation,
   useUpdateGroupMutation,
 } from '@/redux/GroupApiSlice';
 import { SingleGroupModel } from '@/redux/models/GroupModel';
 import { TruckModel } from '@/redux/models/TruckModel';
-import { Delete } from '@mui/icons-material';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import { Delete, MoreVert, Settings } from '@mui/icons-material';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import {
   Autocomplete,
   Button,
   Checkbox,
+  Chip,
   Grid,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -29,6 +34,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Box } from '@mui/system';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 
 import AddMemberDialog from './AddmemberDialog';
@@ -37,21 +43,36 @@ interface GroupDetailInterface {
   group: SingleGroupModel;
   setViewDetailGroup: React.Dispatch<SetStateAction<boolean>>;
   setSelectedGroup: React.Dispatch<SetStateAction<string>>;
+  type: string;
 }
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
-export default function GroupDetail({ group, setViewDetailGroup, setSelectedGroup }: GroupDetailInterface) {
+export default function GroupDetail({ group, setViewDetailGroup, setSelectedGroup, type }: GroupDetailInterface) {
   const [addMemberDialog, setAddMemberDialog] = useState<boolean>(false);
   const [removeGroupMember, { isLoading }] = useRemoveGroupMemberMutation();
   const [removeGroup, { isLoading: deleteLoader }] = useRemoveGroupMutation();
   const [updateGroup, { isLoading: updateLoader }] = useUpdateGroupMutation();
+  const [updateGroupMember, { isLoading: updateMemberLoader }] = useUpdateGroupMemberMutation();
   const { data: truckList, isLoading: truckListLoader } = useGetTrucksQuery();
+  const dispatch = useDispatch();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, memberId: string) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedMemberId(memberId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const [state, setState] = useState({
     name: '',
     description: '',
   });
-  const [selectedTruck, setSelectedTruck] = useState<TruckModel|null>(null);
+  const [selectedTruck, setSelectedTruck] = useState<TruckModel | null>(null);
 
   useEffect(() => {
     if (group) {
@@ -59,20 +80,17 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
         name: group.group.name,
         description: group.group.description,
       });
-
     }
   }, [group, updateLoader, truckList]);
   useEffect(() => {
+    if (truckList) {
+      const defaultSelectedTruck = truckList?.data?.filter((truck) => truck.number == group.group.name);
 
-      if (truckList) {
-        const defaultSelectedTruck = truckList?.data?.filter((truck) => truck.number == group.group.name);
-
-        if (defaultSelectedTruck.length > 0) {
-          setSelectedTruck(defaultSelectedTruck[0]);
-        }
+      if (defaultSelectedTruck.length > 0) {
+        setSelectedTruck(defaultSelectedTruck[0]);
       }
-
-  }, [ truckList,selectedTruck,group]);
+    }
+  }, [truckList, selectedTruck, group]);
 
   return (
     <Grid container p={2}>
@@ -84,28 +102,39 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
       </Grid>
       <Grid item xs={12} md={6}>
         <Box sx={{ p: 2, marginTop: 2 }}>
-          <Autocomplete
-            id="checkboxes-tags-demo"
-            options={truckList?.data || []}
-
-            onChange={(e, v) => {
-              setState({ ...state, name: v?.number || '' });
-            }}
-            getOptionLabel={(option) => option.number}
-            renderOption={(props: any, option, { selected }) => {
-              const { key, ...optionProps } = props;
-              return (
-                <li key={key} {...optionProps}>
-                  <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                  {option.number}
-                </li>
-              );
-            }}
-            fullWidth
-            renderInput={(params) => <TextField {...params} placeholder="Select Truck " />}
-            defaultValue={truckList?.data?.[0]}
-            value={selectedTruck}
-          />
+          {type == 'truck' ? (
+            <Autocomplete
+              id="checkboxes-tags-demo"
+              options={truckList?.data || []}
+              onChange={(e, v) => {
+                setState({ ...state, name: v?.number || '' });
+              }}
+              getOptionLabel={(option) => option.number}
+              renderOption={(props: any, option, { selected }) => {
+                const { key, ...optionProps } = props;
+                return (
+                  <li key={key} {...optionProps}>
+                    <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
+                    {option.number}
+                  </li>
+                );
+              }}
+              fullWidth
+              renderInput={(params) => <TextField {...params} placeholder="Select Truck " />}
+              defaultValue={truckList?.data?.[0]}
+              value={selectedTruck}
+            />
+          ) : (
+            <TextField
+              value={state.name}
+              fullWidth
+              variant="outlined"
+              size="small"
+              label="Description"
+              placeholder="Enter Group name"
+              onChange={(e) => setState({ ...state, name: e.target.value })}
+            />
+          )}
         </Box>
         <Box sx={{ p: 2 }}>
           <TextField
@@ -124,10 +153,13 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
             sx={{ float: 'right' }}
             disabled={updateLoader}
             onClick={async () => {
+              dispatch(showLoader());
               const res = await updateGroup({ groupId: group.group.id, ...state });
               if (res.data) {
+                dispatch(hideLoader());
                 toast.success('Updated Group Successfully.');
               } else {
+                dispatch(hideLoader());
                 toast.error('SERVER ERROR');
               }
             }}
@@ -146,10 +178,15 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
         alignItems={'center'}
         flexDirection={'column'}
       >
-        <Typography variant="h4" color={'GrayText'}>
-          Total Members
+        <Typography variant="h5" color="GrayText">
+          Active Members
         </Typography>
-        <Typography variant="h3">{group.members.length}</Typography>
+        <Typography variant="h3">{group.members.filter((e) => e.status === 'active').length}</Typography>
+
+        <Typography variant="h5" color="GrayText">
+          In-Active Members
+        </Typography>
+        <Typography variant="h3">{group.members.filter((e) => e.status !== 'active').length}</Typography>
         <Button
           variant="outlined"
           sx={{
@@ -165,13 +202,18 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
           }}
           disabled={deleteLoader}
           onClick={async () => {
+            dispatch(showLoader());
             const res = await removeGroup({ groupId: group.group.id });
             if (res.data) {
+              dispatch(hideLoader());
               setViewDetailGroup(false);
               setSelectedGroup('');
               toast.success('Deleted Group Successfully.');
+              return;
             } else {
+              dispatch(hideLoader());
               toast.error('SERVER ERROR');
+              return;
             }
           }}
         >
@@ -197,6 +239,7 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
                 <TableCell>Name</TableCell>
                 <TableCell>E-mail</TableCell>
                 <TableCell>Phone Number</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell>Action</TableCell>
               </TableRow>
             </TableHead>
@@ -208,13 +251,22 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
                     <TableCell>{e.UserProfile.user.email}</TableCell>
                     <TableCell>{e.UserProfile.user.phone_number}</TableCell>
                     <TableCell>
+                      <Chip color={e.status == 'active' ? 'success' : 'error'} label={e.status} />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton onClick={(event) => handleMenuOpen(event, e.id)}>
+                        <Settings />
+                      </IconButton>
                       <IconButton
                         disabled={isLoading}
                         onClick={async () => {
+                          dispatch(showLoader());
                           const res = await removeGroupMember({ groupId: e.id });
                           if (res.data) {
+                            dispatch(hideLoader());
                             toast.success('Removed Member from group.');
                           } else {
+                            dispatch(hideLoader());
                             toast.error('SERVER ERROR');
                           }
                         }}
@@ -230,6 +282,29 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
                 );
               })}
             </TableBody>
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+              <MenuItem
+                disabled={updateMemberLoader}
+                onClick={async () => {
+                  const res = await updateGroupMember({
+                    groupId: selectedMemberId!,
+                    status:
+                      group.members.find((m) => m.id === selectedMemberId)?.status === 'active' ? 'inactive' : 'active',
+                  });
+                  if (res.data) {
+                    toast.success('Updated Status Successfully.');
+                  } else {
+                    toast.error('SERVER ERROR');
+                  }
+                }}
+              >
+                {selectedMemberId
+                  ? group.members.find((m) => m.id === selectedMemberId)?.status === 'active'
+                    ? 'Deactivate'
+                    : 'Activate'
+                  : 'Toggle Status'}
+              </MenuItem>
+            </Menu>
           </Table>
         </TableContainer>
       </Grid>

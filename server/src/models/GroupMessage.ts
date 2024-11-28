@@ -54,6 +54,10 @@ GroupMessage.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: primarySequelize,

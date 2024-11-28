@@ -1,9 +1,11 @@
 import { combineReducers } from 'redux';
 import messageReducer from './messageSlice'; // Import your slices
+import loaderReducer from './loaderSlice'; // Import your slices
 
 const rootReducer = combineReducers({
 
-  messages:messageReducer
+  messages:messageReducer,
+  loader:loaderReducer
   // Add other reducers here
 });
 

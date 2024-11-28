@@ -3,6 +3,7 @@ import 'package:uscitylink/navigation_menu.dart';
 import 'package:uscitylink/views/auth/login_view.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
+import 'package:uscitylink/views/driver/views/group/group_message_ui.dart';
 import 'package:uscitylink/views/driver/views/chats/message_ui.dart';
 import 'package:uscitylink/views/driver/views/chats/profile_view.dart';
 import 'package:uscitylink/views/driver/views/dashboard_view.dart';
@@ -24,6 +25,7 @@ class AppRoutes {
   static const String driverChangePassword = '/driver/settings/change_password';
 
   static const String driverMessage = '/driver/chat/message';
+  static const String driverGroupMessage = '/driver/chat/group_message';
 
   static const String splashView = '/';
 
@@ -68,6 +70,21 @@ class AppRoutes {
 
           return Messageui(
             channelId: channelId,
+            name: name,
+          );
+        }),
+    GetPage(
+        name: AppRoutes.driverGroupMessage,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['channelId'];
+          final groupId = args['groupId'];
+          final name = args['name'];
+
+          return GroupMessageui(
+            channelId: channelId,
+            groupId: groupId,
             name: name,
           );
         }),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
+import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
 
 class ChatView extends StatefulWidget {
   const ChatView({super.key});
@@ -16,6 +18,7 @@ class _ChatViewState extends State<ChatView>
   late TabController _tabController;
 
   ChannelController channelController = Get.put(ChannelController());
+  GroupController groupController = Get.put(GroupController());
 
   @override
   void initState() {
@@ -24,8 +27,11 @@ class _ChatViewState extends State<ChatView>
 
     // Listen for tab changes to refetch channels when the Channels tab is selected
     _tabController.addListener(() {
-      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+      if (_tabController.index == 0 && !_tabController.indexIsChanging) {
         channelController.getUserChannels();
+      }
+      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+        groupController.getUserGroups();
       }
     });
   }
@@ -43,6 +49,7 @@ class _ChatViewState extends State<ChatView>
         // backgroundColor: TColors.primary,
         title: Text("Chats", style: Theme.of(context).textTheme.headlineMedium),
         bottom: TabBar(
+          onTap: (index) => channelController.setInnerTabIndex(index),
           controller: _tabController,
           tabs: const [
             Tab(text: "Channels"),
@@ -55,89 +62,9 @@ class _ChatViewState extends State<ChatView>
           controller: _tabController,
           children: [
             ChannelTab(channelController: channelController),
-            _buildGroupsTab(),
+            GroupTab(groupController: groupController),
           ],
         ),
-      ),
-    );
-  }
-
-  // Groups Tab Content
-  Widget _buildGroupsTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView.builder(
-        itemCount: 10, // Example count
-        itemBuilder: (context, index) {
-          return ListTile(
-            contentPadding: const EdgeInsets.all(
-                0), // Remove default padding for better alignment
-            leading: Stack(
-              clipBehavior:
-                  Clip.none, // To allow the icon to overflow the circle
-              children: [
-                // Circle Avatar for Channel
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Colors.grey.shade400,
-                  child: Text(
-                    "G$index", // Placeholder text for avatar, can be replaced with an image
-                    style: const TextStyle(color: Colors.black, fontSize: 18),
-                  ),
-                ),
-                // Online Status (Green Circle) on top of the Avatar
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    height: 12,
-                    width: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white,
-                          width: 2), // White border for contrast
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Channel Name
-                Expanded(
-                  child: Text(
-                    "Group $index", // Channel name
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow
-                        .ellipsis, // Handles overflow if the text is too long
-                  ),
-                ),
-                // Message time (right side of title)
-                const Row(
-                  children: [
-                    // Message time
-                    Text(
-                      "10:30 AM", // Example time, replace with actual message time
-                      style: TextStyle(fontSize: 12, color: Colors.black45),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            subtitle: Text(
-              "Description of Group $index",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black54),
-            ),
-            onTap: () {
-              Get.toNamed(AppRoutes.driverMessage);
-            },
-          );
-        },
       ),
     );
   }

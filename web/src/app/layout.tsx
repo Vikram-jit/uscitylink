@@ -9,6 +9,7 @@ import StoreProvider from '@/components/core/StoreProvider';
 import { ThemeProvider } from '@/components/core/theme-provider/theme-provider';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import LoaderDialog from '@/components/LoaderDialog';
 
 export const viewport = { width: 'device-width', initialScale: 1 } satisfies Viewport;
 
@@ -28,9 +29,11 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
             <UserProvider>
               <ThemeProvider>{children}</ThemeProvider>
             </UserProvider>
+
           </LocalizationProvider>
         </StoreProvider>
         <ToastContainer />
+
       </body>
     </html>
   );

@@ -351,6 +351,7 @@ export async function messageToDriverByTruckGroup(
   direction: string,
   url: string | null
 ) {
+  
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
   const userIds = userId.split(",");
@@ -371,6 +372,7 @@ export async function messageToDriverByTruckGroup(
       isRead: false,
       status: "sent",
       url: url || null,
+      type:'truck_group'
     });
   
     const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
@@ -470,6 +472,7 @@ export async function messageToDriverByTruckGroup(
     senderId: socket?.user?.id,
     deliveryStatus: "sent",
     messageTimestampUtc: utcTime,
+    url: url || null,
   });
 
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
@@ -561,4 +564,42 @@ export async function unreadAllUserMessage(
       userId,
     });
   }
+}
+
+
+export async function messageToGroup(
+  io: Server,
+  socket: CustomSocket,
+  groupId:string,
+  channelId:string,
+  body: string,
+  direction: string,
+  url: string | null
+) {
+
+  // console.log(groupId,channelId,body,direction,url)
+  const utcTime = moment.utc().toDate();
+
+  const message = await Message.create({
+    channelId: channelId,
+    groupId: groupId,
+    userProfileId: socket?.user?.id,
+    body,
+    messageDirection: direction,
+    deliveryStatus: "sent",
+    messageTimestampUtc: utcTime,
+    senderId: socket?.user?.id,
+    isRead: false,
+    status: "sent",
+    url: url || null,
+    type:'group'
+  });
+
+  Object.values(global.group_open_chat[groupId]).map((e)=>{
+    const onlineUser = global.userSockets[e.userId];
+    if(onlineUser){
+      io.to(onlineUser.id).emit('new_group_message_received',message)
+    }
+  });
+
 }

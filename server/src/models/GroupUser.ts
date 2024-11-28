@@ -5,9 +5,10 @@ class GroupUser extends Model {
   public id!: string;
   public groupId!: string;
   public userProfileId!: string;
+  public status?: string;
 
   static associate(models: any) {
-      //  GroupUser.belongsTo(models.Group, { foreignKey: 'groupId' });
+      GroupUser.belongsTo(models.Group, { foreignKey: 'groupId' });
       GroupUser.belongsTo(models.UserProfile, { foreignKey: 'userProfileId' });
   }
 }
@@ -35,6 +36,11 @@ GroupUser.init(
         model: 'user_profiles', // Adjust based on your table name
         key: 'id',
       },
+    },
+    status: {
+      type: DataTypes.ENUM,
+      values: ['active', 'inactive'],  // Enum values
+    defaultValue: 'active',  
     },
   },
   {

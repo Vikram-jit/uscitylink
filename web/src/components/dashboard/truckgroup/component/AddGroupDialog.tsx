@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useCreateGroupMutation, useGetTrucksQuery } from '@/redux/GroupApiSlice';
 import { UserModel } from '@/redux/models/UserModel';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { useGetUsersQuery } from '@/redux/UserApiSlice';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
@@ -15,7 +16,10 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+
+import useErrorHandler from '@/hooks/use-error-handler';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -32,21 +36,22 @@ const Transition = React.forwardRef(function Transition(
 interface AddGroupDialog {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  type: string;
 }
 
-export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
+export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) {
   const handleClose = () => {
     setOpen(false);
   };
-
+  const dispatch = useDispatch();
   const [createGroup] = useCreateGroupMutation();
-
+  const [message, setApiResponse] = useErrorHandler();
   const { data: truckList, isLoading } = useGetTrucksQuery();
 
   const [state, setState] = React.useState({
     name: '',
     description: '',
-    type: 'truck',
+    type: type,
   });
   const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
 
@@ -57,6 +62,7 @@ export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
 
   async function onSubmit() {
     try {
+      dispatch(showLoader());
       const selectedMember = selectedUsers.map((user) => user.id);
 
       const data = {
@@ -66,10 +72,16 @@ export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
 
       const res = await createGroup(data);
       if (res.data?.status) {
+        dispatch(hideLoader());
         toast.success('Add Group Successfully.');
         setOpen(false);
+        return;
       }
+      dispatch(hideLoader());
+      setApiResponse(res.error as any);
+      return;
     } catch (error) {
+      dispatch(hideLoader());
       console.log(error);
     }
   }
@@ -84,30 +96,39 @@ export default function AddGroupDialog({ open, setOpen }: AddGroupDialog) {
         onClose={handleClose}
         aria-describedby="alert-dialog-slide-description"
       >
-        <DialogTitle>{'Add Truck Group'}</DialogTitle>
+        <DialogTitle>{type == 'group' ? 'Add Group' : 'Add Truck Group'}</DialogTitle>
         <DialogContent>
           <Grid container>
             <Grid item xs={12} mt={1}>
-              <Autocomplete
-                id="checkboxes-tags-demo"
-                options={truckList?.data || []}
-                disableCloseOnSelect
-                onChange={(e,v)=>{
-                    setState({...state,name:v?.number||''})
-                }}
-                getOptionLabel={(option) => option.number}
-                renderOption={(props: any, option, { selected }) => {
-                  const { key, ...optionProps } = props;
-                  return (
-                    <li key={key} {...optionProps}>
-                      <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                      {option.number}
-                    </li>
-                  );
-                }}
-                fullWidth
-                renderInput={(params) => <TextField {...params} placeholder='Select Truck ' />}
-              />
+              {type == 'truck' ? (
+                <Autocomplete
+                  id="checkboxes-tags-demo"
+                  options={truckList?.data || []}
+                  disableCloseOnSelect
+                  onChange={(e, v) => {
+                    setState({ ...state, name: v?.number || '' });
+                  }}
+                  getOptionLabel={(option) => option.number}
+                  renderOption={(props: any, option, { selected }) => {
+                    const { key, ...optionProps } = props;
+                    return (
+                      <li key={key} {...optionProps}>
+                        <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
+                        {option.number}
+                      </li>
+                    );
+                  }}
+                  fullWidth
+                  renderInput={(params) => <TextField {...params} placeholder="Select Truck " />}
+                />
+              ) : (
+                <TextField
+                  value={state.name}
+                  fullWidth
+                  placeholder="Enter Group name"
+                  onChange={(e) => setState({ ...state, name: e.target.value })}
+                />
+              )}
             </Grid>
             <Grid item xs={12} mt={1}>
               <TextField

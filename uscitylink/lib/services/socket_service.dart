@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 
@@ -82,8 +83,18 @@ class SocketService extends GetxController {
       }
     });
 
+    socket.on('new_group_message_received', (data) {
+      if (Get.isRegistered<GroupController>()) {
+        Get.find<GroupController>().onNewMessage(data);
+      }
+    });
+
     socket.on("user_added_to_channel", (data) {
       Get.find<ChannelController>().addNewChannel(data);
+    });
+
+    socket.on('user_added_to_group', (data) {
+      Get.find<GroupController>().addNewGroup(data);
     });
 
     socket.on("update_channel_message_count", (data) {
@@ -160,12 +171,36 @@ class SocketService extends GetxController {
     }
   }
 
+  void sendGroupMessage(
+      String groupId, String channelId, String body, String? url) {
+    if (isConnected.value) {
+      socket.emit("send_group_message", {
+        "groupId": groupId,
+        "channelId": channelId,
+        "body": body,
+        "direction": "S",
+        "url": url,
+      });
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
   void updateActiveChannel(String channelId) {
     if (isConnected.value) {
       socket.emit("driver_open_chat", channelId);
       if (channelId.isNotEmpty) {
         socket.emit("update_channel_message_count", channelId);
       }
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
+  void addUserToGroup(String channelId, String groupId) {
+    if (isConnected.value) {
+      socket.emit(
+          "group_user_add", {"channel_id": channelId, "group_id": groupId});
     } else {
       print("Not connected to socket.");
     }

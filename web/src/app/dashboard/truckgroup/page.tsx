@@ -11,7 +11,7 @@ export default function Page(): React.JSX.Element {
   return (
 
 
-     <View/>
+     <View type={"truck"}/>
 
   );
 }

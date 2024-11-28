@@ -1,17 +1,20 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useGetGroupByIdQuery, useGetGroupsQuery } from '@/redux/GroupApiSlice';
-import Logout from '@mui/icons-material/Logout';
-import PersonAdd from '@mui/icons-material/PersonAdd';
-import Settings from '@mui/icons-material/Settings';
+import { useGetGroupByIdQuery, useGetGroupMessagesQuery, useGetGroupsQuery } from '@/redux/GroupApiSlice';
+import { useFileUploadMutation } from '@/redux/MessageApiSlice';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import { AttachFile } from '@mui/icons-material';
 import {
-  Alert,
   Avatar,
   Badge,
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -23,22 +26,18 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
 import { styled } from '@mui/system';
-import { Eye, EyeClosed } from '@phosphor-icons/react';
 import moment from 'moment';
-import { BsCheckAll, BsEmojiSmile } from 'react-icons/bs';
-import { FiMoreVertical, FiPhone, FiPlus, FiSearch, FiSend, FiUsers, FiVideo } from 'react-icons/fi';
-import { MdAttachFile } from 'react-icons/md';
+import { BsCheckAll } from 'react-icons/bs';
+import { FiSearch, FiSend } from 'react-icons/fi';
+import { useDispatch } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import MediaComponent from '@/components/messages/MediaComment';
 
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
-import { ArrowBackIos } from '@mui/icons-material';
-import AddMemberDialog from './component/AddmemberDialog';
+import GroupHeader from './component/GroupHeader';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -55,7 +54,7 @@ const MessageBubble = styled(Paper)(({ isOwn }: { isOwn: boolean }) => ({
   padding: '10px 15px',
   maxWidth: '65%',
   wordBreak: 'break-word',
-  backgroundColor: isOwn ? '#635bff' : '#fff',
+  backgroundColor: isOwn ? '#635bff' : '#e4e4e4',
   color: isOwn ? '#fff' : '#111b21',
   alignSelf: isOwn ? 'flex-end' : 'flex-start',
   borderRadius: '7.5px',
@@ -88,27 +87,12 @@ const HeaderContainer = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  "&:hover":{
-    cursor:"pointer"
-  }
+  '&:hover': {
+    cursor: 'pointer',
+  },
 });
 
-interface User {
-  name: string;
-  avatar: string;
-  status: 'online' | 'offline';
-}
-
-interface Message {
-  id: number;
-  text: string;
-  sender: 'self' | 'other';
-  timestamp: Date;
-  status: 'sent' | 'read';
-  user: User;
-}
-
-const ChatInterface: React.FC = () => {
+const ChatInterface = ({ type }: { type: string }) => {
   const { socket } = useSocket();
 
   const [open, setOpen] = useState<boolean>(false);
@@ -116,17 +100,30 @@ const ChatInterface: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [addMemberDialog, setAddMemberDialog] = useState<boolean>(false);
+  const [senderId,setSenderId] = useState<string>("")
   const [viewDetailGroup, setViewDetailGroup] = useState<boolean>(false);
 
-  const { data: groupList } = useGetGroupsQuery({ type: 'truck' });
+  const { data: groupList } = useGetGroupsQuery({ type: type });
 
   const [messages, setMessages] = useState<any>([]);
 
   const [selectedGroup, setSelectedGroup] = useState<string>('');
-
+  const [selectedChannel, setSelectedChannel] = useState<string>('');
+  const [fileUpload] = useFileUploadMutation();
+  const dispatch = useDispatch();
+  const [file, setFile] = React.useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  const [caption, setCaption] = React.useState('');
   const { data: group, isFetching } = useGetGroupByIdQuery(
     { id: selectedGroup },
+    {
+      skip: !selectedGroup,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+
+  const { data: groupMessage } = useGetGroupMessagesQuery(
+    { channel_id: selectedChannel, group_id: selectedGroup },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -141,6 +138,33 @@ const ChatInterface: React.FC = () => {
       });
     }
   };
+
+  const handleFileChange = (event: any) => {
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreviewDialogOpen(true);
+    }
+  };
+
+  const renderFilePreview = () => {
+    if (file && file.type.startsWith('image/')) {
+      // Display image preview for images
+      return (
+        <img
+          src={URL.createObjectURL(file)}
+          alt="Preview"
+          style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
+        />
+      );
+    } else if (file && file.type === 'application/pdf') {
+      // Display placeholder for PDF files
+      return <div>PDF Preview (placeholder)</div>;
+    } else {
+      return <div>File Preview Not Available</div>;
+    }
+  };
+
   const handleReceiveMessage = useCallback(
     (message: any) => {
       setMessages((prevMessages: any) => {
@@ -158,59 +182,87 @@ const ChatInterface: React.FC = () => {
   );
 
   useEffect(() => {
-    if (group?.status && group?.data?.messages) {
-      setMessages(group?.data?.messages || []);
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+    if (type == 'truck') {
+      if (group?.status && group?.data?.messages) {
+        setMessages(group?.data?.messages || []);
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      }
+    } else {
+      if (groupMessage?.data) {
+        setMessages(groupMessage?.data.messages || []);
+        setSenderId(groupMessage?.data?.senderId)
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      }
     }
-  }, [group]);
+  }, [group, groupMessage]);
 
   useEffect(() => {
     if (socket) {
-      socket.on('receive_message_group', handleReceiveMessage);
+
+      if(type == "group"){
+        socket.on('new_group_message_received', handleReceiveMessage);
+      }else{
+        socket.on('receive_message_group', handleReceiveMessage);
+      }
+
 
       // Cleanup the event listener when the component unmounts or socket changes
       return () => {
-        socket.off('receive_message_group', handleReceiveMessage);
+        if(type == "group"){
+          socket.off('new_group_message_received', handleReceiveMessage);
+        }else{
+          socket.off('receive_message_group', handleReceiveMessage);
+        }
+
       };
     }
   }, [socket]);
 
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const openMenu = Boolean(anchorEl);
-
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
   useEffect(() => {
     scrollToBottom();
   }, [group]);
-
+  const handleCancel = () => {
+    setPreviewDialogOpen(false); // Close the preview dialog without sending
+    setFile(null);
+  };
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
     try {
       // userId,groupId,body,direction,url
 
-      if (group?.data) {
-        const userIds = group.data.members.map((e) => e.userProfileId);
-        if (userIds.length == 0) {
-          alert('Please Add member before send message into group');
-          return;
-        }
-        setIsLoading(true);
-        socket?.emit('send_message_to_user_by_group', {
-          userId: userIds?.join(','),
+      if (type == 'group') {
+        socket.emit('send_group_message', {
           groupId: selectedGroup,
+          channelId: selectedChannel,
           body: newMessage,
           direction: 'S',
+          url: '',
         });
+      } else {
+        if (group?.data) {
+          const userIds = group.data.members
+            .filter((e) => e.userProfileId && e.status == 'active')
+            .map((e) => e.userProfileId);
+
+          if (userIds.length == 0) {
+            alert('Please Add member before send message into group');
+            return;
+          }
+          setIsLoading(true);
+          socket?.emit('send_message_to_user_by_group', {
+            userId: userIds?.join(','),
+            groupId: selectedGroup,
+            body: newMessage,
+            direction: 'S',
+          });
+        }
       }
+
       setNewMessage('');
       // const data = {}
     } catch (err) {
@@ -222,14 +274,52 @@ const ChatInterface: React.FC = () => {
   const formatTimestamp = (timestamp: Date): string => {
     return moment.utc(timestamp).format('HH:mm');
   };
+  const handleIconClick = () => {
+    document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
+  };
+
+  async function sendMessage() {
+    try {
+      dispatch(showLoader());
+      if (group?.data) {
+        const userIds = group.data.members
+          .filter((e) => e.userProfileId && e.status == 'active')
+          .map((e) => e.userProfileId);
+        if (userIds.length == 0) {
+          alert('Please Add member before send message into group');
+          dispatch(hideLoader());
+          return;
+        }
+        let formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', '');
+        formData.append('groupId', group.data.group.id);
+        formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
+        const res = await fileUpload(formData).unwrap();
+        if (res.status) {
+          socket?.emit('send_message_to_user_by_group', {
+            userId: userIds?.join(','),
+            groupId: selectedGroup,
+            body: caption,
+            url: res?.data?.key,
+            direction: 'S',
+          });
+          setFile(null);
+          setCaption('');
+          setPreviewDialogOpen(false);
+          dispatch(hideLoader());
+        }
+      }
+    } catch (error) {
+      dispatch(hideLoader());
+      console.log(error);
+    }
+  }
 
   return (
     <Grid container>
-      {open && <AddGroupDialog open={open} setOpen={setOpen} />}
-      {/* {addMemberDialog && (
-        <AddMemberDialog open={addMemberDialog} setOpen={setAddMemberDialog} groupId={group?.data.group.id ||''} group={group?.data || undefined}/>
-      )} */}
-      {/* Sidebar (Contact List) */}
+      {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
+
       <Grid item xs={12} md={3} sx={{ borderRight: '1px solid #e0e0e0' }}>
         <SidebarContainer>
           <HeaderContainer>
@@ -271,8 +361,15 @@ const ChatInterface: React.FC = () => {
                         },
                       }}
                       onClick={() => {
-                        socket?.emit('staff_open_truck_group', group.id);
+                        if(type == "group"){
+                          socket.emit(
+                            "group_user_add", {"channel_id": group.group_channel.channelId, "group_id": group.id});
+                        }else{
+                          socket?.emit('staff_open_truck_group', group.id);
+                        }
+
                         setSelectedGroup(group.id);
+                        setSelectedChannel(group.group_channel.channelId);
                         setTimeout(() => {
                           scrollToBottom();
                         }, 100);
@@ -316,182 +413,43 @@ const ChatInterface: React.FC = () => {
 
       {viewDetailGroup ? (
         <Grid item xs={12} md={9}>
-          <HeaderContainer onClick={() => setViewDetailGroup(false)}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton onClick={()=>setViewDetailGroup(false)}>
-                <ArrowBackIos/>
-              </IconButton>
-              <Avatar>{group?.data?.group?.name?.split('')?.[0]?.toUpperCase()}</Avatar>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                  {group?.data?.group?.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {group?.data.members?.length == 0
-                    ? 'No members yet'
-                    : ` Members : ${group?.data.members?.map((e) => e?.UserProfile?.username)?.join(',')}`}
-                </Typography>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton
-                onClick={handleClick}
-                size="small"
-                sx={{ ml: 2 }}
-                aria-controls={open ? 'account-menu' : undefined}
-                aria-haspopup="true"
-                aria-expanded={open ? 'true' : undefined}
-              >
-                <FiMoreVertical />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                id="account-menu"
-                open={openMenu}
-                onClose={handleClose}
-                onClick={handleClose}
-                slotProps={{
-                  paper: {
-                    elevation: 0,
-                    sx: {
-                      overflow: 'visible',
-                      filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                      mt: 1.5,
-                      '& .MuiAvatar-root': {
-                        width: 32,
-                        height: 32,
-                        ml: -0.5,
-                        mr: 1,
-                      },
-                      '&::before': {
-                        content: '""',
-                        display: 'block',
-                        position: 'absolute',
-                        top: 0,
-                        right: 14,
-                        width: 10,
-                        height: 10,
-                        bgcolor: 'background.paper',
-                        transform: 'translateY(-50%) rotate(45deg)',
-                        zIndex: 0,
-                      },
-                    },
-                  },
-                }}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              >
-                <MenuItem onClick={() => setViewDetailGroup(true)}>
-                  <ListItemIcon>
-                    <Eye fill="fill" fontSize="small" style={{ fontSize: 18 }} />
-                  </ListItemIcon>
-                  View Details
-                </MenuItem>
-                {/* <MenuItem onClick={() => setAddMemberDialog(true)}>
-                  <ListItemIcon>
-                    <Settings fontSize="small" />
-                  </ListItemIcon>
-                  Add Members
-                </MenuItem> */}
-              </Menu>
-            </Box>
-          </HeaderContainer>
+          <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} />
+
           <Divider />
 
-          {group && <GroupDetail group={group.data} setViewDetailGroup={setViewDetailGroup} setSelectedGroup={setSelectedGroup}/>}
+          {group && (
+            <GroupDetail
+              type={type}
+              group={group.data}
+              setViewDetailGroup={setViewDetailGroup}
+              setSelectedGroup={setSelectedGroup}
+            />
+          )}
         </Grid>
       ) : (
         <Grid item xs={12} md={9}>
           {selectedGroup ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
-                <HeaderContainer onClick={() => setViewDetailGroup(true)} >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar>{group?.data?.group?.name?.split('')?.[0]?.toUpperCase()}</Avatar>
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                        {group?.data?.group?.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {group.data.members?.length == 0
-                          ? 'No members yet'
-                          : ` Members : ${group.data.members?.map((e) => e?.UserProfile?.username)?.join(',')}`}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                      onClick={handleClick}
-                      size="small"
-                      sx={{ ml: 2 }}
-                      aria-controls={open ? 'account-menu' : undefined}
-                      aria-haspopup="true"
-                      aria-expanded={open ? 'true' : undefined}
-                    >
-                      <FiMoreVertical />
-                    </IconButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      id="account-menu"
-                      open={openMenu}
-                      onClose={handleClose}
-                      onClick={handleClose}
-                      slotProps={{
-                        paper: {
-                          elevation: 0,
-                          sx: {
-                            overflow: 'visible',
-                            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                            mt: 1.5,
-                            '& .MuiAvatar-root': {
-                              width: 32,
-                              height: 32,
-                              ml: -0.5,
-                              mr: 1,
-                            },
-                            '&::before': {
-                              content: '""',
-                              display: 'block',
-                              position: 'absolute',
-                              top: 0,
-                              right: 14,
-                              width: 10,
-                              height: 10,
-                              bgcolor: 'background.paper',
-                              transform: 'translateY(-50%) rotate(45deg)',
-                              zIndex: 0,
-                            },
-                          },
-                        },
-                      }}
-                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    >
-                      <MenuItem onClick={() => setViewDetailGroup(true)}>
-                        <ListItemIcon>
-                          <Eye fill="fill" fontSize="small" style={{ fontSize: 18 }} />
-                        </ListItemIcon>
-                        View Details
-                      </MenuItem>
-                      {/* <MenuItem onClick={handleClose}>
-                        <ListItemIcon>
-                          <Settings fontSize="small" />
-                        </ListItemIcon>
-                        Add Members
-                      </MenuItem> */}
-                    </Menu>
-                  </Box>
-                </HeaderContainer>
-
-                {error && (
-                  <Alert severity="error" onClose={() => setError(null)} sx={{ m: 1 }}>
-                    {error}
-                  </Alert>
-                )}
+                <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} />
                 <Divider />
                 <MessagesContainer>
                   {messages.map((msg: any) => (
-                    <MessageBubble key={msg.id} isOwn={msg.sender !== 'self'}>
+                    <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
+                      {msg.url && (
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            px: 1.75,
+                            py: 1.25,
+                          }}
+                        >
+                          <MediaComponent
+                            url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                            name={msg.url ? msg.url : ' '}
+                          />
+                        </Paper>
+                      )}
                       {msg.body}
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
@@ -505,8 +463,14 @@ const ChatInterface: React.FC = () => {
                 {/* Input Container */}
 
                 <InputContainer>
-                  <IconButton>
-                    <MdAttachFile />
+                  <input
+                    id="file-input"
+                    type="file"
+                    style={{ display: 'none' }} // Hide the input element
+                    onChange={handleFileChange} // Handle file selection
+                  />
+                  <IconButton onClick={handleIconClick}>
+                    <AttachFile />
                   </IconButton>
                   <TextField
                     fullWidth
@@ -549,6 +513,35 @@ const ChatInterface: React.FC = () => {
             </Box>
           )}
         </Grid>
+      )}
+      {previewDialogOpen && (
+        <Dialog open={previewDialogOpen} onClose={handleCancel} fullWidth>
+          <DialogTitle>Selected File</DialogTitle>
+          <DialogContent>
+            <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
+              {/* Render file preview */}
+              {renderFilePreview()}
+
+              {/* Input for file description */}
+              <TextField
+                fullWidth
+                placeholder="Enter file description..."
+                multiline
+                value={caption}
+                onChange={(event) => setCaption(event.target.value)}
+                sx={{ marginTop: 2 }}
+              />
+            </div>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancel} color="secondary">
+              Cancel
+            </Button>
+            <Button disabled={isLoading} onClick={sendMessage} color="primary">
+              Send {isLoading && <CircularProgress />}
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
     </Grid>
   );

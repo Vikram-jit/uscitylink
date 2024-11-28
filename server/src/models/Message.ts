@@ -16,6 +16,7 @@ export class Message extends Model {
   public isRead!: boolean;
   public status!: string;
   public url?:string
+  public type?:string
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -73,6 +74,11 @@ Message.init(
     status: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    type: {
+      type: DataTypes.ENUM,
+      values: ['default', 'truck_group','group'],  // Enum values
+    defaultValue: 'default',  
     },
   },
   {

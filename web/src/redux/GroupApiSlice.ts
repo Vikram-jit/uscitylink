@@ -85,6 +85,28 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
+    updateGroupMember: builder.mutation<ApiResponse, { groupId: string; status: string;  }>({
+      invalidatesTags: [ 'group'],
+      query: (payload) => ({
+        url: `group/member/${payload.groupId}`,
+        method: 'PUT',
+        body: payload,
+      }),
+    }),
+    getGroupMessages: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: any;
+      },
+      Partial<{ channel_id:string,  group_id: string }>
+    >({
+      providesTags: ['group'],
+      query: (payload) => ({
+        url: `message/${payload.channel_id}/${payload.group_id}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -97,4 +119,6 @@ export const {
   useRemoveGroupMemberMutation,
   useRemoveGroupMutation,
   useUpdateGroupMutation,
+  useUpdateGroupMemberMutation,
+  useGetGroupMessagesQuery
 } = GroupApiSlice;
