@@ -8,7 +8,6 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class GroupTab extends StatelessWidget {
-  // Pass the controller as a parameter to this widget
   final GroupController groupController;
 
   SocketService socketServive = Get.put(SocketService());
@@ -21,11 +20,9 @@ class GroupTab extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: RefreshIndicator(
         onRefresh: () async {
-          // Trigger the refresh action when the user pulls down the list
           groupController.getUserGroups();
         },
         child: Obx(() {
-          // If no channels are available, show loading indicator
           if (groupController.groups.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           } else {
@@ -35,10 +32,9 @@ class GroupTab extends StatelessWidget {
                 var group = groupController.groups[index];
 
                 return Dismissible(
-                  key: Key('${group.id}'), // Use the unique channel ID
-                  direction: DismissDirection.endToStart, // Swipe to delete
+                  key: Key('${group.id}'),
+                  direction: DismissDirection.endToStart,
                   onDismissed: (direction) {
-                    // Handle item removal and show a snackbar
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text("Channel ${group.group?.name} deleted"),
@@ -65,7 +61,6 @@ class GroupTab extends StatelessWidget {
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Channel name
                         Expanded(
                           child: Text(
                             group.group?.name ?? 'Unnamed Group',
@@ -73,38 +68,34 @@ class GroupTab extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Time and Badge column
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Formatted time (UTC converted to local time)
-                            // Text(
-                            //   Utils.formatUtcTime(channel
-                            //           .last_message?.messageTimestampUtc) ??
-                            //       '',
-                            //   style: const TextStyle(
-                            //       fontSize: 12, color: Colors.black45),
-                            // ),
-
-                            // Badge showing unread message count
-                            // channel.recieve_message_count != 0
-                            //     ? Badge(
-                            //         label: Text(
-                            //           channel.recieve_message_count == 0
-                            //               ? ""
-                            //               : '${channel.recieve_message_count}', // Example unread count, replace with actual count
-                            //           style: const TextStyle(fontSize: 11),
-                            //         ),
-                            //         backgroundColor: TColors.primary,
-                            //       )
-                            //     : const SizedBox(),
+                            Text(
+                              Utils.formatUtcTime(group
+                                      .last_message?.messageTimestampUtc) ??
+                                  '',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.black45),
+                            ),
+                            group.message_count != 0
+                                ? Badge(
+                                    label: Text(
+                                      group.message_count == 0
+                                          ? ""
+                                          : '${group.message_count}',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    backgroundColor: TColors.primary,
+                                  )
+                                : const SizedBox(),
                           ],
                         ),
                       ],
                     ),
                     subtitle: Text(
-                      "Not message yet", // Message body or description
+                      group.last_message?.body ?? "Not message yet",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.black54),
@@ -113,7 +104,7 @@ class GroupTab extends StatelessWidget {
                       socketServive.addUserToGroup(
                           group.group!.groupChannel!.channelId!,
                           group.groupId!);
-
+                      socketServive.updateCountGroup(group.groupId!);
                       Get.toNamed(
                         AppRoutes.driverGroupMessage,
                         arguments: {

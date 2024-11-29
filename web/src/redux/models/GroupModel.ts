@@ -1,3 +1,4 @@
+import { MessageModel } from './MessageModel';
 import { User } from './UserModel';
 
 export interface GroupModel {
@@ -7,6 +8,8 @@ export interface GroupModel {
   type: string;
   createdAt: Date;
   updatedAt: Date;
+  last_message: MessageModel
+  message_count:number
   group_channel: group_channel;
 }
 export interface group_channel {

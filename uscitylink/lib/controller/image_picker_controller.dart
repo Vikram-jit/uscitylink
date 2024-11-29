@@ -14,9 +14,11 @@ class ImagePickerController extends GetxController {
   Rx<File?> selectedImage = Rx<File?>(null);
   RxString caption = ''.obs;
   RxString selectedSource = ''.obs;
+
   final ImagePicker _picker = ImagePicker();
   var isLoading = false.obs; // Loading state for image
-  Future<void> pickImageFromCamera(String channelId) async {
+  Future<void> pickImageFromCamera(
+      String channelId, String location, String? groupId) async {
     try {
       isLoading.value = true;
       selectedSource.value = "camera";
@@ -27,6 +29,8 @@ class ImagePickerController extends GetxController {
         Get.to(() => PhotoPreviewScreen(
               channelId: channelId,
               type: "media",
+              location: location,
+              groupId: groupId,
             ));
       }
     } catch (e) {
@@ -34,7 +38,8 @@ class ImagePickerController extends GetxController {
     }
   }
 
-  Future<void> pickImageFromGallery(String channelId) async {
+  Future<void> pickImageFromGallery(
+      String channelId, String location, String? groupId) async {
     try {
       selectedSource.value = "gallery";
       isLoading.value = true;
@@ -46,6 +51,8 @@ class ImagePickerController extends GetxController {
         Get.to(() => PhotoPreviewScreen(
               channelId: channelId,
               type: "media",
+              location: location,
+              groupId: groupId,
             ));
       }
     } catch (e) {
@@ -53,12 +60,18 @@ class ImagePickerController extends GetxController {
     }
   }
 
-  void uploadFile(String channelId, String type) async {
+  void uploadFile(
+      String channelId, String type, String location, String? groupId) async {
     try {
       var res = await _apiService.fileUpload(selectedImage.value!,
           "${Constant.url}/message/fileUpload", channelId, type);
       if (res.status) {
-        socketService.sendMessage(caption.value, res.data.key!);
+        if (location == "group") {
+          socketService.sendGroupMessage(
+              groupId!, channelId, caption.value, res.data.key!);
+        } else {
+          socketService.sendMessage(caption.value, res.data.key!);
+        }
 
         Get.back();
         while (Get.isBottomSheetOpen == true) {

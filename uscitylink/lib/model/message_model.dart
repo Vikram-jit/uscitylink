@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 class MessageModel {
   String? id;
   String? channelId;
@@ -13,6 +15,7 @@ class MessageModel {
   String? url;
   String? createdAt;
   String? updatedAt;
+  Sender? sender;
 
   MessageModel(
       {this.id,
@@ -28,7 +31,8 @@ class MessageModel {
       this.status,
       this.createdAt,
       this.updatedAt,
-      this.url});
+      this.url,
+      this.sender});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -45,6 +49,7 @@ class MessageModel {
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     url = json['url'];
+    sender = json['sender'] != null ? Sender.fromJson(json['sender']) : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -63,6 +68,36 @@ class MessageModel {
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     data['url'] = url;
+    if (sender != null) {
+      data['last_message'] = sender?.toJson();
+    }
+    return data;
+  }
+}
+
+class Sender {
+  String? id;
+  String? username;
+  bool? isOnline;
+
+  Sender({
+    this.id,
+    this.username,
+    this.isOnline,
+  });
+
+  Sender.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    username = json['username'];
+    isOnline = json['isOnline'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['username'] = username;
+    data['isOnline'] = isOnline;
+
     return data;
   }
 }

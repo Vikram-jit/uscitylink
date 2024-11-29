@@ -15,6 +15,8 @@ import {
   messageToDriver,
   messageToDriverByTruckGroup,
   messageToGroup,
+  unreadAllGroupMessageByStaff,
+  unreadAllGroupMessageByUser,
   unreadAllMessage,
   unreadAllUserMessage,
 } from "./messageHandler";
@@ -85,7 +87,7 @@ export const initSocket = (httpServer: any) => {
   global.driverOpenChat = [];
   global.staffOpenChat = {};
   global.staffOpenTruckGroup = {};
-  global.group_open_chat ={}
+  global.group_open_chat = {};
   //Validate User Connect With Socket
   io.use(async (socket: CustomSocket, next) => {
     const token = socket.handshake.query.token as string;
@@ -289,13 +291,11 @@ export const initSocket = (httpServer: any) => {
         const userSocket = global.userSockets[user_id];
 
         if (userSocket) {
-          getSocketInstance()
-            .to(userSocket.id)
-            .emit("user_added_to_group", {
-              groupId: group_id,
-              channelId: channel_id,
-              userId: user_id,
-            });
+          getSocketInstance().to(userSocket.id).emit("user_added_to_group", {
+            groupId: group_id,
+            channelId: channel_id,
+            userId: user_id,
+          });
         }
       } else {
         console.log(`User ${user_id} is already in the group ${group_id}`);
@@ -303,7 +303,7 @@ export const initSocket = (httpServer: any) => {
       console.log(global.group_open_chat);
     });
 
-    socket.on("user_removed_from_group", ({ group_id }) => {
+    socket.on("user_removed_from_group", (group_id) => {
       if (group_open_chat[group_id]) {
         const user_id = socket?.user?.id!;
 
@@ -313,23 +313,13 @@ export const initSocket = (httpServer: any) => {
 
         if (updatedGroup.length !== group_open_chat[group_id].length) {
           group_open_chat[group_id] = updatedGroup;
-
-          const userSocket = global.userSockets[user_id];
-
-          if (userSocket) {
-            getSocketInstance()
-              .to(userSocket.id)
-              .emit("user_removed_from_group", {
-                groupId: group_id,
-                userId: user_id,
-              });
-          }
         } else {
           console.log(`User ${user_id} is not in the group ${group_id}`);
         }
       } else {
         console.log(`Group ${group_id} does not exist`);
       }
+      console.log(group_open_chat);
     });
 
     //Staff Open Chat
@@ -351,6 +341,16 @@ export const initSocket = (httpServer: any) => {
       "update_channel_sent_message_count",
       async ({ channelId, userId }) =>
         await unreadAllUserMessage(io, socket, channelId, userId)
+    );
+
+    socket.on(
+      "update_group_staff_message_count",
+      async (groupId) => await unreadAllGroupMessageByStaff(io, socket, groupId)
+    );
+
+    socket.on(
+      "update_group_message_count",
+      async (groupId) => await unreadAllGroupMessageByUser(io, socket, groupId)
     );
 
     //driver web app
@@ -386,7 +386,19 @@ export const initSocket = (httpServer: any) => {
         )
     );
 
-    socket.on("send_group_message",async({groupId,channelId, body, direction, url})=>await messageToGroup(io,socket,groupId,channelId,body,direction,url));
+    socket.on(
+      "send_group_message",
+      async ({ groupId, channelId, body, direction, url }) =>
+        await messageToGroup(
+          io,
+          socket,
+          groupId,
+          channelId,
+          body,
+          direction,
+          url
+        )
+    );
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,

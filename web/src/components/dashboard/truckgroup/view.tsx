@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetGroupByIdQuery, useGetGroupMessagesQuery, useGetGroupsQuery } from '@/redux/GroupApiSlice';
 import { useFileUploadMutation } from '@/redux/MessageApiSlice';
+import { GroupModel } from '@/redux/models/GroupModel';
+import { MessageModel } from '@/redux/models/MessageModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { AttachFile } from '@mui/icons-material';
 import {
@@ -10,6 +12,7 @@ import {
   Badge,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -27,6 +30,7 @@ import {
   Typography,
 } from '@mui/material';
 import { styled } from '@mui/system';
+import { Circle } from '@phosphor-icons/react';
 import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
@@ -34,6 +38,7 @@ import { useDispatch } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import MediaComponent from '@/components/messages/MediaComment';
+import { formatDate } from '@/components/messages/utils';
 
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
@@ -45,7 +50,7 @@ const MessagesContainer = styled(Box)({
   overflow: 'auto',
   padding: '20px',
   display: 'flex',
-  flexDirection: 'column',
+  flexDirection: 'column-reverse',
   gap: '10px',
   backgroundColor: '#fff',
 });
@@ -100,12 +105,14 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [senderId,setSenderId] = useState<string>("")
+  const [senderId, setSenderId] = useState<string>('');
   const [viewDetailGroup, setViewDetailGroup] = useState<boolean>(false);
 
   const { data: groupList } = useGetGroupsQuery({ type: type });
 
   const [messages, setMessages] = useState<any>([]);
+
+  const [groups, setGroups] = useState<GroupModel[]>([]);
 
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
@@ -134,7 +141,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
         behavior: 'smooth', // Smooth scrolling
-        block: 'end', // Scroll to the bottom
+        block: 'start', // Scroll to the bottom
       });
     }
   };
@@ -167,19 +174,28 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleReceiveMessage = useCallback(
     (message: any) => {
+      console.log(message);
       setMessages((prevMessages: any) => {
         if (prevMessages.some((msg: any) => msg.id === message.id)) {
           return prevMessages;
         }
-        return [...prevMessages, message];
+        return [message, ...prevMessages];
       });
-      setIsLoading(false);
+
       setTimeout(() => {
         scrollToBottom();
       }, 100);
     },
-    [setMessages, setIsLoading, scrollToBottom]
+    [setMessages, scrollToBottom]
   );
+
+  useEffect(() => {
+    if (groupList) {
+      if (groupList.status) {
+        setGroups(groupList.data);
+      }
+    }
+  }, [groupList]);
 
   useEffect(() => {
     if (type == 'truck') {
@@ -192,7 +208,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     } else {
       if (groupMessage?.data) {
         setMessages(groupMessage?.data.messages || []);
-        setSenderId(groupMessage?.data?.senderId)
+        setSenderId(groupMessage?.data?.senderId);
         setTimeout(() => {
           scrollToBottom();
         }, 100);
@@ -202,22 +218,19 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   useEffect(() => {
     if (socket) {
-
-      if(type == "group"){
+      if (type == 'group') {
         socket.on('new_group_message_received', handleReceiveMessage);
-      }else{
+      } else {
         socket.on('receive_message_group', handleReceiveMessage);
       }
 
-
       // Cleanup the event listener when the component unmounts or socket changes
       return () => {
-        if(type == "group"){
+        if (type == 'group') {
           socket.off('new_group_message_received', handleReceiveMessage);
-        }else{
+        } else {
           socket.off('receive_message_group', handleReceiveMessage);
         }
-
       };
     }
   }, [socket]);
@@ -229,6 +242,65 @@ const ChatInterface = ({ type }: { type: string }) => {
     setPreviewDialogOpen(false); // Close the preview dialog without sending
     setFile(null);
   };
+  //Socket
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('update_user_group_list', (message: MessageModel) => {
+        if (groups) {
+          setGroups((prevGroupList) => {
+            if (!prevGroupList) return prevGroupList;
+
+            const updatedUserChannels = prevGroupList.map((group) => {
+              if (group.id === message.groupId) {
+                return {
+                  ...group,
+                  message_count: group.message_count + 1,
+                  last_message: message,
+                };
+              }
+              return group;
+            });
+
+            const updatedUserList = updatedUserChannels.sort((a, b) => {
+              if (a.id === message.groupId) return -1;
+              if (b.id === message.groupId) return 1;
+              return 0;
+            });
+
+            return updatedUserList;
+          });
+        }
+      });
+
+      socket.on('update_group_staff_message_count', (groupId: string) => {
+        if (groups) {
+          setGroups((prevGroupList) => {
+            if (!prevGroupList) return prevGroupList;
+
+            const updatedUserChannels = prevGroupList.map((group) => {
+              if (group.id === groupId) {
+                return {
+                  ...group,
+                  message_count: 0,
+                };
+              }
+              return group;
+            });
+
+            const updatedUserList = updatedUserChannels.sort((a, b) => {
+              if (a.id === groupId) return -1;
+              if (b.id === groupId) return 1;
+              return 0;
+            });
+
+            return updatedUserList;
+          });
+        }
+      });
+    }
+  }, [socket]);
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
@@ -297,13 +369,24 @@ const ChatInterface = ({ type }: { type: string }) => {
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
         const res = await fileUpload(formData).unwrap();
         if (res.status) {
-          socket?.emit('send_message_to_user_by_group', {
-            userId: userIds?.join(','),
-            groupId: selectedGroup,
-            body: caption,
-            url: res?.data?.key,
-            direction: 'S',
-          });
+          if (type == 'group') {
+            socket?.emit('send_group_message', {
+              groupId: selectedGroup,
+              channelId: selectedChannel,
+              body: newMessage,
+              direction: 'S',
+              url: res?.data?.key,
+            });
+          } else {
+            socket?.emit('send_message_to_user_by_group', {
+              userId: userIds?.join(','),
+              groupId: selectedGroup,
+              body: caption,
+              url: res?.data?.key,
+              direction: 'S',
+            });
+          }
+
           setFile(null);
           setCaption('');
           setPreviewDialogOpen(false);
@@ -342,8 +425,8 @@ const ChatInterface = ({ type }: { type: string }) => {
             />
           </Box>
           <List>
-            {groupList &&
-              groupList?.data?.map((group, index) => (
+            {groups &&
+              groups.map((group, index) => (
                 <>
                   <ListItem key={index} sx={{ padding: 0 }}>
                     <ListItemButton
@@ -361,10 +444,13 @@ const ChatInterface = ({ type }: { type: string }) => {
                         },
                       }}
                       onClick={() => {
-                        if(type == "group"){
-                          socket.emit(
-                            "group_user_add", {"channel_id": group.group_channel.channelId, "group_id": group.id});
-                        }else{
+                        if (type == 'group') {
+                          socket.emit('group_user_add', {
+                            channel_id: group.group_channel.channelId,
+                            group_id: group.id,
+                          });
+                          socket.emit('update_group_staff_message_count', group.id);
+                        } else {
                           socket?.emit('staff_open_truck_group', group.id);
                         }
 
@@ -385,18 +471,36 @@ const ChatInterface = ({ type }: { type: string }) => {
                         {/* <Avatar alt=""} /> */}
                       </Badge>
                       <ListItemText
-                        primary={group.name}
-                        secondary={
-                          <Typography
-                            sx={{
-                              color: 'grey',
-                              '&:hover': {
-                                color: 'grey',
-                              },
-                            }}
-                          >
-                            {group.description}
-                          </Typography>
+                        primary={
+                          <Box display={'flex'} justifyContent={'space-between'}>
+                            <Box display={'flex'} flexDirection={'column'}>
+                              <Typography>{group.name}</Typography>
+                              <Typography
+                                sx={{
+                                  color: 'grey',
+                                  '&:hover': {
+                                    color: 'grey',
+                                  },
+                                }}
+                              >
+                                {group.last_message?.body ?? 'No Message Yet'}
+                              </Typography>
+                            </Box>
+                            <Box display={'flex'} flexDirection={'column'}>
+                              {group?.message_count > 0 && (
+                                <Chip
+                                  variant="filled"
+                                  color="primary"
+                                  size="small"
+                                  label={group?.message_count}
+                                  sx={{ ml: 1 }}
+                                />
+                              )}
+                              <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
+                                {formatDate(group?.last_message?.messageTimestampUtc)}
+                              </Typography>
+                            </Box>
+                          </Box>
                         }
                         sx={{ ml: 2 }}
                       />
@@ -434,30 +538,43 @@ const ChatInterface = ({ type }: { type: string }) => {
                 <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} />
                 <Divider />
                 <MessagesContainer>
-                  {messages.map((msg: any) => (
-                    <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
-                      {msg.url && (
-                        <Paper
-                          variant="outlined"
-                          sx={{
-                            px: 1.75,
-                            py: 1.25,
-                          }}
-                        >
-                          <MediaComponent
-                            url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                            name={msg.url ? msg.url : ' '}
-                          />
-                        </Paper>
-                      )}
-                      {msg.body}
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
-                        {msg.deliveryStatus === 'seen' && <BsCheckAll />}
-                      </Box>
-                    </MessageBubble>
-                  ))}
                   <div ref={messagesEndRef} />
+                  {messages.map((msg: any) => (
+                    <>
+                      {msg.senderId != senderId && msg.sender && (
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                          <Typography variant="caption">{msg?.sender?.username}</Typography>
+                          <Badge
+                            color={msg?.sender.isOnline ? 'success' : 'default'}
+                            variant={msg?.sender.isOnline ? 'dot' : 'standard'}
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                            overlap="circular"
+                          />
+                        </Box>
+                      )}
+                      <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
+                        {msg.url && (
+                          <Paper
+                            variant="outlined"
+                            sx={{
+                              px: 1.75,
+                              py: 1.25,
+                            }}
+                          >
+                            <MediaComponent
+                              url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                              name={msg.url ? msg.url : ' '}
+                            />
+                          </Paper>
+                        )}
+                        {msg.body}
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
+                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                        </Box>
+                      </MessageBubble>
+                    </>
+                  ))}
                 </MessagesContainer>
 
                 {/* Input Container */}

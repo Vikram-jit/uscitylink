@@ -5,7 +5,6 @@ export const sendMessage = (req: Request, res: Response) => {
     const { message } = req.body;
     const io = getSocketInstance();
 
-    io.emit('message', { userId: req?.userId, message }); // Include user ID in the message
-
+    io.emit('message', { userId: req?.userId, message }); 
     res.status(200).send({ status: 'Message sent', message });
 };

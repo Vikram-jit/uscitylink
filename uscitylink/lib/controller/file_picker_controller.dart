@@ -18,7 +18,8 @@ class FilePickerController extends GetxController {
   var currentPage = 0.obs;
   RxString caption = ''.obs;
 
-  Future<void> pickSingleFile(String channelId) async {
+  Future<void> pickSingleFile(
+      String channelId, String location, String? groupId) async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.isNotEmpty) {
@@ -32,9 +33,10 @@ class FilePickerController extends GetxController {
       fileName.value = name ?? "Unknown";
       // Navigate to the preview page
       Get.to(() => FilePickerPreview(
-            channelId: channelId,
-            type: "doc",
-          ));
+          channelId: channelId,
+          type: "doc",
+          location: location,
+          groupId: groupId));
     } else {
       // If the user cancels or doesn't select a file
       filePath.value = 'No file selected';
@@ -64,7 +66,8 @@ class FilePickerController extends GetxController {
   }
 
   // Optional: Function to allow file selection based on specific extensions
-  Future<void> pickFileWithExtension(String channelId) async {
+  Future<void> pickFileWithExtension(
+      String channelId, String location, String? groupId) async {
     // Open the file picker dialog and allow only specific file types (e.g., PDFs)
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -75,19 +78,29 @@ class FilePickerController extends GetxController {
       filePath.value = result.files.single.path ?? 'No file selected';
       fileType.value = result.files.single.extension ?? 'Unknown';
       fileName.value = result.files.single.name ?? "Unknown";
-      Get.to(() => FilePickerPreview(channelId: channelId, type: "doc"));
+      Get.to(() => FilePickerPreview(
+          channelId: channelId,
+          type: "doc",
+          location: location,
+          groupId: groupId));
     } else {
       filePath.value = 'No file selected';
     }
   }
 
-  void uploadFile(String channelId, String type) async {
+  void uploadFile(
+      String channelId, String type, String location, String? groupId) async {
     try {
       var file = File(filePath.value);
       var res = await _apiService.fileUpload(
           file, "${Constant.url}/message/fileUpload", channelId, type);
       if (res.status) {
-        socketService.sendMessage(caption.value, res.data.key!);
+        if (location == "group") {
+          socketService.sendGroupMessage(
+              groupId!, channelId, caption.value, res.data.key!);
+        } else {
+          socketService.sendMessage(caption.value, res.data.key!);
+        }
 
         Get.back();
         while (Get.isBottomSheetOpen == true) {

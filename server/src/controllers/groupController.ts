@@ -1,4 +1,3 @@
-import { channelId } from "./../../node_modules/aws-sdk/clients/supportapp.d";
 import { Request, Response } from "express";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
@@ -19,18 +18,22 @@ export async function create(req: Request, res: Response): Promise<any> {
         name: name,
       },
     });
-    if(isGroup){
+    if (isGroup) {
       const isCheck = await GroupChannel.findOne({
         where: {
           groupId: isGroup?.id,
           channelId: req.activeChannel,
         },
       });
-  
+
       if (isCheck) throw new Error("Group already exist");
     }
-   
-
+    if (type != "group") {
+      if (members?.split(",")?.length > 2)
+        throw new Error(
+          "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+        );
+    }
     const group = await Group.create({
       name: name,
       description: description,
@@ -69,10 +72,17 @@ export async function create(req: Request, res: Response): Promise<any> {
               userProfileId: user_id,
               groupId: group.id,
             },
-            include: [{ model: Group , include:[{
-              model:GroupChannel,
-              as:"group_channel"
-            }]}],
+            include: [
+              {
+                model: Group,
+                include: [
+                  {
+                    model: GroupChannel,
+                    as: "group_channel",
+                  },
+                ],
+              },
+            ],
           });
 
           if (userSocket && groupUser) {
@@ -116,13 +126,19 @@ export async function get(req: Request, res: Response): Promise<any> {
           [Op.in]: groupIds,
         },
       },
-      
-        include:[{
-          model:GroupChannel,
-          as:"group_channel"
-        }],
-      
-      order: [["id", "DESC"]],
+
+      include: [
+        {
+          model: GroupChannel,
+          as: "group_channel",
+        },
+        {
+          model: Message,
+          as: "last_message",
+        },
+      ],
+
+      order: type == "group" ? [["message_count", "DESC"]] : [["id", "DESC"]],
     });
 
     return res.status(200).json({
@@ -139,11 +155,13 @@ export async function get(req: Request, res: Response): Promise<any> {
 
 export async function getById(req: Request, res: Response): Promise<any> {
   try {
-    const group = await Group.findByPk(req.params.id,{
-      include:[{
-        model:GroupChannel,
-        as:"group_channel"
-      }]
+    const group = await Group.findByPk(req.params.id, {
+      include: [
+        {
+          model: GroupChannel,
+          as: "group_channel",
+        },
+      ],
     });
 
     const groupMembers = await GroupUser.findAll({
@@ -174,18 +192,19 @@ export async function groupAddMember(
     const { members } = req.body;
 
     //check member active count
+    if (group?.type != "group") {
+      const isCheckCount = await GroupUser.findAndCountAll({
+        where: {
+          groupId: group?.id,
+          status: "active",
+        },
+      });
 
-    const isCheckCount = await GroupUser.findAndCountAll({
-      where: {
-        groupId: group?.id,
-        status: "active",
-      },
-    });
-
-    if (isCheckCount.count == 2)
-      throw new Error(
-        "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
-      );
+      if (isCheckCount.count == 2)
+        throw new Error(
+          "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+        );
+    }
 
     await GroupUser.destroy({
       where: {
@@ -240,10 +259,17 @@ export async function groupAddMember(
               userProfileId: user_id,
               groupId: group.id,
             },
-            include: [{ model: Group, include:[{
-              model:GroupChannel,
-              as:"group_channel"
-            }] }],
+            include: [
+              {
+                model: Group,
+                include: [
+                  {
+                    model: GroupChannel,
+                    as: "group_channel",
+                  },
+                ],
+              },
+            ],
           });
 
           if (userSocket && groupUser) {

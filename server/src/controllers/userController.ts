@@ -119,14 +119,14 @@ export async function getGroupList(
             as:"group_channel"
           }]
         },
-        // {
-        //   model: Message,
-        //  as:"last_message"
+        {
+          model: Message,
+         as:"last_message"
         
-        // }
+        }
         
       ],
-     // order: [["recieve_message_count", "DESC"]],
+      order: [["message_count", "DESC"]],
     });
 
     return res.status(200).json({

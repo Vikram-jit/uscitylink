@@ -120,15 +120,16 @@ class _GroupMessageuiState extends State<GroupMessageui>
                 icon: const Icon(Icons.arrow_back), // Back icon
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
-                  socketService.updateActiveChannel("");
+                  socketService.removeFromGroup(widget.groupId);
+                  groupController.getUserGroups();
                   Get.back();
                 },
               ),
               actions: [
                 InkWell(
                     onTap: () {
-                      imagePickerController
-                          .pickImageFromCamera(widget.channelId);
+                      imagePickerController.pickImageFromCamera(
+                          widget.channelId, "group", widget.groupId);
                     },
                     child: const Icon(Icons.add_a_photo)),
                 const SizedBox(
@@ -251,6 +252,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
                               Get.bottomSheet(
                                 AttachmentBottomSheet(
                                   channelId: widget.channelId,
+                                  groupId: widget.groupId,
                                 ),
                                 isScrollControlled: true,
                                 backgroundColor: Colors.white,
@@ -346,6 +348,27 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   color: Colors.blue.shade500,
                   size: 16,
                 )
+            else
+              Container(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Text(
+                      message?.sender?.username ?? 'Unknown User',
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      child: Badge(
+                        backgroundColor: message?.sender?.isOnline ?? false
+                            ? Colors.green
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                  ],
+                ),
+              )
           ],
         ),
       ),
@@ -355,12 +378,14 @@ class _GroupMessageuiState extends State<GroupMessageui>
 
 class AttachmentBottomSheet extends StatelessWidget {
   final String channelId;
+  final String groupId;
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
 
-  AttachmentBottomSheet({super.key, required this.channelId});
+  AttachmentBottomSheet(
+      {super.key, required this.channelId, required this.groupId});
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +402,8 @@ class AttachmentBottomSheet extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromGallery(channelId);
+                  imagePickerController.pickImageFromGallery(
+                      channelId, "group", groupId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -395,7 +421,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromCamera(channelId);
+                  imagePickerController.pickImageFromCamera(
+                      channelId, "group", groupId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -413,7 +440,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  filePickerController.pickFileWithExtension(channelId);
+                  filePickerController.pickFileWithExtension(
+                      channelId, "group", groupId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

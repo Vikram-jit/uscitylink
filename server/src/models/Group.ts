@@ -5,10 +5,12 @@ import { primarySequelize } from "../sequelize";
 export interface GroupAttributes {
   id?: string; // Assuming you have an auto-incremented primary key
   name: string;
-  type?:string
+  type?: string;
   description?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  last_message_id?: string;
+  message_count?: number;
 }
 
 // Define optional attributes for creation
@@ -25,34 +27,55 @@ class Group
   public createdAt!: Date;
   public updatedAt!: Date;
   public description?: string | undefined;
+  public last_message_id?: string;
+  public message_count?: number;
   static associate(models: any) {
-    Group.hasOne(models.GroupChannel, { foreignKey: 'groupId', as: 'group_channel' });
-    
+    Group.hasOne(models.GroupChannel, {
+      foreignKey: "groupId",
+      as: "group_channel",
+    });
+    Group.hasMany(models.GroupUser, {
+      foreignKey: "groupId",
+      as: "group_users",
+    });
   }
 }
 
 Group.init(
   {
     id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4, // Correct usage
-        primaryKey: true,
-      },
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true, 
+      unique: true,
     },
     description: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true, 
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    type: {
+      type: DataTypes.ENUM,
+      values: ["group", "truck"], // Enum values
+      defaultValue: "group",
+    },
+
+    last_message_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "messages",
+        key: "id",
       },
-      type: {
-        type: DataTypes.ENUM,
-        values: ['group', 'truck'],  // Enum values
-      defaultValue: 'group',  
-      },
+    },
+    message_count: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
   },
   {
     sequelize: primarySequelize,

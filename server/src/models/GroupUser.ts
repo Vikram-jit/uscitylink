@@ -6,6 +6,9 @@ class GroupUser extends Model {
   public groupId!: string;
   public userProfileId!: string;
   public status?: string;
+  public last_message_id?: string;
+  public message_count?: number;
+  public last_message_utc?:Date
 
   static associate(models: any) {
       GroupUser.belongsTo(models.Group, { foreignKey: 'groupId' });
@@ -41,6 +44,22 @@ GroupUser.init(
       type: DataTypes.ENUM,
       values: ['active', 'inactive'],  // Enum values
     defaultValue: 'active',  
+    },
+    last_message_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'messages', 
+        key: 'id',
+      },
+    },
+    message_count: {
+      type: DataTypes.INTEGER,
+      defaultValue:0
+    },
+    last_message_utc: {
+      type: DataTypes.DATE,
+      defaultValue:0
     },
   },
   {

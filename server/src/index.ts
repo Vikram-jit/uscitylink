@@ -84,7 +84,7 @@ server.listen(PORT, async () => {
   Role.associate({ UserProfile });
   Channel.associate({ UserChannel,GroupChannel });
   UserChannel.associate({ UserProfile, Channel });
-  Group.associate({ GroupChannel });
+  Group.associate({ GroupChannel,GroupUser });
   GroupUser.associate({ UserProfile, Group });
   GroupChannel.associate({ Group, Channel });
 

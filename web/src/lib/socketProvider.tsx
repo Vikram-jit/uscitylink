@@ -84,6 +84,13 @@ export const SocketProvider = ({
       toast.success(message);
       dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
     });
+    socketServer.on("notification_group",(message)=>{
+      toast.success(message);
+     // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
+    })
+    socketServer.on('reconnect_attempt', onReconnectAttempt);
+      socketServer.on('reconnect_error', onReconnectError);
+      socketServer.on('reconnect_failed', onReconnectFailed);
     socketServer.on('typingUser', (data: any) => {
       console.log(data.userId);
       // if(data.userId == props.userId){

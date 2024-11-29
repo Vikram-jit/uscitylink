@@ -1,3 +1,5 @@
+import 'package:uscitylink/model/message_model.dart';
+
 class GroupModel {
   String? id;
   String? groupId;
@@ -5,6 +7,8 @@ class GroupModel {
   String? status;
   String? createdAt;
   String? updatedAt;
+  MessageModel? last_message;
+  int? message_count;
   Group? group;
 
   GroupModel(
@@ -14,7 +18,9 @@ class GroupModel {
       this.status,
       this.createdAt,
       this.updatedAt,
-      this.group});
+      this.group,
+      this.last_message,
+      this.message_count});
 
   GroupModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -23,6 +29,10 @@ class GroupModel {
     status = json['status'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    message_count = json['message_count'];
+    last_message = json['last_message'] != null
+        ? MessageModel.fromJson(json['last_message'])
+        : null;
     group = json['Group'] != null ? new Group.fromJson(json['Group']) : null;
   }
 
@@ -34,10 +44,19 @@ class GroupModel {
     data['status'] = this.status;
     data['createdAt'] = this.createdAt;
     data['updatedAt'] = this.updatedAt;
+    data['message_count'] = this.message_count;
     if (this.group != null) {
       data['Group'] = this.group?.toJson();
     }
+    if (last_message != null) {
+      data['last_message'] = last_message?.toJson();
+    }
     return data;
+  }
+
+  void updateWithNewMessage(MessageModel message) {
+    last_message = message;
+    message_count = (message_count ?? 0) + 1;
   }
 }
 

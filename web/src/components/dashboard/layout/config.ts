@@ -7,7 +7,8 @@ export const navItems = [
   { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users' },
   { key: 'truckgroup', title: 'Truck Groups', href: paths.dashboard.truck_group, icon: 'truck' },
 
-  { key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
+  { key: 'user', title: 'Users', href: `${paths.dashboard.users}/staff`, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
+  { key: 'driver', title: 'Drivers', href: `${paths.dashboard.users}/driver`, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
   { key: 'channels', title: 'Channels', href: paths.dashboard.channels, icon: 'channels' },
   { key: 'channel Members', title: 'Channel Members', href: paths.channel.members, icon: 'users-four' },
 

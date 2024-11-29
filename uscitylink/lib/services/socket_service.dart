@@ -83,6 +83,12 @@ class SocketService extends GetxController {
       }
     });
 
+    socket.on('update_user_group_list', (data) {
+      if (Get.find<GroupController>().groups.isNotEmpty) {
+        Get.find<GroupController>().addNewMessage(data);
+      }
+    });
+
     socket.on('new_group_message_received', (data) {
       if (Get.isRegistered<GroupController>()) {
         Get.find<GroupController>().onNewMessage(data);
@@ -181,6 +187,28 @@ class SocketService extends GetxController {
         "direction": "S",
         "url": url,
       });
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
+  void removeFromGroup(String group_id) {
+    if (isConnected.value) {
+      socket.emit("user_removed_from_group", group_id);
+      if (group_id.isNotEmpty) {
+        socket.emit("user_removed_from_group", group_id);
+      }
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
+  void updateCountGroup(String group_id) {
+    if (isConnected.value) {
+      socket.emit("update_group_message_count", group_id);
+      if (group_id.isNotEmpty) {
+        socket.emit("update_group_message_count", group_id);
+      }
     } else {
       print("Not connected to socket.");
     }

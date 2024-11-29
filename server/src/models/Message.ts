@@ -2,6 +2,8 @@ import { Model, DataTypes,BelongsToGetAssociationMixin } from 'sequelize';
 import { primarySequelize } from '../sequelize';
 import { UserProfile } from './UserProfile';
 import UserChannel from './UserChannel';
+import GroupUser from './GroupUser';
+import Group from './Group';
 
 export class Message extends Model {
   public id!: string; // Primary key
@@ -92,3 +94,5 @@ Message.init(
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
 UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });
 UserChannel.belongsTo(Message, { foreignKey: 'last_message_id' ,as :"last_message"});
+GroupUser.belongsTo(Message, { foreignKey: 'last_message_id' ,as :"last_message"});
+Group.belongsTo(Message, { foreignKey: 'last_message_id' ,as :"last_message"});

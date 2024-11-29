@@ -129,6 +129,11 @@ export const getGroupMessages = async (
         groupId: groupId,
         type:"group"
       },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
       order: [["messageTimestampUtc", "DESC"]],
     });
 

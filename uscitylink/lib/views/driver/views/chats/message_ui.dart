@@ -121,8 +121,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
               actions: [
                 InkWell(
                     onTap: () {
-                      imagePickerController
-                          .pickImageFromCamera(widget.channelId);
+                      imagePickerController.pickImageFromCamera(
+                          widget.channelId, "chat", "");
                     },
                     child: const Icon(Icons.add_a_photo)),
                 const SizedBox(
@@ -368,7 +368,8 @@ class AttachmentBottomSheet extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromGallery(channelId);
+                  imagePickerController.pickImageFromGallery(
+                      channelId, "chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -386,7 +387,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromCamera(channelId);
+                  imagePickerController.pickImageFromCamera(
+                      channelId, "chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -404,7 +406,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  filePickerController.pickFileWithExtension(channelId);
+                  filePickerController.pickFileWithExtension(
+                      channelId, "chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

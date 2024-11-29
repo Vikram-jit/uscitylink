@@ -58,28 +58,28 @@ class GroupController extends GetxController {
     currentIndex.value = index;
   }
 
-  // // Update a channel with a new message
-  // void addNewMessage(dynamic messageData) {
-  //   try {
-  //     MessageModel message = MessageModel.fromJson(messageData);
+  // Update a channel with a new message
+  void addNewMessage(dynamic messageData) {
+    try {
+      MessageModel message = MessageModel.fromJson(messageData);
 
-  //     String channelId = message.channelId!;
+      String groupId = message.groupId!;
 
-  //     var channel = channels.firstWhere(
-  //       (ch) => ch.channelId == channelId,
-  //       orElse: () => UserChannelModel(id: channelId),
-  //     );
+      var group = groups.firstWhere(
+        (ch) => ch.groupId == groupId,
+        orElse: () => GroupModel(groupId: groupId),
+      );
 
-  //     channel.updateWithNewMessage(message);
+      group.updateWithNewMessage(message);
 
-  //     channels.removeWhere((ch) => ch.channelId == channelId);
-  //     channels.insert(0, channel);
+      groups.removeWhere((ch) => ch.groupId == groupId);
+      groups.insert(0, group);
 
-  //     channels.refresh();
-  //   } catch (e) {
-  //     print("Error while adding new message: $e");
-  //   }
-  // }
+      groups.refresh();
+    } catch (e) {
+      print("Error while adding new message: $e");
+    }
+  }
 
   void addNewGroup(dynamic data) {
     GroupModel groupUser = GroupModel.fromJson(data);
@@ -121,10 +121,9 @@ class GroupController extends GetxController {
 
   void onNewMessage(dynamic data) {
     // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
-    MessageModel newMessage =
-        MessageModel.fromJson(data); // Convert the data to MessageModel
+    MessageModel newMessage = MessageModel.fromJson(data);
 
-    messages.insert(0, newMessage); // Append the new message to the list
+    messages.insert(0, newMessage);
     messages.refresh();
   }
 }

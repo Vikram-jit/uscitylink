@@ -8,10 +8,17 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 class FilePickerPreview extends StatelessWidget {
   final String channelId;
   final String type;
+  final String location;
+  final String? groupId;
   // Initialize the controller
   final FilePickerController _controller = Get.put(FilePickerController());
 
-  FilePickerPreview({super.key, required this.channelId, required this.type});
+  FilePickerPreview(
+      {super.key,
+      required this.channelId,
+      required this.type,
+      required this.location,
+      this.groupId});
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +99,8 @@ class FilePickerPreview extends StatelessWidget {
                             vertical: 12, horizontal: 16),
                         suffixIcon: InkWell(
                           onTap: () {
-                            _controller.uploadFile(channelId, type);
+                            _controller.uploadFile(
+                                channelId, type, location, groupId);
                           },
                           child: const Icon(
                             Icons.send,
