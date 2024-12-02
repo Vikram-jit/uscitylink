@@ -33,15 +33,7 @@ const upload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB file size limit (adjust as needed)
   },
-  // fileFilter: function (req: Request, file, cb) {
-  //   const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
 
-  //   if (allowedMimeTypes.includes(file.mimetype)) {
-  //     cb(null, true); // Allow the file
-  //   } else {
-      
-  //   }
-  // },
 });
 
 export const createMessage = async (

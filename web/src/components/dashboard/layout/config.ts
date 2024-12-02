@@ -6,6 +6,7 @@ export const navItems = [
   { key: 'messages', title: 'Messages', href: paths.dashboard.messages, icon: 'chat' },
   { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users' },
   { key: 'truckgroup', title: 'Truck Groups', href: paths.dashboard.truck_group, icon: 'truck' },
+  { key: 'templates', title: 'Templates', href: paths.dashboard.templates, icon: 'template' },
 
   { key: 'user', title: 'Users', href: `${paths.dashboard.users}/staff`, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
   { key: 'driver', title: 'Drivers', href: `${paths.dashboard.users}/driver`, icon: 'user' , items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},

@@ -31,14 +31,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const { socket } = useSocket();
   const [mediaPanel,setMediaPanel] = React.useState<boolean>(false)
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
-  const messagesEndRef = React.useRef<HTMLDivElement | null>(null); // Create a reference for the scroll container
-
-  // Scroll to the bottom when messages change
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+  const [selectedTemplate,setSelectedTemplate] = React.useState<{name:string,body:string,url?:string}>({name:"",body:""})
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
-        behavior: 'smooth', // Smooth scrolling
-        block: 'end', // Scroll to the bottom
+        behavior: 'smooth',
+        block: 'end',
       });
     }
   };
@@ -56,14 +55,14 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   );
   React.useEffect(() => {
-    // Force a refetch whenever the userId changes or re-renders
+
     if (userId) {
-      refetch(); // Manually trigger refetch to reload data
+      refetch();
     }
-  }, [userId, refetch]); // Trigger the effect when userId changes
+  }, [userId, refetch]);
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages]); // Dependency array ensures scrolls only when messages change
+  }, [messages]);
 
   React.useEffect(() => {
     if (data && data?.status) {
@@ -71,11 +70,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     }
   }, [data, isLoading]);
 
-  // React.useEffect(() => {
-  //   if (userId == '') {
-  //     setMessages([]);
-  //   }
-  // }, [userId]);
+
 
   React.useEffect(() => {
 
@@ -136,7 +131,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: 'background.default',
       }}
     >
-      {data?.data && userId && <MessagesPaneHeader mediaPanel={mediaPanel} sender={data?.data?.userProfile} setMediaPanel={setMediaPanel}/>}
+      {data?.data && userId && <MessagesPaneHeader mediaPanel={mediaPanel} sender={data?.data?.userProfile} setMediaPanel={setMediaPanel} setSelectedTemplate={setSelectedTemplate}/>}
 
       {mediaPanel ?  <><MediaPane userId={props.userId}/></> :  <>
         {data?.data && messages?.length > 0 ? (
@@ -201,12 +196,20 @@ export default function MessagesPane(props: MessagesPaneProps) {
           <div ref={messagesEndRef} />
           {messages.length > 0 && (
             <MessageInput
+            selectedTemplate={selectedTemplate}
               isTyping={isTyping}
               textAreaValue={textAreaValue}
               setTextAreaValue={setTextAreaValue}
               userId={userId}
               onSubmit={() => {
-                socket.emit('send_message_to_user', { body: textAreaValue, userId: userId, direction: 'S' });
+                socket.emit('send_message_to_user', { body: textAreaValue, userId: userId, direction: 'S',...(selectedTemplate ? { url: selectedTemplate.url } : {}) });
+                if(selectedTemplate){
+                  setSelectedTemplate({
+                    name:"",
+                    body:"",
+                    url:""
+                  })
+                }
               }}
             />
           )}

@@ -23,8 +23,11 @@ class GroupTab extends StatelessWidget {
           groupController.getUserGroups();
         },
         child: Obx(() {
-          if (groupController.groups.isEmpty) {
+          if (groupController.loading.value) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (groupController.groups.isEmpty) {
+            return const Center(child: Text("No Group Found Yet."));
           } else {
             return ListView.builder(
               itemCount: groupController.groups.length,

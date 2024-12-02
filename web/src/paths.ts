@@ -13,9 +13,14 @@ export const paths = {
     groups: '/dashboard/groups',
     messages: '/dashboard/messages',
     truck_group: '/dashboard/truckgroup',
+    templates: '/dashboard/templates',
   },
   user:{
     "add":'/dashboard/users/add'
+  },
+  template:{
+    "add":'/dashboard/templates/add',
+    "edit":'/dashboard/templates/edit'
   },
   channel:{
     "members":'/dashboard/channels/members'

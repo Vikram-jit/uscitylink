@@ -534,6 +534,9 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
+            device_token:"",
+            platform:""
+
           });
 
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
@@ -541,6 +544,14 @@ export const initSocket = (httpServer: any) => {
             if (isSocket) {
               io.to(isSocket.id).emit("user_online", null);
             }
+          });
+        }else{
+          await isUser.update({
+           
+            last_login: moment.utc(),
+            device_token:"",
+            platform:""
+
           });
         }
       }

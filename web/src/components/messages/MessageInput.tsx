@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField';
 import { useSocket } from '@/lib/socketProvider';
 import { useDispatch } from 'react-redux';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import MediaComponent from './MediaComment';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -18,6 +19,7 @@ export type MessageInputProps = {
   onSubmit: () => void;
   userId: string;
   isTyping: boolean;
+  selectedTemplate:{name:string,body:string,url?:string}
 };
 
 export default function MessageInput(props: MessageInputProps) {
@@ -30,10 +32,14 @@ export default function MessageInput(props: MessageInputProps) {
   const [typingStartTime, setTypingStartTime] = React.useState<number>(0);
   const [userTyping,setUserTyping]  = React.useState<boolean>(false)
   const [userTypingMessage,setUserTypingMessage]  = React.useState<string>("");
+  const [url,setUrl]= React.useState<string>("")
+
   const handleClick = () => {
     if (textAreaValue.trim() !== '') {
       onSubmit();
       setTextAreaValue('');
+      setUrl("")
+
     }
   };
   const [file, setFile] = React.useState<any>(null);
@@ -68,17 +74,24 @@ export default function MessageInput(props: MessageInputProps) {
     }
   };
 
-  // Trigger file input dialog when the IconButton is clicked
+  React.useEffect(()=>{
+    if(props.selectedTemplate){
+      props.setTextAreaValue(props.selectedTemplate?.body)
+      setUrl(props.selectedTemplate.url ?? '')
+    }
+  },[props.selectedTemplate])
+
+
   const handleIconClick = () => {
-    document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
+    document?.getElementById('file-input')?.click();
   };
 
   const handleCancel = () => {
-    setPreviewDialogOpen(false); // Close the preview dialog without sending
+    setPreviewDialogOpen(false);
     setFile(null);
   };
 
-  // Render file preview based on file type
+
   const renderFilePreview = () => {
     if (file && file.type.startsWith('image/')) {
       // Display image preview for images
@@ -215,6 +228,9 @@ export default function MessageInput(props: MessageInputProps) {
           },
         }}
       />
+      {
+        url && <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`} name={url ??''} width={100} height={100}/>
+      }
       {previewDialogOpen && (
         <Dialog open={previewDialogOpen} onClose={handleCancel} fullWidth>
           <DialogTitle>Selected File</DialogTitle>

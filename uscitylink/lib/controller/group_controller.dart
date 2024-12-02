@@ -8,6 +8,7 @@ import 'package:uscitylink/utils/utils.dart';
 
 class GroupController extends GetxController {
   var groups = <GroupModel>[].obs;
+  var loading = false.obs;
   var messages = <MessageModel>[].obs;
   final __groupService = GroupService();
   final __messageService = MessageService();
@@ -46,9 +47,12 @@ class GroupController extends GetxController {
   }
 
   void getUserGroups() {
+    loading.value = true;
     __groupService.getUserGroups().then((response) {
       groups.value = response.data;
+      loading.value = false;
     }).onError((error, stackTrace) {
+      loading.value = false;
       Utils.snackBar('Error', error.toString());
     });
   }

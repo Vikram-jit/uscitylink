@@ -12,22 +12,22 @@ import { UserAddForm } from '@/components/dashboard/users/UserAddForm';
 
 export const metadata = { title: `User Create | Dashboard | ${config.site.name}` } satisfies Metadata;
 
-export default function Page(): React.JSX.Element {
+export default function Page({params}:{params:{role:string}}): React.JSX.Element {
   return (
     <Container maxWidth="xl" sx={{ py: '64px' }}>
     <Stack spacing={3}>
       <div>
-        <IconButton LinkComponent="a" href={paths.dashboard.users}>
+        <IconButton LinkComponent="a" href={`${paths.dashboard.users}/${params.role}`}>
         <ArrowBack/>
        <Typography variant="h6"> Users</Typography>
         </IconButton>
 
       </div>
       <div>
-        <Typography variant="h4">Create user</Typography>
+        <Typography variant="h4">Create {params.role?.[0]?.toUpperCase() + params.role?.substring(1)}</Typography>
       </div>
 
-      <UserAddForm />
+      <UserAddForm  role={params.role}/>
     </Stack>
     </Container>
   );

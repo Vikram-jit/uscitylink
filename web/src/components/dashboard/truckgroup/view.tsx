@@ -6,7 +6,7 @@ import { useFileUploadMutation } from '@/redux/MessageApiSlice';
 import { GroupModel } from '@/redux/models/GroupModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
-import { AttachFile } from '@mui/icons-material';
+import { Add, AttachFile } from '@mui/icons-material';
 import {
   Avatar,
   Badge,
@@ -29,8 +29,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import { styled } from '@mui/system';
-import { Circle } from '@phosphor-icons/react';
+import { Circle, PaperPlane } from '@phosphor-icons/react';
 import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
@@ -40,6 +43,7 @@ import { useSocket } from '@/lib/socketProvider';
 import MediaComponent from '@/components/messages/MediaComment';
 import { formatDate } from '@/components/messages/utils';
 
+import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
@@ -113,7 +117,15 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [messages, setMessages] = useState<any>([]);
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
-
+  const [templateDialog, setTemplateDialog] = React.useState<boolean>(false);
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const openTemplate = Boolean(anchorEl);
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [fileUpload] = useFileUploadMutation();
@@ -121,6 +133,10 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [file, setFile] = React.useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [caption, setCaption] = React.useState('');
+  const [selectedTemplate, setSelectedTemplate] = React.useState<{ name: string; body: string; url?: string }>({
+    name: '',
+    body: '',
+  });
   const { data: group, isFetching } = useGetGroupByIdQuery(
     { id: selectedGroup },
     {
@@ -301,6 +317,12 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   }, [socket]);
 
+  useEffect(()=>{
+    if(selectedTemplate){
+      setNewMessage(selectedTemplate?.body)
+    }
+  },[selectedTemplate])
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
@@ -313,7 +335,7 @@ const ChatInterface = ({ type }: { type: string }) => {
           channelId: selectedChannel,
           body: newMessage,
           direction: 'S',
-          url: '',
+          url: selectedTemplate ? selectedTemplate?.url : '',
         });
       } else {
         if (group?.data) {
@@ -331,10 +353,16 @@ const ChatInterface = ({ type }: { type: string }) => {
             groupId: selectedGroup,
             body: newMessage,
             direction: 'S',
+            url:selectedTemplate ? selectedTemplate?.url : ''
           });
         }
       }
-
+      setIsLoading(false);
+      setSelectedTemplate({
+        name:"",
+        body:"",
+        url:""
+      })
       setNewMessage('');
       // const data = {}
     } catch (err) {
@@ -580,6 +608,67 @@ const ChatInterface = ({ type }: { type: string }) => {
                 {/* Input Container */}
 
                 <InputContainer>
+                  <IconButton
+                    onClick={handleClick}
+                    size="small"
+                    sx={{ ml: 2 }}
+                    aria-controls={open ? 'account-menu' : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={open ? 'true' : undefined}
+                  >
+                    <Add />
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    id="account-menu"
+                    open={openTemplate}
+                    onClose={handleClose}
+                    onClick={handleClose}
+                    slotProps={{
+                      paper: {
+                        elevation: 0,
+                        sx: {
+                          overflow: 'visible',
+                          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                          mt: 1.5,
+                          '& .MuiAvatar-root': {
+                            width: 32,
+                            height: 32,
+                            ml: -0.5,
+                            mr: 1,
+                          },
+                          '&::before': {
+                            content: '""',
+                            display: 'block',
+                            position: 'absolute',
+                            top: 0,
+                            right: 14,
+                            width: 10,
+                            height: 10,
+                            bgcolor: 'background.paper',
+                            transform: 'translateY(-50%) rotate(45deg)',
+                            zIndex: 0,
+                          },
+                        },
+                      },
+                    }}
+                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  >
+                    <MenuItem onClick={() => setTemplateDialog(true)}>
+                      <ListItemIcon>
+                        <PaperPlane fontSize="small" />
+                      </ListItemIcon>
+                      Templates
+                    </MenuItem>
+                  </Menu>
+                  {templateDialog && (
+                    <TemplateDialog
+                      open={templateDialog}
+                      setOpen={setTemplateDialog}
+                      setSelectedTemplate={setSelectedTemplate}
+                    />
+                  )}
                   <input
                     id="file-input"
                     type="file"
@@ -601,7 +690,13 @@ const ChatInterface = ({ type }: { type: string }) => {
                   <IconButton onClick={handleSendMessage} disabled={isLoading}>
                     {isLoading ? <CircularProgress size={24} /> : <FiSend />}
                   </IconButton>
+
                 </InputContainer>
+                {
+        selectedTemplate.url && <Box sx={{}}>
+          <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedTemplate.url}`} name={selectedTemplate.url ??''} width={100} height={100}/>
+        </Box>
+      }
               </Box>
             ) : (
               <Box

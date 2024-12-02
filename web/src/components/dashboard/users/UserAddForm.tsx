@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import { paths } from '@/paths';
 import { useAddUserMutation } from '@/redux/UserApiSlice';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 
 const states = [
@@ -48,7 +48,9 @@ const defaultValues = {
   role: '',
 } satisfies Values;
 
-export function UserAddForm(): React.JSX.Element {
+export function UserAddForm({role}:{role:string}): React.JSX.Element {
+
+
 
   const [addUser,{isLoading}] = useAddUserMutation()
   const router = useRouter();
@@ -137,9 +139,9 @@ export function UserAddForm(): React.JSX.Element {
                 name="role"
                 render={({ field }) => ( <FormControl fullWidth>
                 <InputLabel>Role</InputLabel>
-                <Select  {...field}  defaultValue="driver" label="Role" name="role" variant="outlined">
+                <Select  {...field} value={role}  defaultValue={role}label="Role" name="role" variant="outlined">
                   {states.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
+                    <MenuItem disabled={role != option.value} selected={role == option.value} key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
                   ))}
@@ -157,7 +159,7 @@ export function UserAddForm(): React.JSX.Element {
           <Button variant="text" LinkComponent={'a'} href={paths.dashboard.users} color="inherit">
             Cancel
           </Button>
-          <Button type='submit' variant="contained">Create User</Button>
+          <Button type='submit' variant="contained">Submit</Button>
         </CardActions>
       </Card>
     </form>

@@ -14,6 +14,7 @@ import userRoutes from "./routes/userRoutes";
 import channelRoutes from "./routes/channelRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import yardRoutes from "./routes/yardRoutes";
+import templateRoutes from "./routes/templateRoutes";
 import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import messageRoutes from "./routes/messageRoutes";
@@ -58,6 +59,7 @@ app.use("/api/v1/channel/member", channelMemberRoutes);
 app.use("/api/v1/message", messageRoutes);
 app.use("/api/v1/media", mediaRoutes);
 app.use("/api/v1/yard", yardRoutes);
+app.use("/api/v1/template", templateRoutes);
 
 
 // Start server

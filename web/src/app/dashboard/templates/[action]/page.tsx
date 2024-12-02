@@ -9,26 +9,21 @@ import { config } from '@/config';
 import UserList from '@/components/dashboard/users/UserList';
 import { Container } from '@mui/material';
 import { paths } from '@/paths';
-import { useParams } from 'next/navigation';
+import Template from '@/components/dashboard/template/template';
 
-export const metadata = { title: `Users | Dashboard | ${config.site.name}` } satisfies Metadata;
+export const metadata = { title: `Template | Dashboard | ${config.site.name}` } satisfies Metadata;
 
-export default function Page({params}:{params:{role:string}}): React.JSX.Element {
+export default function Page({params}:{params:{action:string}}): React.JSX.Element {
 
   return (
     <Container maxWidth="xl" sx={{ py: '64px' }}>
     <Stack spacing={3}>
       <Stack direction="row" spacing={3}>
         <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
-          <Typography variant="h4">{params.role == "driver" ? "Drivers" :"Users"}</Typography>
+          <Typography variant="h4">{`${params.action?.toUpperCase()}`}</Typography>
         </Stack>
-        <div>
-          <Button LinkComponent={"a"} href={`${paths.user.add}/${params.role}`} startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
-            Add
-          </Button>
-        </div>
       </Stack>
-      <UserList/>
+      <Template/>
     </Stack>
     </Container>
   );

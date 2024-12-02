@@ -8,6 +8,7 @@ import { Users as UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 import { XSquare } from '@phosphor-icons/react/dist/ssr/XSquare';
 import { UsersFour } from '@phosphor-icons/react/dist/ssr/UsersFour';
 import { Truck } from '@phosphor-icons/react/dist/ssr/Truck';
+import { ToiletPaper } from '@phosphor-icons/react/dist/ssr/ToiletPaper';
 
 export const navIcons = {
   'chart-pie': ChartPieIcon,
@@ -19,5 +20,6 @@ export const navIcons = {
   channels:Wrench,
   chat:Chat,
   truck:Truck,
-  'users-four':UsersFour
+  'users-four':UsersFour,
+  'template':ToiletPaper
 } as Record<string, Icon>;

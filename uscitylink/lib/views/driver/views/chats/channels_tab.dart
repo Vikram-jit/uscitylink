@@ -24,9 +24,12 @@ class ChannelTab extends StatelessWidget {
           channelController.getUserChannels();
         },
         child: Obx(() {
+          if (channelController.loading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
           // If no channels are available, show loading indicator
           if (channelController.channels.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: Text("No Channel Found Yet."));
           } else {
             return ListView.builder(
               itemCount: channelController.channels.length,

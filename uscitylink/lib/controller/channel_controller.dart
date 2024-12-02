@@ -8,7 +8,7 @@ import 'package:uscitylink/utils/utils.dart';
 class ChannelController extends GetxController {
   var channels = <UserChannelModel>[].obs;
   var innerTabIndex = 0.obs;
-
+  var loading = false.obs;
   final __channelService = ChannelService();
   var currentIndex = 0.obs;
 
@@ -33,9 +33,12 @@ class ChannelController extends GetxController {
   }
 
   void getUserChannels() {
+    loading.value = true;
     __channelService.getUserChannels().then((response) {
       channels.value = response.data;
+      loading.value = false;
     }).onError((error, stackTrace) {
+      loading.value = false;
       Utils.snackBar('Error', error.toString());
     });
   }
