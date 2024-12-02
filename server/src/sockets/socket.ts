@@ -482,6 +482,8 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
+              device_token:"",
+            platform:""
           });
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
             const isSocket = global.userSockets[key];
@@ -534,8 +536,7 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
-            device_token:"",
-            platform:""
+          
 
           });
 
@@ -546,13 +547,13 @@ export const initSocket = (httpServer: any) => {
             }
           });
         }else{
-          await isUser.update({
+          // await isUser.update({
            
-            last_login: moment.utc(),
-            device_token:"",
-            platform:""
+          //   last_login: moment.utc(),
+          //   device_token:"",
+          //   platform:""
 
-          });
+          // });
         }
       }
     });
