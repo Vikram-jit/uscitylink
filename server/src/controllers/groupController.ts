@@ -167,7 +167,11 @@ export async function getById(req: Request, res: Response): Promise<any> {
     const groupMembers = await GroupUser.findAll({
       where: {
         groupId: group?.id,
+        
       },
+      include:[
+        {model:UserProfile}
+      ]
     });
 
     return res.status(200).json({

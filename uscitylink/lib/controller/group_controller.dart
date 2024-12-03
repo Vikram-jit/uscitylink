@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
@@ -12,6 +14,9 @@ class GroupController extends GetxController {
   var messages = <MessageModel>[].obs;
   final __groupService = GroupService();
   final __messageService = MessageService();
+
+  final group = GroupSingleModel().obs;
+
   var currentIndex = 0.obs;
   var senderId = "".obs;
   @override
@@ -50,6 +55,20 @@ class GroupController extends GetxController {
     loading.value = true;
     __groupService.getUserGroups().then((response) {
       groups.value = response.data;
+      loading.value = false;
+    }).onError((error, stackTrace) {
+      loading.value = false;
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void getGroupById(String groupId) {
+    loading.value = true;
+    __groupService.getGroupById(groupId).then((response) {
+      if (response.status) {
+        group.value = response.data;
+      }
+
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;

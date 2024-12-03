@@ -32,9 +32,13 @@ class _SettingViewState extends State<SettingView> {
           child: Column(
             children: [
               AppBar(
+                backgroundColor: TColors.primary,
                 title: Text(
                   "Settings",
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(color: Colors.white),
                 ),
               ),
               Container(
@@ -69,6 +73,7 @@ class _SettingViewState extends State<SettingView> {
 
             // Account and Settings Options List
             Card(
+              color: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),

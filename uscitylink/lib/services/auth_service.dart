@@ -117,7 +117,7 @@ class UserModel {
   String status;
   DateTime createdAt;
   DateTime updatedAt;
-  List<UserProfile> profiles;
+  List<UserProfileModel> profiles;
 
   UserModel({
     required this.id,
@@ -130,7 +130,7 @@ class UserModel {
   });
 }
 
-class UserProfile {
+class UserProfileModel {
   String id;
   String userId;
   String username;
@@ -147,7 +147,7 @@ class UserProfile {
   DateTime updatedAt;
   Role role;
 
-  UserProfile({
+  UserProfileModel({
     required this.id,
     required this.userId,
     required this.username,

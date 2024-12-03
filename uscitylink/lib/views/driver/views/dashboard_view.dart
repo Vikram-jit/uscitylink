@@ -44,6 +44,7 @@ class _DashboardViewState extends State<DashboardView> {
         children: _screens,
       ),
       bottomNavigationBar: SalomonBottomBar(
+        backgroundColor: Colors.white,
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
         items: [

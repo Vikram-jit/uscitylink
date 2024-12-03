@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
@@ -31,7 +32,12 @@ void main() async {
 
   Get.lazyPut(() => MessageController());
   BackgroundService.start();
-
+  // Set the status bar color (Android only)
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.blue, // Set your color here
+    statusBarIconBrightness:
+        Brightness.light, // Set icon brightness: light or dark
+  ));
   runApp(const MyApp());
 }
 

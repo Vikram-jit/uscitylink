@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/controller/login_controller.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 
 class AccountView extends StatefulWidget {
@@ -37,7 +38,21 @@ class _AccountViewState extends State<AccountView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Account'),
+        backgroundColor: TColors.primary,
+        centerTitle: true,
+        title: const Text(
+          "Account",
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

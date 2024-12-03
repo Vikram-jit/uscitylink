@@ -7,6 +7,7 @@ import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
@@ -89,6 +90,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         child: Column(
           children: [
             AppBar(
+              backgroundColor: TColors.primary,
+              centerTitle: true,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
@@ -101,7 +104,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   children: [
                     Text(
                       widget.name, // Display the channel name
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(color: Colors.white),
                     ),
                     // Text(
                     //   lastLogin, // Display the last login info
@@ -111,7 +117,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 ),
               ),
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back), // Back icon
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                ), // Back icon
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
                   socketService.updateActiveChannel("");
@@ -124,7 +133,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       imagePickerController.pickImageFromCamera(
                           widget.channelId, "chat", "");
                     },
-                    child: const Icon(Icons.add_a_photo)),
+                    child: const Icon(
+                      Icons.add_a_photo,
+                      color: Colors.white,
+                    )),
                 const SizedBox(
                   width: 20,
                 )

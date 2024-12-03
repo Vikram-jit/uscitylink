@@ -13,9 +13,13 @@ class DocumentView extends StatelessWidget {
         child: Column(
           children: [
             AppBar(
+              backgroundColor: TColors.primary,
               title: Text(
                 "Documents",
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(color: Colors.white),
               ),
             ),
             Container(

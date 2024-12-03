@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
 import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
 
@@ -46,9 +47,16 @@ class _ChatViewState extends State<ChatView>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // backgroundColor: TColors.primary,
-        title: Text("Chats", style: Theme.of(context).textTheme.headlineMedium),
+        backgroundColor: TColors.primary,
+        title: Text("Chats",
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
+                ?.copyWith(color: Colors.white)),
         bottom: TabBar(
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.grey.shade500,
+          indicatorColor: Colors.white,
           onTap: (index) => channelController.setInnerTabIndex(index),
           controller: _tabController,
           tabs: const [
@@ -57,14 +65,12 @@ class _ChatViewState extends State<ChatView>
           ],
         ),
       ),
-      body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            ChannelTab(channelController: channelController),
-            GroupTab(groupController: groupController),
-          ],
-        ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          ChannelTab(channelController: channelController),
+          GroupTab(groupController: groupController),
+        ],
       ),
     );
   }

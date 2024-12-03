@@ -9,6 +9,7 @@ import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import Channel from "../models/Channel";
 import { Op } from "sequelize";
+import Group from "../models/Group";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -33,7 +34,6 @@ const upload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB file size limit (adjust as needed)
   },
-
 });
 
 export const createMessage = async (
@@ -87,7 +87,7 @@ export const getMessages = async (
         channelId: channelId,
         userProfileId: req.user?.id,
         type: {
-          [Op.ne]: 'group', 
+          [Op.ne]: "group",
         },
       },
       order: [["messageTimestampUtc", "DESC"]],
@@ -110,16 +110,15 @@ export const getGroupMessages = async (
   res: Response
 ): Promise<any> => {
   try {
+    const senderId = req.user?.id;
 
-    const senderId = req.user?.id
-
-    const { channelId,groupId } = req.params;
+    const { channelId, groupId } = req.params;
 
     const messages = await Message.findAll({
       where: {
         channelId: channelId,
         groupId: groupId,
-        type:"group"
+        type: "group",
       },
       include: {
         model: UserProfile,
@@ -132,7 +131,7 @@ export const getGroupMessages = async (
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: {senderId,messages},
+      data: { senderId, messages },
     });
   } catch (err: any) {
     return res
@@ -140,7 +139,6 @@ export const getGroupMessages = async (
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
-
 
 export const getMessagesByUserId = async (
   req: Request,
@@ -178,19 +176,19 @@ export const getMessagesByUserId = async (
 
 export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
-     const channelId = req.body.channelId 
-     const userId = req.user?.id        
+    const channelId = req.body.channelId;
+    const userId = req.user?.id;
     if (req.file) {
-      const file = req.file as any
+      const file = req.file as any;
 
       await Media.create({
         user_profile_id: userId,
-        channelId:channelId,
+        channelId: channelId,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         key: file?.key,
-        file_type:req.body.type
+        file_type: req.body.type,
       });
     }
 
@@ -205,24 +203,27 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
-export const fileUploadWeb = async (req: Request, res: Response): Promise<any> => {
+export const fileUploadWeb = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   try {
-     const channelId = req.activeChannel
-     const userId = req.body.userId?.length > 0 ?  req.body.userId :  req.user?.id
-     const groupId = req.body.groupId as string
-    
+    const channelId = req.activeChannel;
+    const userId = req.body.userId?.length > 0 ? req.body.userId : req.user?.id;
+    const groupId = req.body.groupId as string;
+
     if (req.file) {
-      const file = req.file as any
+      const file = req.file as any;
 
       await Media.create({
         user_profile_id: userId,
-        channelId:channelId,
-        groupId:groupId ?? null,
+        channelId: channelId,
+        groupId: groupId ?? null,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         key: file?.key,
-        file_type:req.body.type
+        file_type: req.body.type,
       });
     }
 
@@ -240,31 +241,44 @@ export const fileUploadWeb = async (req: Request, res: Response): Promise<any> =
 
 export const getMedia = async (req: Request, res: Response): Promise<any> => {
   try {
-    const page = parseInt(req.query.page +  '') || 1; // Default to page 1 if not provided
-    const limit = parseInt(req.query.limit  +  '') || 10; // Default to limit of 10 items per page
+    const page = parseInt(req.query.page + "") || 1; // Default to page 1 if not provided
+    const limit = parseInt(req.query.limit + "") || 10; // Default to limit of 10 items per page
     const offset = (page - 1) * limit; // Calculate the offset
-    const channel = await Channel.findByPk(req.params.channelId)
-    const channelId = req.params.channelId == "null"  ? req.activeChannel : req.params.channelId
-    const userId = req.query.userId ?? req.user?.id
 
+    const channelId =
+      req.params.channelId == "null" ? req.activeChannel : req.params.channelId;
+    const userId = req.query.userId ?? req.user?.id;
+
+    const source = req.query.source as string;
+    const channel =
+      source == "channel"
+        ? await Channel.findByPk(req.params.channelId)
+        : await Group.findByPk(req.params.channelId);
+       
     const media = await Media.findAndCountAll({
-      where:{
-        channelId:channelId,
-        user_profile_id:userId,
-        file_type:req.query.type || "media"
+      where: {
+        ...(source == "channel"
+          ? { channelId: channelId }
+          : { groupId: channel?.id }),
+
+        file_type: req.query.type || "media",
       },
-      limit: limit,  
-      offset: offset,  
-      order: [['createdAt', 'DESC']],
-    })
-    
+      limit: limit,
+      offset: offset,
+      order: [["createdAt", "DESC"]],
+    });
+
     return res.status(200).json({
       status: true,
       message: `Get media successfully`,
-      data:{channel,media:media.rows, page,
+      data: {
+        channel,
+        media: media.rows,
+        page,
         limit,
         totalItems: media.count,
-        totalPages: Math.ceil(media.count / limit),},
+        totalPages: Math.ceil(media.count / limit),
+      },
     });
   } catch (err: any) {
     return res
@@ -272,6 +286,5 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
-
 
 export const uploadMiddleware = upload.single("file"); // 'file' is the key used in form-data

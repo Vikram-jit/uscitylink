@@ -7,6 +7,7 @@ import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
@@ -50,23 +51,15 @@ class _GroupMessageuiState extends State<GroupMessageui>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
-      // App is in the background
-      // socketService.updateActiveChannel("");
       print("App is in the background");
-      // socketService.disconnect(); // Disconnect the socket when the app goes to background
     } else if (state == AppLifecycleState.resumed) {
-      // App is in the foreground
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
-      if (!widget.channelId.isNotEmpty) {
-        // socketService.updateActiveChannel(widget.channelId);
-      }
+      if (!widget.channelId.isNotEmpty) {}
       groupController.getGroupMessages(widget.channelId, widget.groupId);
       print("App is in the foreground");
-      // socketService.connect(); // Reconnect the socket when the app comes back to foreground
     }
   }
 
@@ -95,11 +88,13 @@ class _GroupMessageuiState extends State<GroupMessageui>
         child: Column(
           children: [
             AppBar(
+              centerTitle: true,
+              backgroundColor: TColors.primary,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
-                    AppRoutes.profileView,
-                    arguments: {'channelId': widget.channelId},
+                    AppRoutes.groupInfo,
+                    arguments: {'groupId': widget.groupId},
                   );
                 },
                 child: Column(
@@ -107,7 +102,10 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   children: [
                     Text(
                       widget.name, // Display the channel name
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(color: Colors.white),
                     ),
                     // Text(
                     //   lastLogin, // Display the last login info
@@ -117,7 +115,10 @@ class _GroupMessageuiState extends State<GroupMessageui>
                 ),
               ),
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back), // Back icon
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                ), // Back icon
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
                   socketService.removeFromGroup(widget.groupId);
@@ -131,7 +132,10 @@ class _GroupMessageuiState extends State<GroupMessageui>
                       imagePickerController.pickImageFromCamera(
                           widget.channelId, "group", widget.groupId);
                     },
-                    child: const Icon(Icons.add_a_photo)),
+                    child: const Icon(
+                      Icons.add_a_photo,
+                      color: Colors.white,
+                    )),
                 const SizedBox(
                   width: 20,
                 )

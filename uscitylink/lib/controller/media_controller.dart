@@ -15,22 +15,21 @@ class MediaController extends GetxController {
     mediaList.clear();
     selectedSegment.value = index;
     if (index == 0) {
-      fetchMediaData(channelId, "media");
+      fetchMediaData(channelId, "media", source);
     } else {
-      fetchMediaData(channelId, "doc");
+      fetchMediaData(channelId, "doc", source);
     }
   }
 
   ScrollController scrollController = ScrollController();
 
   final String channelId;
-
-  MediaController({required this.channelId});
+  final String source;
+  MediaController({required this.channelId, required this.source});
   @override
   void onInit() {
     super.onInit();
-    fetchMediaData(
-        channelId, "media"); // Trigger data load when the screen is loaded
+    fetchMediaData(channelId, "media", source);
   }
 
   @override
@@ -40,13 +39,14 @@ class MediaController extends GetxController {
   }
 
   final __messageService = MessageService();
-  Future<void> fetchMediaData(String channelId, String type) async {
+  Future<void> fetchMediaData(
+      String channelId, String type, String source) async {
     if (isLoading.value) return;
 
     isLoading.value = true;
 
     try {
-      final response = await __messageService.getMedia(channelId, type);
+      final response = await __messageService.getMedia(channelId, type, source);
 
       if (response.status) {
         mediaList.clear();

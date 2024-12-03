@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 
 class ChangePasswordView extends StatefulWidget {
@@ -26,7 +27,21 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Update Password'),
+        backgroundColor: TColors.primary,
+        centerTitle: true,
+        title: const Text(
+          "Update Password",
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

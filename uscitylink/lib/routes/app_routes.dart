@@ -3,10 +3,13 @@ import 'package:uscitylink/navigation_menu.dart';
 import 'package:uscitylink/views/auth/login_view.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
+import 'package:uscitylink/views/driver/views/group/group_info.dart';
+import 'package:uscitylink/views/driver/views/group/group_media.dart';
 import 'package:uscitylink/views/driver/views/group/group_message_ui.dart';
 import 'package:uscitylink/views/driver/views/chats/message_ui.dart';
 import 'package:uscitylink/views/driver/views/chats/profile_view.dart';
 import 'package:uscitylink/views/driver/views/dashboard_view.dart';
+import 'package:uscitylink/views/driver/views/group/member_search.dart';
 import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
 import 'package:uscitylink/views/splash_view.dart';
@@ -30,6 +33,9 @@ class AppRoutes {
   static const String splashView = '/';
 
   static const String profileView = '/profile';
+  static const String membersView = '/group_members';
+  static const String groupInfo = '/group_info';
+  static const String groupMedia = '/group_media';
 
   static final routes = [
     GetPage(
@@ -46,10 +52,9 @@ class AppRoutes {
     //Driver Routes
 
     GetPage(
-        name: AppRoutes.driverDashboard,
-        page: () => const DashboardView(),
-        transitionDuration: const Duration(milliseconds: 250),
-        transition: Transition.leftToRightWithFade),
+      name: AppRoutes.driverDashboard,
+      page: () => const DashboardView(),
+    ),
 
     GetPage(
       name: AppRoutes.driverAccount,
@@ -99,7 +104,41 @@ class AppRoutes {
             channelId: channelId,
           );
         }),
+    GetPage(
+        name: AppRoutes.groupMedia,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['groupId'];
+          print(channelId);
+          return GroupMedia(
+            groupId: channelId,
+          );
+        }),
+    GetPage(
+        name: AppRoutes.membersView,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final groupId = args['groupId'];
+          final groupMembers = args['groupMembers'];
 
+          return MemberSearch(
+            groupId: groupId,
+            groupMembers: groupMembers,
+          );
+        }),
+    GetPage(
+        name: AppRoutes.groupInfo,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final groupId = args['groupId'];
+
+          return GroupInfo(
+            groupId: groupId,
+          );
+        }),
     GetPage(
         name: AppRoutes.splashView,
         page: () => const SplashView(),

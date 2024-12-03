@@ -14,50 +14,40 @@ class DriverDashboard extends StatelessWidget {
         child: Column(
           children: [
             AppBar(
-              // backgroundColor: TColors.primary,  // Uncomment to use your custom primary color
+              backgroundColor:
+                  TColors.primary, // Uncomment to use your custom primary color
               title: Text(
                 "Dashboard",
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(color: Colors.white),
               ),
-              actions: [
+              actions: const [
                 Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
+                  padding: EdgeInsets.only(right: 16.0),
                   child: Row(
                     mainAxisAlignment:
                         MainAxisAlignment.end, // Align icons to the right
                     children: [
                       // Profile Image Container
-                      Container(
-                        height: 35,
-                        width: 35,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.asset(
-                            "assets/images/placeholder.png", // Path to your image asset
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                          width:
-                              10), // Add some space between the image and the notification icon
-                      // Notification Icon Container
-                      Container(
-                        height: 35,
-                        width: 35,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.notification_add,
-                            color: Colors.black,
-                          ),
+                      // Container(
+                      //   height: 35,
+                      //   width: 35,
+                      //   child: ClipRRect(
+                      //     borderRadius: BorderRadius.circular(6),
+                      //     child: Image.asset(
+                      //       "assets/images/placeholder.png", // Path to your image asset
+                      //       fit: BoxFit.cover,
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(width: 10),
+
+                      Center(
+                        child: Icon(
+                          Icons.notification_add,
+                          color: Colors.white,
                         ),
                       ),
                     ],

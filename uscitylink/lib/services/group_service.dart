@@ -34,4 +34,26 @@ class GroupService {
       throw Exception('Error fetching channels: $e');
     }
   }
+
+  Future<ApiResponse<GroupSingleModel>> getGroupById(String groupId) async {
+    try {
+      dynamic response =
+          await _apiService.getApi('${Constant.url}/group/$groupId');
+
+      if (response != null && response['data'] != null) {
+        var data = response['data'];
+
+        GroupSingleModel group = GroupSingleModel.fromJson(data);
+        return ApiResponse<GroupSingleModel>(
+          data: group,
+          message: response['message'] ?? 'Get Users List Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error fetching channels: $e');
+    }
+  }
 }

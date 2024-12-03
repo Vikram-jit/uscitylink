@@ -1,4 +1,33 @@
+import 'package:uscitylink/model/group_members_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+
+class GroupSingleModel {
+  Group? group;
+  List<GroupMembers>? groupMembers;
+
+  GroupSingleModel({this.group, this.groupMembers});
+
+  GroupSingleModel.fromJson(Map<String, dynamic> json) {
+    group = json['group'] != null ? new Group.fromJson(json['group']) : null;
+    if (json['groupMembers'] != null) {
+      groupMembers = <GroupMembers>[];
+      json['groupMembers'].forEach((v) {
+        groupMembers!.add(new GroupMembers.fromJson(v));
+      });
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    if (this.group != null) {
+      data['group'] = this.group!.toJson();
+    }
+    if (this.groupMembers != null) {
+      data['groupMembers'] = this.groupMembers!.map((v) => v.toJson()).toList();
+    }
+    return data;
+  }
+}
 
 class GroupModel {
   String? id;

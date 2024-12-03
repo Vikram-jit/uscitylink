@@ -39,10 +39,10 @@ class MessageService {
   }
 
   Future<ApiResponse<MediaModel>> getMedia(
-      String channelId, String type) async {
+      String channelId, String type, String source) async {
     try {
       dynamic response = await _apiService
-          .getApi('${Constant.url}/media/$channelId?type=$type');
+          .getApi('${Constant.url}/media/$channelId?type=$type&source=$source');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];
