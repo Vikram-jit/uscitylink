@@ -139,9 +139,9 @@ export function UserAddForm({role}:{role:string}): React.JSX.Element {
                 name="role"
                 render={({ field }) => ( <FormControl fullWidth>
                 <InputLabel>Role</InputLabel>
-                <Select  {...field} value={role}  defaultValue={role}label="Role" name="role" variant="outlined">
+                <Select  {...field} label="Role" name="role" variant="outlined">
                   {states.map((option) => (
-                    <MenuItem disabled={role != option.value} selected={role == option.value} key={option.value} value={option.value}>
+                    <MenuItem  key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
                   ))}
