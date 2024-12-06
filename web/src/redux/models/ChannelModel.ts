@@ -18,6 +18,7 @@ export interface SingleChannelModel {
   createdAt:     Date;
   updatedAt:     Date;
   user_channels: UserChannel[];
+  pagination:pagination
 }
 
 export interface UserChannel {
@@ -50,4 +51,11 @@ export interface UserProfile {
   createdAt:       Date;
   updatedAt:       Date;
   user: User
+}
+
+export interface   pagination{
+  currentPage: number,
+  pageSize: number,
+  total:number,
+  totalPages:number,
 }

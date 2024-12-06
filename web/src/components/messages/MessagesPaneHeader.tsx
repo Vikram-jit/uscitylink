@@ -16,6 +16,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 
 import { PaperPlane } from '@phosphor-icons/react';
 import TemplateDialog from '../dashboard/template/TemplateDialog';
+import moment from 'moment';
 
 type MessagesPaneHeaderProps = {
   sender?: UserProfile;
@@ -79,7 +80,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
               />
             )}
           </Typography>
-          <Typography variant="body2">{sender?.isOnline ? "online" : sender?.last_login}</Typography>
+          <Typography variant="body2">{sender?.isOnline ? "online" :moment(sender?.last_login).format('YYYY-MM-DD HH:mm') }</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>

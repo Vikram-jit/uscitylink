@@ -1,107 +1,130 @@
 import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
-import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
-import { WavingHand } from '@mui/icons-material';
-import { CircularProgress, Divider, IconButton, Typography } from '@mui/material';
+import { Button, CircularProgress, Divider, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-
+import moment from 'moment';
+import InfiniteScroll from 'react-infinite-scroll-component';
+import { WavingHand } from '@mui/icons-material';
 import { useSocket } from '@/lib/socketProvider';
-
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
+import MediaPane from './MediaPane';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
-import MediaPane from './MediaPane';
-import moment from 'moment';
+import { SingleChannelModel } from '@/redux/models/ChannelModel';
 
 type MessagesPaneProps = {
   userId: string;
-  userList: SingleChannelModel | null;
+  userList: any | null;
   setUserList: React.Dispatch<React.SetStateAction<SingleChannelModel | null>>;
 };
 
 export default function MessagesPane(props: MessagesPaneProps) {
-  const { userId,  setUserList } = props;
+  const { userId, setUserList } = props;
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
   const { socket } = useSocket();
-  const [mediaPanel,setMediaPanel] = React.useState<boolean>(false)
+  const [mediaPanel, setMediaPanel] = React.useState<boolean>(false);
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
-  const [selectedTemplate,setSelectedTemplate] = React.useState<{name:string,body:string,url?:string}>({name:"",body:""})
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-      });
-    }
-  };
+  const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [page, setPage] = React.useState(1);
+  const [hasMore, setHasMore] = React.useState<boolean>(true);
+  const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
+  const [buttonTitle,setButtonTitle] = React.useState<string>("Scroll to Bottom")
+  const [selectedTemplate, setSelectedTemplate] = React.useState<{ name: string; body: string; url?: string }>({
+    name: '',
+    body: '',
+  });
+
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
-    { id: userId },
+    { id: userId, page, pageSize: 10 },
     {
       skip: !userId,
       pollingInterval: 30000,
       refetchOnFocus: true,
       selectFromResult: ({ data, isLoading, isFetching }) => ({
-        data: data,
+        data,
         isLoading,
         isFetching,
       }),
     }
   );
-  React.useEffect(() => {
 
+  React.useEffect(() => {
     if (userId) {
       refetch();
     }
   }, [userId, refetch]);
   React.useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (userId) {
+      // Resetting all necessary states when userId changes
+      setMessages([]);
+      setTextAreaValue('');
+      setPage(1);
+      setHasMore(true);
+      setSelectedTemplate({ name: '', body: '', url: '' });
+      setIsTyping(false);
+      //setShowScrollToBottomButton(false)
+      if (messagesContainerRef.current) {
 
-  React.useEffect(() => {
-    if (data && data?.status) {
-      setMessages(data?.data?.messages);
+        messagesContainerRef.current.scrollTo({
+            top: 1,
+          behavior: 'smooth'
+        });
+        setButtonTitle("Scroll to Bottom")
+      }
     }
-  }, [data, isLoading]);
+  }, [userId]);
 
 
 
   React.useEffect(() => {
+    if (data && data.status) {
+      setMessages((prevMessages) => [...prevMessages, ...data.data.messages]);
+      setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
 
+    }
+  }, [data]);
+
+
+  const loadMoreMessages = () => {
+    if (hasMore && !isLoading) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+
+
+  // Socket handling (e.g., new messages)
+  React.useEffect(() => {
     if (socket) {
       socket.emit('staff_active_channel_user_update', userId);
 
       socket.on('receive_message_channel', (message: MessageModel) => {
-        scrollToBottom();
-        setMessages((prevMessages) => [...prevMessages, message]);
 
-        if (message) {
-          setUserList((prevUserList) => {
-            if (!prevUserList) return prevUserList;
-
-            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-              if (channel.userProfileId === message?.userProfileId) {
-                return {
-                  ...channel,
-                  sent_message_count: 0,
-                  last_message:message
-
-                };
-              }
-              return channel;
-            });
-
-            return { ...prevUserList, user_channels: updatedUserChannels };
-          });
+        setMessages((prevMessages) => [{...message},...prevMessages ]);
+        if(showScrollToBottomButton){
+          setButtonTitle("New Message")
         }
+        // Update user list if necessary
+        setUserList((prevUserList) => {
+          if (!prevUserList) return prevUserList;
+          const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+            if (channel.userProfileId === message.userProfileId) {
+              return { ...channel, sent_message_count: 0, last_message: message };
+            }
+            return channel;
+          });
+          return { ...prevUserList, user_channels: updatedUserChannels };
+        });
       });
-      socket.on('typing', (data:any) => {
+
+      socket.on('typing', (data: any) => {
         setIsTyping(data.isTyping);
       });
 
@@ -113,12 +136,26 @@ export default function MessagesPane(props: MessagesPaneProps) {
     return () => {
       if (socket) {
         socket.off('receive_message_channel');
-        socket?.off('staff_open_chat', null);
+        socket.off('staff_open_chat', null);
       }
     };
   }, [socket, userId]);
 
-  if (isLoading) {
+
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+
+    if(container){
+      if (container?.scrollTop > -200) {
+        setShowScrollToBottomButton(false);
+      } else {
+        setShowScrollToBottomButton(true);
+      }
+    }
+
+
+  };
+  if (isLoading && page === 1) {
     return <CircularProgress />;
   }
 
@@ -128,116 +165,144 @@ export default function MessagesPane(props: MessagesPaneProps) {
         height: { xs: 'calc(100vh - 5vh)', md: '92vh' },
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'background.default',
+        backgroundColor: '#f0f0f0',
       }}
     >
-      {data?.data && userId && <MessagesPaneHeader mediaPanel={mediaPanel} sender={data?.data?.userProfile} setMediaPanel={setMediaPanel} setSelectedTemplate={setSelectedTemplate}/>}
-
-      {mediaPanel ?  <><MediaPane userId={props.userId}/></> :  <>
-        {data?.data && messages?.length > 0 ? (
-        <>
-          <Box
-            sx={{
-              display: 'flex',
-              flex: 1,
-              minHeight: 0,
-              px: 2,
-              py: 3,
-              overflowY: 'scroll',
-              flexDirection: 'column-reverse',
-            }}
-
-          >
-             <Stack spacing={2} sx={{ justifyContent: 'flex-end' }}>
-      {messages &&
-        messages.map((message: MessageModel, index: number) => {
-          const currentDate = moment.utc(message.messageTimestampUtc).format('MM-DD-YYYY');
-
-          const previousDate =
-            index > 0
-              ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY')
-              : null;
-
-          const isDifferentDay = previousDate && currentDate !== previousDate;
-          const isToday = currentDate === moment.utc().format('MM-DD-YYYY');  // Adjusted for correct logic
-
-          const isYou = message.messageDirection === 'S';
-
-          return (
-            <>
-              <Stack
-                key={index}
-                direction="row"
-                spacing={2}
-                sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
-              >
-                {message.messageDirection !== 'S' && (
-                  <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
-                )}
-                <ChatBubble
-                  variant={isYou ? 'sent' : 'received'}
-                  {...message}
-                  attachment={false}
-                  sender={message?.sender}
-                />
-              </Stack>
-
-              {/* Render divider only if it's a different day */}
-              {isDifferentDay && (
-                <Divider>{isToday ? 'Today' : previousDate}</Divider>
-              )}
-
-
-            </>
-          );
-        })}
-    </Stack>
-          </Box>
-          <div ref={messagesEndRef} />
-          {messages.length > 0 && (
-            <MessageInput
-            selectedTemplate={selectedTemplate}
-              isTyping={isTyping}
-              textAreaValue={textAreaValue}
-              setTextAreaValue={setTextAreaValue}
-              userId={userId}
-              onSubmit={() => {
-                socket.emit('send_message_to_user', { body: textAreaValue, userId: userId, direction: 'S',...(selectedTemplate ? { url: selectedTemplate.url } : {}) });
-                if(selectedTemplate){
-                  setSelectedTemplate({
-                    name:"",
-                    body:"",
-                    url:""
-                  })
-                }
-              }}
-            />
-          )}
-        </>
-      ) : (
-        <>
-          <Box flex={1} display={'flex'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
-            {userId && messages.length == 0 ? (
-              <IconButton
-                onClick={() => {
-                  socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' });
-                }}
-              >
-                <Box display={'flex'} flexDirection={'column'} justifyContent={'center'} alignItems={'center'}>
-                  <WavingHand color="warning" />
-                  <Typography>Say Hi</Typography>
-                </Box>
-              </IconButton>
-            ) : (
-              <Typography>Not Chat Selected</Typography>
-            )}
-          </Box>
-        </>
+      {data?.data && userId && (
+        <MessagesPaneHeader
+          mediaPanel={mediaPanel}
+          sender={data?.data?.userProfile}
+          setMediaPanel={setMediaPanel}
+          setSelectedTemplate={setSelectedTemplate}
+        />
       )}
 
-      </>}
+      {mediaPanel ? (
+        <MediaPane userId={props.userId} />
+      ) : (
+        <>
+          {data?.data && messages.length > 0 ? (
+            <>
 
+              <Box
+                id="scrollable-messages-container"
+                ref={messagesContainerRef}
+                sx={{
+                  display: 'flex',
+                  flex: 1,
+                  minHeight: 0,
+                  px: 2,
+                  py: 3,
+                  overflowY: 'scroll',
+                  flexDirection: 'column-reverse', // Most recent messages at the bottom
+                }}
+              >
+                <InfiniteScroll
+                style={{
+                  display:"flex",
+                  flexDirection:"column-reverse"
+                }}
+                onScroll={handleScroll}
+                  dataLength={messages.length}
+                  next={loadMoreMessages}
+                  hasMore={hasMore}
+                  loader={<h4>Loading...</h4>} // Loader will be shown at the top when scrolling up
+                  scrollThreshold={0.95}
+                  scrollableTarget="scrollable-messages-container"
+                  inverse={true} // Load older messages on scroll up
+                >
+                  {/* Show the loader before the actual messages */}
+                  <Stack
+                    spacing={2}
+                    sx={{
+                      justifyContent: 'flex-end',
+                      flexDirection: 'column-reverse', // The most recent messages stay at the bottom
+                    }}
+                  >
+                    {messages.map((message: MessageModel, index: number) => {
+                      const currentDate = moment.utc(message.messageTimestampUtc).format('MM-DD-YYYY');
+                      const previousDate = index > 0 ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY') : null;
+                      const isDifferentDay = previousDate && currentDate !== previousDate;
+                      const isToday = currentDate === moment.utc().format('MM-DD-YYYY');
+                      const isYou = message.messageDirection === 'S';
 
+                      return (
+                        <React.Fragment key={message.id}>
+                          <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
+                            {message.messageDirection !== 'S' && <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />}
+                            <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender} />
+                          </Stack>
+                          {isDifferentDay && <Divider>{isToday ? 'Today' : previousDate}</Divider>}
+                        </React.Fragment>
+                      );
+                    })}
+                  </Stack>
+
+                </InfiniteScroll>
+              </Box>
+                    {
+                      showScrollToBottomButton &&   <Button
+                      variant="contained"
+                      color="secondary"
+                     size='small'
+                     sx={{
+                      width:200,
+                      alignSelf:"center",
+                      marginBottom:1
+                     }}
+                      onClick={()=>{
+                        if (messagesContainerRef.current) {
+
+                          messagesContainerRef.current.scrollTo({
+                              top: 1,
+                            behavior: 'smooth'
+                          });
+                          setButtonTitle("Scroll to Bottom")
+                        }
+                      }}
+                    >
+                      {buttonTitle}
+                    </Button>
+
+                    }
+
+              {messages.length > 0 && (
+                <MessageInput
+                  selectedTemplate={selectedTemplate}
+                  isTyping={isTyping}
+                  textAreaValue={textAreaValue}
+                  setTextAreaValue={setTextAreaValue}
+                  userId={userId}
+                  onSubmit={() => {
+                    socket.emit('send_message_to_user', {
+                      body: textAreaValue,
+                      userId: userId,
+                      direction: 'S',
+                      ...(selectedTemplate ? { url: selectedTemplate.url } : {}),
+                    });
+                    if (selectedTemplate) {
+                      setSelectedTemplate({ name: '', body: '', url: '' });
+                    }
+                  }}
+                />
+              )}
+            </>
+          ) : (
+            <Box flex={1} display={'flex'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
+              {userId && messages.length === 0 ? (
+                <IconButton onClick={() => socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' })}>
+                  <Box display={'flex'} flexDirection={'column'} justifyContent={'center'} alignItems={'center'}>
+                    <WavingHand color="warning" />
+                    <Typography>Say Hi</Typography>
+                  </Box>
+                </IconButton>
+              ) : (
+                <Typography>Not Chat Selected</Typography>
+              )}
+            </Box>
+          )}
+        </>
+      )}
     </Paper>
   );
 }

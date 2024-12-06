@@ -431,7 +431,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
 
-      <Grid item xs={12} md={3} sx={{ borderRight: '1px solid #e0e0e0' }}>
+      <Grid item xs={12} md={2} sx={{ borderRight: '1px solid #e0e0e0' }}>
         <SidebarContainer>
           <HeaderContainer>
             <Typography variant="h5">Group List</Typography>
@@ -544,7 +544,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       {/* Group Detail */}
 
       {viewDetailGroup ? (
-        <Grid item xs={12} md={9}>
+        <Grid item xs={12} md={10}>
           <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} />
 
           <Divider />
@@ -559,7 +559,7 @@ const ChatInterface = ({ type }: { type: string }) => {
           )}
         </Grid>
       ) : (
-        <Grid item xs={12} md={9}>
+        <Grid item xs={12} md={10}>
           {selectedGroup ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>

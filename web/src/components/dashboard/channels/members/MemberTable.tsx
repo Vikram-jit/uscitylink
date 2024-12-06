@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChannelModel, UserChannel } from '@/redux/models/ChannelModel';
+import { ChannelModel, pagination, UserChannel } from '@/redux/models/ChannelModel';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Divider from '@mui/material/Divider';
@@ -12,7 +12,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import dayjs from 'dayjs';
 import { Circle } from '@phosphor-icons/react';
-import { IconButton, Tooltip } from '@mui/material';
+import { IconButton, TablePagination, Tooltip } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 
 function noop(): void {
@@ -24,18 +24,22 @@ interface MemberTableProps {
   page?: number;
   rows?: UserChannel[];
   rowsPerPage?: number;
+  pagination:pagination|undefined
+  setPage:React.Dispatch<React.SetStateAction<number>>
 }
 
 export function MemberTable({
   count = 0,
   rows = [],
   page = 0,
-  rowsPerPage = 0,
+  setPage,
+  pagination
 }: MemberTableProps): React.JSX.Element {
+
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
-        <Table sx={{ minWidth: '800px' }}>
+        <Table >
           <TableHead>
             <TableRow>
             <TableCell>Name</TableCell>
@@ -74,15 +78,17 @@ export function MemberTable({
         </Table>
       </Box>
       <Divider />
-      {/* <TablePagination
+     {pagination &&  <TablePagination
         component="div"
-        count={count}
-        onPageChange={noop}
+        count={pagination.total}
+        onPageChange={(e,page)=>{
+          setPage(page+1)
+        }}
         onRowsPerPageChange={noop}
-        page={page}
-        rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[5, 10, 25]}
-      /> */}
+        page={page-1}
+        rowsPerPage={pagination.pageSize}
+
+      />}
     </Card>
   );
 }

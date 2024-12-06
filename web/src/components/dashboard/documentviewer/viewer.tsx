@@ -13,14 +13,21 @@ import { useParams } from 'next/navigation';
 const options = {
   cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
 };
-
-export default function Viewer() {
+ interface Viewer{
+  documentKey:string
+ }
+export default function Viewer({documentKey}:Viewer) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
   const [isClient, setIsClient] = useState(false); // To track if we're on the client-side
+  const [isLoading, setIsLoading] = useState(true); // Track loading state
 
-  const { key }: { key: string } = useParams();
+  const handleLoadingComplete = () => {
+    setIsLoading(false); // Set loading to false once the image is loaded
+  };
+ // const { key }: { key: string } = useParams();
+  const  key = documentKey
 
   // Handle document load success
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
@@ -97,10 +104,23 @@ export default function Viewer() {
           flexDirection: 'column',
           alignItems: 'center',
           width: '100%',
-          padding: 3,
-          background: '#dedede',
+
         }}
       >
+         {isLoading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10, // Make sure the loader is on top
+          }}
+        >
+          <div className="spinner"></div> {/* Custom Spinner */}
+        </div>
+      )}
+
         <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <Image
@@ -109,6 +129,7 @@ export default function Viewer() {
               width={500}
               height={500}
               objectFit="cover"
+              onLoadingComplete={handleLoadingComplete}
             />
           </Box>
         </Paper>
@@ -123,8 +144,7 @@ export default function Viewer() {
         flexDirection: 'column',
         alignItems: 'center',
         width: '100%',
-        padding: 3,
-        background: '#dedede',
+
       }}
     >
       <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
@@ -174,6 +194,7 @@ export default function Viewer() {
         {isClient && (
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <Document
+
               ref={pdfRef}
               options={options}
               file={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}

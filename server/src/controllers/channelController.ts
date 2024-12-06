@@ -7,6 +7,7 @@ import Group from "../models/Group";
 import User from "../models/User";
 import { getSocketInstance } from "../sockets/socket";
 import { Message } from "../models/Message";
+import { Op } from "sequelize";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -146,6 +147,7 @@ export async function getById(req: Request, res: Response): Promise<any> {
               },
             },
           ],
+        
         },
         {
           model: GroupChannel,
@@ -206,54 +208,80 @@ export async function getById(req: Request, res: Response): Promise<any> {
 
 export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
+    const page = parseInt(req.query.page as string) || 1; 
+    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+
+    const search = req.query.search as string || ''
+
+    const offset = (page - 1) * pageSize;
     const data: any = await Channel.findOne({
       where: {
         id: req.activeChannel,
       },
+
+    });
+
+    const userChannels = await  UserChannel.findAndCountAll({
+      where:{
+        channelId:req.activeChannel
+      },
       include: [
         {
-          model: UserChannel,
-          as: "user_channels",
-
+          model: UserProfile,
+          attributes: {
+            exclude: ["password"],
+          },
+          where:{
+            username: {
+              [Op.like]: `%${search}%`, 
+            },
+          },
           include: [
             {
-              model: UserProfile,
-              attributes: {
-                exclude: ["password"],
-              },
-              include: [
-                {
-                  model: User,
-                  as: "user",
-                },
-              ],
-            },
-            {
-              model: Message,
-              as: "last_message",
+              model: User,
+              as: "user",
             },
           ],
+          
+        },
+        {
+          model: Message,
+          as: "last_message",
         },
       ],
       order: [
         [
-          { model: UserChannel, as: "user_channels" },
+          
           "sent_message_count",
           "DESC",
         ],
       
         [
-          { model: UserChannel, as: "user_channels" },
+         
           "last_message_utc",
           "DESC",
         ],
       ],
-    });
-
+      limit: pageSize,
+      offset: offset,
+    })
+    const total = userChannels.count;
+    const totalPages = Math.ceil(total / pageSize);
+    
+    const newData ={
+      ...data?.dataValues,
+      user_channels:userChannels.rows,
+      pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        total,
+        totalPages,
+      }
+    }
     return res.status(200).json({
       status: true,
       message: `Channel Fetch Successfully..`,
-      data: data,
+      data: newData,
     });
   } catch (err: any) {
     return res

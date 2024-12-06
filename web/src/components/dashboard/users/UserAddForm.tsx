@@ -41,16 +41,16 @@ const schema = z
 
 type Values = z.infer<typeof schema>;
 
-const defaultValues = {
-  email: '',
-  phone_number: '',
-  username: '',
-  role: '',
-} satisfies Values;
 
 export function UserAddForm({role}:{role:string}): React.JSX.Element {
 
 
+  const defaultValues = {
+    email: '',
+    phone_number: '',
+    username: '',
+    role: role,
+  } satisfies Values;
 
   const [addUser,{isLoading}] = useAddUserMutation()
   const router = useRouter();
@@ -133,7 +133,7 @@ export function UserAddForm({role}:{role:string}): React.JSX.Element {
               </FormControl> )}
               />
             </Grid>
-            <Grid md={6} xs={12}>
+            {/* <Grid md={6} xs={12}>
                 <Controller
                 control={control}
                 name="role"
@@ -149,7 +149,7 @@ export function UserAddForm({role}:{role:string}): React.JSX.Element {
                 {errors.role ? <FormHelperText>{errors.role.message}</FormHelperText> : null}
               </FormControl> )}
               />
-            </Grid>
+            </Grid> */}
           </Grid>
         </CardContent>
         <Divider />

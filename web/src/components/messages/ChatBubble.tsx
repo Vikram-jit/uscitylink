@@ -12,6 +12,8 @@ import { MessageProps } from './types';
 import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
 import moment from 'moment';
 import MediaComponent from './MediaComment';
+import { Check, Ticket } from '@phosphor-icons/react';
+import { Done, DoneAll } from '@mui/icons-material';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -20,7 +22,7 @@ type ChatBubbleProps = MessageModel & {
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url } = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url,deliveryStatus } = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
@@ -33,10 +35,10 @@ export default function ChatBubble(props: ChatBubbleProps) {
         spacing={2}
         sx={{ justifyContent: 'space-between', mb: 0.25 }}
       >
-        <Typography variant="caption">
-          {messageDirection === 'S' ? sender?.username : sender?.username }
+        <Typography variant="body2">
+          {messageDirection === 'S' ? sender?.username ? `${sender?.username}(staff)` : '(staff)' : `${sender?.username}(driver)` }
         </Typography>
-        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm:ss')}</Typography>
+        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm')}</Typography>
       </Stack>
       {url ? (
         <Paper
@@ -51,7 +53,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
           }}
         >
             <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`} name={url ? url : ' '}/>
-            {body &&  <Typography  variant="body2">{body}</Typography>}
+            {body &&  <Typography  sx={{fontSize:16}}>{body}</Typography>}
 
         </Paper>
       ) : (
@@ -70,7 +72,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               borderTopLeftRadius: isSent ? 'lg' : 0,
             }}
           >
-            <Typography variant="body2">{body}</Typography>
+            <Typography sx={{fontSize:16}}>{body}</Typography>
           </Paper>
           {(isHovered || isLiked || isCelebrated) && (
             <Stack
@@ -99,6 +101,18 @@ export default function ChatBubble(props: ChatBubbleProps) {
           )}
         </Box>
       )}
+      {messageDirection === 'S' && <Stack
+        direction="row"
+        spacing={2}
+        sx={{ justifyContent: 'flex-end', mb: 0.25 }}
+      >
+        { deliveryStatus == "sent" ? <Done sx={{
+          fontSize:14
+        }}/> : <DoneAll sx={{
+          fontSize:14,
+          color:"blue"
+        }}/>}
+      </Stack>}
     </Box>
   );
 }

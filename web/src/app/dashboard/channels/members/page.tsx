@@ -1,12 +1,14 @@
 import * as React from 'react';
 import type { Metadata } from 'next';
-import { Container } from '@mui/material';
+import { Search } from '@mui/icons-material';
+import { Container, InputAdornment, TextField } from '@mui/material';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { config } from '@/config';
-import MemberList from '@/components/dashboard/channels/members/MemberList';
 import AddChanelMemberDialog from '@/components/dashboard/channels/members/AddMemberDialog';
+import MemberList from '@/components/dashboard/channels/members/MemberList';
+import SearchComponent from '@/components/SearchComponent';
 
 export const metadata = { title: `Channels | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -19,7 +21,12 @@ export default function Page(): React.JSX.Element {
             <Typography variant="h4">Channel Members</Typography>
           </Stack>
 
-          <div>
+          <div
+            style={{
+              display: 'flex',
+            }}
+          >
+           <SearchComponent/>
             <AddChanelMemberDialog />
           </div>
         </Stack>

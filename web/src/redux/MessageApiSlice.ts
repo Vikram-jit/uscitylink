@@ -10,13 +10,18 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: { userProfile: UserProfile; messages: MessageModel[] };
+        data: { userProfile: UserProfile; messages: MessageModel[],pagination:{
+          currentPage: number,
+          pageSize: number,
+          totalMessages:number,
+          totalPages:number,
+        } };
       },
-      { id: string }
+      { id: string,page: number; pageSize: number }
     >({
 
       query: (payload) => ({
-        url: `message/byUserId/${payload.id}`,
+        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,
@@ -32,7 +37,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
     >({
 
       query: (payload) => ({
-        url: `media/${null}?type=${payload.type}&userId=${payload.userId}`,
+        url: `media/${null}?type=${payload.type}&userId=${payload.userId}&source=channel`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

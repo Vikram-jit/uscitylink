@@ -146,26 +146,43 @@ export const getMessagesByUserId = async (
 ): Promise<any> => {
   try {
     const { id } = req.params;
+    const page = parseInt(req.query.page as string) || 1; 
+    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+
+    const offset = (page - 1) * pageSize;
 
     const userProfile = await UserProfile.findByPk(id);
 
-    const messages = await Message.findAll({
+    const messages = await Message.findAndCountAll({
       where: {
         channelId: req.activeChannel,
         userProfileId: id,
+        groupId:null
       },
       include: {
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
       },
-      order: [["messageTimestampUtc", "ASC"]],
+      order: [["messageTimestampUtc", "DESC"]],
+      limit: pageSize,  
+      offset: offset,   
     });
+
+    const totalMessages = messages.count;
+    const totalPages = Math.ceil(totalMessages / pageSize);
 
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: { userProfile, messages },
+      data: { userProfile,
+        messages: messages.rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          totalMessages,
+          totalPages,
+        },},
     });
   } catch (err: any) {
     return res
@@ -245,6 +262,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit + "") || 10; // Default to limit of 10 items per page
     const offset = (page - 1) * limit; // Calculate the offset
 
+
     const channelId =
       req.params.channelId == "null" ? req.activeChannel : req.params.channelId;
     const userId = req.query.userId ?? req.user?.id;
@@ -258,7 +276,9 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const media = await Media.findAndCountAll({
       where: {
         ...(source == "channel"
-          ? { channelId: channelId }
+          ? { channelId: channelId,groupId:null,
+            user_profile_id:userId
+           }
           : { groupId: channel?.id }),
 
         file_type: req.query.type || "media",
