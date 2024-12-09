@@ -67,7 +67,7 @@ export default function MyMessage() {
       // Check if there are more pages
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
-  }, [data, isLoading, userList]); // Make sure to track userList in the dependency array
+  }, [data, isLoading]); // Make sure to track userList in the dependency array
 
   const loadMoreMessages = () => {
 
