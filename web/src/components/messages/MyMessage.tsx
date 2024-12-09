@@ -32,14 +32,31 @@ export default function MyMessage() {
 
   React.useEffect(() => {
     if (data?.status && data?.data) {
-      setUserList((prev) => ({
-        ...prev,
-        ...data?.data, // Spread the rest of data into the state
-        user_channels: [
-          ...(prev?.user_channels || []), // Fallback to an empty array if prev.user_channels is undefined
-          ...(data?.data?.user_channels || []), // Fallback to an empty array if data?.data?.user_channels is undefined
-        ],
-      }));
+      const newUsers = data?.data?.user_channels || [];
+
+      // Prevent duplicate users by checking if the user already exists in the userList
+      setUserList((prevUserList) => {
+        if (!prevUserList) {
+          // If no user list exists, set the data directly
+          return {
+            ...data?.data,
+            user_channels: newUsers,
+          };
+        }
+
+        // If userList exists, merge data without duplicates
+        const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
+
+        // Filter out already existing users
+        const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
+
+        return {
+          ...prevUserList,
+          user_channels: [...prevUserList.user_channels, ...uniqueUsers],
+        };
+      });
+
+      // Check if there are more pages
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
   }, [data, isLoading]);
