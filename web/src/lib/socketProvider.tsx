@@ -73,10 +73,7 @@ export const SocketProvider = ({
       setIsConnected(false);
     }
     socketServer.on('user_online', () => {
-      dispatch(apiSlice.util.invalidateTags([{ type: 'channelUsers', id: 1 }]));
-      dispatch(apiSlice.util.invalidateTags(['channels']));
-      dispatch(apiSlice.util.invalidateTags([{ type: 'members', id: 1 }]));
-      dispatch(apiSlice.util.invalidateTags([{ type: 'messages', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
     });
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
@@ -85,10 +82,7 @@ export const SocketProvider = ({
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
-      dispatch(apiSlice.util.invalidateTags([{ type: 'channelUsers', id: 1 }]));
-      dispatch(apiSlice.util.invalidateTags(['channels']));
-      dispatch(apiSlice.util.invalidateTags([{ type: 'members', id: 1 }]));
-      dispatch(apiSlice.util.invalidateTags([{ type: 'messages', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
     });
     socketServer.on("notification_group",(message)=>{
       toast.success(message);
