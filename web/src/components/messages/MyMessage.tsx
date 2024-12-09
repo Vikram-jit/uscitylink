@@ -19,7 +19,7 @@ export default function MyMessage() {
   const searchItem = useDebounce(search,200)
 
   const { data, isLoading, refetch } = useGetChannelMembersQuery(
-    { page, pageSize: 100,search:searchItem },
+    { page, pageSize: 12,search:searchItem },
     {
       refetchOnFocus: true,
     }
@@ -34,27 +34,27 @@ export default function MyMessage() {
     if (data?.status && data?.data) {
       const newUsers = data?.data?.user_channels || [];
 
-      // If the ID has changed, reset the user list to the new data
+      console.log(userList?.id !== data?.data?.id)
       if (userList?.id !== data?.data?.id) {
         setUserList({
           ...data?.data,
-          user_channels: newUsers, // reset with the new user list
+          user_channels: newUsers,
         });
       } else {
-        // Prevent duplicate users by checking if the user already exists in the userList
+
         setUserList((prevUserList) => {
           if (!prevUserList) {
-            // If no user list exists, set the data directly
+
             return {
               ...data?.data,
               user_channels: newUsers,
             };
           }
 
-          // If userList exists, merge data without duplicates
+
           const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
 
-          // Filter out already existing users
+
           const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
 
           return {
