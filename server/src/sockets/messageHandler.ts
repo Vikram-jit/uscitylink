@@ -679,7 +679,7 @@ export async function messageToGroup(
         data: {
           groupId: isGroup?.id,
           type: "GROUP MESSAGE",
-          title: isGroup?.name,
+          title: `${isGroup?.name}(Group)`,
         },
       });
     }
