@@ -100,6 +100,9 @@ export default function MyMessage() {
       socket.on(
         'new_message_count_update_staff',
         ({ channelId, userId, message }: { channelId: string; userId: string; message: MessageModel }) => {
+
+          console.log(channelId,userId,message)
+
           if (userList && userList.id === channelId) {
             setUserList((prevUserList) => {
               if (!prevUserList) return prevUserList;
