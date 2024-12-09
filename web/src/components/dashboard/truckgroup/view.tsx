@@ -550,6 +550,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                           setTimeout(() => {
                             scrollToBottom();
                           }, 100);
+                          setMessages([])
                         }}
                       >
                         <Badge
