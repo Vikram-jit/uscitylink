@@ -149,7 +149,7 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
               <Autocomplete
                 multiple
                 id="checkboxes-tags-demo"
-                options={data?.data || []}
+                options={data?.data?.users || []}
                 disableCloseOnSelect
                 onChange={handleChange}
                 getOptionLabel={(option) => option.username}

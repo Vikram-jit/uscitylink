@@ -20,7 +20,7 @@ export default function GroupList() {
       {isLoading ? (
         <CircularProgress />
       ) : (
-        <GroupTable count={data?.data?.length} page={page} rows={data?.data} rowsPerPage={rowsPerPage} />
+        <GroupTable count={data?.data?.data.length} page={page} rows={data?.data?.data} rowsPerPage={rowsPerPage} />
       )}
     </>
   );

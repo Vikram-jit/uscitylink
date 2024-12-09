@@ -24,10 +24,9 @@ interface GroupTableProps {
 }
 
 export function GroupTable({
-  count = 0,
+
   rows = [],
-  page = 0,
-  rowsPerPage = 0,
+
 }: GroupTableProps): React.JSX.Element {
   return (
     <Card>

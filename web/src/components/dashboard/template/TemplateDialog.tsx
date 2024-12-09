@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import { useGetTemplatesQuery } from '@/redux/TemplateApiSlice';
-import { Divider, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, Divider, List, ListItem, ListItemIcon, ListItemText, TablePagination } from '@mui/material';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
+
 import DialogTitle from '@mui/material/DialogTitle';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
@@ -32,7 +32,8 @@ export default function TemplateDialog({
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedTemplate: React.Dispatch<React.SetStateAction<{ name: string; body: string; url?: string }>>;
 }) {
-  const { data, isLoading } = useGetTemplatesQuery();
+  const [page, setPage] = React.useState(1);
+  const { data, isLoading } = useGetTemplatesQuery({ page: page });
 
   const handleClose = () => {
     setOpen(false);
@@ -52,7 +53,7 @@ export default function TemplateDialog({
         <DialogContent>
           <List>
             {data &&
-              data?.data?.map((e) => {
+              data?.data?.data.map((e) => {
                 return (
                   <>
                     <ListItem
@@ -89,10 +90,22 @@ export default function TemplateDialog({
                 );
               })}
           </List>
+
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Disagree</Button>
-          <Button onClick={handleClose}>Agree</Button>
+        {data?.data?.pagination && (
+            <Box>
+              <TablePagination
+                component="div"
+                count={data?.data?.pagination?.total}
+                onPageChange={(e, page) => {
+                  setPage(page + 1);
+                }}
+                page={page - 1}
+                rowsPerPage={data?.data?.pagination.pageSize}
+              />
+            </Box>
+          )}
         </DialogActions>
       </Dialog>
     </React.Fragment>

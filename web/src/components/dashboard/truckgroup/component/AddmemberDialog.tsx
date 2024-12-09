@@ -59,7 +59,7 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
   React.useEffect(() => {
     if (data?.data) {
       if(group){
-        const defaultSelectedUsers = data.data.filter(user =>
+        const defaultSelectedUsers = data.data?.users?.filter(user =>
           group?.members
             .filter(e => e.status === "active")
             .map(e => e.userProfileId)
@@ -125,7 +125,7 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
               value={selectedUsers}
                 multiple
                 id="checkboxes-tags-demo"
-                options={data?.data || []}
+                options={data?.data?.users || []}
                 disableCloseOnSelect
                 onChange={handleChange}
                 getOptionLabel={(option) => option.username}
