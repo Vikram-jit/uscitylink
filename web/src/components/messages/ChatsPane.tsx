@@ -27,17 +27,14 @@ type ChatsPaneProps = {
 export default function ChatsPane(props: ChatsPaneProps) {
   const {
     chats,
-    setSelectedChannelId,
-    selectedChannelId,
+
     setSelectedUserId,
     selectedUserId,
     loadMoreMessages,
     hasMore,
-    setSearch,
     search,
     handleSearchChange
   } = props;
-  const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   return (
     <Paper

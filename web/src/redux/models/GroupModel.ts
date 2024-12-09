@@ -1,3 +1,4 @@
+import { pagination } from './ChannelModel';
 import { MessageModel } from './MessageModel';
 import { User } from './UserModel';
 
@@ -24,6 +25,7 @@ export interface SingleGroupModel {
   group: Group;
   members: Member[];
   messages: any[];
+  pagination:pagination
 }
 
 export interface Group {

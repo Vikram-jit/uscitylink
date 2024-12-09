@@ -8,19 +8,27 @@ import { Message } from "../models/Message";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
+import { secondarySequelize } from "../sequelize";
+import { Op, QueryTypes } from "sequelize";
+import { hashPassword } from "../utils/passwordCrypto";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
+    const role = req.query.role as string;
 
-    const  role  = req.query.role as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const search = (req.query.search as string) || "";
+
+    const offset = (page - 1) * pageSize;
 
     let whereCondition = {};
     if (role) {
       const isDriverRole = await Role.findOne({
-        where: { name: role }, 
+        where: { name: role },
       });
 
-      
       if (!isDriverRole) {
         return res.status(404).json({
           status: false,
@@ -28,13 +36,18 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
         });
       }
 
-     
       whereCondition = {
-        role_id: isDriverRole.id, 
+        role_id: isDriverRole.id,
       };
     }
 
-    const users = await UserProfile.findAll({
+    const users = await UserProfile.findAndCountAll({
+      where: {
+        ...whereCondition,
+        username: {
+          [Op.like]: `%${search}%`,
+        },
+      },
       attributes: {
         exclude: ["password"],
       },
@@ -48,14 +61,23 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
           as: "role",
         },
       ],
-      where:whereCondition,
-      order: [["id", "DESC"]],
+
+      order: [["username", "ASC"]],
+      limit: pageSize,
+      offset: offset,
     });
+    const total = users.count;
+    const totalPages = Math.ceil(total / pageSize);
 
     return res.status(200).json({
       status: true,
       message: `Get Users Successfully.`,
-      data: users,
+      data: {users:users.rows, pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        total,
+        totalPages,
+      }},
     });
   } catch (err: any) {
     return res
@@ -79,10 +101,8 @@ export async function getChannelList(
         },
         {
           model: Message,
-         as:"last_message"
-        
-        }
-        
+          as: "last_message",
+        },
       ],
       order: [["recieve_message_count", "DESC"]],
     });
@@ -99,10 +119,7 @@ export async function getChannelList(
   }
 }
 
-export async function getGroupList(
-  req: Request,
-  res: Response
-): Promise<any> {
+export async function getGroupList(req: Request, res: Response): Promise<any> {
   try {
     const users = await GroupUser.findAll({
       where: {
@@ -111,20 +128,20 @@ export async function getGroupList(
       include: [
         {
           model: Group,
-          where:{
-            type:"group"
+          where: {
+            type: "group",
           },
-          include:[{
-            model:GroupChannel,
-            as:"group_channel"
-          }]
+          include: [
+            {
+              model: GroupChannel,
+              as: "group_channel",
+            },
+          ],
         },
         {
           model: Message,
-         as:"last_message"
-        
-        }
-        
+          as: "last_message",
+        },
       ],
       order: [["message_count", "DESC"]],
     });
@@ -140,8 +157,6 @@ export async function getGroupList(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
-
-
 
 export async function updateUserActiveChannel(
   req: Request,
@@ -232,12 +247,13 @@ export async function getUserWithoutChannel(
   }
 }
 
-export async function getUserProfile( req: Request,
-  res: Response):Promise<any>{
+export async function getUserProfile(
+  req: Request,
+  res: Response
+): Promise<any> {
   try {
+    const user = await UserProfile.findByPk(req.user?.id);
 
-    const user = await UserProfile.findByPk(req.user?.id)
-    
     return res.status(200).json({
       status: true,
       message: `Get Profile User Successfully.`,
@@ -250,17 +266,16 @@ export async function getUserProfile( req: Request,
   }
 }
 
-
 export async function updateDeviceToken(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
-    console.log(req.body)
+    console.log(req.body);
     await UserProfile.update(
       {
         device_token: req.body.device_token,
-        platform:req.body.platform
+        platform: req.body.platform,
       },
       {
         where: {
@@ -273,6 +288,120 @@ export async function updateDeviceToken(
     return res.status(200).json({
       status: true,
       message: `Update Device Token Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function syncUser(req: Request, res: Response): Promise<any> {
+  try {
+    const isRole = await Role.findOne({
+      where: {
+        name: "staff",
+      },
+    });
+    const dispatchers = await secondarySequelize.query<any>(
+      `SELECT * FROM dispatches`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (Array.isArray(dispatchers)) {
+      await Promise.all(
+        dispatchers.map(async (e) => {
+          const isCheckRegister = await User.findOne({
+            where: {
+              email: e.email,
+            },
+          });
+          if (isCheckRegister) {
+          } else {
+            const isUser = await User.create({
+              email: e.email,
+              phone_number: e?.phone,
+              status: "active",
+            });
+
+            if (isUser) {
+              await UserProfile.create({
+                username: e.name,
+                userId: isUser?.id,
+                role_id: isRole?.id!,
+                password: e.password,
+                status: "active",
+              });
+            }
+          }
+        })
+      );
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Update Device Token Successfully.`,
+      data: dispatchers,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function syncDriver(req: Request, res: Response): Promise<any> {
+  try {
+    const isRole = await Role.findOne({
+      where: {
+        name: "driver",
+      },
+    });
+    const drivers = await secondarySequelize.query<any>(
+      `SELECT * FROM drivers`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (Array.isArray(drivers)) {
+      await Promise.all(
+        drivers.map(async (e) => {
+          const isCheckRegister = await User.findOne({
+            where: {
+              email: e.email,
+            },
+          });
+          if (isCheckRegister) {
+          } else {
+            const isUser = await User.create({
+              email: e.email,
+              phone_number: e?.phone_number,
+              status: "active",
+            });
+
+            if (isUser) {
+              const pass = "123456";
+              // Hash the password
+              const hashedPassword = await hashPassword(pass);
+              await UserProfile.create({
+                username: e.name,
+                userId: isUser?.id,
+                role_id: isRole?.id!,
+                password: hashedPassword,
+                status: "active",
+              });
+            }
+          }
+        })
+      );
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Sync Driver Successfully.`,
     });
   } catch (err: any) {
     return res

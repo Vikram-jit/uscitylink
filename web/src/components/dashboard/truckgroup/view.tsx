@@ -37,9 +37,11 @@ import { Circle, PaperPlane } from '@phosphor-icons/react';
 import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import { useDispatch } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import useDebounce from '@/hooks/useDebounce';
 import MediaComponent from '@/components/messages/MediaComment';
 import { formatDate } from '@/components/messages/utils';
 
@@ -104,6 +106,12 @@ const HeaderContainer = styled(Box)({
 const ChatInterface = ({ type }: { type: string }) => {
   const { socket } = useSocket();
 
+  const [page, setPage] = React.useState(1);
+  const [hasMore, setHasMore] = React.useState<boolean>(true);
+  const [search, setSearch] = React.useState<string>('');
+
+  const searchItem = useDebounce(search, 200);
+
   const [open, setOpen] = useState<boolean>(false);
   const [newMessage, setNewMessage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +120,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [senderId, setSenderId] = useState<string>('');
   const [viewDetailGroup, setViewDetailGroup] = useState<boolean>(false);
 
-  const { data: groupList } = useGetGroupsQuery({ type: type });
+  const { data: groupList } = useGetGroupsQuery({ type: type, page, search: searchItem });
 
   const [messages, setMessages] = useState<any>([]);
 
@@ -137,8 +145,12 @@ const ChatInterface = ({ type }: { type: string }) => {
     name: '',
     body: '',
   });
+
+  const [pageMessage, setPageMessage] = React.useState(1);
+  const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
+
   const { data: group, isFetching } = useGetGroupByIdQuery(
-    { id: selectedGroup },
+    { id: selectedGroup,page:pageMessage},
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -146,7 +158,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   );
 
   const { data: groupMessage } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup },
+    { channel_id: selectedChannel, group_id: selectedGroup,page:pageMessage },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -190,7 +202,6 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleReceiveMessage = useCallback(
     (message: any) => {
-      console.log(message);
       setMessages((prevMessages: any) => {
         if (prevMessages.some((msg: any) => msg.id === message.id)) {
           return prevMessages;
@@ -208,7 +219,8 @@ const ChatInterface = ({ type }: { type: string }) => {
   useEffect(() => {
     if (groupList) {
       if (groupList.status) {
-        setGroups(groupList.data);
+        setGroups((prev) => [...prev, ...groupList?.data?.data]);
+        setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList.data.pagination?.totalPages);
       }
     }
   }, [groupList]);
@@ -216,18 +228,21 @@ const ChatInterface = ({ type }: { type: string }) => {
   useEffect(() => {
     if (type == 'truck') {
       if (group?.status && group?.data?.messages) {
-        setMessages(group?.data?.messages || []);
-        setTimeout(() => {
-          scrollToBottom();
-        }, 100);
+        //setMessages(group?.data?.messages || []);
+        setMessages((prevMessages:any) => [...prevMessages, ...group.data.messages]);
+        setHasMoreMessage(group.data.pagination.currentPage < group.data.pagination.totalPages);
+        // setTimeout(() => {
+        //   scrollToBottom();
+        // }, 100);
       }
     } else {
       if (groupMessage?.data) {
-        setMessages(groupMessage?.data.messages || []);
+        setMessages((prevMessages:any) => [...prevMessages, ...groupMessage.data.messages]);
+        setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
         setSenderId(groupMessage?.data?.senderId);
-        setTimeout(() => {
-          scrollToBottom();
-        }, 100);
+        // setTimeout(() => {
+        //   scrollToBottom();
+        // }, 100);
       }
     }
   }, [group, groupMessage]);
@@ -259,7 +274,16 @@ const ChatInterface = ({ type }: { type: string }) => {
     setFile(null);
   };
   //Socket
-
+  const loadMoreMessages = () => {
+    if (hasMore && !isLoading) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+  const loadMoreGroupMessages = () => {
+    if (hasMore && !isLoading) {
+      setPageMessage((prevPage) => prevPage + 1);
+    }
+  };
   useEffect(() => {
     if (socket) {
       socket.on('update_user_group_list', (message: MessageModel) => {
@@ -317,11 +341,11 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   }, [socket]);
 
-  useEffect(()=>{
-    if(selectedTemplate){
-      setNewMessage(selectedTemplate?.body)
+  useEffect(() => {
+    if (selectedTemplate) {
+      setNewMessage(selectedTemplate?.body);
     }
-  },[selectedTemplate])
+  }, [selectedTemplate]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -353,16 +377,16 @@ const ChatInterface = ({ type }: { type: string }) => {
             groupId: selectedGroup,
             body: newMessage,
             direction: 'S',
-            url:selectedTemplate ? selectedTemplate?.url : ''
+            url: selectedTemplate ? selectedTemplate?.url : '',
           });
         }
       }
       setIsLoading(false);
       setSelectedTemplate({
-        name:"",
-        body:"",
-        url:""
-      })
+        name: '',
+        body: '',
+        url: '',
+      });
       setNewMessage('');
       // const data = {}
     } catch (err) {
@@ -443,100 +467,115 @@ const ChatInterface = ({ type }: { type: string }) => {
           </HeaderContainer>
           <Box sx={{ p: 2 }}>
             <TextField
+              value={search}
               fullWidth
               placeholder="Search groups"
               variant="outlined"
               size="small"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setGroups([]);
+                setSelectedGroup('');
+              }}
               InputProps={{
                 startAdornment: <FiSearch style={{ marginRight: 8 }} />,
               }}
             />
           </Box>
-          <List>
-            {groups &&
-              groups.map((group, index) => (
-                <>
-                  <ListItem key={index} sx={{ padding: 0 }}>
-                    <ListItemButton
-                      selected={selectedGroup == group.id}
-                      sx={{
-                        alignItems: 'initial',
-                        gap: 1,
-                        '&.Mui-selected': {
-                          backgroundColor: 'primary.main',
-                          color: 'white',
-                        },
-                        '&:hover': {
-                          backgroundColor: 'primary.light',
-                          color: 'black',
-                        },
-                      }}
-                      onClick={() => {
-                        if (type == 'group') {
-                          socket.emit('group_user_add', {
-                            channel_id: group.group_channel.channelId,
-                            group_id: group.id,
-                          });
-                          socket.emit('update_group_staff_message_count', group.id);
-                        } else {
-                          socket?.emit('staff_open_truck_group', group.id);
-                        }
+          <List id="scrollable-channel-container" sx={{ maxHeight: '650px', overflowY: 'auto' }}>
+            <InfiniteScroll
+              dataLength={groups.length}
+              next={loadMoreMessages}
+              hasMore={hasMore}
+              loader={<h4>Loading...</h4>}
+              scrollThreshold={0.95}
+              scrollableTarget="scrollable-channel-container"
+            >
+              {groups &&
+                groups?.map((group, index) => (
+                  <>
+                    <ListItem key={index} sx={{ padding: 0 }}>
+                      <ListItemButton
+                        selected={selectedGroup == group.id}
+                        sx={{
+                          alignItems: 'initial',
+                          gap: 1,
+                          '&.Mui-selected': {
+                            backgroundColor: 'primary.main',
+                            color: 'white',
+                          },
+                          '&:hover': {
+                            backgroundColor: 'primary.light',
+                            color: 'black',
+                          },
+                        }}
+                        onClick={() => {
+                          if (type == 'group') {
+                            socket.emit('group_user_add', {
+                              channel_id: group.group_channel.channelId,
+                              group_id: group.id,
+                            });
+                            socket.emit('update_group_staff_message_count', group.id);
+                          } else {
+                            socket?.emit('staff_open_truck_group', group.id);
+                          }
 
-                        setSelectedGroup(group.id);
-                        setSelectedChannel(group.group_channel.channelId);
-                        setTimeout(() => {
-                          scrollToBottom();
-                        }, 100);
-                      }}
-                    >
-                      <Badge
-                        overlap="circular"
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                        variant="dot"
-                        // color={contact.status === "online" ? "success" : "default"}
+                          setSelectedGroup(group.id);
+                          setSelectedChannel(group.group_channel.channelId);
+                          setTimeout(() => {
+                            scrollToBottom();
+                          }, 100);
+                        }}
                       >
-                        <Avatar>{group.name.split('')?.[0]}</Avatar>
-                        {/* <Avatar alt=""} /> */}
-                      </Badge>
-                      <ListItemText
-                        primary={
-                          <Box display={'flex'} justifyContent={'space-between'}>
-                            <Box display={'flex'} flexDirection={'column'}>
-                              <Typography>{group.name}</Typography>
-                              <Typography
-                                sx={{
-                                  color: 'grey',
-                                  '&:hover': {
+                        <Badge
+                          overlap="circular"
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                          variant="dot"
+                          // color={contact.status === "online" ? "success" : "default"}
+                        >
+                          <Avatar>{group.name.split('')?.[0]}</Avatar>
+                          {/* <Avatar alt=""} /> */}
+                        </Badge>
+                        <ListItemText
+                          primary={
+                            <Box display={'flex'} justifyContent={'space-between'}>
+                              <Box display={'flex'} flexDirection={'column'}>
+                                <Typography>{group.name}</Typography>
+                                <Typography
+                                  sx={{
                                     color: 'grey',
-                                  },
-                                }}
-                              >
-                                {group.last_message?.body ?? 'No Message Yet'}
-                              </Typography>
+                                    '&:hover': {
+                                      color: 'grey',
+                                    },
+                                  }}
+                                >
+                                  {group.last_message?.body ?? 'No Message Yet'}
+                                </Typography>
+                              </Box>
+                              <Box display={'flex'} flexDirection={'column'}>
+                                {group?.message_count > 0 && (
+                                  <Chip
+                                    variant="filled"
+                                    color="primary"
+                                    size="small"
+                                    label={group?.message_count}
+                                    sx={{ ml: 1 }}
+                                  />
+                                )}
+                                <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
+                                  {formatDate(group?.last_message?.messageTimestampUtc)}
+                                </Typography>
+                              </Box>
                             </Box>
-                            <Box display={'flex'} flexDirection={'column'}>
-                              {group?.message_count > 0 && (
-                                <Chip
-                                  variant="filled"
-                                  color="primary"
-                                  size="small"
-                                  label={group?.message_count}
-                                  sx={{ ml: 1 }}
-                                />
-                              )}
-                              <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
-                                {formatDate(group?.last_message?.messageTimestampUtc)}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        }
-                        sx={{ ml: 2 }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                  <Divider />
-                </>
-              ))}
+                          }
+                          sx={{ ml: 2 }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                    <Divider />
+                  </>
+                ))}
+            </InfiniteScroll>
           </List>
         </SidebarContainer>
       </Grid>
@@ -565,44 +604,62 @@ const ChatInterface = ({ type }: { type: string }) => {
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
                 <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} />
                 <Divider />
-                <MessagesContainer>
-                  <div ref={messagesEndRef} />
-                  {messages.map((msg: any) => (
-                    <>
-                      {msg.senderId != senderId && msg.sender && (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                          <Typography variant="caption">{msg?.sender?.username}</Typography>
-                          <Badge
-                            color={msg?.sender.isOnline ? 'success' : 'default'}
-                            variant={msg?.sender.isOnline ? 'dot' : 'standard'}
-                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                            overlap="circular"
-                          />
-                        </Box>
-                      )}
-                      <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
-                        {msg.url && (
-                          <Paper
-                            variant="outlined"
-                            sx={{
-                              px: 1.75,
-                              py: 1.25,
-                            }}
-                          >
-                            <MediaComponent
-                              url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                              name={msg.url ? msg.url : ' '}
+                <MessagesContainer id="scrollable-messages-group-container">
+                  {/* <div ref={messagesEndRef} /> */}
+                  <InfiniteScroll
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column-reverse',
+                      gap: '10px',
+                      padding: '20px',
+
+                    }}
+                    // onScroll={handleScroll}
+                    dataLength={messages.length}
+                    next={loadMoreGroupMessages}
+                    hasMore={hasMoreMessage}
+                    loader={<h4>Loading...</h4>} // Loader will be shown at the top when scrolling up
+                    scrollThreshold={0.95}
+                    scrollableTarget="scrollable-messages-group-container"
+                    inverse={true} // Load older messages on scroll up
+                  >
+                    {messages.map((msg: any) => (
+                      <>
+                        {msg.senderId != senderId && msg.sender && (
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <Typography variant="caption">{msg?.sender?.username}</Typography>
+                            <Badge
+                              color={msg?.sender.isOnline ? 'success' : 'default'}
+                              variant={msg?.sender.isOnline ? 'dot' : 'standard'}
+                              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                              overlap="circular"
                             />
-                          </Paper>
+                          </Box>
                         )}
-                        {msg.body}
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
-                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                        </Box>
-                      </MessageBubble>
-                    </>
-                  ))}
+                        <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
+                          {msg.url && (
+                            <Paper
+                              variant="outlined"
+                              sx={{
+                                px: 1.75,
+                                py: 1.25,
+                              }}
+                            >
+                              <MediaComponent
+                                url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                                name={msg.url ? msg.url : ' '}
+                              />
+                            </Paper>
+                          )}
+                          {msg.body}
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
+                            {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                          </Box>
+                        </MessageBubble>
+                      </>
+                    ))}
+                  </InfiniteScroll>
                 </MessagesContainer>
 
                 {/* Input Container */}
@@ -690,13 +747,17 @@ const ChatInterface = ({ type }: { type: string }) => {
                   <IconButton onClick={handleSendMessage} disabled={isLoading}>
                     {isLoading ? <CircularProgress size={24} /> : <FiSend />}
                   </IconButton>
-
                 </InputContainer>
-                {
-        selectedTemplate.url && <Box sx={{}}>
-          <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedTemplate.url}`} name={selectedTemplate.url ??''} width={100} height={100}/>
-        </Box>
-      }
+                {selectedTemplate.url && (
+                  <Box sx={{}}>
+                    <MediaComponent
+                      url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedTemplate.url}`}
+                      name={selectedTemplate.url ?? ''}
+                      width={100}
+                      height={100}
+                    />
+                  </Box>
+                )}
               </Box>
             ) : (
               <Box

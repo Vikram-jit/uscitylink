@@ -114,7 +114,13 @@ export const getGroupMessages = async (
 
     const { channelId, groupId } = req.params;
 
-    const messages = await Message.findAll({
+    const page = parseInt(req.query.page as string) || 1; 
+    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+
+    const offset = (page - 1) * pageSize;
+
+
+    const messages = await Message.findAndCountAll({
       where: {
         channelId: channelId,
         groupId: groupId,
@@ -126,12 +132,22 @@ export const getGroupMessages = async (
         attributes: ["id", "username", "isOnline"],
       },
       order: [["messageTimestampUtc", "DESC"]],
+      limit: pageSize,  
+      offset: offset,   
     });
+
+    const totalMessages = messages.count;
+    const totalPages = Math.ceil(totalMessages / pageSize);
 
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: { senderId, messages },
+      data: { senderId, messages:messages.rows,pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        total:totalMessages,
+        totalPages,
+      } },
     });
   } catch (err: any) {
     return res

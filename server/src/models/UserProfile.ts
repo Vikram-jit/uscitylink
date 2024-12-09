@@ -12,7 +12,7 @@ interface UserProfileAttributes {
   profile_pic?: string;
   password?: string;
   status?: string;
-  role_id: number;
+  role_id: string;
   last_message_id?: number;
   isOnline: boolean;
   device_id?: string;
@@ -28,7 +28,7 @@ interface UserProfileCreationAttributes
   extends Optional<UserProfileAttributes, "userId"> {}
 
 export class UserProfile
-  extends Model<UserProfileAttributes, UserProfileCreationAttributes>
+  extends Model<any, any>
   implements UserProfileAttributes
 {
   public id!: string;
@@ -37,7 +37,7 @@ export class UserProfile
   public profile_pic?: string;
   public password?: string;
   public status?: string;
-  public role_id!: number;
+  public role_id!: string;
   public last_message_id?: number;
   public isOnline!: boolean;
   public device_id?: string;

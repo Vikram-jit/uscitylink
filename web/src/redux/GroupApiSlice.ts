@@ -1,3 +1,4 @@
+import { pagination } from '@/redux/models/ChannelModel';
 import { ApiResponse, apiSlice } from './apiSlice';
 import { GroupModel, SingleGroupModel } from './models/GroupModel';
 import { TruckModel } from './models/TruckModel';
@@ -8,13 +9,13 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: GroupModel[];
+        data: {data:GroupModel[],pagination:pagination};
       },
-      Partial<{ type: string }>
+      Partial<{ type: string,page:number,search?:string }>
     >({
       providesTags: ['groups'],
       query: (payload) => ({
-        url: `group`,
+        url: `group?page=${payload.page}&search=${payload.search}`,
         method: 'GET',
         params: payload?.type ? { type: payload.type } : {},
       }),
@@ -25,11 +26,11 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: SingleGroupModel;
       },
-      Partial<{ id: string }>
+      Partial<{ id: string,page:number }>
     >({
       providesTags: ['group'],
       query: (payload) => ({
-        url: `group/messages/${payload.id}`,
+        url: `group/messages/${payload.id}?page=${payload.page}`,
         method: 'GET',
       }),
     }),
@@ -99,11 +100,11 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: any;
       },
-      Partial<{ channel_id:string,  group_id: string }>
+      Partial<{ channel_id:string,  group_id: string ,page:number}>
     >({
       providesTags: ['group'],
       query: (payload) => ({
-        url: `message/${payload.channel_id}/${payload.group_id}`,
+        url: `message/${payload.channel_id}/${payload.group_id}?page=${payload.page}`,
         method: 'GET',
       }),
     }),

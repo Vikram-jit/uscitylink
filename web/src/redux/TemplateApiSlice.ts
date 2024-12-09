@@ -1,8 +1,6 @@
+import { pagination } from '@/redux/models/ChannelModel';
 
 import { apiSlice } from './apiSlice';
-import { UserProfile } from './models/ChannelModel';
-import { MediaModel } from './models/MediaModel';
-import { MessageModel } from './models/MessageModel';
 
 export const TemplateApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -10,26 +8,38 @@ export const TemplateApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: {id:string, name: string; body:string,url?:string }[];
+        data: { data: { id: string; name: string; body: string; url?: string }[]; pagination: pagination };
       },
-      void
+      { page: number; search?: string }
     >({
-
       query: (payload) => ({
-        url: `template`,
+        url: `template?page=${payload.page}&search=${payload.search}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,
       providesTags: ['templates'],
     }),
-
+    getTemplateById: builder.query<
+    {
+      status: boolean;
+      message: string;
+      data: { id: string; name: string; body: string; url?: string};
+    },
+    { id:string }
+  >({
+    query: (payload) => ({
+      url: `template/${payload.id}`,
+      method: 'GET',
+    }),
+    keepUnusedDataFor: 0,
+    providesTags: ['templates'],
+  }),
     createTemplate: builder.mutation<
       {
         status: boolean;
         message: string;
-
       },
-      {name:string,body:string,url?:string}
+      { name: string; body: string; url?: string }
     >({
       query: (payload) => ({
         url: 'template',
@@ -39,7 +49,38 @@ export const TemplateApiSlice = apiSlice.injectEndpoints({
 
       invalidatesTags: ['templates'],
     }),
+    deleteTemplate: builder.mutation<
+      {
+        status: boolean;
+        message: string;
+      },
+      { id: string }
+    >({
+      query: (payload) => ({
+        url: `template/${payload.id}`,
+        method: 'DELETE',
+        body: payload,
+      }),
+
+      invalidatesTags: ['templates'],
+    }),
+    updateTemplate: builder.mutation<
+    {
+      status: boolean;
+      message: string;
+
+    },
+    {id:string,name: string; body: string; url?: string}
+  >({
+    query: (payload) => ({
+      url: `template/${payload.id}`,
+      method: 'PUT',
+      body: payload,
+    }),
+
+    invalidatesTags: ['templates'],
+  }),
   }),
 });
 
-export const { useGetTemplatesQuery, useCreateTemplateMutation } = TemplateApiSlice;
+export const { useGetTemplatesQuery, useCreateTemplateMutation, useDeleteTemplateMutation,useUpdateTemplateMutation,useGetTemplateByIdQuery } = TemplateApiSlice;

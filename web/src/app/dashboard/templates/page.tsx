@@ -10,6 +10,7 @@ import UserList from '@/components/dashboard/users/UserList';
 import { Container } from '@mui/material';
 import { paths } from '@/paths';
 import TemplateList from '@/components/dashboard/template/templateList';
+import SearchComponent from '@/components/SearchComponent';
 
 export const metadata = { title: `Templates | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -22,7 +23,14 @@ export default function Page(): React.JSX.Element {
         <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
           <Typography variant="h4">{"Templates"}</Typography>
         </Stack>
-        <div>
+
+        <div
+            style={{
+              display: 'flex',
+            }}
+          >
+           <SearchComponent/>
+
           <Button LinkComponent={"a"} href={paths.template.add} startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
             Add
           </Button>

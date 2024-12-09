@@ -31,7 +31,7 @@ export const SocketProvider = ({
 }) => {
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0); // Track number of reconnection attempts
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
@@ -73,7 +73,10 @@ export const SocketProvider = ({
       setIsConnected(false);
     }
     socketServer.on('user_online', () => {
-      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'channelUsers', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags(['channels']));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'members', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'messages', id: 1 }]));
     });
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
@@ -82,7 +85,10 @@ export const SocketProvider = ({
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
-      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'channelUsers', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags(['channels']));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'members', id: 1 }]));
+      dispatch(apiSlice.util.invalidateTags([{ type: 'messages', id: 1 }]));
     });
     socketServer.on("notification_group",(message)=>{
       toast.success(message);

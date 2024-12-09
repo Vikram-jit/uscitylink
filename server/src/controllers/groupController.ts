@@ -110,6 +110,12 @@ export async function create(req: Request, res: Response): Promise<any> {
 export async function get(req: Request, res: Response): Promise<any> {
   try {
     const type = req.query.type as string;
+    const page = parseInt(req.query.page as string) || 1; 
+    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+
+    const search = req.query.search as string || ''
+
+    const offset = (page - 1) * pageSize;
 
     const groupChannel = await GroupChannel.findAll({
       where: {
@@ -119,11 +125,14 @@ export async function get(req: Request, res: Response): Promise<any> {
 
     const groupIds = await Promise.all(groupChannel.map((e) => e.groupId));
 
-    const data = await Group.findAll({
+    const data = await Group.findAndCountAll({
       where: {
         type: type ?? "group",
         id: {
           [Op.in]: groupIds,
+        },
+        name: {
+          [Op.like]: `%${search}%`, 
         },
       },
 
@@ -139,12 +148,24 @@ export async function get(req: Request, res: Response): Promise<any> {
       ],
 
       order: type == "group" ? [["message_count", "DESC"]] : [["id", "DESC"]],
+      limit: pageSize,
+      offset: offset,
     });
-
+    const total = data.count;
+    const totalPages = Math.ceil(total / pageSize);
+    const newData ={
+      data:data.rows,
+      pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        total,
+        totalPages,
+      }
+    }
     return res.status(200).json({
       status: true,
       message: `Group Fetch Successfully.`,
-      data: data,
+      data: newData,
     });
   } catch (err: any) {
     return res
@@ -414,7 +435,10 @@ export const getMessagesByGroupId = async (
 ): Promise<any> => {
   try {
     const { id } = req.params;
+    const page = parseInt(req.query.page as string) || 1; 
+    const pageSize = parseInt(req.query.pageSize as string) || 10; 
 
+    const offset = (page - 1) * pageSize;
     const isGroup = await Group.findByPk(id);
     const isGroupMembers = await GroupUser.findAll({
       where: {
@@ -433,7 +457,7 @@ export const getMessagesByGroupId = async (
       ],
     });
 
-    const messages = await GroupMessage.findAll({
+    const messages = await GroupMessage.findAndCountAll({
       where: {
         groupId: isGroup?.id,
       },
@@ -442,13 +466,22 @@ export const getMessagesByGroupId = async (
         as: "sender",
         attributes: ["id", "username", "isOnline"],
       },
-      order: [["messageTimestampUtc", "ASC"]],
-    });
+      order: [["messageTimestampUtc", "DESC"]],
+      limit: pageSize,  
+      offset: offset,   
 
+    });
+     const totalMessages = messages.count;
+    const totalPages = Math.ceil(totalMessages / pageSize);
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: { group: isGroup, members: isGroupMembers, messages },
+      data: { group: isGroup, members: isGroupMembers, messages:messages.rows ,pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        total:totalMessages,
+        totalPages,
+      }},
     });
   } catch (err: any) {
     return res

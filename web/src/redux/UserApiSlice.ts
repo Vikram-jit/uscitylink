@@ -1,4 +1,5 @@
 import { ApiResponse, apiSlice } from "./apiSlice";
+import { pagination } from "./models/ChannelModel";
 import { UserModel } from "./models/UserModel";
 
 export const UserApiSlice = apiSlice.injectEndpoints({
@@ -7,11 +8,11 @@ export const UserApiSlice = apiSlice.injectEndpoints({
     getUsers: builder.query<{
       status:boolean,
       message:string,
-      data:UserModel[]
-    }, Partial<{role?:string}>>({
+      data:{users:UserModel[],pagination:pagination}
+    }, Partial<{role?:string,page:number,search?:string}>>({
       providesTags:['users'],
       query: (payload) => ({
-        url: 'user',
+        url: `user?page=${payload.page}&search=${payload.search}`,
         method: 'GET',
         params: payload?.role ? { role: payload.role } : {},
       }),
@@ -22,6 +23,22 @@ export const UserApiSlice = apiSlice.injectEndpoints({
         url: 'auth/register',
         method: 'POST',
         body: {...newPost},
+      }),
+    }),
+    syncUser: builder.mutation< ApiResponse,any>({
+      invalidatesTags:['users'],
+      query: (newPost) => ({
+        url: 'auth/syncUser',
+        method: 'POST',
+
+      }),
+    }),
+    syncDriver: builder.mutation< ApiResponse,any>({
+      invalidatesTags:['users'],
+      query: (newPost) => ({
+        url: 'auth/syncUser',
+        method: 'POST',
+
       }),
     }),
     updateActiveChannel: builder.mutation< ApiResponse,{channelId:string}>({
@@ -48,4 +65,4 @@ export const UserApiSlice = apiSlice.injectEndpoints({
 });
 
 
-export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation,useGetUserWithoutChannelQuery} = UserApiSlice;
+export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation,useGetUserWithoutChannelQuery,useSyncDriverMutation,useSyncUserMutation} = UserApiSlice;

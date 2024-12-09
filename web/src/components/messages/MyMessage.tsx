@@ -55,6 +55,7 @@ export default function MyMessage() {
     setSearch(event.target.value);
     setPage(1);
     setUserList(null);
+    setSelectedUserId("")
   };
 
   React.useEffect(() => {

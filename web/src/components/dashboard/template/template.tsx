@@ -1,20 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Card, CardActions, CardContent, Grid, OutlinedInput, Typography } from '@mui/material';
 import Button from '@mui/material/Button';
 import FormLabel from '@mui/material/FormLabel';
-import { styled } from '@mui/system';
-import { useCreateTemplateMutation } from '@/redux/TemplateApiSlice';
+import { Box, styled } from '@mui/system';
+import { useCreateTemplateMutation, useGetTemplateByIdQuery, useUpdateTemplateMutation } from '@/redux/TemplateApiSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/slices';
 import useErrorHandler from '@/hooks/use-error-handler';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { paths } from '@/paths';
 import { toast } from 'react-toastify';
 import { useFileUploadMutation } from '@/redux/MessageApiSlice';
+import MediaComponent from '@/components/messages/MediaComment';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -35,7 +36,10 @@ const FormGrid = styled(Grid)(() => ({
 
 export default function Template() {
 
+  const query = useSearchParams();
+
   const [createTemplate] = useCreateTemplateMutation()
+  const [updateTemplate] = useUpdateTemplateMutation()
  const dispatch = useDispatch()
  const router = useRouter()
  const [message,setApiResponse] = useErrorHandler()
@@ -46,6 +50,19 @@ export default function Template() {
   const [file,setFile] = useState<any>()
   const [fileUpload] = useFileUploadMutation();
 
+  const {data,isLoading} = useGetTemplateByIdQuery({id:query.get('id')||''},{
+    skip:!query.get('id')
+  })
+useEffect(()=>{
+if(data){
+  if(data.status){
+    setState({
+      name:data?.data?.name,
+      body:data?.data?.body
+    })
+  }
+}
+},[data])
   async function onSubmit(){
     try {
       dispatch(showLoader())
@@ -56,7 +73,7 @@ export default function Template() {
         formData.append('type', file.type.startsWith('image/')? "media":"doc");
         const res = await fileUpload(formData).unwrap();
         if (res.status) {
-          const template = await createTemplate({...state,url:res?.data?.key});
+          const template = query.get('id') ? await updateTemplate({id:query.get('id')||'',...state,url:res?.data?.key}): await createTemplate({...state,url:res?.data?.key});
           if(template.data){
            toast.success(template.data.message)
            setState({name:"",body:""})
@@ -70,7 +87,7 @@ export default function Template() {
         }
       }
 
-      const res = await createTemplate(state);
+      const res = query.get('id') ? await updateTemplate({id:query.get('id')||'',...state}) : await createTemplate(state);
        if(res.data){
         toast.success(res.data.message)
         setState({name:"",body:""})
@@ -136,18 +153,27 @@ export default function Template() {
                 select file
                 <VisuallyHiddenInput type="file" onChange={(event) => setFile(event.target.files?.[0])}  />
               </Button>
+              {data && data?.data?.url &&
+              <Box sx={{
+                marginTop:5
+              }}>
+              <Typography sx={{fontWeight:800}}>Attached Document</Typography>
+              <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${data?.data?.url}`} name={data?.data?.url ??''} width={100} height={100}/>
+              </Box>
+              }
             </FormGrid>
+
           </Grid>
 
         </Grid>
       </CardContent>
 
       <CardActions sx={{ justifyContent: 'center' }}>
-        <Button variant="text" LinkComponent={'a'} href={'#'} color="inherit">
+        <Button variant="text" LinkComponent={'a'} href={'/dashboard/templates'} color="inherit">
           Cancel
         </Button>
         <Button type="submit" variant="contained" onClick={onSubmit}>
-          Submit
+         {query.get('id') ? "Update" :"Submit"}
         </Button>
       </CardActions>
     </Card>

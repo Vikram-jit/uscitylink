@@ -80,7 +80,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
               />
             )}
           </Typography>
-          <Typography variant="body2">{sender?.isOnline ? "online" :moment(sender?.last_login).format('YYYY-MM-DD HH:mm') }</Typography>
+          <Typography variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD HH:mm') :'' }</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>

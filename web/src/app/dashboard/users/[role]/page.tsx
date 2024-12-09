@@ -10,6 +10,8 @@ import UserList from '@/components/dashboard/users/UserList';
 import { Container } from '@mui/material';
 import { paths } from '@/paths';
 import { useParams } from 'next/navigation';
+import SearchComponent from '@/components/SearchComponent';
+import SyncUserDialog from '@/components/SyncUserDialog';
 
 export const metadata = { title: `Users | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -22,10 +24,17 @@ export default function Page({params}:{params:{role:string}}): React.JSX.Element
         <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
           <Typography variant="h4">{params.role == "driver" ? "Drivers" :"Users"}</Typography>
         </Stack>
-        <div>
+        <div
+            style={{
+              display: 'flex',
+            }}
+          >
+           <SearchComponent/>
           <Button LinkComponent={"a"} href={`${paths.user.add}/${params.role}`} startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />} variant="contained">
             Add
           </Button>
+          <div style={{marginLeft:8}}></div>
+          <SyncUserDialog role={params.role} />
         </div>
       </Stack>
       <UserList/>

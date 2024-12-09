@@ -6,6 +6,7 @@ import { InputAdornment, TextField } from '@mui/material'
 import React from 'react'
 import { useDispatch } from 'react-redux'
 
+
 export default function SearchComponent() {
   const dispatch = useDispatch()
 
