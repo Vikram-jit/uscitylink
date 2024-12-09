@@ -97,38 +97,49 @@ export default function MyMessage() {
 
   React.useEffect(() => {
     if (socket) {
-      socket.on(
-        'new_message_count_update_staff',
-        ({ channelId, userId, message }: { channelId: string; userId: string; message: MessageModel }) => {
+      const handleNewMessageCountUpdate = ({
+        channelId,
+        userId,
+        message,
+      }: {
+        channelId: string;
+        userId: string;
+        message: MessageModel;
+      }) => {
+        console.log(channelId, userId, message);
 
-          console.log(channelId,userId,message)
+        // Check if the current channel matches the one receiving the socket update
+        if (userList?.id === channelId) {
+          // Update the user list with the new message count
+          setUserList((prevUserList) => {
+            if (!prevUserList) return prevUserList; // Return if no user list exists
 
-          if (userList && userList.id === channelId) {
-            setUserList((prevUserList) => {
-              if (!prevUserList) return prevUserList;
-
-              const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-                if (channel.userProfileId === userId) {
-                  return {
-                    ...channel,
-                    sent_message_count: channel.sent_message_count + 1,
-                    last_message: message,
-                  };
-                }
-                return channel;
-              });
-
-              const updatedUserList = updatedUserChannels.sort((a, b) => {
-                if (a.userProfileId === userId) return -1;
-                if (b.userProfileId === userId) return 1;
-                return 0;
-              });
-
-              return { ...prevUserList, user_channels: updatedUserList };
+            // Map through the user channels to find and update the user
+            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+              if (channel.userProfileId === userId) {
+                return {
+                  ...channel,
+                  sent_message_count: channel.sent_message_count + 1,
+                  last_message: message,
+                };
+              }
+              return channel;
             });
-          }
+
+            // Sort the user channels so that the updated user is at the top
+            const updatedUserList = updatedUserChannels.sort((a, b) => {
+              if (a.userProfileId === userId) return -1;
+              if (b.userProfileId === userId) return 1;
+              return 0;
+            });
+
+            return { ...prevUserList, user_channels: updatedUserList };
+          });
         }
-      );
+      };
+
+      // Attach the event listener when the component mounts
+      socket.on('new_message_count_update_staff', handleNewMessageCountUpdate);
 
       socket.on('update_channel', ({ channelId, userId }: { channelId: string; userId: string }) => {
         setSelectedUserId('');
