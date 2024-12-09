@@ -169,7 +169,7 @@ export default function MyMessage() {
         //  socket.off('new_message_count_update_staff')
       };
     }
-  }, [socket]);
+  }, [socket,data]);
 
   if (isLoading) {
     return <CircularProgress />;
