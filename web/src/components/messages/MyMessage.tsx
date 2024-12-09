@@ -19,7 +19,7 @@ export default function MyMessage() {
   const searchItem = useDebounce(search,200)
 
   const { data, isLoading, refetch } = useGetChannelMembersQuery(
-    { page, pageSize: 12,search:searchItem },
+    { page, pageSize: 100,search:searchItem },
     {
       refetchOnFocus: true,
     }
@@ -34,32 +34,40 @@ export default function MyMessage() {
     if (data?.status && data?.data) {
       const newUsers = data?.data?.user_channels || [];
 
-      // Prevent duplicate users by checking if the user already exists in the userList
-      setUserList((prevUserList) => {
-        if (!prevUserList) {
-          // If no user list exists, set the data directly
+      // If the ID has changed, reset the user list to the new data
+      if (userList?.id !== data?.data?.id) {
+        setUserList({
+          ...data?.data,
+          user_channels: newUsers, // reset with the new user list
+        });
+      } else {
+        // Prevent duplicate users by checking if the user already exists in the userList
+        setUserList((prevUserList) => {
+          if (!prevUserList) {
+            // If no user list exists, set the data directly
+            return {
+              ...data?.data,
+              user_channels: newUsers,
+            };
+          }
+
+          // If userList exists, merge data without duplicates
+          const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
+
+          // Filter out already existing users
+          const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
+
           return {
-            ...data?.data,
-            user_channels: newUsers,
+            ...prevUserList,
+            user_channels: [...prevUserList.user_channels, ...uniqueUsers],
           };
-        }
-
-        // If userList exists, merge data without duplicates
-        const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
-
-        // Filter out already existing users
-        const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
-
-        return {
-          ...prevUserList,
-          user_channels: [...prevUserList.user_channels, ...uniqueUsers],
-        };
-      });
+        });
+      }
 
       // Check if there are more pages
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
-  }, [data, isLoading]);
+  }, [data, isLoading, userList]); // Make sure to track userList in the dependency array
 
   const loadMoreMessages = () => {
 
@@ -143,8 +151,8 @@ export default function MyMessage() {
         }
       });
       return () => {
-        // socket.off('update_channel_sent_message_count');
-        //  socket.off('new_message_count_update_staff')
+        socket.off('update_channel_sent_message_count');
+         socket.off('new_message_count_update_staff')
       };
     }
   }, [socket]);
