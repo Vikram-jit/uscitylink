@@ -8,6 +8,7 @@ import { UserProfile } from "../models/UserProfile";
 import GroupMessage from "../models/GroupMessage";
 import User from "../models/User";
 import { getSocketInstance } from "../sockets/socket";
+import Channel from "../models/Channel";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -117,6 +118,8 @@ export async function get(req: Request, res: Response): Promise<any> {
 
     const offset = (page - 1) * pageSize;
 
+    const channel = await Channel.findByPk(req.activeChannel)
+
     const groupChannel = await GroupChannel.findAll({
       where: {
         channelId: req.activeChannel,
@@ -155,6 +158,7 @@ export async function get(req: Request, res: Response): Promise<any> {
     const totalPages = Math.ceil(total / pageSize);
     const newData ={
       data:data.rows,
+      channel,
       pagination: {
         currentPage: page,
         pageSize: pageSize,

@@ -18,7 +18,7 @@ export default function MyMessage() {
 
   const searchItem = useDebounce(search,200)
 
-  const { data, isLoading, refetch } = useGetChannelMembersQuery(
+  const { data, isLoading, refetch ,isFetching} = useGetChannelMembersQuery(
     { page, pageSize: 12,search:searchItem },
     {
       refetchOnFocus: true,
@@ -34,26 +34,17 @@ export default function MyMessage() {
     if (data?.status && data?.data) {
       const newUsers = data?.data?.user_channels || [];
 
-      console.log(userList?.id !== data?.data?.id)
       if (userList?.id !== data?.data?.id) {
-        setUserList({
-          ...data?.data,
-          user_channels: newUsers,
-        });
+        setUserList(data?.data);
       } else {
 
         setUserList((prevUserList) => {
           if (!prevUserList) {
 
-            return {
-              ...data?.data,
-              user_channels: newUsers,
-            };
+            return data.data;
           }
 
-
           const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
-
 
           const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
 
@@ -67,7 +58,7 @@ export default function MyMessage() {
       // Check if there are more pages
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
-  }, [data, isLoading]); // Make sure to track userList in the dependency array
+  }, [data,isFetching]); // Make sure to track userList in the dependency array
 
   const loadMoreMessages = () => {
 
@@ -106,10 +97,10 @@ export default function MyMessage() {
         userId: string;
         message: MessageModel;
       }) => {
-        console.log(channelId, userId, message);
+        console.log(userList?.id ,channelId, userId, message);
 
         // Check if the current channel matches the one receiving the socket update
-        if (userList?.id === channelId) {
+        if (data?.data?.id === channelId) {
           // Update the user list with the new message count
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList; // Return if no user list exists
@@ -165,11 +156,11 @@ export default function MyMessage() {
         }
       });
       return () => {
-        // socket.off('update_channel_sent_message_count');
-        //  socket.off('new_message_count_update_staff')
+         socket.off('update_channel_sent_message_count');
+          socket.off('new_message_count_update_staff')
       };
     }
-  }, [socket,data]);
+  }, [socket,isFetching]);
 
   if (isLoading) {
     return <CircularProgress />;

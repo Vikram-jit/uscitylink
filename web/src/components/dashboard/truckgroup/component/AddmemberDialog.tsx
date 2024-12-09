@@ -54,7 +54,7 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
   const handleChange = (event: any, value: any) => {
     setSelectedUsers(value);
   };
-  const { data, isFetching } = useGetUsersQuery({ role: 'driver' });
+  const { data, isFetching } = useGetUsersQuery({ role: 'driver' ,page:-1});
   const [message,setApiResponse] = useErrorHandler()
   React.useEffect(() => {
     if (data?.data) {

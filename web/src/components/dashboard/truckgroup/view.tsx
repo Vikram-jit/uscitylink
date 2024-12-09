@@ -119,6 +119,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [senderId, setSenderId] = useState<string>('');
   const [viewDetailGroup, setViewDetailGroup] = useState<boolean>(false);
+  const [currentChannelId, setCurrentChannelId] = useState<string>('');
 
   const { data: groupList } = useGetGroupsQuery({ type: type, page, search: searchItem });
 
@@ -216,14 +217,38 @@ const ChatInterface = ({ type }: { type: string }) => {
     [setMessages, scrollToBottom]
   );
 
+
   useEffect(() => {
-    if (groupList) {
-      if (groupList.status) {
-        setGroups((prev) => [...prev, ...groupList?.data?.data]);
-        setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList.data.pagination?.totalPages);
+    if (groupList?.status && groupList?.data) {
+      const newChannelId = groupList?.data?.channel.id;
+
+      // Check if the channel ID has changed
+      if (newChannelId !== currentChannelId) {
+        setSelectedGroup("")
+        setMessages([])
+        // If channel ID has changed, reset the groups and update the current channel ID
+        setGroups(groupList?.data?.data);
+        setCurrentChannelId(newChannelId);
+
+        // Reset hasMoreMessage based on the pagination data
+        setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
+      } else {
+        // If the channel ID hasn't changed, append the new groups (ensure no duplicates)
+        setGroups((prevGroups) => {
+          const existingGroupIds = new Set(prevGroups.map((group) => group.id));
+          const newGroups = groupList?.data?.data.filter(
+            (newGroup) => !existingGroupIds.has(newGroup.id)
+          );
+          return [...prevGroups, ...newGroups];
+        });
+
+        setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
       }
     }
-  }, [groupList]);
+
+  }, [groupList, currentChannelId]);
+
+
 
   useEffect(() => {
     if (type == 'truck') {

@@ -1,4 +1,4 @@
-import { pagination } from '@/redux/models/ChannelModel';
+import { ChannelModel, pagination } from '@/redux/models/ChannelModel';
 import { ApiResponse, apiSlice } from './apiSlice';
 import { GroupModel, SingleGroupModel } from './models/GroupModel';
 import { TruckModel } from './models/TruckModel';
@@ -9,7 +9,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: {data:GroupModel[],pagination:pagination};
+        data: {data:GroupModel[],pagination:pagination,channel:ChannelModel};
       },
       Partial<{ type: string,page:number,search?:string }>
     >({

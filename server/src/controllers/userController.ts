@@ -17,6 +17,7 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
     const role = req.query.role as string;
 
     const page = parseInt(req.query.page as string) || 1;
+    
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const search = (req.query.search as string) || "";
@@ -44,9 +45,9 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
     const users = await UserProfile.findAndCountAll({
       where: {
         ...whereCondition,
-        username: {
-          [Op.like]: `%${search}%`,
-        },
+       ...(page != -1 && { username: {
+        [Op.like]: `%${search}%`,
+      },})
       },
       attributes: {
         exclude: ["password"],
@@ -63,9 +64,9 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
       ],
 
       order: [["username", "ASC"]],
-      limit: pageSize,
-      offset: offset,
+      ...(page !== -1 && { limit: pageSize, offset }),
     });
+   
     const total = users.count;
     const totalPages = Math.ceil(total / pageSize);
 

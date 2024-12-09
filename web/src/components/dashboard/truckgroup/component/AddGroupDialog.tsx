@@ -46,6 +46,7 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
   const dispatch = useDispatch();
   const [createGroup] = useCreateGroupMutation();
   const [message, setApiResponse] = useErrorHandler();
+
   const { data: truckList, isLoading } = useGetTrucksQuery();
 
   const [state, setState] = React.useState({
@@ -58,8 +59,8 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
   const handleChange = (event: any, value: any) => {
     setSelectedUsers(value);
   };
-  const { data, isFetching } = useGetUsersQuery({ role: 'driver' });
-
+  const { data, isFetching } = useGetUsersQuery({ role: 'driver',page:-1 });
+  console.log(data)
   async function onSubmit() {
     try {
       dispatch(showLoader());
