@@ -21,6 +21,7 @@ import {
   unreadAllUserMessage,
 } from "./messageHandler";
 import moment from "moment";
+import { disconnect } from "process";
 
 let io: Server;
 interface User {
@@ -510,6 +511,7 @@ export const initSocket = (httpServer: any) => {
       socket.emit("pong"); // Send back pong message
     });
     socket.on("disconnect", async () => {
+      console.log("disconnect");
       const userId = socket?.user?.id!;
 
       delete global.staffOpenChat[userId];

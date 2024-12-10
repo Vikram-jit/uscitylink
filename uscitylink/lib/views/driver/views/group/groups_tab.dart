@@ -10,7 +10,7 @@ import 'package:uscitylink/utils/utils.dart';
 class GroupTab extends StatelessWidget {
   final GroupController groupController;
 
-  SocketService socketServive = Get.put(SocketService());
+  SocketService socketServive = Get.find<SocketService>();
 
   GroupTab({super.key, required this.groupController});
 

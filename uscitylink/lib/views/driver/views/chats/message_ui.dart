@@ -25,7 +25,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
 
   late MessageController messageController;
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
   @override
@@ -49,6 +49,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       // App is in the background
       socketService.updateActiveChannel("");
+
+      if (socketService.isConnected.value) {
+        socketService.socket.disconnect();
+      }
       print("App is in the background");
       // socketService.disconnect(); // Disconnect the socket when the app goes to background
     } else if (state == AppLifecycleState.resumed) {
@@ -61,13 +65,14 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       }
       messageController.getChannelMessages(widget.channelId);
       print("App is in the foreground");
-      // socketService.connect(); // Reconnect the socket when the app comes back to foreground
+      // socketService
+      //     .connectSocket(); // Reconnect the socket when the app comes back to foreground
     }
   }
 
   @override
   void dispose() {
-    messageController.dispose();
+    // messageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     socketService.updateActiveChannel("");
     super.dispose();

@@ -53,18 +53,18 @@ class BackgroundService {
     });
 
     // Ensure socket service is connected before sending pings
-    SocketService socketService = Get.put(SocketService());
-    if (socketService.isConnected.value) {
-      Timer.periodic(const Duration(seconds: 15), (timer) {
-        if (socketService.isConnected.value) {
-          print('Sending ping...');
-          socketService.socket
-              .emit('ping'); // Send the ping message to the server
-        } else {
-          timer.cancel(); // Stop pinging if disconnected
-        }
-      });
-    }
+    // SocketService socketService = Get.put(SocketService());
+    // if (socketService.isConnected.value) {
+    //   Timer.periodic(const Duration(seconds: 15), (timer) {
+    //     if (socketService.isConnected.value) {
+    //       print('Sending ping...');
+    //       socketService.socket
+    //           .emit('ping'); // Send the ping message to the server
+    //     } else {
+    //       timer.cancel(); // Stop pinging if disconnected
+    //     }
+    //   });
+    // }
   }
 
   static Future<bool> onIosBackground(ServiceInstance service) async {

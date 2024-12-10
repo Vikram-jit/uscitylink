@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
@@ -13,14 +14,36 @@ class SettingView extends StatefulWidget {
   _SettingViewState createState() => _SettingViewState();
 }
 
-class _SettingViewState extends State<SettingView> {
+class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
   final loginController = Get.put(LoginController());
-
+  SocketService socketService = Get.find<SocketService>();
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
     // TODO: implement initState
     super.initState();
     loginController.getProfile();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Handle app lifecycle changes (background/foreground)
+    if (state == AppLifecycleState.paused) {
+      if (socketService.isConnected.value) {
+        socketService.socket.disconnect();
+      }
+      print("App is in the background");
+    } else if (state == AppLifecycleState.resumed) {
+      if (!socketService.isConnected.value) {
+        socketService.connectSocket();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override

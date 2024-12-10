@@ -31,7 +31,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
   final TextEditingController _controller = TextEditingController();
 
   late GroupController groupController;
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
   @override

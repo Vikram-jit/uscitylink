@@ -36,7 +36,7 @@ export const UserApiSlice = apiSlice.injectEndpoints({
     syncDriver: builder.mutation< ApiResponse,any>({
       invalidatesTags:['users'],
       query: (newPost) => ({
-        url: 'auth/syncUser',
+        url: 'auth/syncDriver',
         method: 'POST',
 
       }),

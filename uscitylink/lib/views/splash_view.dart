@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:uscitylink/services/fcm_service.dart';
+
 import 'package:uscitylink/services/splash_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/routes/app_routes.dart'; // Add this import for your routes
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -31,11 +28,6 @@ class _SplashViewState extends State<SplashView> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: TColors.white,
-      body: Center(
-        child: CircularProgressIndicator(
-          color: TColors.primary,
-        ),
-      ),
     );
   }
 }

@@ -7,7 +7,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class MessageController extends GetxController {
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
   var messages = <MessageModel>[].obs;
   var typing = false.obs;
   var typingMessage = "".obs;
@@ -32,6 +32,16 @@ class MessageController extends GetxController {
     } else {
       print("Error: channelId is empty or invalid.");
     }
+  }
+
+  @override
+  void dispose() {
+    print("GroupController is being disposed. Disconnecting socket...");
+    if (socketService.isConnected.value) {
+      socketService.socket.disconnect();
+      socketService.isConnected.value = false;
+    }
+    super.dispose();
   }
 
 // Start typing event

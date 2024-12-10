@@ -23,12 +23,63 @@ class AuthService {
     }
   }
 
+  Future<ApiResponse<dynamic>> getOtp(var data) async {
+    dynamic response =
+        await _apiService.postApi(data, '${Constant.url}/auth/sendOtp');
+
+    if (response != null) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Send otp successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in');
+    }
+  }
+
+  Future<ApiResponse<dynamic>> resendOtp(var data) async {
+    dynamic response =
+        await _apiService.postApi(data, '${Constant.url}/auth/re-sendOtp');
+
+    if (response != null) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Send otp successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in');
+    }
+  }
+
   Future<ApiResponse<LoginWithPasswordModel>> loginWithPassword(
       LoginWithPassword data) async {
     Map<String, dynamic> requestData = data.toJson();
 
     dynamic response = await _apiService.postApi(
         requestData, '${Constant.url}/auth/loginWithPassword');
+
+    if (response != null && response['data'] != null) {
+      LoginWithPasswordModel loginModel =
+          LoginWithPasswordModel.fromJson(response['data']);
+
+      return ApiResponse<LoginWithPasswordModel>(
+        data: loginModel,
+        message: response['message'] ?? 'Login successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in: No valid data received.');
+    }
+  }
+
+  Future<ApiResponse<LoginWithPasswordModel>> verifyOtp(
+      LoginWithOTP data) async {
+    Map<String, dynamic> requestData = data.toJson();
+
+    dynamic response = await _apiService.postApi(
+        requestData, '${Constant.url}/auth/validateOtp');
 
     if (response != null && response['data'] != null) {
       LoginWithPasswordModel loginModel =
@@ -89,6 +140,20 @@ class LoginWithPassword {
       'email': email,
       'password': password,
       'role': role,
+    };
+  }
+}
+
+class LoginWithOTP {
+  final String email;
+  final String otp;
+
+  LoginWithOTP({required this.email, required this.otp});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'email': email,
+      'otp': otp,
     };
   }
 }

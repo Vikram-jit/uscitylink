@@ -10,7 +10,7 @@ import 'package:uscitylink/services/socket_service.dart';
 
 class FilePickerController extends GetxController {
   final _apiService = NetworkApiService();
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
   var filePath = ''.obs;
   var fileName = ''.obs;
   var fileType = ''.obs;

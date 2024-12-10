@@ -9,7 +9,7 @@ import 'package:uscitylink/views/widgets/photo_preview.dart';
 
 class ImagePickerController extends GetxController {
   final _apiService = NetworkApiService();
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
 
   Rx<File?> selectedImage = Rx<File?>(null);
   RxString caption = ''.obs;

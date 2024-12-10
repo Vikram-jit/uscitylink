@@ -179,6 +179,6 @@ dynamic returnResponse(http.Response response) {
 
     default:
       Utils.hideLoader();
-      throw Exception("SERVER ERROR");
+      throw Exception(responseJson['message']);
   }
 }

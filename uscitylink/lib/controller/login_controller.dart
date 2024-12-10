@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -17,7 +19,7 @@ class LoginController extends GetxController {
   UserPreferenceController userPreferenceController =
       Get.put(UserPreferenceController());
 
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
 
   final emailController = TextEditingController().obs;
   final passwordController = TextEditingController().obs;
@@ -46,6 +48,13 @@ class LoginController extends GetxController {
     Map data = {"email": emailController.value.text};
     __authService.login(data).then((value) {
       if (value.status == true) {
+        if (value.data.profiles != null && value.data.profiles!.isNotEmpty) {
+          if (value.data.profiles![0].role?.name != "driver") {
+            throw Exception('Error: Invalid credentials');
+          }
+        } else {
+          throw Exception('Error: No profiles found');
+        }
         showAdaptiveActionSheet(
           context: context,
           actions: <BottomSheetAction>[
@@ -56,8 +65,7 @@ class LoginController extends GetxController {
                     TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
               ),
               onPressed: (_) {
-                Navigator.of(context).pop();
-                Get.to(() => OtpView(email: emailController.value.text));
+                sendOtp(context, emailController.value.text);
               },
             ),
             BottomSheetAction(
@@ -110,6 +118,59 @@ class LoginController extends GetxController {
             Get.offAllNamed(AppRoutes.driverDashboard);
           });
         }
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void loginWithOtp(BuildContext context, String email, String otp) {
+    LoginWithOTP loginData = LoginWithOTP(email: email, otp: otp);
+
+    __authService.verifyOtp(loginData).then((value) {
+      if (value.status == true) {
+        if (value.data.access_token!.isNotEmpty) {
+          userPreferenceController.storeToken(value.data).then((value) async {
+            Utils.toastMessage("Login Successfully");
+            final fcmService = Get.put(FCMService());
+            String? token = fcmService.fcmToken.value;
+            if (token != null && token.isNotEmpty) {
+              await fcmService.updateDeviceToken(token);
+            }
+            await socketService.connectSocket();
+            Get.offAllNamed(AppRoutes.driverDashboard);
+          });
+        }
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void sendOtp(BuildContext context, String email) {
+    OTP OTPData = OTP(
+      email: email,
+    );
+
+    __authService.getOtp(OTPData).then((value) {
+      if (value.status == true) {
+        Utils.toastMessage("Otp Send Successfully");
+        Navigator.of(context).pop();
+        Get.to(() => OtpView(email: emailController.value.text));
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void resendOtp(BuildContext context, String email) {
+    OTP OTPData = OTP(
+      email: email,
+    );
+
+    __authService.resendOtp(OTPData).then((value) {
+      if (value.status == true) {
+        Utils.toastMessage("Otp Resent Successfully");
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());

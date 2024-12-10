@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
 import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
@@ -15,14 +17,15 @@ class ChatView extends StatefulWidget {
 }
 
 class _ChatViewState extends State<ChatView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
-
+  SocketService socketService = Get.find<SocketService>();
   ChannelController channelController = Get.put(ChannelController());
   GroupController groupController = Get.put(GroupController());
 
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
@@ -38,8 +41,26 @@ class _ChatViewState extends State<ChatView>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Handle app lifecycle changes (background/foreground)
+    if (state == AppLifecycleState.paused) {
+      if (socketService.isConnected.value) {
+        socketService.socket.disconnect();
+      }
+      print("App is in the background");
+    } else if (state == AppLifecycleState.resumed) {
+      if (!socketService.isConnected.value) {
+        socketService.connectSocket();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
+    channelController.dispose();
+    groupController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 

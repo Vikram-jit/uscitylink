@@ -112,36 +112,6 @@ class GroupController extends GetxController {
     groups.refresh();
   }
 
-  // void updateCount(String channelId) {
-  //   try {
-  //     var channel = channels.firstWhere(
-  //       (ch) => ch.channelId == channelId,
-  //       orElse: () => UserChannelModel(id: channelId),
-  //     );
-
-  //     channel.recieve_message_count = 0;
-
-  //     channels.refresh();
-  //   } catch (e) {
-  //     print("Error while adding new message: $e");
-  //   }
-  // }
-
-  // void incrementCount(String channelId) {
-  //   try {
-  //     var channel = channels.firstWhere(
-  //       (ch) => ch.channelId == channelId,
-  //       orElse: () => UserChannelModel(id: channelId),
-  //     );
-
-  //     channel.recieve_message_count = (channel.recieve_message_count ?? 0) + 1;
-
-  //     channels.refresh();
-  //   } catch (e) {
-  //     print("Error while adding new message: $e");
-  //   }
-  // }
-
   void onNewMessage(dynamic data) {
     // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
     MessageModel newMessage = MessageModel.fromJson(data);

@@ -680,6 +680,8 @@ export async function messageToGroup(
           groupId: isGroup?.id,
           type: "GROUP MESSAGE",
           title: `${isGroup?.name}(Group)`,
+          channelId:channelId,
+          name:isGroup?.name
         },
       });
     }

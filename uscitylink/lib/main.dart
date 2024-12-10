@@ -7,6 +7,7 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/background_service.dart';
+// import 'package:uscitylink/services/background_service.dart';
 import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
@@ -21,6 +22,7 @@ void main() async {
 
   if (accessToken != null) {
     socketService.connectSocket();
+
     final fcmService = Get.put(FCMService());
 
     // Explicitly update the FCM token after login
@@ -29,11 +31,11 @@ void main() async {
       await fcmService.updateDeviceToken(token);
     }
   }
-
+  //BackgroundService.start();
   Get.lazyPut(() => MessageController());
-  BackgroundService.start();
+
   // Set the status bar color (Android only)
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.blue, // Set your color here
     statusBarIconBrightness:
         Brightness.light, // Set icon brightness: light or dark

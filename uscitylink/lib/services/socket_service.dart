@@ -157,7 +157,7 @@ class SocketService extends GetxController {
   void startPing() {
     if (isConnected.value) {
       // Use Timer.periodic to send the ping every 5 seconds
-      Timer.periodic(const Duration(seconds: 5), (timer) {
+      Timer.periodic(const Duration(seconds: 10), (timer) {
         if (isConnected.value) {
           print('Sending ping...');
           socket.emit('ping'); // Send the ping message to the server
@@ -254,7 +254,10 @@ class SocketService extends GetxController {
 
   @override
   void onClose() {
-    socket.dispose();
-    super.onClose();
+    print("SocketService: Closing and disconnecting socket.");
+    if (socket.connected) {
+      socket.disconnect();
+    }
+    super.onClose(); // Always call super.onClose() after cleanup
   }
 }

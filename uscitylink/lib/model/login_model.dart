@@ -175,3 +175,23 @@ class LoginWithPasswordModel {
     };
   }
 }
+
+class OTP {
+  String? email;
+
+  OTP({this.email});
+
+  // Factory constructor to create a Role from JSON
+  factory OTP.fromJson(Map<String, dynamic> json) {
+    return OTP(
+      email: json['email'],
+    );
+  }
+
+  // Convert Role to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'email': email,
+    };
+  }
+}

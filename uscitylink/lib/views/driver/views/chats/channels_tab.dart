@@ -10,7 +10,7 @@ class ChannelTab extends StatelessWidget {
   // Pass the controller as a parameter to this widget
   final ChannelController channelController;
 
-  SocketService socketServive = Get.put(SocketService());
+  SocketService socketServive = Get.find<SocketService>();
 
   ChannelTab({super.key, required this.channelController});
 

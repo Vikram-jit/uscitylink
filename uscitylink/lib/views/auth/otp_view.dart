@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
@@ -14,21 +17,62 @@ class OtpView extends StatefulWidget {
 }
 
 class _OtpViewState extends State<OtpView> {
-  final TextEditingController _otpController = TextEditingController();
-  final int _otpLength = 6; // Adjust the OTP length as needed
+  final loginController = Get.put(LoginController());
 
-  void _submitOtp() {
-    // Handle OTP submission
-    String otp = _otpController.text;
-    if (otp.length == _otpLength) {
-      // Navigate to the next screen or validate the OTP
-      Get.toNamed('/nextScreen'); // Adjust route as necessary
-    } else {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid OTP')),
-      );
+  late Timer _timer;
+  int _remainingTime = 30; // 10 minutes = 600 seconds
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        if (mounted) {
+          setState(() {
+            _remainingTime--;
+          });
+        }
+      } else {
+        _resendOtp();
+        _timer.cancel();
+      }
+    });
+  }
+
+  void _resendOtp() {
+    loginController.resendOtp(context, widget.email);
+
+    if (mounted) {
+      setState(() {
+        _remainingTime = 30;
+      });
     }
+
+    // Restart the timer after reset
+    _startTimer();
+  }
+
+  void _submitOtp(String otp) {
+    // Handle OTP submission
+    if (otp.length == 6) {
+      loginController.loginWithOtp(context, widget.email, otp);
+    }
+  }
+
+  String _formatTime(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 
   @override
@@ -55,29 +99,41 @@ class _OtpViewState extends State<OtpView> {
             SizedBox(
               height: TDeviceUtils.getScreenHeight() * 0.01,
             ),
-            Text(
-              'Please enter the OTP sent to your phone.',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            RichText(
               textAlign: TextAlign.center,
+              text: TextSpan(
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                children: [
+                  const TextSpan(
+                    text: 'Please enter the OTP sent to ',
+                    style: TextStyle(fontWeight: FontWeight.normal),
+                  ),
+                  TextSpan(
+                    text: widget.email,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(
+                    text: '.',
+                    style: TextStyle(fontWeight: FontWeight.normal),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
-            const OtpInputField(),
+            OtpInputField(onOtpChanged: _submitOtp),
             SizedBox(
               height: TDeviceUtils.getScreenHeight() * 0.02,
             ),
-            CustomButton(
-                label: "Submit",
-                onPressed: () {
-                  Get.offNamed(AppRoutes.driverDashboard);
-                }),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: () {
-                  // Resend OTP logic
-                },
-                child: const Text('Resend OTP'),
+                onPressed: _remainingTime == 0
+                    ? _resendOtp
+                    : null, // Disable button if timer is running
+                child: _remainingTime == 0
+                    ? const Text('Please waiting re-send otp...')
+                    : Text('Resend OTP in ${_formatTime(_remainingTime)}'),
               ),
             ),
           ],
@@ -88,7 +144,9 @@ class _OtpViewState extends State<OtpView> {
 }
 
 class OtpInputField extends StatefulWidget {
-  const OtpInputField({super.key});
+  final Function(String) onOtpChanged; // Callback to notify when OTP changes
+
+  const OtpInputField({super.key, required this.onOtpChanged});
 
   @override
   _OtpInputFieldState createState() => _OtpInputFieldState();
@@ -98,6 +156,11 @@ class _OtpInputFieldState extends State<OtpInputField> {
   final int _otpLength = 6;
   final List<TextEditingController> _controllers =
       List.generate(6, (index) => TextEditingController());
+
+  // Method to get OTP value from all controllers
+  String getOtpValue() {
+    return _controllers.map((controller) => controller.text).join('');
+  }
 
   void _onChanged(String value, int index) {
     if (value.length == 1) {
@@ -111,6 +174,9 @@ class _OtpInputFieldState extends State<OtpInputField> {
         FocusScope.of(context).previousFocus();
       }
     }
+
+    // Notify the parent widget (OtpView) whenever the OTP changes
+    widget.onOtpChanged(getOtpValue());
   }
 
   @override

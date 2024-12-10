@@ -1,10 +1,13 @@
 import { Router } from 'express';
-import { register, login, loginWithPassword, loginWithWeb } from '../controllers/authController';
+import { register, login, loginWithPassword, loginWithWeb, sendOtp, validateOtp, resendOtp } from '../controllers/authController';
 import { syncDriver, syncUser } from '../controllers/userController';
 
 const router = Router();
 
 router.post('/register', register);
+router.post('/sendOtp', sendOtp);
+router.post('/re-sendOtp', resendOtp);
+router.post('/validateOtp', validateOtp);
 router.post('/login', login);
 router.post('/loginWithPassword', loginWithPassword);
 router.post('/loginWithWeb', loginWithWeb);

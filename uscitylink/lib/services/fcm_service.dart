@@ -18,7 +18,7 @@ class FCMService extends GetxController {
   AuthService _authService = AuthService();
   RxString fcmToken = ''.obs;
 
-  SocketService socketService = Get.put(SocketService());
+  SocketService socketService = Get.find<SocketService>();
 
   @override
   void onInit() {
@@ -53,27 +53,55 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
-
-          if (AppRoutes.driverMessage.isNotEmpty) {
-            socketService.updateActiveChannel(decodedPayload['channelId']);
-            // If already on the target screen, just update the state or pop the stack
-            if (Get.currentRoute == AppRoutes.driverMessage) {
-              Get.back();
-              Get.toNamed(
-                AppRoutes.driverMessage,
-                arguments: {
-                  'channelId': decodedPayload['channelId'],
-                  'name': decodedPayload['title']
-                },
-              );
-            } else {
-              Get.toNamed(
-                AppRoutes.driverMessage,
-                arguments: {
-                  'channelId': decodedPayload['channelId'],
-                  'name': decodedPayload['title']
-                },
-              );
+          print(payload);
+          if (decodedPayload['type'] == "GROUP MESSAGE") {
+            if (AppRoutes.driverGroupMessage.isNotEmpty) {
+              if (Get.currentRoute == AppRoutes.driverMessage) {
+                socketService.addUserToGroup(
+                    decodedPayload['channelId'], decodedPayload['groupId']);
+                socketService.updateCountGroup(decodedPayload['groupId']);
+                Get.back();
+                Get.toNamed(
+                  AppRoutes.driverGroupMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['name'],
+                    'groupId': decodedPayload['groupId']
+                  },
+                );
+              } else {
+                Get.toNamed(
+                  AppRoutes.driverGroupMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['name'],
+                    'groupId': decodedPayload['groupId']
+                  },
+                );
+              }
+            }
+          } else {
+            if (AppRoutes.driverMessage.isNotEmpty) {
+              socketService.updateActiveChannel(decodedPayload['channelId']);
+              // If already on the target screen, just update the state or pop the stack
+              if (Get.currentRoute == AppRoutes.driverMessage) {
+                Get.back();
+                Get.toNamed(
+                  AppRoutes.driverMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title']
+                  },
+                );
+              } else {
+                Get.toNamed(
+                  AppRoutes.driverMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title']
+                  },
+                );
+              }
             }
           }
         } catch (e) {
@@ -125,36 +153,85 @@ class FCMService extends GetxController {
       if (message != null) {
         // Handle the notification and navigate to the desired screen
         var data = message.data;
-        Timer(
+        if (data['type'] == "GROUP MESSAGE") {
+          Timer(
             const Duration(seconds: 1),
             () => Get.toNamed(
-                  AppRoutes.driverMessage,
-                  arguments: {
-                    'channelId': data['channelId'],
-                    'name': data['title']
-                  },
-                ));
+              AppRoutes.driverGroupMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['name'],
+                'groupId': data['groupId']
+              },
+            ),
+          );
+        } else {
+          Timer(
+            const Duration(seconds: 1),
+            () => Get.toNamed(
+              AppRoutes.driverMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['title'],
+              },
+            ),
+          );
+        }
       }
     });
 
     // Handle when the app is opened from a notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var data = message.data;
-      if (AppRoutes.driverMessage.isNotEmpty) {
-        socketService.updateActiveChannel(data['channelId']);
-        // If already on the target screen, just update the state or pop the stack
-        if (Get.currentRoute == AppRoutes.driverMessage) {
-          Get.back();
-          Get.toNamed(
-            AppRoutes.driverMessage,
-            arguments: {'channelId': data['channelId'], 'name': data['title']},
-          );
-        } else {
-          Get.back();
-          Get.toNamed(
-            AppRoutes.driverMessage,
-            arguments: {'channelId': data['channelId'], 'name': data['title']},
-          );
+
+      if (data['type'] == "GROUP MESSAGE") {
+        if (AppRoutes.driverGroupMessage.isNotEmpty) {
+          if (Get.currentRoute == AppRoutes.driverMessage) {
+            socketService.addUserToGroup(data['channelId'], data['groupId']);
+            socketService.updateCountGroup(data['groupId']);
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverGroupMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['name'],
+                'groupId': data['groupId']
+              },
+            );
+          } else {
+            Get.toNamed(
+              AppRoutes.driverGroupMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['name'],
+                'groupId': data['groupId']
+              },
+            );
+          }
+        }
+      } else {
+        if (AppRoutes.driverMessage.isNotEmpty) {
+          socketService.updateActiveChannel(data['channelId']);
+
+          if (Get.currentRoute == AppRoutes.driverMessage) {
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['title']
+              },
+            );
+          } else {
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['title']
+              },
+            );
+          }
         }
       }
     });
