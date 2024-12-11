@@ -83,11 +83,25 @@ class Utils {
         DateTime localDateTime =
             utcDateTime.toLocal(); // Convert UTC to local time
 
-        // Step 4: Format the DateTime object to a human-readable date and time
-        String formattedDateTime =
-            DateFormat('MMM dd, yyyy hh:mm a').format(localDateTime);
+        // Step 4: Check if the date is today
+        DateTime now = DateTime.now();
+        bool isToday = localDateTime.year == now.year &&
+            localDateTime.month == now.month &&
+            localDateTime.day == now.day;
 
-        return formattedDateTime; // Returns date and time in format like 'Nov 13, 2024 07:17 AM'
+        // Step 5: Format the DateTime object based on whether it's today
+        String formattedDateTime;
+        if (isToday) {
+          // Show only time if the date is today
+          formattedDateTime =
+              DateFormat('hh:mm a').format(localDateTime); // Example: 07:17 AM
+        } else {
+          // Show only date if it's not today
+          formattedDateTime = DateFormat('MMM dd, yyyy')
+              .format(localDateTime); // Example: Nov 13, 2024
+        }
+
+        return formattedDateTime; // Returns formatted date/time
       } catch (e) {
         // Handle error if the date format is invalid or any other exception occurs
         return 'Invalid date format';

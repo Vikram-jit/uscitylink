@@ -316,3 +316,51 @@ export async function getActiveChannel(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+export async function channelRemoveMember(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    await UserChannel.destroy({
+      where: {
+        id: req.params.id,
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Deleted Channel Members Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function channelStatusMember(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    await UserChannel.update(
+      { status: req.body.status },
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: `Updated Members Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}

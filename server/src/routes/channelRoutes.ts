@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, get, getActiveChannel, getById, getMembers, userAddToChannel } from '../controllers/channelController';
+import { channelRemoveMember, channelStatusMember, create, get, getActiveChannel, getById, getMembers, userAddToChannel } from '../controllers/channelController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -9,5 +9,7 @@ router.get('/',authMiddleware, get);
 router.get('/activeChannel',authMiddleware, getActiveChannel);
 router.get('/members',authMiddleware, getMembers);
 router.post('/addToChannel',authMiddleware,userAddToChannel)
+router.put('/member/:id',authMiddleware, channelStatusMember);
+router.delete('/member/:id',authMiddleware, channelRemoveMember);
 
 export default router;

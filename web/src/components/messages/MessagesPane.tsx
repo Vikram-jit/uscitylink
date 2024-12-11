@@ -15,6 +15,7 @@ import MediaPane from './MediaPane';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
+import { useSelector } from 'react-redux';
 
 type MessagesPaneProps = {
   userId: string;
@@ -24,6 +25,7 @@ type MessagesPaneProps = {
 
 export default function MessagesPane(props: MessagesPaneProps) {
   const { userId, setUserList } = props;
+  const { trackChannelState } = useSelector((state: any) => state.channel);
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
@@ -86,13 +88,22 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   React.useEffect(() => {
     if (data && data.status) {
-      setMessages((prevMessages) => [...prevMessages, ...data.data.messages]);
-      setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
+      setMessages((prevMessages) => {
 
+        const newMessages = data.data.messages.filter(
+          (message) => !prevMessages.some((prevMessage) => prevMessage.id === message.id)
+        );
+        return [...prevMessages, ...newMessages];
+      });
+      setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
     }
   }, [data]);
-
-
+  React.useEffect(()=>{
+    if(trackChannelState>0){
+      setHasMore(false)
+      setMessages([])
+    }
+  },[trackChannelState])
   const loadMoreMessages = () => {
     if (hasMore && !isLoading) {
       setPage((prevPage) => prevPage + 1);

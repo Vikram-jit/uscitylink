@@ -32,6 +32,7 @@ export interface UserChannel {
   last_message: MessageModel
   recieve_message_count:number
   sent_message_count:number
+  status:string
 }
 
 export interface UserProfile {

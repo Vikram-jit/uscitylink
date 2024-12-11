@@ -49,6 +49,14 @@ export const UserApiSlice = apiSlice.injectEndpoints({
         body: {channelId:newPost?.channelId},
       }),
     }),
+    updateDeviceToken: builder.mutation< ApiResponse,{device_token:string,platform:string}>({
+      invalidatesTags:['channels',"groups","channel","channelUsers"],
+      query: (newPost) => ({
+        url: `user/updateDeviceToken`,
+        method: 'PUT',
+        body: {device_token:newPost?.device_token,platform:newPost?.platform},
+      }),
+    }),
     getUserWithoutChannel: builder.query<{
       status:boolean,
       message:string,
@@ -65,4 +73,4 @@ export const UserApiSlice = apiSlice.injectEndpoints({
 });
 
 
-export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation,useGetUserWithoutChannelQuery,useSyncDriverMutation,useSyncUserMutation} = UserApiSlice;
+export const {useGetUsersQuery,useAddUserMutation,useUpdateActiveChannelMutation,useGetUserWithoutChannelQuery,useSyncDriverMutation,useSyncUserMutation,useUpdateDeviceTokenMutation} = UserApiSlice;

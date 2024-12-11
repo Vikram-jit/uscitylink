@@ -32,6 +32,12 @@ export async function staffActiveChannelUpdate(
     }
   }
 
+  delete global.staffOpenChat[userId!]
+  delete global.staffOpenTruckGroup[userId!]
+ 
+  Object.entries(global.group_open_chat).forEach(([key, value]) => {
+    global.group_open_chat[key] = value.filter((e) => e.userId !== userId);
+  });
   // Emit the update to the client
   socket.emit("update_channel", { channelId, userId });
 

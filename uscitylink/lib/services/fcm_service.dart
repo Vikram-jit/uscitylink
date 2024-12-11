@@ -154,17 +154,19 @@ class FCMService extends GetxController {
         // Handle the notification and navigate to the desired screen
         var data = message.data;
         if (data['type'] == "GROUP MESSAGE") {
-          Timer(
-            const Duration(seconds: 1),
-            () => Get.toNamed(
+          Timer(const Duration(seconds: 1), () {
+            socketService.addUserToGroup(data['channelId'], data['groupId']);
+            socketService.updateCountGroup(data['groupId']);
+
+            Get.toNamed(
               AppRoutes.driverGroupMessage,
               arguments: {
                 'channelId': data['channelId'],
                 'name': data['name'],
                 'groupId': data['groupId']
               },
-            ),
-          );
+            );
+          });
         } else {
           Timer(
             const Duration(seconds: 1),

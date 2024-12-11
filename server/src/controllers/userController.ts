@@ -95,6 +95,7 @@ export async function getChannelList(
     const users = await UserChannel.findAll({
       where: {
         userProfileId: req.user?.id,
+        status:"active"
       },
       include: [
         {
@@ -125,6 +126,7 @@ export async function getGroupList(req: Request, res: Response): Promise<any> {
     const users = await GroupUser.findAll({
       where: {
         userProfileId: req.user?.id,
+        status:"active"
       },
       include: [
         {

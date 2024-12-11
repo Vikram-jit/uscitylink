@@ -6,6 +6,7 @@ import { AuthGuard } from '@/components/auth/auth-guard';
 import { MainNav } from '@/components/dashboard/layout/main-nav';
 import { SideNav } from '@/components/dashboard/layout/side-nav';
 import { SocketProvider } from '@/lib/socketProvider';
+import NotificationGuard from '@/components/auth/notificationguard';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <AuthGuard>
+      {/* <NotificationGuard> */}
       <GlobalStyles
         styles={{
           body: {
@@ -43,6 +45,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         </Box>
       </Box>
       </SocketProvider>
+      {/* </NotificationGuard> */}
     </AuthGuard>
   );
 }

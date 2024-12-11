@@ -6,6 +6,7 @@ class UserChannel extends Model {
   public id!: string;
   public userProfileId!: string;
   public channelId!: string;
+  public status?: string;
   public last_message_id?: string;
   public sent_message_count?: number;
   public recieve_message_count?: number;
@@ -55,6 +56,10 @@ UserChannel.init(
     recieve_message_count: {
       type: DataTypes.INTEGER,
       defaultValue:0
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue:"active"
     },
     sent_message_count: {
       type: DataTypes.INTEGER,

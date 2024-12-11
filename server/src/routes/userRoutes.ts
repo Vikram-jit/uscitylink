@@ -13,4 +13,6 @@ router.get('/channels', authMiddleware,getChannelList);
 router.get('/groups', authMiddleware,getGroupList);
 router.put('/updateActiveChannel',authMiddleware, updateUserActiveChannel);
 
+
+
 export default router;

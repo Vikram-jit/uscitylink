@@ -89,6 +89,12 @@ export const getMessages = async (
         type: {
           [Op.ne]: "group",
         },
+     
+      },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
       },
       order: [["messageTimestampUtc", "DESC"]],
     });

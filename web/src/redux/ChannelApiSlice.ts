@@ -1,4 +1,4 @@
-import { apiSlice } from './apiSlice';
+import { ApiResponse, apiSlice } from './apiSlice';
 import { ChannelModel, SingleChannelModel } from './models/ChannelModel';
 import { UserModel } from './models/UserModel';
 
@@ -12,7 +12,6 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-
       query: () => ({
         url: 'channel',
         method: 'GET',
@@ -28,7 +27,6 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       },
       Partial<void>
     >({
-
       query: () => ({
         url: 'channel/activeChannel',
         method: 'GET',
@@ -56,34 +54,54 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: SingleChannelModel;
       },
-      {page: number; pageSize: number,search:string}
+      { page: number; pageSize: number; search: string }
     >({
-
       query: (payload) => ({
         url: `channel/members?page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,
-      providesTags: ['channel',"members"],
-
+      providesTags: ['channel', 'members'],
     }),
     addMemberToChannel: builder.mutation<
       {
         status: boolean;
         message: string;
-
       },
-      {ids:string[]}
+      { ids: string[] }
     >({
-      invalidatesTags: ['channel',"channelUsers"],
+      invalidatesTags: ['channel', 'channelUsers'],
       query: (payload) => ({
         url: 'channel/addToChannel',
         method: 'POST',
-        body:payload
+        body: payload,
+      }),
+    }),
+
+    removeChannelMember: builder.mutation<ApiResponse, { id: string }>({
+      invalidatesTags: ['members'],
+      query: (payload) => ({
+        url: `channel/member/${payload.id}`,
+        method: 'DELETE',
+      }),
+    }),
+    changeChannelMemberStatus: builder.mutation<ApiResponse, { id: string,status:string }>({
+      invalidatesTags: ['members'],
+      query: (payload) => ({
+        url: `channel/member/${payload.id}`,
+        method: 'PUT',
+        body: payload,
       }),
     }),
   }),
 });
 
-export const { useGetChannelsQuery, useAddChannelMutation, useGetActiveChannelQuery, useGetChannelMembersQuery ,useAddMemberToChannelMutation} =
-  ChannelApiSlice;
+export const {
+  useGetChannelsQuery,
+  useAddChannelMutation,
+  useGetActiveChannelQuery,
+  useGetChannelMembersQuery,
+  useAddMemberToChannelMutation,
+  useRemoveChannelMemberMutation,
+  useChangeChannelMemberStatusMutation
+} = ChannelApiSlice;

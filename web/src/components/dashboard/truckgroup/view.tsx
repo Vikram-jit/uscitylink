@@ -38,7 +38,7 @@ import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import useDebounce from '@/hooks/useDebounce';
@@ -132,6 +132,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
+  const { trackChannelState } = useSelector((state: any) => state.channel);
   const handleClose = () => {
     setAnchorEl(null);
   };
@@ -165,6 +166,15 @@ const ChatInterface = ({ type }: { type: string }) => {
       refetchOnMountOrArgChange: true,
     }
   );
+
+  useEffect(()=>{
+      if(trackChannelState > 0){
+        setHasMore(false)
+        setHasMoreMessage(false)
+        setMessages([])
+        setGroups([])
+      }
+  },[trackChannelState])
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -251,26 +261,37 @@ const ChatInterface = ({ type }: { type: string }) => {
 
 
   useEffect(() => {
-    if (type == 'truck') {
+    if (type === 'truck') {
       if (group?.status && group?.data?.messages) {
-        //setMessages(group?.data?.messages || []);
-        setMessages((prevMessages:any) => [...prevMessages, ...group.data.messages]);
+        setMessages((prevMessages: any) => {
+          // Filter out duplicate messages using a unique identifier (e.g., `id`)
+          const newMessages = group.data.messages.filter((message: any) =>
+            !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
+          );
+          return [...prevMessages, ...newMessages];
+        });
+
         setHasMoreMessage(group.data.pagination.currentPage < group.data.pagination.totalPages);
-        // setTimeout(() => {
-        //   scrollToBottom();
-        // }, 100);
       }
     } else {
-      if (groupMessage?.data) {
-        setMessages((prevMessages:any) => [...prevMessages, ...groupMessage.data.messages]);
+      if (groupMessage?.data?.messages) {
+        setMessages((prevMessages: any) => {
+          // Filter out duplicate messages
+          const newMessages = groupMessage.data.messages.filter((message: any) =>
+            !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
+          );
+          return [...prevMessages, ...newMessages];
+        });
+
         setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
         setSenderId(groupMessage?.data?.senderId);
-        // setTimeout(() => {
-        //   scrollToBottom();
-        // }, 100);
       }
     }
-  }, [group, groupMessage]);
+    // If needed, add scrollToBottom logic here
+    // setTimeout(() => {
+    //   scrollToBottom();
+    // }, 100);
+  }, [group, groupMessage, type]); // Added `type` as a dependency for proper reactivity.
 
   useEffect(() => {
     if (socket) {
@@ -480,7 +501,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
 
-      <Grid item xs={12} md={2} sx={{ borderRight: '1px solid #e0e0e0' }}>
+      <Grid item xs={12} md={3} sx={{ borderRight: '1px solid #e0e0e0' }}>
         <SidebarContainer>
           <HeaderContainer>
             <Typography variant="h5">Group List</Typography>
@@ -609,7 +630,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       {/* Group Detail */}
 
       {viewDetailGroup ? (
-        <Grid item xs={12} md={10}>
+        <Grid item xs={12} md={9}>
           <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} />
 
           <Divider />
@@ -624,7 +645,7 @@ const ChatInterface = ({ type }: { type: string }) => {
           )}
         </Grid>
       ) : (
-        <Grid item xs={12} md={10}>
+        <Grid item xs={12} md={9}>
           {selectedGroup ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>

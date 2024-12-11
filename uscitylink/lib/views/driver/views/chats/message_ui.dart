@@ -333,11 +333,15 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     message.body!,
                     style: const TextStyle(fontSize: 16),
                   ),
-
                   Text(
-                    Utils.formatUtcDateTime(message.messageTimestampUtc!),
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
+                    message.messageDirection == "R"
+                        ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
+                        : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500),
+                  )
                 ],
               ),
             ),

@@ -25,7 +25,7 @@ export async function messageToChannelToUser(
   );
 
   if (findUserChannel) {
-    const message = await Message.create({
+    const messageSave = await Message.create({
       channelId: findUserChannel.channelId,
       userProfileId: socket?.user?.id,
       body,
@@ -37,7 +37,16 @@ export async function messageToChannelToUser(
       status: "sent",
       url: url,
     });
-
+    const message = await Message.findOne({
+      where:{
+        id:messageSave.id
+      },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    })
     if (message) {
       const utcTime = moment.utc().toDate();
 
@@ -53,13 +62,13 @@ export async function messageToChannelToUser(
             socket?.user?.id === e.userId
           ) {
             if (isSocket) {
-              await message.update(
+              await messageSave.update(
                 {
                   deliveryStatus: "seen",
                 },
                 {
                   where: {
-                    id: message.id,
+                    id: messageSave.id,
                   },
                 }
               );
@@ -211,7 +220,7 @@ export async function messageToDriver(
     (driver) => driver?.driverId === userId
   );
 
-  const message = await Message.create({
+  const messageSave = await Message.create({
     channelId: findStaffActiveChannel?.channelId,
     userProfileId: userId,
     body,
@@ -223,7 +232,16 @@ export async function messageToDriver(
     status: "sent",
     url: url || null,
   });
-
+  const message = await Message.findOne({
+    where:{
+      id:messageSave.id
+    },
+    include: {
+      model: UserProfile,
+      as: "sender",
+      attributes: ["id", "username", "isOnline"],
+    },
+  })
   //Check Before send driver active room channel
   const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
 
@@ -232,13 +250,13 @@ export async function messageToDriver(
     findDriverSocket?.channelId == findStaffActiveChannel?.channelId
   ) {
     if (isDriverSocket) {
-      await message.update(
+      await messageSave.update(
         {
           deliveryStatus: "seen",
         },
         {
           where: {
-            id: message.id,
+            id: messageSave.id,
           },
         }
       );
@@ -361,7 +379,7 @@ export async function messageToDriverByTruckGroup(
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId
     );
-    const message = await Message.create({
+    const messageSave = await Message.create({
       channelId: findStaffActiveChannel?.channelId,
       groupId: groupId,
       userProfileId: driverId,
@@ -376,6 +394,17 @@ export async function messageToDriverByTruckGroup(
       type: "truck_group",
     });
 
+    const message = await Message.findOne({
+      where:{
+       id:messageSave.id
+      },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    })
+    
     const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
 
     // Process each driver and emit message or update database sequentially
@@ -384,13 +413,13 @@ export async function messageToDriverByTruckGroup(
       findDriverSocket?.channelId == findStaffActiveChannel?.channelId
     ) {
       if (isDriverSocket) {
-        await message.update(
+        await messageSave.update(
           {
             deliveryStatus: "seen",
           },
           {
             where: {
-              id: message.id,
+              id: messageSave.id,
             },
           }
         );

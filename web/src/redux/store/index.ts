@@ -5,6 +5,7 @@ import messageReducer from '../slices/messageSlice';
 import userChannelReducer from '../slices/userChannelSlice';
 import loaderReducer from '../slices/loaderSlice';
 import searchReducer from '../slices/searchSlice';
+import channelReducer from '../slices/channelSlice';
 
 const store = configureStore({
   reducer: {
@@ -12,7 +13,8 @@ const store = configureStore({
    UserChannel:userChannelReducer,
    message: messageReducer,
    loader: loaderReducer,
-    search:searchReducer,
+   search:searchReducer,
+   channel:channelReducer,
     [apiSlice.reducerPath]: apiSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>

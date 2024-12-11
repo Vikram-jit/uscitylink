@@ -3,23 +3,23 @@ import { useGetChannelMembersQuery } from '@/redux/ChannelApiSlice';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { Box, CircularProgress } from '@mui/material';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import useDebounce from '@/hooks/useDebounce';
 
 import ChatsPane from './ChatsPane';
 import MessagesPane from './MessagesPane';
-import useDebounce from '@/hooks/useDebounce';
 
 export default function MyMessage() {
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
-  const [search,setSearch] = React.useState<string>("")
+  const [search, setSearch] = React.useState<string>('');
 
-  const searchItem = useDebounce(search,200)
-
-  const { data, isLoading, refetch ,isFetching} = useGetChannelMembersQuery(
-    { page, pageSize: 12,search:searchItem },
+  const searchItem = useDebounce(search, 200);
+  const { trackChannelState } = useSelector((state: any) => state.channel);
+  const { data, isLoading, refetch, isFetching } = useGetChannelMembersQuery(
+    { page, pageSize: 12, search: searchItem },
     {
       refetchOnFocus: true,
     }
@@ -37,10 +37,8 @@ export default function MyMessage() {
       if (userList?.id !== data?.data?.id) {
         setUserList(data?.data);
       } else {
-
         setUserList((prevUserList) => {
           if (!prevUserList) {
-
             return data.data;
           }
 
@@ -58,10 +56,9 @@ export default function MyMessage() {
       // Check if there are more pages
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
-  }, [data,isFetching]); // Make sure to track userList in the dependency array
+  }, [data, isFetching]); // Make sure to track userList in the dependency array
 
   const loadMoreMessages = () => {
-
     if (hasMore && !isLoading) {
       setPage((prevPage) => prevPage + 1);
     }
@@ -71,8 +68,19 @@ export default function MyMessage() {
     setSearch(event.target.value);
     setPage(1);
     setUserList(null);
-    setSelectedUserId("")
+    setSelectedUserId('');
   };
+
+  React.useEffect(() => {
+    if (trackChannelState > 0) {
+      setSearch('');
+      setPage(1);
+      setUserList(null);
+      setSelectedUserId('');
+
+      socket.emit('staff_open_chat', "");
+    }
+  }, [trackChannelState]);
 
   React.useEffect(() => {
     const handleFocus = () => {
@@ -97,7 +105,7 @@ export default function MyMessage() {
         userId: string;
         message: MessageModel;
       }) => {
-        console.log(userList?.id ,channelId, userId, message);
+        console.log(userList?.id, channelId, userId, message);
 
         // Check if the current channel matches the one receiving the socket update
         if (data?.data?.id === channelId) {
@@ -156,11 +164,11 @@ export default function MyMessage() {
         }
       });
       return () => {
-         socket.off('update_channel_sent_message_count');
-          socket.off('new_message_count_update_staff')
+        socket.off('update_channel_sent_message_count');
+        socket.off('new_message_count_update_staff');
       };
     }
-  }, [socket,isFetching]);
+  }, [socket, isFetching]);
 
   if (isLoading) {
     return <CircularProgress />;
@@ -192,9 +200,9 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
-        search={search}
-        setSearch={setSearch}
-        handleSearchChange={handleSearchChange}
+          search={search}
+          setSearch={setSearch}
+          handleSearchChange={handleSearchChange}
           hasMore={hasMore}
           loadMoreMessages={loadMoreMessages}
           chats={userList!}
