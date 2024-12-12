@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/group_controller.dart';
+import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/services/channel_service.dart';
@@ -10,6 +11,7 @@ class ChannelController extends GetxController {
   var innerTabIndex = 0.obs;
   var loading = false.obs;
   final __channelService = ChannelService();
+  final _truckController = TruckController();
   var currentIndex = 0.obs;
 
   GroupController groupController = Get.put(GroupController());
@@ -20,6 +22,9 @@ class ChannelController extends GetxController {
     currentIndex.listen((index) {
       if (index == 1) {
         getUserChannels();
+      }
+      if (index == 2) {
+        _truckController.fetchTrucks();
       }
     });
     innerTabIndex.listen((index) {

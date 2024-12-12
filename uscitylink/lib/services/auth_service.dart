@@ -125,6 +125,21 @@ class AuthService {
       throw Exception('Failed to log in: No valid data received.');
     }
   }
+
+  Future<ApiResponse<dynamic>> changePassword(var data) async {
+    dynamic response =
+        await _apiService.postApi(data, '${Constant.url}/user/change-password');
+
+    if (response != null) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Change password successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to change password');
+    }
+  }
 }
 
 class LoginWithPassword {

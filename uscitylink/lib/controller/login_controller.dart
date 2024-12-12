@@ -198,4 +198,20 @@ class LoginController extends GetxController {
       Get.offAllNamed(AppRoutes.login);
     });
   }
+
+  void changePassword(BuildContext context, String old_password,
+      String new_password, String confirm_password) {
+    __authService.changePassword({
+      "old_password": old_password,
+      "new_password": new_password,
+      "confirm_password": confirm_password
+    }).then((value) {
+      if (value.status == true) {
+        Utils.toastMessage(value.message);
+        Navigator.of(context).pop();
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
 }

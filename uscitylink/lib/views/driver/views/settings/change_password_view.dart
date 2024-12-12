@@ -1,9 +1,6 @@
-import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
-
-import 'dart:io';
-
-import 'package:image_picker/image_picker.dart';
+import 'package:get/get.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 
@@ -21,7 +18,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
-  File? pickedImage;
+  LoginController _loginController = Get.put(LoginController());
 
   @override
   Widget build(BuildContext context) {
@@ -100,62 +97,18 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
               CustomButton(
                 onPressed: () {
                   // Save logic here
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile updated!')),
-                  );
+                  _loginController.changePassword(
+                      context,
+                      _oldPasswordController.value.text,
+                      _passwordController.value.text,
+                      _confirmPasswordController.value.text);
                 },
-                label: "Save",
+                label: "Update",
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  _pickerOption() {
-    showAdaptiveActionSheet(
-      context: context,
-      actions: <BottomSheetAction>[
-        BottomSheetAction(
-          title: const Text(
-            'Camera',
-            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
-          ),
-          onPressed: (_) {
-            Navigator.of(context).pop();
-            _pickImage(ImageSource.camera);
-          },
-        ),
-        BottomSheetAction(
-          title: const Text(
-            'Gallery',
-            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
-          ),
-          onPressed: (_) {
-            Navigator.of(context).pop();
-            _pickImage(ImageSource.gallery);
-          },
-        ),
-      ],
-    );
-  }
-
-  _pickImage(ImageSource source) async {
-    try {
-      final photo = await ImagePicker().pickImage(source: source);
-
-      if (photo == null) return;
-
-      final tempImage = File(photo.path);
-
-      setState(() {
-        pickedImage = tempImage;
-      });
-    } catch (e) {
-      print(e.toString());
-      return ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
-    }
   }
 }

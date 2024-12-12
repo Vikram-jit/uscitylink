@@ -10,7 +10,9 @@ import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
 
 class DashboardView extends StatefulWidget {
-  const DashboardView({super.key});
+  int? currentStep = 0;
+  int? chatTabIndex = 0;
+  DashboardView({super.key, this.currentStep = 0, this.chatTabIndex = 0});
 
   @override
   State<DashboardView> createState() => _DashboardViewState();
@@ -19,6 +21,7 @@ class DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<DashboardView>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
+
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
 
@@ -33,9 +36,20 @@ class _DashboardViewState extends State<DashboardView>
   final List<Widget> _screens = [
     const DriverDashboard(),
     const ChatView(),
-    const DocumentView(),
+    DocumentView(),
     const SettingView(),
   ];
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    if (widget.currentStep! > 0) {
+      setState(() {
+        _currentIndex = widget.currentStep!;
+      });
+    }
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -79,15 +93,4 @@ class _DashboardViewState extends State<DashboardView>
       ),
     );
   }
-}
-
-class NavigationController extends GetxController {
-  final Rx<int> selectedIndex = 0.obs;
-
-  final screens = [
-    const DriverDashboard(),
-    const ChatView(),
-    const DocumentView(),
-    const SettingView(),
-  ];
 }

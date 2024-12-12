@@ -36,6 +36,11 @@ class _GroupMessageuiState extends State<GroupMessageui>
       Get.put(ImagePickerController());
   @override
   void initState() {
+    if (socketService.isConnected.value) {
+      socketService.addUserToGroup(widget.channelId, widget.groupId);
+      socketService.updateCountGroup(widget.channelId);
+    }
+
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
@@ -74,6 +79,8 @@ class _GroupMessageuiState extends State<GroupMessageui>
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
+      socketService.addUserToGroup(widget.channelId, widget.groupId);
+      socketService.updateCountGroup(widget.channelId);
       socketService.sendGroupMessage(
           widget.groupId, widget.channelId, _controller.text, null);
       _controller.clear();
@@ -167,6 +174,9 @@ class _GroupMessageuiState extends State<GroupMessageui>
                         width: 100,
                         child: InkWell(
                           onTap: () {
+                            socketService.addUserToGroup(
+                                widget.channelId, widget.groupId);
+                            socketService.updateCountGroup(widget.channelId);
                             socketService.sendGroupMessage(
                                 widget.groupId, widget.channelId, "Hi", null);
                           },

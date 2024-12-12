@@ -703,7 +703,7 @@ export async function messageToGroup(
     if (isUser && isUser.device_token) {
       const isGroup = await Group.findByPk(groupId);
       await sendNotificationToDevice(isUser.device_token, {
-        title: isGroup?.name || "",
+        title:  `${isGroup?.name}(Group)` || "",
         body: body,
         data: {
           groupId: isGroup?.id,

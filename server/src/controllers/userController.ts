@@ -10,14 +10,14 @@ import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
 import { secondarySequelize } from "../sequelize";
 import { Op, QueryTypes } from "sequelize";
-import { hashPassword } from "../utils/passwordCrypto";
+import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
     const role = req.query.role as string;
 
     const page = parseInt(req.query.page as string) || 1;
-    
+
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const search = (req.query.search as string) || "";
@@ -45,9 +45,11 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
     const users = await UserProfile.findAndCountAll({
       where: {
         ...whereCondition,
-       ...(page != -1 && { username: {
-        [Op.like]: `%${search}%`,
-      },})
+        ...(page != -1 && {
+          username: {
+            [Op.like]: `%${search}%`,
+          },
+        }),
       },
       attributes: {
         exclude: ["password"],
@@ -66,19 +68,22 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
       order: [["username", "ASC"]],
       ...(page !== -1 && { limit: pageSize, offset }),
     });
-   
+
     const total = users.count;
     const totalPages = Math.ceil(total / pageSize);
 
     return res.status(200).json({
       status: true,
       message: `Get Users Successfully.`,
-      data: {users:users.rows, pagination: {
-        currentPage: page,
-        pageSize: pageSize,
-        total,
-        totalPages,
-      }},
+      data: {
+        users: users.rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total,
+          totalPages,
+        },
+      },
     });
   } catch (err: any) {
     return res
@@ -95,7 +100,7 @@ export async function getChannelList(
     const users = await UserChannel.findAll({
       where: {
         userProfileId: req.user?.id,
-        status:"active"
+        status: "active",
       },
       include: [
         {
@@ -126,7 +131,7 @@ export async function getGroupList(req: Request, res: Response): Promise<any> {
     const users = await GroupUser.findAll({
       where: {
         userProfileId: req.user?.id,
-        status:"active"
+        status: "active",
       },
       include: [
         {
@@ -405,6 +410,149 @@ export async function syncDriver(req: Request, res: Response): Promise<any> {
     return res.status(200).json({
       status: true,
       message: `Sync Driver Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function changePassword(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const { old_password, new_password, confirm_password } = req.body;
+
+    const isUser = await UserProfile.findOne({
+      where: {
+        id: req.user?.id,
+      },
+    });
+
+    if (!isUser) throw new Error("User not found");
+
+    const isMatch = await comparePasswords(old_password, isUser?.password!);
+
+    if (!isMatch) throw new Error("Old Password not matched");
+
+    if (new_password !== confirm_password)
+      throw new Error("New password and Confirm password not matched");
+
+    const hash = await hashPassword(confirm_password);
+
+    await UserProfile.update(
+      {
+        password: hash,
+      },
+      {
+        where: {
+          id: req.user?.id,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: `Password updated successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+export async function dashboard(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    
+    const userChannelCount = await UserChannel.count({where:{
+      userProfileId:req?.user?.id,
+      status:"active"
+    }});
+
+
+    const userTotalMessage = await Message.count({where:{
+      userProfileId:req?.user?.id,
+    }});
+
+    const userTotalGroups = await GroupUser.count({where:{
+      userProfileId:req?.user?.id,
+      status:"active"
+    }});
+
+    const truckCount = await secondarySequelize.query<any>(
+      `SELECT COUNT(*) AS truckCount FROM trucks`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+    const trailerCount = await secondarySequelize.query<any>(
+      `SELECT COUNT(*) AS trailerCount FROM trailers`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const latestMessage = await Message.findOne({
+      where:{
+        userProfileId:req?.user?.id,
+        groupId:null
+      },
+      include: [{
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },{
+        model: Channel,
+        as: "channel",
+        
+      }],
+      order: [["messageTimestampUtc", "DESC"]],
+    })
+    const latestGroupMessage = await Message.findOne({
+      where:{
+        userProfileId:req?.user?.id,
+        groupId: { [Op.not]: null },
+        channelId: { [Op.not]: null },
+      },
+      include: [{
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },{
+        model: Channel,
+        as: "channel",
+        
+      },],
+      order: [["messageTimestampUtc", "DESC"]],
+    })
+    let group:any = null;
+    if(latestGroupMessage){
+       group = await Group.findOne({
+        where:{
+          id:latestGroupMessage?.groupId!
+        }
+      })
+    }
+   
+    return res.status(200).json({
+      status: true,
+      message: `Dashboard fetch successfully.`,
+      data:{
+        channelCount:userChannelCount,
+        messageCount:userTotalMessage,
+        groupCount:userTotalGroups,
+        truckCount:truckCount?.[0]?.truckCount,
+        trailerCount:trailerCount?.[0]?.trailerCount,
+        latestMessage,
+        latestGroupMessage:{...latestGroupMessage?.dataValues,group}
+      }
     });
   } catch (err: any) {
     return res

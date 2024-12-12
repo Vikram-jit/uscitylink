@@ -9,6 +9,7 @@ import 'dart:io' show Platform;
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/utils.dart';
 
 class FCMService extends GetxController {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -154,6 +155,7 @@ class FCMService extends GetxController {
         // Handle the notification and navigate to the desired screen
         var data = message.data;
         if (data['type'] == "GROUP MESSAGE") {
+          Utils.showLoader();
           Timer(const Duration(seconds: 1), () {
             socketService.addUserToGroup(data['channelId'], data['groupId']);
             socketService.updateCountGroup(data['groupId']);
@@ -166,8 +168,10 @@ class FCMService extends GetxController {
                 'groupId': data['groupId']
               },
             );
+            Utils.hideLoader();
           });
         } else {
+          Utils.showLoader();
           Timer(
             const Duration(seconds: 1),
             () => Get.toNamed(
@@ -178,6 +182,7 @@ class FCMService extends GetxController {
               },
             ),
           );
+          Utils.hideLoader();
         }
       }
     });
@@ -189,8 +194,6 @@ class FCMService extends GetxController {
       if (data['type'] == "GROUP MESSAGE") {
         if (AppRoutes.driverGroupMessage.isNotEmpty) {
           if (Get.currentRoute == AppRoutes.driverMessage) {
-            socketService.addUserToGroup(data['channelId'], data['groupId']);
-            socketService.updateCountGroup(data['groupId']);
             Get.back();
             Get.toNamed(
               AppRoutes.driverGroupMessage,

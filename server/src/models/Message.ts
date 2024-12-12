@@ -4,6 +4,7 @@ import { UserProfile } from './UserProfile';
 import UserChannel from './UserChannel';
 import GroupUser from './GroupUser';
 import Group from './Group';
+import Channel from './Channel';
 
 export class Message extends Model {
   public id!: string; // Primary key
@@ -92,6 +93,7 @@ Message.init(
 );
 
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
+Message.belongsTo(Channel, { foreignKey: 'channelId', as: 'channel' });
 UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });
 UserChannel.belongsTo(Message, { foreignKey: 'last_message_id' ,as :"last_message"});
 GroupUser.belongsTo(Message, { foreignKey: 'last_message_id' ,as :"last_message"});

@@ -27,6 +27,7 @@ class _ChatViewState extends State<ChatView>
   void initState() {
     WidgetsBinding.instance.addObserver(this);
     super.initState();
+
     _tabController = TabController(length: 2, vsync: this);
 
     // Listen for tab changes to refetch channels when the Channels tab is selected
@@ -37,6 +38,11 @@ class _ChatViewState extends State<ChatView>
       if (_tabController.index == 1 && !_tabController.indexIsChanging) {
         groupController.getUserGroups();
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // This will run after the widget tree is built, avoiding the error
+      channelController.getUserChannels();
     });
   }
 

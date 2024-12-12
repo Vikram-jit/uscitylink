@@ -61,7 +61,7 @@ class NetworkApiService extends BaseApiServices {
           .timeout(const Duration(seconds: 10));
 
       responseJson = returnResponse(response);
-
+      Utils.hideLoader();
       return responseJson;
     } on SocketException {
       Utils.hideLoader();

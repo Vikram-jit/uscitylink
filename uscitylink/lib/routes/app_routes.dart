@@ -21,6 +21,7 @@ class AppRoutes {
   static const String navigationMenu = '/navigationMenu';
 
   static const String driverDashboard = '/driver/settings/driver_dashboard';
+  static const String driverChatView = '/driver/settings/chat_view';
 
   // Driver routes with 'driver/' prefix
   static const String driverAccount = '/driver/settings/account';
@@ -53,7 +54,20 @@ class AppRoutes {
 
     GetPage(
       name: AppRoutes.driverDashboard,
-      page: () => const DashboardView(),
+      page: () {
+        final args = Get.arguments;
+
+        // Ensure args is not null and is of type Map
+        if (args is Map) {
+          final int currentStep = args['currentStep'] ?? 0;
+          final int chatTabIndex = args['chatTabIndex'] ?? 0;
+          return DashboardView(
+              currentStep: currentStep, chatTabIndex: chatTabIndex);
+        } else {
+          // Handle the error gracefully if arguments are not valid
+          return DashboardView(currentStep: 0); // or any default value
+        }
+      },
     ),
 
     GetPage(
