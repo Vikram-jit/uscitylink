@@ -1,11 +1,13 @@
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/truck_model.dart';
 
 class GroupMessageModel {
   String? senderId;
   List<MessageModel>? messages;
+  Pagination? pagination;
 
   // Constructor with named parameters
-  GroupMessageModel({this.senderId, this.messages});
+  GroupMessageModel({this.senderId, this.messages, this.pagination});
 
   // From JSON constructor
   GroupMessageModel.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,9 @@ class GroupMessageModel {
             v)); // Use '!' for null-assertion, because we initialize 'messages'
       });
     }
+    pagination = json['pagination'] != null
+        ? Pagination.fromJson(json['pagination'])
+        : null;
   }
 
   // To JSON method

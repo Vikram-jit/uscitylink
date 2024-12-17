@@ -86,7 +86,7 @@ class _DashboardViewState extends State<DashboardView>
               icon: const Icon(Icons.chat), title: const Text("Chat")),
           SalomonBottomBarItem(
               icon: const Icon(Icons.edit_document),
-              title: const Text("Documents")),
+              title: const Text("vehicles")),
           SalomonBottomBarItem(
               icon: const Icon(Icons.settings), title: const Text("Settings")),
         ],

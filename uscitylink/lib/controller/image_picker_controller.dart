@@ -63,8 +63,11 @@ class ImagePickerController extends GetxController {
   void uploadFile(
       String channelId, String type, String location, String? groupId) async {
     try {
-      var res = await _apiService.fileUpload(selectedImage.value!,
-          "${Constant.url}/message/fileUpload", channelId, type);
+      var res = await _apiService.fileUpload(
+          selectedImage.value!,
+          "${Constant.url}/message/fileUpload?groupId=$groupId",
+          channelId,
+          type);
       if (res.status) {
         if (location == "group") {
           socketService.sendGroupMessage(

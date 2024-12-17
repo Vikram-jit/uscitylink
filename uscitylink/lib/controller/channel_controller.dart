@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
@@ -15,11 +16,14 @@ class ChannelController extends GetxController {
   var currentIndex = 0.obs;
 
   GroupController groupController = Get.put(GroupController());
-
+  DashboardController dashboardController = Get.put(DashboardController());
   @override
   void onInit() {
     super.onInit();
     currentIndex.listen((index) {
+      if (index == 0) {
+        dashboardController.getDashboard();
+      }
       if (index == 1) {
         getUserChannels();
       }

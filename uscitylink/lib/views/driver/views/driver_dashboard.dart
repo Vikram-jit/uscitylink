@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -71,20 +72,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                     mainAxisAlignment:
                         MainAxisAlignment.end, // Align icons to the right
                     children: [
-                      // Profile Image Container
-                      // Container(
-                      //   height: 35,
-                      //   width: 35,
-                      //   child: ClipRRect(
-                      //     borderRadius: BorderRadius.circular(6),
-                      //     child: Image.asset(
-                      //       "assets/images/placeholder.png", // Path to your image asset
-                      //       fit: BoxFit.cover,
-                      //     ),
-                      //   ),
-                      // ),
-                      // const SizedBox(width: 10),
-
                       Center(
                         child: Icon(
                           Icons.notification_add,
@@ -113,61 +100,6 @@ class _DriverDashboardState extends State<DriverDashboard>
               }
               return Column(
                 children: [
-                  //Announcement Ui
-                  // SizedBox(
-                  //   height: TDeviceUtils.getAppBarHeight() * 0.2,
-                  // ),
-                  // Card(
-                  //   shape: RoundedRectangleBorder(
-                  //     borderRadius: BorderRadius.circular(5.0),
-                  //   ),
-                  //   color: Color(0XFF272727).withOpacity(1),
-                  //   elevation: 0.0,
-                  //   child: Column(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       SizedBox(
-                  //         height: TDeviceUtils.getAppBarHeight() * 0.2,
-                  //       ),
-                  //       Padding(
-                  //         padding: const EdgeInsets.symmetric(horizontal: 8),
-                  //         child: Row(
-                  //           children: [
-                  //             Text(
-                  //               'Important Announcement',
-                  //               style: Theme.of(context)
-                  //                   .textTheme
-                  //                   .titleLarge
-                  //                   ?.copyWith(color: Colors.white),
-                  //             ),
-                  //             SizedBox(
-                  //               width: TDeviceUtils.getAppBarHeight() * 0.2,
-                  //             ),
-                  //             const Icon(
-                  //               Icons.announcement,
-                  //               color: Colors.yellowAccent,
-                  //             )
-                  //           ],
-                  //         ),
-                  //       ),
-                  //       SizedBox(
-                  //         height: TDeviceUtils.getAppBarHeight() * 0.1,
-                  //       ),
-                  //       Padding(
-                  //         padding: const EdgeInsets.only(
-                  //             left: 8.0, right: 8.0, bottom: 8.0),
-                  //         child: Text(
-                  //           'This is the body of the card. You can put any content here, .',
-                  //           style: Theme.of(context)
-                  //               .textTheme
-                  //               .bodySmall
-                  //               ?.copyWith(color: Colors.white),
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
-                  //Announcement Ui End
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.3,
                   ),
@@ -245,47 +177,23 @@ class _DriverDashboardState extends State<DriverDashboard>
                     ),
                   ),
                   SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.30,
+                    height: TDeviceUtils.getAppBarHeight() * 0.1,
                   ),
-                  Row(
-                    children: [
-                      Text("Latest Message",
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(color: TColors.darkGrey))
-                    ],
-                  ),
-                  Card(
-                    elevation: 4.0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 1.2,
+                    child: Row(
                       children: [
-                        SizedBox(
-                          height: TDeviceUtils.getAppBarHeight() * 0.2,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            '${_dashboardController.dashboard.value.latestMessage?.channel?.name}',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ),
-                        SizedBox(
-                          height: TDeviceUtils.getAppBarHeight() * 0.2,
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 8.0, right: 8.0, bottom: 8.0),
-                            child: Text(
-                              '${_dashboardController.dashboard.value.latestMessage?.body}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
+                        Expanded(
+                          child: StatCard(
+                            icon: Icons.group,
+                            title: "GROUPS",
+                            value: _dashboardController
+                                    .dashboard.value.groupCount ??
+                                0,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ],
                           ),
                         ),
                       ],
@@ -294,50 +202,142 @@ class _DriverDashboardState extends State<DriverDashboard>
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.30,
                   ),
-                  Row(
-                    children: [
-                      Text("Group Message",
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(color: TColors.darkGrey))
-                    ],
-                  ),
-                  Card(
-                    elevation: 4.0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (_dashboardController.dashboard.value.latestMessage !=
+                      null)
+                    Row(
                       children: [
-                        SizedBox(
-                          height: TDeviceUtils.getAppBarHeight() * 0.2,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            '${_dashboardController.dashboard.value.latestGroupMessage?.group?.name}',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ),
-                        SizedBox(
-                          height: TDeviceUtils.getAppBarHeight() * 0.2,
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 8.0, right: 8.0, bottom: 8.0),
-                            child: Text(
-                              '${_dashboardController.dashboard.value.latestGroupMessage?.body}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        ),
+                        Text("Latest Message",
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(color: TColors.darkGrey))
                       ],
                     ),
-                  )
+                  if (_dashboardController.dashboard.value.latestMessage !=
+                      null)
+                    InkWell(
+                      onTap: () {
+                        Get.toNamed(
+                          AppRoutes.driverMessage,
+                          arguments: {
+                            'channelId': _dashboardController
+                                .dashboard.value.latestMessage?.channelId,
+                            'name': _dashboardController
+                                .dashboard.value.latestMessage?.channel?.name
+                          },
+                        );
+                      },
+                      child: Card(
+                        elevation: 4.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              height: TDeviceUtils.getAppBarHeight() * 0.2,
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                '${_dashboardController.dashboard.value.latestMessage?.channel?.name}',
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
+                            ),
+                            SizedBox(
+                              height: TDeviceUtils.getAppBarHeight() * 0.2,
+                            ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 8.0, right: 8.0, bottom: 8.0),
+                                child: Text(
+                                  '${_dashboardController.dashboard.value.latestMessage?.body}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_dashboardController
+                          .dashboard.value.latestGroupMessage?.group !=
+                      null)
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.30,
+                    ),
+                  if (_dashboardController
+                          .dashboard.value.latestGroupMessage?.group !=
+                      null)
+                    Row(
+                      children: [
+                        Text("Group Message",
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(color: TColors.darkGrey))
+                      ],
+                    ),
+                  if (_dashboardController
+                          .dashboard.value.latestGroupMessage?.group !=
+                      null)
+                    InkWell(
+                      onTap: () {
+                        Get.toNamed(
+                          AppRoutes.driverGroupMessage,
+                          arguments: {
+                            'channelId': _dashboardController
+                                .dashboard.value.latestGroupMessage?.channelId,
+                            'name': _dashboardController.dashboard.value
+                                .latestGroupMessage?.group?.name,
+                            'groupId': _dashboardController
+                                .dashboard.value.latestGroupMessage?.group?.id
+                          },
+                        );
+                      },
+                      child: Card(
+                        elevation: 4.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              height: TDeviceUtils.getAppBarHeight() * 0.2,
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                '${_dashboardController.dashboard.value.latestGroupMessage?.group?.name}',
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
+                              ),
+                            ),
+                            SizedBox(
+                              height: TDeviceUtils.getAppBarHeight() * 0.2,
+                            ),
+                            SizedBox(
+                              width: double.infinity,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 8.0, right: 8.0, bottom: 8.0),
+                                child: Text(
+                                  '${_dashboardController.dashboard.value.latestGroupMessage?.body}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                 ],
               );
             })),

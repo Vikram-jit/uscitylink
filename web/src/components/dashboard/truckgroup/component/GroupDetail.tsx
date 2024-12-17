@@ -84,7 +84,7 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
   }, [group, updateLoader, truckList]);
   useEffect(() => {
     if (truckList) {
-      const defaultSelectedTruck = truckList?.data?.filter((truck) => truck.number == group.group.name);
+      const defaultSelectedTruck = truckList?.data?.data?.filter((truck:TruckModel) => truck.number == group.group.name);
 
       if (defaultSelectedTruck.length > 0) {
         setSelectedTruck(defaultSelectedTruck[0]);

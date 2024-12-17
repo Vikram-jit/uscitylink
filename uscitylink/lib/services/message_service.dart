@@ -67,19 +67,15 @@ class MessageService {
   }
 
   Future<ApiResponse<GroupMessageModel>> getGroupMessages(
-      String channelId, String groupId) async {
+      String channelId, String groupId, int page) async {
     try {
-      // Make the API call
       dynamic response = await _apiService
-          .getApi('${Constant.url}/message/$channelId/$groupId');
+          .getApi('${Constant.url}/message/$channelId/$groupId?page=$page');
 
-      // Check if the response is valid and has the expected structure
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];
 
-        // Check if 'data' is a valid Map
         if (data != null && data is Map<String, dynamic>) {
-          // Parse the 'data' into GroupMessageModel
           GroupMessageModel groupMessages = GroupMessageModel.fromJson(data);
 
           // Return the ApiResponse with the parsed data
@@ -89,12 +85,10 @@ class MessageService {
             status: response['status'] ?? true,
           );
         } else {
-          // If 'data' is not a Map, throw an exception
           throw Exception(
               'Expected a Map in response["data"], got: ${data.runtimeType}');
         }
       } else {
-        // If the response format is incorrect or null
         throw Exception(
             'Unexpected response format, expected a Map<String, dynamic>');
       }

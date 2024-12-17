@@ -11,9 +11,12 @@ import 'package:uscitylink/utils/utils.dart';
 class GroupController extends GetxController {
   var groups = <GroupModel>[].obs;
   var loading = false.obs;
+  var isLoading = false.obs;
   var messages = <MessageModel>[].obs;
   final __groupService = GroupService();
   final __messageService = MessageService();
+  var currentPage = 1.obs;
+  var totalPages = 1.obs;
 
   final group = GroupSingleModel().obs;
 
@@ -35,19 +38,99 @@ class GroupController extends GetxController {
     String groupId = args['groupId'] ?? '';
 
     if (channelId.isNotEmpty && groupId.isNotEmpty) {
-      getGroupMessages(channelId, groupId);
+      getGroupMessages(channelId, groupId, currentPage.value);
     } else {
       print("Error: channelId and groupId is empty or invalid.");
     }
   }
 
-  void getGroupMessages(String channelId, String groupId) {
-    __messageService.getGroupMessages(channelId, groupId).then((response) {
-      messages.value = response.data.messages ?? [];
-      senderId.value = response.data.senderId ?? '';
+  Future<void> refreshMessages(String channelId, String groupId) async {
+    // Prevent refresh if already loading
+    if (isLoading.value) return;
+
+    // Set loading state to true
+    isLoading.value = true;
+
+    try {
+      // Replace with your actual API call to fetch messages
+      var response = await __messageService.getGroupMessages(
+        channelId,
+        groupId,
+        1,
+      );
+
+      // Check if there are new messages
+      if (response.data.messages != null &&
+          response.data.messages!.isNotEmpty) {
+        List<MessageModel> newMessages = response.data.messages!;
+
+        List<MessageModel> newMessageList = [];
+
+        for (var newMessage in newMessages) {
+          bool isNewMessage = true;
+
+          for (var existingMessage in messages) {
+            if (newMessage.id == existingMessage.id) {
+              isNewMessage = false;
+              break;
+            }
+          }
+
+          if (isNewMessage) {
+            newMessageList.add(newMessage);
+          }
+        }
+
+        if (newMessageList.isNotEmpty) {
+          messages.insertAll(0, newMessageList);
+        }
+      }
+    } catch (error) {
+      print('Error refreshing messages: $error');
+      Utils.snackBar('Error', 'Failed to refresh messages');
+    } finally {
+      // Reset loading state
+      isLoading.value = false;
+    }
+  }
+
+  void getGroupMessages(String channelId, String groupId, int page) {
+    // Debugging logs to track the page number and loading state
+
+    // Prevent duplicate requests if already loading
+    if (isLoading.value) return;
+
+    // Set the loading state to true
+    isLoading.value = true;
+
+    // Simulating API call (replace with your actual API call)
+    __messageService
+        .getGroupMessages(channelId, groupId, page)
+        .then((response) {
+      // Check the response structure
+
+      // Safeguard to ensure response contains messages and pagination info
+      if (response.data.messages != null) {
+        messages.addAll(response.data.messages ?? []);
+      }
+
+      if (response.data.pagination != null) {
+        senderId.value = response.data.senderId ?? '';
+        currentPage.value = response.data.pagination!.currentPage!;
+        totalPages.value = response.data.pagination!.totalPages!;
+      } else {
+        print("Pagination data is missing in the response!");
+      }
+
+      // Reset loading state after processing response
+      isLoading.value = false;
     }).onError((error, stackTrace) {
-      print('Error: $error');
+      // Handle error
+      print("Error: $error");
       Utils.snackBar('Error', error.toString());
+
+      // Reset loading state in case of error as well
+      isLoading.value = false;
     });
   }
 

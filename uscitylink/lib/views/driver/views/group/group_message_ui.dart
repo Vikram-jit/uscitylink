@@ -16,11 +16,13 @@ class GroupMessageui extends StatefulWidget {
   final String channelId;
   final String groupId;
   final String name;
+  final int page;
   const GroupMessageui(
       {required this.channelId,
       super.key,
       required this.name,
-      required this.groupId});
+      required this.groupId,
+      this.page = 1});
 
   @override
   _GroupMessageuiState createState() => _GroupMessageuiState();
@@ -29,6 +31,7 @@ class GroupMessageui extends StatefulWidget {
 class _GroupMessageuiState extends State<GroupMessageui>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
+  late ScrollController _scrollController;
 
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
@@ -42,12 +45,35 @@ class _GroupMessageuiState extends State<GroupMessageui>
     }
 
     super.initState();
+    _scrollController = ScrollController();
 
+    _scrollController.addListener(() {
+      // Ensure the current page is less than the total pages
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        print(groupController.isLoading.value &&
+            groupController.currentPage.value <
+                groupController.totalPages.value);
+        // When scrolled to the bottom, load next page
+        if (!groupController.isLoading.value &&
+            groupController.currentPage.value <
+                groupController.totalPages.value) {
+          groupController.getGroupMessages(
+            widget.channelId,
+            widget.groupId,
+            groupController.currentPage.value + 1,
+          );
+        }
+      }
+    });
     WidgetsBinding.instance.addObserver(this);
     // Initialize the MessageController and fetch messages for the given channelId
     groupController = Get.put(GroupController());
-    groupController.getGroupMessages(widget.channelId,
-        widget.groupId); // Fetch the messages for the given channelId
+    groupController.getGroupMessages(
+        widget.channelId,
+        widget.groupId,
+        groupController
+            .currentPage.value); // Fetch the messages for the given channelId
 
     // if (widget.channelId.isNotEmpty) {
     //   socketService.updateActiveChannel(widget.channelId);
@@ -63,7 +89,8 @@ class _GroupMessageuiState extends State<GroupMessageui>
         socketService.connectSocket();
       }
       if (!widget.channelId.isNotEmpty) {}
-      groupController.getGroupMessages(widget.channelId, widget.groupId);
+      groupController.getGroupMessages(
+          widget.channelId, widget.groupId, widget.page);
       print("App is in the foreground");
     }
   }
@@ -114,10 +141,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
                           .headlineMedium
                           ?.copyWith(color: Colors.white),
                     ),
-                    // Text(
-                    //   lastLogin, // Display the last login info
-                    //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                    // ),
                   ],
                 ),
               ),
@@ -163,7 +186,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    groupController.getGroupMessages(
+                    groupController.refreshMessages(
                         widget.channelId, widget.groupId);
                   },
                   child: Obx(() {
@@ -202,9 +225,20 @@ class _GroupMessageuiState extends State<GroupMessageui>
                       ));
                     }
                     return ListView.builder(
+                      controller: _scrollController,
                       reverse: true,
                       itemCount: groupController.messages.length,
                       itemBuilder: (context, index) {
+                        if (index == groupController.messages.length - 1) {
+                          if (groupController.isLoading.value) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          } else {
+                            return SizedBox.shrink();
+                          }
+                        }
                         return _buildChatMessage(
                             groupController.messages[index],
                             groupController.senderId.value);
@@ -213,27 +247,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   }),
                 ),
               ),
-              // Obx(() {
-              //   return groupController.typing.value
-              //       ? Align(
-              //           alignment: Alignment.centerLeft,
-              //           child: Container(
-              //             decoration: BoxDecoration(
-              //               borderRadius: BorderRadius.circular(8),
-              //               color: Colors.grey.shade300,
-              //             ),
-              //             width: TDeviceUtils.getScreenWidth(context) * 0.5,
-              //             child: Padding(
-              //               padding: const EdgeInsets.all(8.0),
-              //               child: Obx(() {
-              //                 return Text(
-              //                     groupController.typingMessage.value);
-              //               }),
-              //             ),
-              //           ),
-              //         )
-              //       : Container();
-              // }),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -241,15 +254,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
                     // Text Field for typing the message
                     Expanded(
                       child: TextField(
-                        // onChanged: (text) {
-                        //   if (text.isNotEmpty) {
-                        //     messageController
-                        //         .startTyping(widget.channelId); // Start typing
-                        //   } else {
-                        //     messageController.stopTyping(widget
-                        //         .channelId); // Stop typing if text is empty
-                        //   }
-                        // },
                         controller: _controller,
                         decoration: InputDecoration(
                           hintText: "Type your message...",

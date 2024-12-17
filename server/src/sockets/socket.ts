@@ -458,8 +458,9 @@ export const initSocket = (httpServer: any) => {
     });
 
     socket.on("logout", async () => {
+      
       const userId = socket?.user?.id!;
-
+      console.log(userId,"socket logout")
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
       delete global.userSockets[userId];
@@ -483,8 +484,8 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
-              device_token:"",
-            platform:""
+            device_token: null,
+            platform: null
           });
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
             const isSocket = global.userSockets[key];
@@ -538,7 +539,7 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
-          
+
 
           });
 
@@ -548,9 +549,9 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online", null);
             }
           });
-        }else{
+        } else {
           // await isUser.update({
-           
+
           //   last_login: moment.utc(),
           //   device_token:"",
           //   platform:""

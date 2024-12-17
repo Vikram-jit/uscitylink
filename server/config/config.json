@@ -2,7 +2,7 @@
     "development": {
       "username": "root",
       "password": "",
-      "database": "yard_sms",
+      "database": "uscitylink",
       "host": "localhost",
       "dialect": "mysql"
     },
@@ -16,7 +16,7 @@
     "production": {
       "username": "root",
       "password": "",
-      "database": "yard_sms",
+      "database": "uscitylink",
       "host": "localhost",
       "dialect": "mysql"
     }

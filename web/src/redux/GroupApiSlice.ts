@@ -38,7 +38,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: TruckModel[];
+        data: any;
       },
       Partial<void>
     >({

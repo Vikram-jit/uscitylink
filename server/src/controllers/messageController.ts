@@ -216,6 +216,7 @@ export const getMessagesByUserId = async (
 export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
     const channelId = req.body.channelId;
+    const groupId = req.query.groupId || null;
     const userId = req.user?.id;
     if (req.file) {
       const file = req.file as any;
@@ -228,6 +229,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         mime_type: req.file.mimetype,
         key: file?.key,
         file_type: req.body.type,
+        groupId:groupId
       });
     }
 
@@ -280,9 +282,9 @@ export const fileUploadWeb = async (
 
 export const getMedia = async (req: Request, res: Response): Promise<any> => {
   try {
-    const page = parseInt(req.query.page + "") || 1; // Default to page 1 if not provided
-    const limit = parseInt(req.query.limit + "") || 10; // Default to limit of 10 items per page
-    const offset = (page - 1) * limit; // Calculate the offset
+    const page = parseInt(req.query.page + "") || 1; 
+    const limit = parseInt(req.query.limit + "") || 10; 
+    const offset = (page - 1) * limit; 
 
 
     const channelId =

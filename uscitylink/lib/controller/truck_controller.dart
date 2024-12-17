@@ -5,20 +5,26 @@ import 'package:uscitylink/model/truck_model.dart';
 import 'package:uscitylink/services/document_service.dart';
 
 class TruckController extends GetxController {
+  var innerTabIndex = 0.obs;
+
   // Rx variables to track loading state, list of trucks, and pagination
   var isLoading = false.obs;
   var trucks = <Truck>[].obs; // Rx list of trucks
   var currentPage = 1.obs;
   var totalPages = 1.obs;
+  TextEditingController searchController = TextEditingController();
+  void setInnerTabIndex(int index) {
+    innerTabIndex.value = index;
+  }
 
-  // Method to fetch trucks with pagination
-  Future<void> fetchTrucks({int page = 1}) async {
-    if (isLoading.value) return; // Prevent multiple fetches at the same time
+  Future<void> fetchTrucks(
+      {int page = 1, String type = "trucks", String search = ""}) async {
+    if (isLoading.value) return;
     isLoading.value = true;
 
     try {
-      // Call the API service to fetch trucks data for the given page
-      var response = await DocumentService().getTrucks(page: page);
+      var response = await DocumentService()
+          .getTrucks(page: page, type: type, search: search);
 
       // Check if the response is valid
       if (response.status == true) {
