@@ -12,6 +12,7 @@ import 'package:uscitylink/views/driver/views/dashboard_view.dart';
 import 'package:uscitylink/views/driver/views/group/member_search.dart';
 import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
+import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
 import 'package:uscitylink/views/splash_view.dart';
 
 class AppRoutes {
@@ -37,6 +38,7 @@ class AppRoutes {
   static const String membersView = '/group_members';
   static const String groupInfo = '/group_info';
   static const String groupMedia = '/group_media';
+  static const String vehicleDetails = '/vehicle_details';
 
   static final routes = [
     GetPage(
@@ -158,5 +160,19 @@ class AppRoutes {
         page: () => const SplashView(),
         transitionDuration: const Duration(milliseconds: 250),
         transition: Transition.leftToRightWithFade),
+
+    GetPage(
+        name: AppRoutes.vehicleDetails,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final id = args['id'];
+          final type = args['type'];
+
+          return VehicleDetails(
+            id: id,
+            type: type,
+          );
+        }),
   ];
 }

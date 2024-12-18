@@ -17,7 +17,7 @@ class GroupController extends GetxController {
   final __messageService = MessageService();
   var currentPage = 1.obs;
   var totalPages = 1.obs;
-
+  var previousGroupId = ''.obs;
   final group = GroupSingleModel().obs;
 
   var currentIndex = 0.obs;
@@ -102,7 +102,11 @@ class GroupController extends GetxController {
 
     // Set the loading state to true
     isLoading.value = true;
-
+    // if (previousGroupId.value != groupId) {
+    //   // Clear messages if the groupId has changed
+    //   messages.clear();
+    //   previousGroupId.value = groupId; // Update the stored groupId
+    // }
     // Simulating API call (replace with your actual API call)
     __messageService
         .getGroupMessages(channelId, groupId, page)

@@ -4,8 +4,8 @@ class DashboardModel {
   int? groupCount;
   int? truckCount;
   int? trailerCount;
-  LatestMessage? latestMessage;
-  LatestGroupMessage? latestGroupMessage;
+  List<LatestMessage>? latestMessage;
+  List<LatestGroupMessage>? latestGroupMessage;
 
   DashboardModel(
       {this.channelCount,
@@ -22,12 +22,18 @@ class DashboardModel {
     groupCount = json['groupCount'];
     truckCount = json['truckCount'];
     trailerCount = json['trailerCount'];
-    latestMessage = json['latestMessage'] != null
-        ? new LatestMessage.fromJson(json['latestMessage'])
-        : null;
-    latestGroupMessage = json['latestGroupMessage'] != null
-        ? new LatestGroupMessage.fromJson(json['latestGroupMessage'])
-        : null;
+    if (json['latestMessage'] != null) {
+      latestMessage = <LatestMessage>[];
+      json['latestMessage'].forEach((v) {
+        latestMessage!.add(new LatestMessage.fromJson(v));
+      });
+    }
+    if (json['latestGroupMessage'] != null) {
+      latestGroupMessage = <LatestGroupMessage>[];
+      json['latestGroupMessage'].forEach((v) {
+        latestGroupMessage!.add(new LatestGroupMessage.fromJson(v));
+      });
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -38,10 +44,11 @@ class DashboardModel {
     data['truckCount'] = this.truckCount;
     data['trailerCount'] = this.trailerCount;
     if (this.latestMessage != null) {
-      data['latestMessage'] = this.latestMessage!.toJson();
+      data['latestMessage'] = latestMessage?.map((v) => v.toJson()).toList();
     }
-    if (this.latestGroupMessage != null) {
-      data['latestGroupMessage'] = this.latestGroupMessage!.toJson();
+    if (latestGroupMessage != null) {
+      data['latestGroupMessage'] =
+          latestGroupMessage?.map((v) => v.toJson()).toList();
     }
     return data;
   }

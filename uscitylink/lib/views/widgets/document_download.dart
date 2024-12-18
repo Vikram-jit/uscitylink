@@ -8,11 +8,13 @@ import 'package:uscitylink/controller/document_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class DocumentDownload extends StatelessWidget {
   final String file; // URL of the file
   DocumentDownload({super.key, required this.file});
   final DocumentController _documentController = Get.put(DocumentController());
+  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -183,11 +185,9 @@ class DocumentDownload extends StatelessWidget {
             width: double.infinity,
             height:
                 TDeviceUtils.getScreenHeight() * 0.8, // Adjust height as needed
-            child: PDFView(
-              filePath: snapshot.data!.path,
-              onPageChanged: (int? current, int? total) {
-                print("Page $current of $total");
-              },
+            child: SfPdfViewer.network(
+              pdfUrl,
+              key: _pdfViewerKey,
             ),
           );
         } else {

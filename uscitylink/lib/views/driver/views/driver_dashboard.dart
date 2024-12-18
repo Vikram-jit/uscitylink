@@ -7,6 +7,7 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
 class DriverDashboard extends StatefulWidget {
@@ -202,142 +203,205 @@ class _DriverDashboardState extends State<DriverDashboard>
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.30,
                   ),
-                  if (_dashboardController.dashboard.value.latestMessage !=
-                      null)
+                  // Display Latest Messages
+                  if (_dashboardController
+                          .dashboard.value.latestMessage!.length >
+                      0)
                     Row(
                       children: [
-                        Text("Latest Message",
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(color: TColors.darkGrey))
+                        Text(
+                          "Channel Message",
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(color: TColors.darkGrey),
+                        )
                       ],
                     ),
-                  if (_dashboardController.dashboard.value.latestMessage !=
-                      null)
-                    InkWell(
-                      onTap: () {
-                        Get.toNamed(
-                          AppRoutes.driverMessage,
-                          arguments: {
-                            'channelId': _dashboardController
-                                .dashboard.value.latestMessage?.channelId,
-                            'name': _dashboardController
-                                .dashboard.value.latestMessage?.channel?.name
-                          },
-                        );
-                      },
-                      child: Card(
-                        elevation: 4.0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: TDeviceUtils.getAppBarHeight() * 0.2,
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                '${_dashboardController.dashboard.value.latestMessage?.channel?.name}',
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
-                              ),
-                            ),
-                            SizedBox(
-                              height: TDeviceUtils.getAppBarHeight() * 0.2,
-                            ),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 8.0, right: 8.0, bottom: 8.0),
+
+                  // List of Latest Messages
+                  ListView.builder(
+                    shrinkWrap:
+                        true, // To make it scrollable inside the SingleChildScrollView
+                    physics:
+                        NeverScrollableScrollPhysics(), // Disable scrolling in the ListView itself
+                    itemCount: _dashboardController
+                        .dashboard.value.latestMessage?.length,
+                    itemBuilder: (context, index) {
+                      var message = _dashboardController
+                          .dashboard.value.latestMessage?[index];
+                      return InkWell(
+                        onTap: () {
+                          Get.toNamed(
+                            AppRoutes.driverMessage,
+                            arguments: {
+                              'channelId': message?.channelId,
+                              'name': message?.channel?.name,
+                            },
+                          );
+                        },
+                        child: Card(
+                          color: Colors.white,
+                          elevation: 2.0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.2),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
                                 child: Text(
-                                  '${_dashboardController.dashboard.value.latestMessage?.body}',
+                                  '${message?.channel?.name ?? 'No Channel'}',
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall,
+                                ),
+                              ),
+                              Divider(),
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.1),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 2.0),
+                                child: Text(
+                                  '${message?.body ?? 'No Message'}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ),
-                            ),
-                          ],
+                              Divider(),
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.1),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 2.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'by:${message?.sender?.username ?? ""}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    Text(
+                                      '${Utils.formatUtcDateTime(message?.messageTimestampUtc) ?? ""}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                  if (_dashboardController
-                          .dashboard.value.latestGroupMessage?.group !=
-                      null)
-                    SizedBox(
-                      height: TDeviceUtils.getAppBarHeight() * 0.30,
-                    ),
-                  if (_dashboardController
-                          .dashboard.value.latestGroupMessage?.group !=
-                      null)
+                      );
+                    },
+                  ),
+                  if ((_dashboardController
+                              .dashboard.value.latestGroupMessage?.length ??
+                          0) >
+                      0)
+                    SizedBox(height: TDeviceUtils.getAppBarHeight() * 0.2),
+                  // Display Latest Group Messages
+                  if ((_dashboardController
+                              .dashboard.value.latestGroupMessage?.length ??
+                          0) >
+                      0)
                     Row(
                       children: [
-                        Text("Group Message",
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(color: TColors.darkGrey))
+                        Text(
+                          "Group Message",
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(color: TColors.darkGrey),
+                        ),
                       ],
                     ),
-                  if (_dashboardController
-                          .dashboard.value.latestGroupMessage?.group !=
-                      null)
-                    InkWell(
-                      onTap: () {
-                        Get.toNamed(
-                          AppRoutes.driverGroupMessage,
-                          arguments: {
-                            'channelId': _dashboardController
-                                .dashboard.value.latestGroupMessage?.channelId,
-                            'name': _dashboardController.dashboard.value
-                                .latestGroupMessage?.group?.name,
-                            'groupId': _dashboardController
-                                .dashboard.value.latestGroupMessage?.group?.id
-                          },
-                        );
-                      },
-                      child: Card(
-                        elevation: 4.0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: TDeviceUtils.getAppBarHeight() * 0.2,
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text(
-                                '${_dashboardController.dashboard.value.latestGroupMessage?.group?.name}',
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
-                              ),
-                            ),
-                            SizedBox(
-                              height: TDeviceUtils.getAppBarHeight() * 0.2,
-                            ),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 8.0, right: 8.0, bottom: 8.0),
+                  // List of Latest Group Messages
+
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: _dashboardController
+                        .dashboard.value.latestGroupMessage?.length,
+                    itemBuilder: (context, index) {
+                      var groupMessage = _dashboardController
+                          .dashboard.value.latestGroupMessage?[index];
+                      return InkWell(
+                        onTap: () {
+                          Get.toNamed(
+                            AppRoutes.driverGroupMessage,
+                            arguments: {
+                              'channelId': groupMessage?.channelId,
+                              'name': groupMessage?.group?.name,
+                              'groupId': groupMessage?.group?.id,
+                            },
+                          );
+                        },
+                        child: Card(
+                          color: Colors.white,
+                          elevation: 2.0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.2),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
                                 child: Text(
-                                  '${_dashboardController.dashboard.value.latestGroupMessage?.body}',
+                                  '${groupMessage?.group?.name ?? 'No Group'}',
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall,
+                                ),
+                              ),
+                              Divider(),
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.1),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 3.0),
+                                child: Text(
+                                  '${groupMessage?.body ?? 'No Group Message'}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ),
-                            ),
-                          ],
+                              Divider(),
+                              SizedBox(
+                                  height: TDeviceUtils.getAppBarHeight() * 0.1),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 2.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'by:${groupMessage?.sender?.username ?? ""}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    Text(
+                                      '${Utils.formatUtcDateTime(groupMessage?.messageTimestampUtc) ?? ""}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    )
+                      );
+                    },
+                  ),
                 ],
               );
             })),

@@ -9,7 +9,7 @@ import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
 import { secondarySequelize } from "../sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { Op, QueryTypes, Sequelize } from "sequelize";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
@@ -499,47 +499,97 @@ export async function dashboard(
       }
     );
 
-    const latestMessage = await Message.findOne({
-      where:{
-        userProfileId:req?.user?.id,
-        groupId:null
+    const distinctChannelIds = await UserChannel.findAll({
+      where: {
+        userProfileId: req?.user?.id,
+        last_message_id: { [Op.not]: null }
       },
-      include: [{
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline"],
-      },{
-        model: Channel,
-        as: "channel",
+    
+      raw: true,
+      order:[['last_message_utc','DESC']],
+      limit:2
+    });
+    
+    const channelIds = distinctChannelIds.map(item => item.channelId); 
+
+    const latestMessage = await Message.findAll({
+      where: {
+        userProfileId: req?.user?.id,
+        channelId: { [Op.in]: channelIds },
+        groupId: null, // Use the dynamic groupIds
+       
+      },
+      include: [
+        {
+          model: UserProfile,
+          as: 'sender',
+          attributes: ['id', 'username', 'isOnline'],
+        },
+        {
+          model: Channel,
+          as: 'channel',
+          attributes: ['id', 'name'],
+        },
+      ],
+      order: [['messageTimestampUtc', 'DESC']],
+      limit: 2,
+    });
+    
+   
+
+    const distinctGroupIds = await GroupUser.findAll({
+      where: {
+        userProfileId: req?.user?.id,
+        last_message_id: { [Op.not]: null }
+      },
+    
+      raw: true,
+      order:[['updatedAt','DESC']],
+      limit:2
+    });
+    
+    const groupIds = distinctGroupIds.map(item => item.groupId); 
+    
+    const latestGroupMessages = await Message.findAll({
+      where: {
         
-      }],
-      order: [["messageTimestampUtc", "DESC"]],
-    })
-    const latestGroupMessage = await Message.findOne({
-      where:{
-        userProfileId:req?.user?.id,
-        groupId: { [Op.not]: null },
+        groupId: { [Op.in]: groupIds }, // Use the dynamic groupIds
         channelId: { [Op.not]: null },
       },
-      include: [{
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline"],
-      },{
-        model: Channel,
-        as: "channel",
-        
-      },],
-      order: [["messageTimestampUtc", "DESC"]],
-    })
-    let group:any = null;
-    if(latestGroupMessage){
-       group = await Group.findOne({
-        where:{
-          id:latestGroupMessage?.groupId!
-        }
-      })
+      include: [
+        {
+          model: UserProfile,
+          as: 'sender',
+          attributes: ['id', 'username', 'isOnline'],
+        },
+        {
+          model: Channel,
+          as: 'channel',
+          attributes: ['id', 'name'],
+        },
+      ],
+      order: [['messageTimestampUtc', 'DESC']],
+      limit: 2,
+    });
+    
+    let messagesWithGroup = [];
+    if (latestGroupMessages.length > 0) {
+      
+       messagesWithGroup = await Promise.all(
+        latestGroupMessages.map(async (message) => {
+          
+          const group = await Group.findByPk(
+            message?.groupId! ,
+          );
+    
+          
+          return { ...message.dataValues, group };
+        })
+      );
+    
+      
     }
+    
    
     return res.status(200).json({
       status: true,
@@ -551,7 +601,8 @@ export async function dashboard(
         truckCount:truckCount?.[0]?.truckCount,
         trailerCount:trailerCount?.[0]?.trailerCount,
         latestMessage,
-        latestGroupMessage:{...latestGroupMessage?.dataValues,group}
+        latestGroupMessage:messagesWithGroup,
+        distinctChannelIds
       }
     });
   } catch (err: any) {

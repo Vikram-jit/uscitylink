@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/services/dashboard_service.dart';
@@ -18,7 +20,6 @@ class DashboardController extends GetxController {
   void getDashboard() {
     loading.value = true;
     _dashboardService.getDashboard().then((response) {
-      print(response);
       dashboard.value = response.data;
       loading.value = false;
     }).onError((error, stackTrace) {

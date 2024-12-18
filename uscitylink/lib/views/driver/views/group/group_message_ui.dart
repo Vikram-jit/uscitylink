@@ -153,6 +153,9 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   // Trigger the socket event when the back icon is clicked
                   socketService.removeFromGroup(widget.groupId);
                   groupController.getUserGroups();
+                  groupController.messages.clear();
+                  groupController.currentPage.value = 1;
+                  groupController.totalPages.value = 1;
                   Get.back();
                 },
               ),

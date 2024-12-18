@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class DocumentView extends StatefulWidget {
@@ -211,19 +212,27 @@ class VehicleList extends StatelessWidget {
           }
 
           final truck = _controller.trucks[index];
-          return Card(
-            color: Colors.white,
-            elevation: 2.0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(0),
-            ),
-            margin: EdgeInsets.symmetric(vertical: 5.0),
-            child: ListTile(
-              leading: Icon(
-                  type == "truck" ? Icons.local_shipping : Icons.rv_hookup),
-              title: Text('${truck.number}'),
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
-              trailing: Icon(Icons.arrow_right),
+          return InkWell(
+            onTap: () {
+              Get.toNamed(
+                AppRoutes.vehicleDetails,
+                arguments: {'id': truck.id, 'type': type},
+              );
+            },
+            child: Card(
+              color: Colors.white,
+              elevation: 2.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(0),
+              ),
+              margin: EdgeInsets.symmetric(vertical: 5.0),
+              child: ListTile(
+                leading: Icon(
+                    type == "truck" ? Icons.local_shipping : Icons.rv_hookup),
+                title: Text('${truck.number}'),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
+                trailing: Icon(Icons.arrow_right),
+              ),
             ),
           );
         },

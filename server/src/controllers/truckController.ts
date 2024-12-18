@@ -60,3 +60,35 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
   }
 }
 
+
+export async function getById(req: Request, res: Response): Promise<any> {
+  try {
+  
+    const type = req.query.type || "truck";
+    const id = req.params.id ;
+   
+
+    const details = await secondarySequelize.query<any>(
+      `SELECT * FROM ${type}s WHERE id = :id`, 
+      {
+        replacements: { id: id },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const documents = await secondarySequelize.query<any>(
+      `SELECT * FROM documents WHERE item_id = :id AND type = :type`, 
+      {
+        replacements: { id: id,type:type },
+        type: QueryTypes.SELECT,
+      }
+    );
+    return res.status(200).json({
+      status: true,
+      message: `Get Details Successfully.`,
+      data:{ ...details?.[0],documents},
+    });
+  } catch (err: any) {
+    return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
