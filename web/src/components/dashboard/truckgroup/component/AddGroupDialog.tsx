@@ -60,7 +60,6 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
     setSelectedUsers(value);
   };
   const { data, isFetching } = useGetUsersQuery({ role: 'driver',page:-1 });
-  console.log(data)
   async function onSubmit() {
     try {
       dispatch(showLoader());
@@ -72,6 +71,7 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
       };
 
       const res = await createGroup(data);
+     
       if (res.data?.status) {
         dispatch(hideLoader());
         toast.success('Add Group Successfully.');
@@ -106,14 +106,14 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
                   id="checkboxes-tags-demo"
                   options={truckList?.data || []}
                   disableCloseOnSelect
-                  onChange={(e, v) => {
+                  onChange={(e, v:any) => {
                     setState({ ...state, name: v?.number || '' });
                   }}
                   getOptionLabel={(option) => option.number}
                   renderOption={(props: any, option, { selected }) => {
                     const { key, ...optionProps } = props;
                     return (
-                      <li key={key} {...optionProps}>
+                      <li key={key + Math.random() * 100000000} {...optionProps}>
                         <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
                         {option.number}
                       </li>

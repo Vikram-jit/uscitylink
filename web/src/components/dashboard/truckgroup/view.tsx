@@ -126,12 +126,14 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [messages, setMessages] = useState<any>([]);
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
+
   const [templateDialog, setTemplateDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openTemplate = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
+
   const { trackChannelState } = useSelector((state: any) => state.channel);
   const handleClose = () => {
     setAnchorEl(null);
@@ -175,6 +177,13 @@ const ChatInterface = ({ type }: { type: string }) => {
         setGroups([])
       }
   },[trackChannelState])
+
+  useEffect(()=>{
+    if(search.length > 0){
+      setPage(1)
+      setHasMore(true)
+    }
+  },[search])
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -238,12 +247,13 @@ const ChatInterface = ({ type }: { type: string }) => {
         setMessages([])
         // If channel ID has changed, reset the groups and update the current channel ID
         setGroups(groupList?.data?.data);
+        
         setCurrentChannelId(newChannelId);
 
-        // Reset hasMoreMessage based on the pagination data
         setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
+        setHasMore(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
       } else {
-        // If the channel ID hasn't changed, append the new groups (ensure no duplicates)
+       
         setGroups((prevGroups) => {
           const existingGroupIds = new Set(prevGroups.map((group) => group.id));
           const newGroups = groupList?.data?.data.filter(
@@ -253,6 +263,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         });
 
         setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
+        setHasMore(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
       }
     }
 
@@ -287,11 +298,8 @@ const ChatInterface = ({ type }: { type: string }) => {
         setSenderId(groupMessage?.data?.senderId);
       }
     }
-    // If needed, add scrollToBottom logic here
-    // setTimeout(() => {
-    //   scrollToBottom();
-    // }, 100);
-  }, [group, groupMessage, type]); // Added `type` as a dependency for proper reactivity.
+ 
+  }, [group, groupMessage, type]);
 
   useEffect(() => {
     if (socket) {
@@ -529,7 +537,8 @@ const ChatInterface = ({ type }: { type: string }) => {
             />
           </Box>
           <List id="scrollable-channel-container" sx={{ maxHeight: '650px', overflowY: 'auto' }}>
-            <InfiniteScroll
+            {
+                <InfiniteScroll
               dataLength={groups.length}
               next={loadMoreMessages}
               hasMore={hasMore}
@@ -572,6 +581,8 @@ const ChatInterface = ({ type }: { type: string }) => {
                             scrollToBottom();
                           }, 100);
                           setMessages([])
+                          setPageMessage(1)
+                          setHasMoreMessage(true)
                         }}
                       >
                         <Badge
@@ -622,7 +633,9 @@ const ChatInterface = ({ type }: { type: string }) => {
                     <Divider />
                   </>
                 ))}
-            </InfiniteScroll>
+            </InfiniteScroll> 
+            }
+           
           </List>
         </SidebarContainer>
       </Grid>
@@ -639,6 +652,7 @@ const ChatInterface = ({ type }: { type: string }) => {
             <GroupDetail
               type={type}
               group={group.data}
+              setGroups={setGroups}
               setViewDetailGroup={setViewDetailGroup}
               setSelectedGroup={setSelectedGroup}
             />

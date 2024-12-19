@@ -10,10 +10,10 @@ export const TemplateApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: { data: { id: string; name: string; body: string; url?: string }[]; pagination: pagination };
       },
-      { page: number; search?: string }
+      { page: number; search?: string,source:string }
     >({
       query: (payload) => ({
-        url: `template?page=${payload.page}&search=${payload.search}`,
+        url: `template?page=${payload.page}&search=${payload.search}&source=${payload.source}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

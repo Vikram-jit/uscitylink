@@ -27,6 +27,9 @@ export async function create(req: Request, res: Response): Promise<any> {
 
 export async function get(req: Request, res: Response): Promise<any> {
   try {
+
+    const source = req.query.source || "pagination"
+
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
@@ -37,12 +40,16 @@ export async function get(req: Request, res: Response): Promise<any> {
     const result = await Template.findAndCountAll({
       where: {
         channelId: req.activeChannel,
-        name: {
-          [Op.like]: `%${search}%`,
-        },
+       ...(source == "paginationWithSearch" && {name: {
+        [Op.like]: `%${search}%`,
+      },}) 
       },
-      limit: pageSize,
-      offset: offset,
+
+      ...(source == "pagination" && {
+        limit: pageSize,
+        offset: offset
+      })
+
     });
     const total = result.count;
     const totalPages = Math.ceil(total / pageSize);
@@ -118,16 +125,16 @@ export async function update(req: Request, res: Response): Promise<any> {
       name: name,
       body: body,
       url: url,
-    },{
-      where:{
-        id:id
+    }, {
+      where: {
+        id: id
       }
     });
 
     return res.status(200).json({
       status: true,
       message: `Template updated Successfully.`,
-     
+
     });
   } catch (err: any) {
     return res

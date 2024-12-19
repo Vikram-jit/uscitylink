@@ -20,6 +20,7 @@ import { SingleGroupModel } from '@/redux/models/GroupModel';
 import useErrorHandler from '@/hooks/use-error-handler';
 import { useDispatch } from 'react-redux';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import moment from 'moment';
 
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
@@ -132,7 +133,7 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
                 renderOption={(props: any, option, { selected }) => {
                   const { key, ...optionProps } = props;
                   return (
-                    <li key={key} {...optionProps}>
+                    <li key={key + moment().utc} {...optionProps}>
                       <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
                       {option.username}
                     </li>

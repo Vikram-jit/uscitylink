@@ -60,10 +60,10 @@ export async function create(req: Request, res: Response): Promise<any> {
         channelId: req.activeChannel,
       });
     }
-    if (group?.type == "group") {
-      const memberList = members?.split(",") || [];
-      if (memberList.length === 0) return;
-
+    const memberList = members?.split(",") || [];
+    if (group?.type == "group" && memberList.length > 0)  {
+     
+    
       for (const user_id of memberList) {
         const userSocket = global.userSockets[user_id];
 
@@ -327,6 +327,9 @@ export async function groupRemoveMember(
   res: Response
 ): Promise<any> {
   try {
+
+   
+
     await GroupUser.destroy({
       where: {
         id: req.params.id,
@@ -371,12 +374,16 @@ export async function groupStatusMember(
 
 export async function groupRemove(req: Request, res: Response): Promise<any> {
   try {
-    await Message.destroy({
+    await GroupUser.destroy({
       where: {
         groupId: req.params.id,
       },
     });
-    await GroupUser.destroy({
+
+    
+   
+   
+    await GroupMessage.destroy({
       where: {
         groupId: req.params.id,
       },
@@ -386,7 +393,7 @@ export async function groupRemove(req: Request, res: Response): Promise<any> {
         groupId: req.params.id,
       },
     });
-    await GroupMessage.destroy({
+    await Message.destroy({
       where: {
         groupId: req.params.id,
       },
@@ -397,7 +404,7 @@ export async function groupRemove(req: Request, res: Response): Promise<any> {
       },
     });
 
-    return res.status(201).json({
+    return res.status(200).json({
       status: true,
       message: `Deleted Group Successfully.`,
     });

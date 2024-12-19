@@ -16,7 +16,7 @@ export default function TemplateList() {
   const value = useDebounce(search.search,200)
   const [page, setPage] = React.useState(1);
 
-  const { data, isLoading } = useGetTemplatesQuery({page,search:value});
+  const { data, isLoading } = useGetTemplatesQuery({page,search:value,source:"paginationWithSearch"});
 
   return (
     <>

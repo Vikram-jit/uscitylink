@@ -21,6 +21,7 @@ import { ChannelPopover } from './channel-popover';
 import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
 import { CircularProgress } from '@mui/material';
 import { useSocket } from '@/lib/socketProvider';
+import moment from 'moment';
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
@@ -137,6 +138,7 @@ function reduceChildRoutes({
 
     acc.push(
       <NavItem
+      key={Math.random() * 10000000}
       pathname={pathname} {...item}
       onC
       >
@@ -149,7 +151,7 @@ function reduceChildRoutes({
     );
   } else {
     acc.push(
-      <NavItem  pathname={pathname} {...item} />
+      <NavItem key={Math.random() * 10000000}  pathname={pathname} {...item} />
     );
   }
 
@@ -171,8 +173,8 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title}: Na
 
 
   return (
-    <li onClick={()=>{
-     console.log(socket)
+    <li key={Math.random() * 1000000000} onClick={()=>{
+     
       socket?.emit('staff_open_chat', null);
     }}>
       <Box

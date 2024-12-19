@@ -33,7 +33,7 @@ export default function TemplateDialog({
   setSelectedTemplate: React.Dispatch<React.SetStateAction<{ name: string; body: string; url?: string }>>;
 }) {
   const [page, setPage] = React.useState(1);
-  const { data, isLoading } = useGetTemplatesQuery({ page: page });
+  const { data, isLoading } = useGetTemplatesQuery({ page: page ,source:"pagination"});
 
   const handleClose = () => {
     setOpen(false);

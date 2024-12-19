@@ -294,7 +294,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const source = req.query.source as string;
     const channel =
       source == "channel"
-        ? await Channel.findByPk(req.params.channelId)
+        ? await Channel.findByPk(channelId)
         : await Group.findByPk(req.params.channelId);
        
     const media = await Media.findAndCountAll({

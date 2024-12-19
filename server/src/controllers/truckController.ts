@@ -92,3 +92,30 @@ export async function getById(req: Request, res: Response): Promise<any> {
   }
 }
 
+export async function getTruckList(req: Request, res: Response): Promise<any> {
+  try {
+   
+
+   
+    // Fetch paginated data with search functionality
+    const trucks = await secondarySequelize.query<any>(
+      `SELECT * FROM trucks`,
+      {
+       
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    
+    
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Trucks Successfully.`,
+      data: trucks
+    });
+  } catch (err: any) {
+    return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+

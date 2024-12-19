@@ -6,10 +6,9 @@ import Typography from '@mui/material/Typography';
 import { Plus as PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 
 import { config } from '@/config';
-import UserList from '@/components/dashboard/users/UserList';
-import { Container } from '@mui/material';
-import { paths } from '@/paths';
+import { Container, IconButton } from '@mui/material';
 import Template from '@/components/dashboard/template/template';
+import { ArrowBackIos } from '@mui/icons-material';
 
 export const metadata = { title: `Template | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -19,7 +18,10 @@ export default function Page({params}:{params:{action:string}}): React.JSX.Eleme
     <Container maxWidth="xl" sx={{ py: '64px' }}>
     <Stack spacing={3}>
       <Stack direction="row" spacing={3}>
-        <Stack spacing={1} sx={{ flex: '1 1 auto' }}>
+        <Stack display={"flex"} flexDirection={"row"}>
+          <IconButton LinkComponent={'a'} href={'/dashboard/templates'}>
+            <ArrowBackIos/>
+          </IconButton>
           <Typography variant="h4">{`${params.action?.toUpperCase()}`}</Typography>
         </Stack>
       </Stack>

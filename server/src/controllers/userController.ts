@@ -18,7 +18,7 @@ export async function getUsers(req: Request, res: Response): Promise<any> {
 
     const page = parseInt(req.query.page as string) || 1;
 
-    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const pageSize = parseInt(req.query.pageSize as string) || 5;
 
     const search = (req.query.search as string) || "";
 
@@ -335,11 +335,14 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
             });
 
             if (isUser) {
+              const pass = "123456";
+              // Hash the password
+              const hashedPassword = await hashPassword(pass);
               await UserProfile.create({
                 username: e.name,
                 userId: isUser?.id,
                 role_id: isRole?.id!,
-                password: e.password,
+                password: hashedPassword,
                 status: "active",
               });
             }

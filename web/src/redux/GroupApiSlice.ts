@@ -44,7 +44,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
     >({
       providesTags: ['trucks'],
       query: (payload) => ({
-        url: `yard/trucks`,
+        url: `yard/truckList`,
         method: 'GET',
       }),
     }),
@@ -79,7 +79,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
       }),
     }),
     updateGroup: builder.mutation<ApiResponse, { groupId: string; name: string; description: string }>({
-      invalidatesTags: ['groups', 'group'],
+      invalidatesTags: ['groups', 'group','trucks'],
       query: (payload) => ({
         url: `group/${payload.groupId}`,
         method: 'PUT',

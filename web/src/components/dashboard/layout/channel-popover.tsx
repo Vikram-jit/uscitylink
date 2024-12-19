@@ -37,6 +37,7 @@ export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps)
           data?.data?.map((e) => {
             return (
               <MenuItem
+              key={e.id}
                 sx={{
                   background: e.isActive ? 'var(--mui-palette-primary-dark)' : '#fff',
                   color: e.isActive ? '#fff' : 'black',

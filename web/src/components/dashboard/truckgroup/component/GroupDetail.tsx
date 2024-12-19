@@ -8,7 +8,7 @@ import {
   useUpdateGroupMemberMutation,
   useUpdateGroupMutation,
 } from '@/redux/GroupApiSlice';
-import { SingleGroupModel } from '@/redux/models/GroupModel';
+import { GroupModel, SingleGroupModel } from '@/redux/models/GroupModel';
 import { TruckModel } from '@/redux/models/TruckModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { Delete, MoreVert, Settings } from '@mui/icons-material';
@@ -44,11 +44,12 @@ interface GroupDetailInterface {
   setViewDetailGroup: React.Dispatch<SetStateAction<boolean>>;
   setSelectedGroup: React.Dispatch<SetStateAction<string>>;
   type: string;
+  setGroups: React.Dispatch<SetStateAction<GroupModel[]>>
 }
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
-export default function GroupDetail({ group, setViewDetailGroup, setSelectedGroup, type }: GroupDetailInterface) {
+export default function GroupDetail({ group, setViewDetailGroup, setSelectedGroup, type, setGroups }: GroupDetailInterface) {
   const [addMemberDialog, setAddMemberDialog] = useState<boolean>(false);
   const [removeGroupMember, { isLoading }] = useRemoveGroupMemberMutation();
   const [removeGroup, { isLoading: deleteLoader }] = useRemoveGroupMutation();
@@ -84,7 +85,7 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
   }, [group, updateLoader, truckList]);
   useEffect(() => {
     if (truckList) {
-      const defaultSelectedTruck = truckList?.data?.data?.filter((truck:TruckModel) => truck.number == group.group.name);
+      const defaultSelectedTruck = truckList?.data?.filter((truck: TruckModel) => truck.number == group.group.name);
 
       if (defaultSelectedTruck.length > 0) {
         setSelectedTruck(defaultSelectedTruck[0]);
@@ -157,6 +158,12 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
               const res = await updateGroup({ groupId: group.group.id, ...state });
               if (res.data) {
                 dispatch(hideLoader());
+                setGroups(prev => {
+
+                  return prev.map(item =>
+                    item.id === group.group.id ? { ...item, ...state } : item
+                  )
+                });
                 toast.success('Updated Group Successfully.');
               } else {
                 dispatch(hideLoader());
@@ -204,8 +211,15 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
           onClick={async () => {
             dispatch(showLoader());
             const res = await removeGroup({ groupId: group.group.id });
+
             if (res.data) {
               dispatch(hideLoader());
+              setGroups(prev => {
+
+                return prev.filter(item =>
+                  item.id !== group.group.id
+                )
+              });
               setViewDetailGroup(false);
               setSelectedGroup('');
               toast.success('Deleted Group Successfully.');
