@@ -10,6 +10,7 @@ import { Media } from "../models/Media";
 import Channel from "../models/Channel";
 import { Op } from "sequelize";
 import Group from "../models/Group";
+import GroupChannel from "../models/GroupChannel";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -91,18 +92,38 @@ export const getMessages = async (
         },
      
       },
-      include: {
+      include: [{
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
-      },
+      }],
       order: [["messageTimestampUtc", "DESC"]],
+     
     });
+
+
+    const modifiedMessage = await Promise.all(messages.map(async(e)=>{
+      let group  = null;
+        if(e.type == "truck_group"){
+          group = await Group.findOne({
+            where:{
+              id:e?.groupId!
+            },
+            include:[{
+              model:GroupChannel,
+              as:"group_channel"
+            }]
+          })
+        }
+        return {...e.dataValues,group}
+
+    }))
+
 
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: messages,
+      data: modifiedMessage,
     });
   } catch (err: any) {
     return res
@@ -252,7 +273,7 @@ export const fileUploadWeb = async (
     const channelId = req.activeChannel;
     const userId = req.body.userId?.length > 0 ? req.body.userId : req.user?.id;
     const groupId = req.body.groupId as string;
-
+    const source = req.body.source || "message"
     if (req.file) {
       const file = req.file as any;
 
@@ -265,6 +286,7 @@ export const fileUploadWeb = async (
         mime_type: req.file.mimetype,
         key: file?.key,
         file_type: req.body.type,
+        upload_source:source
       });
     }
 
@@ -296,15 +318,36 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       source == "channel"
         ? await Channel.findByPk(channelId)
         : await Group.findByPk(req.params.channelId);
-       
+       console.log(channelId)
     const media = await Media.findAndCountAll({
       where: {
-        ...(source == "channel"
-          ? { channelId: channelId,groupId:null,
-            user_profile_id:userId
-           }
-          : { groupId: channel?.id }),
-
+        [Op.or]: [
+          
+          ...(source === "channel"
+            ? [{
+                channelId: channelId,
+                upload_source: "message",
+                user_profile_id: userId
+              }]
+            : []),
+    
+         
+          ...(source === "channel"
+            ? [{
+                channelId: channelId,
+                upload_source: "truck"
+              }]
+            : []),
+    
+          
+          ...(source !== "channel"
+            ? [{
+                groupId: channelId,
+                upload_source: "truck"
+              }]
+            : [])
+        ],
+       
         file_type: req.query.type || "media",
       },
       limit: limit,

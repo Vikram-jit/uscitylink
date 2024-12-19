@@ -38,6 +38,7 @@ class Group
       foreignKey: "groupId",
       as: "group_users",
     });
+    
   }
 }
 

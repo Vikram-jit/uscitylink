@@ -1,5 +1,7 @@
 import 'dart:ffi';
 
+import 'package:uscitylink/model/group_model.dart';
+
 class MessageModel {
   String? id;
   String? channelId;
@@ -16,7 +18,8 @@ class MessageModel {
   String? createdAt;
   String? updatedAt;
   Sender? sender;
-
+  Group? group;
+  String? type;
   MessageModel(
       {this.id,
       this.channelId,
@@ -32,7 +35,9 @@ class MessageModel {
       this.createdAt,
       this.updatedAt,
       this.url,
-      this.sender});
+      this.sender,
+      this.group,
+      this.type});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -49,7 +54,9 @@ class MessageModel {
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     url = json['url'];
+    type = json['type'];
     sender = json['sender'] != null ? Sender.fromJson(json['sender']) : null;
+    group = json['group'] != null ? Group.fromJson(json['group']) : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -68,8 +75,12 @@ class MessageModel {
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     data['url'] = url;
+    data['type'] = type;
     if (sender != null) {
       data['last_message'] = sender?.toJson();
+    }
+    if (group != null) {
+      data['group'] = group?.toJson();
     }
     return data;
   }

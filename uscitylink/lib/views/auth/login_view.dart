@@ -89,39 +89,39 @@ class _LoginViewState extends State<LoginView>
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: Theme.of(context).textTheme.labelLarge,
-                        children: [
-                          const TextSpan(
-                            text: "Don't have an account? ",
-                            style: TextStyle(color: Colors.black),
-                          ),
-                          TextSpan(
-                            text: "Create new account",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                // Handle account creation navigation here
-                              },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: TDeviceUtils.getScreenHeight() * 0.02,
-                    ),
-                  ],
-                ),
-              ),
+              // Expanded(
+              //   child: Column(
+              //     mainAxisAlignment: MainAxisAlignment.end,
+              //     children: [
+              //       RichText(
+              //         text: TextSpan(
+              //           style: Theme.of(context).textTheme.labelLarge,
+              //           children: [
+              //             const TextSpan(
+              //               text: "Don't have an account? ",
+              //               style: TextStyle(color: Colors.black),
+              //             ),
+              //             TextSpan(
+              //               text: "Create new account",
+              //               style: TextStyle(
+              //                 fontSize: 14,
+              //                 color: Theme.of(context).primaryColor,
+              //                 fontWeight: FontWeight.w500,
+              //               ),
+              //               recognizer: TapGestureRecognizer()
+              //                 ..onTap = () {
+              //                   // Handle account creation navigation here
+              //                 },
+              //             ),
+              //           ],
+              //         ),
+              //       ),
+              //       SizedBox(
+              //         height: TDeviceUtils.getScreenHeight() * 0.02,
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
         ),

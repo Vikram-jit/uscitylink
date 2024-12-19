@@ -471,6 +471,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         let formData = new FormData();
         formData.append('file', file);
         formData.append('userId', '');
+        formData.append('source', type);
         formData.append('groupId', group.data.group.id);
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
         const res = await fileUpload(formData).unwrap();

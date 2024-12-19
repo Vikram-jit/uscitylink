@@ -333,6 +333,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     message.body!,
                     style: const TextStyle(fontSize: 16),
                   ),
+                  SizedBox(
+                    height: 5,
+                  ),
                   Text(
                     message.messageDirection == "R"
                         ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
@@ -341,7 +344,14 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         fontSize: 10,
                         color: Colors.black54,
                         fontWeight: FontWeight.w500),
-                  )
+                  ),
+                  if (message.messageDirection == "S" &&
+                      message.type == "truck_group")
+                    Text("From Truck Group : ${message?.group?.name}",
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w500)),
                 ],
               ),
             ),

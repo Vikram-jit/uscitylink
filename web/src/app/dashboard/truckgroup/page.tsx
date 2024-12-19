@@ -5,7 +5,7 @@ import { config } from '@/config';
 
 import View from '@/components/dashboard/truckgroup/view';
 
-export const metadata = { title: `Settings | Dashboard | ${config.site.name}` } satisfies Metadata;
+export const metadata = { title: `Groups | Dashboard | ${config.site.name}` } satisfies Metadata;
 
 export default function Page(): React.JSX.Element {
   return (

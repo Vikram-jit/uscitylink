@@ -114,7 +114,7 @@ class Group {
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     groupChannel = json['group_channel'] != null
-        ? new GroupChannel.fromJson(json['group_channel'])
+        ? GroupChannel.fromJson(json['group_channel'])
         : null;
   }
 
@@ -126,7 +126,7 @@ class Group {
     data['type'] = this.type;
     data['createdAt'] = this.createdAt;
     data['updatedAt'] = this.updatedAt;
-    if (this.groupChannel != null) {
+    if (groupChannel != null) {
       data['group_channel'] = this.groupChannel?.toJson();
     }
     return data;

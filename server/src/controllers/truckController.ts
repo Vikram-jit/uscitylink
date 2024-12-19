@@ -1,9 +1,31 @@
 import { Request, Response } from "express";
 import { QueryTypes } from "sequelize";
 import { secondarySequelize } from "../sequelize";
+import GroupUser from "../models/GroupUser";
+import Group from "../models/Group";
 
 export async function getTrucks(req: Request, res: Response): Promise<any> {
   try {
+
+    const groupUsers = await GroupUser.findAll({
+      where: {
+        userProfileId: req.user?.id
+      },
+      include: [
+        {
+          model: Group,
+          where: {
+            type: "truck"
+          },
+          attributes: ['name']
+        }
+      ]
+    })
+
+    const truckIds = groupUsers.map((e: any) => {
+      return e?.Group?.name
+    })
+
     // Get pagination parameters from the request query, with defaults if not provided
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
@@ -15,25 +37,32 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
 
     // Construct the search condition
     let searchCondition = '';
-    if (searchQuery) {
-      // Assuming `name` is the field to search in the database, you can add more conditions as needed
-      searchCondition = `WHERE number LIKE :searchQuery`;  // Modify `name` based on your table schema
+    let replacements: any = { limit: pageSize, offset };
+
+    if (truckIds.length > 0 && searchQuery.length == 0) {
+      // Use WHERE IN if numbers array is not empty
+      searchCondition = `WHERE number IN (:numbers)`;
+      replacements.numbers = truckIds; // Set the 'numbers' replacement
+    } else if (searchQuery) {
+      // Use LIKE if searchQuery is provided
+      searchCondition = `WHERE number = :searchQuery`;  // Modify `number` based on your table schema
+      replacements.searchQuery = `${searchQuery}`; // Add the searchQuery parameter
     }
 
-    // Fetch the total number of trucks (for pagination info like total pages)
+    // Fetch the total number of records for pagination
     const totalTrucks = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS total FROM ${type} ${searchCondition}`,
       {
-        replacements: { searchQuery: `%${searchQuery}%` },
+        replacements,
         type: QueryTypes.SELECT,
       }
     );
 
-    // Fetch paginated data with search functionality
+    // Fetch the paginated data with the appropriate search condition
     const trucks = await secondarySequelize.query<any>(
       `SELECT * FROM ${type} ${searchCondition} LIMIT :limit OFFSET :offset`,
       {
-        replacements: { searchQuery: `%${searchQuery}%`, limit: pageSize, offset },
+        replacements,
         type: QueryTypes.SELECT,
       }
     );
@@ -63,29 +92,29 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
 
 export async function getById(req: Request, res: Response): Promise<any> {
   try {
-  
+
     const type = req.query.type || "truck";
-    const id = req.params.id ;
-   
+    const id = req.params.id;
+
 
     const details = await secondarySequelize.query<any>(
-      `SELECT * FROM ${type}s WHERE id = :id`, 
+      `SELECT * FROM ${type}s WHERE id = :id`,
       {
         replacements: { id: id },
         type: QueryTypes.SELECT,
       }
     );
     const documents = await secondarySequelize.query<any>(
-      `SELECT * FROM documents WHERE item_id = :id AND type = :type`, 
+      `SELECT * FROM documents WHERE item_id = :id AND type = :type`,
       {
-        replacements: { id: id,type:type },
+        replacements: { id: id, type: type },
         type: QueryTypes.SELECT,
       }
     );
     return res.status(200).json({
       status: true,
       message: `Get Details Successfully.`,
-      data:{ ...details?.[0],documents},
+      data: { ...details?.[0], documents },
     });
   } catch (err: any) {
     return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
@@ -94,20 +123,20 @@ export async function getById(req: Request, res: Response): Promise<any> {
 
 export async function getTruckList(req: Request, res: Response): Promise<any> {
   try {
-   
 
-   
+
+
     // Fetch paginated data with search functionality
     const trucks = await secondarySequelize.query<any>(
       `SELECT * FROM trucks`,
       {
-       
+
         type: QueryTypes.SELECT,
       }
     );
 
-    
-    
+
+
 
     return res.status(200).json({
       status: true,

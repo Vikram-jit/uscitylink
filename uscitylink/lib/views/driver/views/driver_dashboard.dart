@@ -73,12 +73,12 @@ class _DriverDashboardState extends State<DriverDashboard>
                     mainAxisAlignment:
                         MainAxisAlignment.end, // Align icons to the right
                     children: [
-                      Center(
-                        child: Icon(
-                          Icons.notification_add,
-                          color: Colors.white,
-                        ),
-                      ),
+                      // Center(
+                      //   child: Icon(
+                      //     Icons.notification_add,
+                      //     color: Colors.white,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),

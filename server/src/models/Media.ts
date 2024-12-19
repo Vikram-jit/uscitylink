@@ -11,6 +11,7 @@ export class Media extends Model {
   public file_type?: string;
   public mime_type?: string;
   public file_size?: string;
+  public upload_source?: string;
 
   public key?: string;
 
@@ -30,6 +31,11 @@ Media.init(
     channelId: {
       type: DataTypes.UUID,
       allowNull: true,
+    },
+    upload_source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue:"message"
     },
     user_profile_id: {
       type: DataTypes.UUID,

@@ -17,7 +17,7 @@ class _DocumentViewState extends State<DocumentView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   final TruckController _controller = Get.put(TruckController());
-
+  int tabIndex = 0;
   late Timer _debounce;
 
   @override
@@ -35,12 +35,18 @@ class _DocumentViewState extends State<DocumentView>
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trucks");
+        setState(() {
+          tabIndex = 0;
+        });
       }
       if (_tabController.index == 1 && !_tabController.indexIsChanging) {
         _controller.currentPage.value = 1;
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trailers");
+        setState(() {
+          tabIndex = 1;
+        });
       }
     });
 
@@ -109,7 +115,8 @@ class _DocumentViewState extends State<DocumentView>
                     child: TextField(
                       onChanged: _onSearchChanged,
                       decoration: InputDecoration(
-                        hintText: "Search vehicles...",
+                        hintText:
+                            "Search ${tabIndex == 0 ? "trucks" : "trailers"}...",
                         hintStyle: TextStyle(color: Colors.grey),
                         prefixIcon: Icon(Icons.search, color: Colors.grey),
                         filled: true,
