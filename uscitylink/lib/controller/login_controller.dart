@@ -194,6 +194,15 @@ class LoginController extends GetxController {
 
   void logOut() async {
     Get.find<SocketService>().logout();
+    __authService.logout().then((value) {
+      // if (value.status == true) {
+      //   Utils.toastMessage("Logout Successfully");
+
+      //   Get.offAllNamed(AppRoutes.login);
+      // }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
     userPreferenceController.removeStore().then((value) {
       Get.offAllNamed(AppRoutes.login);
     });

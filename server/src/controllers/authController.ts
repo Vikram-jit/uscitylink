@@ -4,7 +4,7 @@ import User from "../models/User";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 import Role from "../models/Role";
 import { secondarySequelize } from "../sequelize";
-import { QueryTypes } from "sequelize";
+import { QueryTypes, where } from "sequelize";
 import { UserProfile } from "../models/UserProfile";
 import { generateOTP, sendOTPEmail } from "../utils/sendEmail";
 import Otp from "../models/Otp";
@@ -394,6 +394,35 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
         access_token: token,
         user: isProfile,
       },
+    });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+export async function logout(req: Request, res: Response): Promise<any> {
+  try {
+ 
+    await UserProfile.update(
+      {
+        device_token: null,
+        platform:null
+      },
+      {
+        where: {
+          id: req.user?.id,
+        },
+        returning: true,
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: `Logout Successfully.`,
+     
     });
   } catch (err: any) {
     return res

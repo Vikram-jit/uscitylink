@@ -38,6 +38,21 @@ class AuthService {
     }
   }
 
+  Future<ApiResponse<dynamic>> logout() async {
+    dynamic response =
+        await _apiService.postApi({}, '${Constant.url}/auth/logout');
+
+    if (response != null) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Logout successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in');
+    }
+  }
+
   Future<ApiResponse<dynamic>> resendOtp(var data) async {
     dynamic response =
         await _apiService.postApi(data, '${Constant.url}/auth/re-sendOtp');
