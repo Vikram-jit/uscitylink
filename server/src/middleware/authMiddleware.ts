@@ -18,14 +18,12 @@ export const authMiddleware = async (
   next: NextFunction
 ): Promise<any> => {
   const token = req.headers.authorization?.split(" ")[1];
-  console.log(token)
   if (!token) {
     return res.status(403).json({ message: "No token provided" });
   }
 
   try {
     const decoded: any = verifyToken(token);
-    console.log(decoded)
     if (decoded?.id) {
       const userProfile = await UserProfile.findByPk(decoded?.id);
      

@@ -381,7 +381,6 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
         },
       ],
     });
-    console.log(isProfile)
     const isMatch = await comparePasswords(password, isProfile?.password!);
 
     if (!isMatch) throw new Error("Invalid credentials");
