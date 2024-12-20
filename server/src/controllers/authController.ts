@@ -10,6 +10,7 @@ import { generateOTP, sendOTPEmail } from "../utils/sendEmail";
 import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
+
 function isValidEmail(email: string) {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailPattern.test(email);
@@ -17,9 +18,8 @@ function isValidEmail(email: string) {
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password, role, username } = req.body;
+    const { email, password, role, username, phone_number } = req.body;
 
-    // Check if the role exists
     const foundRole = await Role.findOne({ where: { name: role } });
     if (!foundRole) {
       return res
@@ -27,36 +27,23 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         .json({ status: false, message: "Role not found." });
     }
 
-    const isEmailValid = isValidEmail(email);
-    const queryValue = isEmailValid ? email : email; // This can be simplified
+    const emailExists = await User.findOne({ where: { email: email } });
+    const phoneNumberExists = await User.findOne({ where: { phone_number: phone_number } });
 
-    // Check if the user already exists with the given email or phone number
-    const existingUser = await User.findOne({
-      where: { [isEmailValid ? "email" : "phone_number"]: queryValue },
-    });
+    if (emailExists || phoneNumberExists) {
 
-    if (existingUser) {
-      // Check if the user has any profiles with the specified role
-      const userWithRole = await UserProfile.findOne({
-        where: { userId: existingUser.id, role_id: foundRole.id },
-      });
 
-      if (userWithRole) {
-        throw new Error("User already exists with this role.");
-      }
+      throw new Error("User already exists.");
+
     }
     const pass = password || "123456";
-    // Hash the password
     const hashedPassword = await hashPassword(pass);
 
-    // If user does not exist, create a new user
-    const newUser =
-      existingUser ||
-      (await User.create({
-        [isEmailValid ? "email" : "phone_number"]: queryValue,
-      }));
+    const newUser = await User.create({
+      "email": email,
+      "phone_number": phone_number
+    });
 
-    // Create the user profile
     await UserProfile.create({
       username,
       password: hashedPassword,
@@ -115,8 +102,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     // Fetch dispatchers based on email or phone
     const dispatchers = await secondarySequelize.query<any>(
-      `SELECT * FROM dispatches WHERE ${
-        isEmailValid ? "email" : "phone"
+      `SELECT * FROM dispatches WHERE ${isEmailValid ? "email" : "phone"
       } = :value`,
       {
         replacements: { value: queryValue },
@@ -126,8 +112,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     // Fetch drivers based on email or phone_number
     const drivers = await secondarySequelize.query<any>(
-      `SELECT * FROM drivers WHERE ${
-        isEmailValid ? "email" : "phone_number"
+      `SELECT * FROM drivers WHERE ${isEmailValid ? "email" : "phone_number"
       } = :value`,
       {
         replacements: { value: queryValue },
@@ -307,8 +292,8 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      throw new Error( "Email and OTP are required" );
-    
+      throw new Error("Email and OTP are required");
+
     }
 
     const isVerified = await verifyOTP(email, otp);
@@ -405,11 +390,11 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
 
 export async function logout(req: Request, res: Response): Promise<any> {
   try {
- 
+
     await UserProfile.update(
       {
         device_token: null,
-        platform:null
+        platform: null
       },
       {
         where: {
@@ -422,7 +407,7 @@ export async function logout(req: Request, res: Response): Promise<any> {
     return res.status(200).json({
       status: true,
       message: `Logout Successfully.`,
-     
+
     });
   } catch (err: any) {
     return res

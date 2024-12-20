@@ -473,21 +473,27 @@ export async function dashboard(
   res: Response
 ): Promise<any> {
   try {
-    
-    const userChannelCount = await UserChannel.count({where:{
-      userProfileId:req?.user?.id,
-      status:"active"
-    }});
+
+    const userChannelCount = await UserChannel.count({
+      where: {
+        userProfileId: req?.user?.id,
+        status: "active"
+      }
+    });
 
 
-    const userTotalMessage = await Message.count({where:{
-      userProfileId:req?.user?.id,
-    }});
+    const userTotalMessage = await Message.count({
+      where: {
+        userProfileId: req?.user?.id,
+      }
+    });
 
-    const userTotalGroups = await GroupUser.count({where:{
-      userProfileId:req?.user?.id,
-      status:"active"
-    }});
+    const userTotalGroups = await GroupUser.count({
+      where: {
+        userProfileId: req?.user?.id,
+        status: "active"
+      }
+    });
 
     const truckCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS truckCount FROM trucks`,
@@ -507,20 +513,20 @@ export async function dashboard(
         userProfileId: req?.user?.id,
         last_message_id: { [Op.not]: null }
       },
-    
+
       raw: true,
-      order:[['last_message_utc','DESC']],
-      limit:2
+      order: [['last_message_utc', 'DESC']],
+      limit: 2
     });
-    
-    const channelIds = distinctChannelIds.map(item => item.channelId); 
+
+    const channelIds = distinctChannelIds.map(item => item.channelId);
 
     const latestMessage = await Message.findAll({
       where: {
         userProfileId: req?.user?.id,
         channelId: { [Op.in]: channelIds },
         groupId: null, // Use the dynamic groupIds
-       
+
       },
       include: [
         {
@@ -537,25 +543,25 @@ export async function dashboard(
       order: [['messageTimestampUtc', 'DESC']],
       limit: 2,
     });
-    
-   
+
+
 
     const distinctGroupIds = await GroupUser.findAll({
       where: {
         userProfileId: req?.user?.id,
         last_message_id: { [Op.not]: null }
       },
-    
+
       raw: true,
-      order:[['updatedAt','DESC']],
-      limit:2
+      order: [['updatedAt', 'DESC']],
+      limit: 2
     });
-    
-    const groupIds = distinctGroupIds.map(item => item.groupId); 
-    
+
+    const groupIds = distinctGroupIds.map(item => item.groupId);
+
     const latestGroupMessages = await Message.findAll({
       where: {
-        
+
         groupId: { [Op.in]: groupIds }, // Use the dynamic groupIds
         channelId: { [Op.not]: null },
       },
@@ -574,39 +580,94 @@ export async function dashboard(
       order: [['messageTimestampUtc', 'DESC']],
       limit: 2,
     });
-    
+
     let messagesWithGroup = [];
     if (latestGroupMessages.length > 0) {
-      
-       messagesWithGroup = await Promise.all(
+
+      messagesWithGroup = await Promise.all(
         latestGroupMessages.map(async (message) => {
-          
+
           const group = await Group.findByPk(
-            message?.groupId! ,
+            message?.groupId!,
           );
-    
-          
+
+
           return { ...message.dataValues, group };
         })
       );
-    
-      
+
+
     }
-    
-   
+
+
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
-      data:{
-        channelCount:userChannelCount,
-        messageCount:userTotalMessage,
-        groupCount:userTotalGroups,
-        truckCount:truckCount?.[0]?.truckCount,
-        trailerCount:trailerCount?.[0]?.trailerCount,
+      data: {
+        channelCount: userChannelCount,
+        messageCount: userTotalMessage,
+        groupCount: userTotalGroups,
+        truckCount: truckCount?.[0]?.truckCount,
+        trailerCount: trailerCount?.[0]?.trailerCount,
         latestMessage,
-        latestGroupMessage:messagesWithGroup,
+        latestGroupMessage: messagesWithGroup,
         distinctChannelIds
       }
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+
+export async function updateProfile(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+
+
+    const isUser = await UserProfile.findOne({
+      where: {
+        id: req.user?.id,
+      },
+    });
+
+    if (!isUser) throw new Error("User not found");
+
+
+
+    await UserProfile.update(
+      {
+        username: req.body.username,
+        status: req.body.status
+      },
+      {
+        where: {
+          id: req.user?.id,
+        },
+      }
+    );
+
+    await User.update({
+      email: req.body.email,
+      phone_number: req.body.phone_number,
+      status: req.body.status
+    }
+      , {
+        where: {
+          id: isUser?.userId
+        }
+      }
+    )
+
+    return res.status(200).json({
+      status: true,
+      message: `Update profile  successfully.`,
     });
   } catch (err: any) {
     return res
