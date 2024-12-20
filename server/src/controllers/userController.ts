@@ -364,6 +364,11 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
             },
           });
           if (isCheckRegister) {
+            await User.update({yard_id:e.id,user_type:"staff"},{
+              where:{
+                email:e.email
+              }
+            })
           } else {
             const isUser = await User.create({
               email: e.email,
@@ -425,6 +430,11 @@ export async function syncDriver(req: Request, res: Response): Promise<any> {
             },
           });
           if (isCheckRegister) {
+            await User.update({yard_id:e.id,user_type:"driver"},{
+              where:{
+                email:e.email
+              }
+            })
           } else {
             const isUser = await User.create({
               email: e.email,
