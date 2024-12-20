@@ -629,15 +629,24 @@ export async function updateProfile(
 ): Promise<any> {
   try {
 
-      const userId = req.query?.id
+      const yard_id = req.params?.id
+      const role = req.params?.role
 
-    const isUser = await UserProfile.findOne({
+
+      const isUser = await User.findOne({
+        where:{
+          yard_id:yard_id,
+          user_type:role
+        }
+      })
+
+    const isUserProfile = await UserProfile.findOne({
       where: {
-        id: userId,
+        userId:isUser?.id
       },
     });
 
-    if (!isUser) throw new Error("User not found");
+    if (!isUserProfile) throw new Error("User not found");
 
 
 
@@ -648,7 +657,7 @@ export async function updateProfile(
       },
       {
         where: {
-          id: userId,
+          id: isUserProfile.id,
         },
       }
     );
@@ -660,7 +669,7 @@ export async function updateProfile(
     }
       , {
         where: {
-          id: isUser?.userId
+          id: isUser?.id
         }
       }
     )

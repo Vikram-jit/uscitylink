@@ -18,7 +18,7 @@ function isValidEmail(email: string) {
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password, role, username, phone_number } = req.body;
+    const { email, password, role, username, phone_number,yard_id } = req.body;
 
     const foundRole = await Role.findOne({ where: { name: role } });
     if (!foundRole) {
@@ -41,7 +41,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
     const newUser = await User.create({
       "email": email,
-      "phone_number": phone_number
+      "phone_number": phone_number,
+      user_type:role,
+      yard_id:yard_id
     });
 
     await UserProfile.create({

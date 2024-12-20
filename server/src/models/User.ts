@@ -9,6 +9,8 @@ interface UserAttributes {
   status?: 'active' | 'inactive' | 'block';
   createdAt?: Date;
   updatedAt?: Date;
+  yard_id?:number;
+  user_type?:string;
   profiles?: UserProfile[];
 }
 
@@ -24,7 +26,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public createdAt!: Date;
   public updatedAt!: Date;
   public profiles?: UserProfile[]; // Add this line
-
+  public user_type?: string | undefined;
+  public yard_id?: number | undefined;
   static associate(models: any) {
     User.hasMany(models.UserProfile, { foreignKey: 'userId', as: 'profiles' });
   
@@ -40,6 +43,14 @@ User.init({
   },
   phone_number: {
     type: DataTypes.STRING,
+    allowNull: true,
+  },
+  user_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  yard_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
   },
   email: {
