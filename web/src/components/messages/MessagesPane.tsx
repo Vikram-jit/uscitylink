@@ -189,7 +189,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       )}
 
       {mediaPanel ? (
-        <MediaPane userId={props.userId} />
+        <MediaPane userId={props.userId} source='channel' channelId={"null"}/>
       ) : (
         <>
           {data?.data && messages.length > 0 ? (

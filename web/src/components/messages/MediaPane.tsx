@@ -8,10 +8,10 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import MediaComponent from './MediaComment';
 
-export default function MediaPane({ userId }: { userId: string }) {
+export default function MediaPane({ userId,channelId,source }: { userId?: string,channelId?:string,source?:string }) {
   const [alignment, setAlignment] = React.useState('media');
 
-  const { data } = useGetMediaQuery({ channelId: '', type: alignment, userId });
+  const { data } = useGetMediaQuery({ channelId: channelId, type: alignment, userId:userId,source:source });
 
   const handleChange = (event: React.MouseEvent<HTMLElement>, newAlignment: string) => {
     setAlignment(newAlignment);

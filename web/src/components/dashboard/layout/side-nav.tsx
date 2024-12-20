@@ -58,7 +58,7 @@ export function SideNav(): React.JSX.Element {
     >
       <Stack spacing={2} sx={{ p: 3 }}>
         <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
-          <Logo color="light" height={32} width={122} />
+          <Logo color="light" height={100} width={500} />
         </Box>
         <Box
           sx={{
@@ -92,13 +92,13 @@ export function SideNav(): React.JSX.Element {
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Stack spacing={2} sx={{ p: '12px' }}>
 
-        <Button
+        {/* <Button
           fullWidth
           sx={{ mt: 2 }}
           variant="contained"
         >
           Sign out
-        </Button>
+        </Button> */}
       </Stack>
       <ChannelPopover anchorEl={userPopover.anchorRef.current} onClose={userPopover.handleClose} open={userPopover.open} />
     </Box>

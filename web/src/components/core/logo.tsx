@@ -22,12 +22,12 @@ export function Logo({ color = 'dark', emblem, height = HEIGHT, width = WIDTH }:
   let url: string;
 
   if (emblem) {
-    url = color === 'light' ? '/assets/logo-emblem.svg' : '/assets/logo-emblem--dark.svg';
+    url = color === 'light' ? '/assets/white-logo.png' : '/assets/logo-emblem--dark.svg';
   } else {
-    url = color === 'light' ? '/assets/logo.svg' : '/assets/logo--dark.svg';
+    url = color === 'light' ? '/assets/white-logo.png' : '/assets/logo--dark.svg';
   }
 
-  return <Box alt="logo" component="img" height={height} src={url} width={width} />;
+  return <Box alt="logo" component="img" height={height} src={url} width={width} sx={{objectFit:"contain"}}/>;
 }
 
 export interface DynamicLogoProps {

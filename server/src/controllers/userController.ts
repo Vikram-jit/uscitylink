@@ -11,6 +11,8 @@ import GroupChannel from "../models/GroupChannel";
 import { secondarySequelize } from "../sequelize";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
+import { generateNumericPassword } from "../utils/OtpService";
+import { sendNewPasswordEmail } from "../utils/sendEmail";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -260,7 +262,14 @@ export async function getUserProfile(
   res: Response
 ): Promise<any> {
   try {
-    const user = await UserProfile.findByPk(req.user?.id);
+    const user = await UserProfile.findByPk(req.user?.id,{
+      include:[
+        {
+          model:User,
+          as:"user"
+        }
+      ]
+    });
 
     return res.status(200).json({
       status: true,
@@ -273,6 +282,34 @@ export async function getUserProfile(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+export async function getUserProfileById(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const user = await UserProfile.findByPk(req.params?.id, {
+      include: [
+        {
+          model: User,
+          as: "user"
+        }
+      ]
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Profile User Successfully.`,
+      data: user,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
 
 export async function updateDeviceToken(
   req: Request,
@@ -332,6 +369,8 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
               email: e.email,
               phone_number: e?.phone,
               status: "active",
+              user_type: "staff",
+              yard_id: e.id
             });
 
             if (isUser) {
@@ -391,6 +430,8 @@ export async function syncDriver(req: Request, res: Response): Promise<any> {
               email: e.email,
               phone_number: e?.phone_number,
               status: "active",
+              user_type: "driver",
+              yard_id: e.id
             });
 
             if (isUser) {
@@ -629,20 +670,20 @@ export async function updateProfile(
 ): Promise<any> {
   try {
 
-      const yard_id = req.params?.id
-      const role = req.params?.role
+    const yard_id = req.params?.id
+    const role = req.params?.role
 
 
-      const isUser = await User.findOne({
-        where:{
-          yard_id:yard_id,
-          user_type:role
-        }
-      })
+    const isUser = await User.findOne({
+      where: {
+        yard_id: yard_id,
+        user_type: role
+      }
+    })
 
     const isUserProfile = await UserProfile.findOne({
       where: {
-        userId:isUser?.id
+        userId: isUser?.id
       },
     });
 
@@ -673,6 +714,103 @@ export async function updateProfile(
         }
       }
     )
+
+    return res.status(200).json({
+      status: true,
+      message: `Update profile  successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function updateProfileByWeb(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    const userId = req.params?.id
+
+
+    const isUserProfile = await UserProfile.findOne({
+      where: {
+        id: userId
+      },
+    });
+
+    if (!isUserProfile) throw new Error("User not found");
+
+
+
+    await UserProfile.update(
+      {
+        username: req.body.username,
+        status: req.body.status
+      },
+      {
+        where: {
+          id: isUserProfile.id,
+        },
+      }
+    );
+
+
+
+    return res.status(200).json({
+      status: true,
+      message: `Update profile  successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function gernateNewPassword(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    const userId = req.params?.id
+
+
+    const isUserProfile = await UserProfile.findOne({
+      where: {
+        id: userId
+      },
+      include: [{
+        model: User,
+        as: "user"
+      }]
+    });
+
+    if (!isUserProfile) throw new Error("User not found");
+
+    const password = await generateNumericPassword()
+
+    const hash = await hashPassword(password)
+
+
+    await UserProfile.update(
+      {
+        password: hash,
+
+      },
+      {
+        where: {
+          id: isUserProfile.id,
+        },
+      }
+    );
+    const user = await User.findByPk(isUserProfile?.userId)
+
+    await sendNewPasswordEmail(user!.email!, password)
+
 
     return res.status(200).json({
       status: true,

@@ -75,3 +75,31 @@ export const sendOTPEmail = async (toEmail: string, otp: string): Promise<any> =
    
   };
   
+
+  export const sendNewPasswordEmail = async (toEmail: string, newPassword: string): Promise<any> => {
+    const msg = {
+      to: toEmail,
+      from: process.env.SEND_EMAIL as string,  // Your verified SendGrid sender email
+      subject: 'Your New Password for ChatBox USCityLink',
+      text: `Hello,\n\nWe have successfully generated a new password for your account with  ChatBox USCityLink. Your new password is: ${newPassword}\n\nFor security reasons, we recommend changing your password as soon as you log in.\n\nIf you did not request this password change, please contact our support team immediately.\n\nThank you for using our service!`,
+      html: `
+        <html>
+          <body>
+            <h2>Your New Password</h2>
+            <p>Hello,</p>
+            <p>We have successfully generated a new password for your account with <strong> ChatBox USCityLink</strong>. You can use the following credentials to log in:</p>
+            <p style="font-size: 18px; font-weight: bold;">New Password: <span style="font-size: 20px; color: #d32f2f;">${newPassword}</span></p>
+            <p>For security reasons, we recommend changing this password as soon as you log in. You can do so by going to your account settings.</p>
+            <p>If you did not request a password change, please contact our support team immediately at <a href="mailto:support@example.com">support@example.com</a>.</p>
+            <p>Thank you for using our service!</p>
+            <p>Best regards, <br> ChatBox USCityLink Team</p>
+          </body>
+        </html>
+      `,
+    };
+  
+    // Sending email using SendGrid
+    const res = await sgMail.send(msg);
+    console.log(res,toEmail)
+    return res;
+  };

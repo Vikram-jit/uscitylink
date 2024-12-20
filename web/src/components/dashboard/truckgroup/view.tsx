@@ -49,6 +49,7 @@ import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
+import MediaPane from '@/components/messages/MediaPane';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -142,6 +143,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [fileUpload] = useFileUploadMutation();
   const dispatch = useDispatch();
+  const [viewMedia,setViewMedia] = useState<boolean>(false)
   const [file, setFile] = React.useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [caption, setCaption] = React.useState('');
@@ -645,7 +647,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
       {viewDetailGroup ? (
         <Grid item xs={12} md={9}>
-          <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} />
+          <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} setViewMedia={setViewMedia}  viewMedia={viewMedia}/>
 
           <Divider />
 
@@ -664,8 +666,11 @@ const ChatInterface = ({ type }: { type: string }) => {
           {selectedGroup ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
-                <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} />
+                <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} setViewMedia={setViewMedia} viewMedia={viewMedia}/>
                 <Divider />
+                {
+                  viewMedia ? <MediaPane userId={selectedGroup} source='group' channelId={selectedGroup}/> :
+                
                 <MessagesContainer id="scrollable-messages-group-container">
                   {/* <div ref={messagesEndRef} /> */}
                   <InfiniteScroll
@@ -722,11 +727,11 @@ const ChatInterface = ({ type }: { type: string }) => {
                       </>
                     ))}
                   </InfiniteScroll>
-                </MessagesContainer>
+                </MessagesContainer> } 
 
                 {/* Input Container */}
 
-                <InputContainer>
+              {!viewMedia && <InputContainer>
                   <IconButton
                     onClick={handleClick}
                     size="small"
@@ -809,7 +814,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                   <IconButton onClick={handleSendMessage} disabled={isLoading}>
                     {isLoading ? <CircularProgress size={24} /> : <FiSend />}
                   </IconButton>
-                </InputContainer>
+                </InputContainer>}
                 {selectedTemplate.url && (
                   <Box sx={{}}>
                     <MediaComponent

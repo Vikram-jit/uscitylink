@@ -22,9 +22,12 @@ const loaderSlice = createSlice({
     hideLoader(state) {
       state.loading = false;
     },
+    toggleLoader(state,action) {
+      state.loading = action.payload;
+    },
   },
 });
 
 // Export the actions and reducer
-export const { showLoader, hideLoader } = loaderSlice.actions;
+export const { showLoader, hideLoader,toggleLoader } = loaderSlice.actions;
 export default loaderSlice.reducer;

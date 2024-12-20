@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import OTP from "../models/Otp";
-
+import crypto from 'crypto'
 export const verifyOTP = async (email: string, otp: string): Promise<boolean> => {
     try {
       const otpRecord = await OTP.findOne({
@@ -25,3 +25,12 @@ export const verifyOTP = async (email: string, otp: string): Promise<boolean> =>
       return false;
     }
   };
+
+
+  export function generateNumericPassword(length = 8) {
+    const min = Math.pow(10, length - 1); // Minimum value for an N-digit number
+    const max = Math.pow(10, length) - 1; // Maximum value for an N-digit number
+    
+    return crypto.randomInt(min, max + 1).toString();
+  }
+  

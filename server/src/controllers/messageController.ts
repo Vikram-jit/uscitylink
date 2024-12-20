@@ -318,7 +318,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       source == "channel"
         ? await Channel.findByPk(channelId)
         : await Group.findByPk(req.params.channelId);
-       console.log(channelId)
+      
     const media = await Media.findAndCountAll({
       where: {
         [Op.or]: [
@@ -343,7 +343,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
           ...(source !== "channel"
             ? [{
                 groupId: channelId,
-                upload_source: "truck"
+                upload_source: "group"
               }]
             : [])
         ],

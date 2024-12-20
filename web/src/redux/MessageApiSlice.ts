@@ -33,11 +33,11 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: MediaModel;
       },
-      { channelId?: string; type: string,userId: string }
+      { channelId?: string; type: string,userId?: string ,source?:string}
     >({
 
       query: (payload) => ({
-        url: `media/${null}?type=${payload.type}&userId=${payload.userId}&source=channel`,
+        url: `media/${payload.channelId}?type=${payload.type}&userId=${payload.userId}&source=${payload.source}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

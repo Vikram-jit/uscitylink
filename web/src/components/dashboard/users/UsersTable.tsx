@@ -67,15 +67,15 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage}
                   </TableCell>
                   <TableCell>
                     <Tooltip title="Edit Information">
-                      <IconButton>
+                      <IconButton LinkComponent={"a"} href={`/dashboard/users/edit/${row.role.name}/${row.id}`}>
                         <Edit />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="View">
+                    {/* <Tooltip title="View">
                       <IconButton>
                         <RemoveRedEye />
                       </IconButton>
-                    </Tooltip>
+                    </Tooltip> */}
                   </TableCell>
                   {/* <TableCell>{dayjs(row.createdAt).format('MMM D, YYYY')}</TableCell> */}
                 </TableRow>
