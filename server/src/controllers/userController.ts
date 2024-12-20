@@ -629,11 +629,11 @@ export async function updateProfile(
 ): Promise<any> {
   try {
 
-
+      const userId = req.query?.id
 
     const isUser = await UserProfile.findOne({
       where: {
-        id: req.user?.id,
+        id: userId,
       },
     });
 
@@ -648,7 +648,7 @@ export async function updateProfile(
       },
       {
         where: {
-          id: req.user?.id,
+          id: userId,
         },
       }
     );

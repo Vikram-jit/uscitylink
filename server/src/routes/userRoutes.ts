@@ -5,7 +5,7 @@ import { authMiddleware } from '../middleware/authMiddleware';
 const router = Router();
 
 router.get('/', getUsers);
-router.put('/',authMiddleware, updateProfile);
+router.put('/:id', updateProfile);
 router.get('/dashboard',authMiddleware, dashboard);
 router.get('/profile',authMiddleware, getUserProfile);
 router.put('/updateDeviceToken',authMiddleware, updateDeviceToken);
