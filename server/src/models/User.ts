@@ -12,6 +12,7 @@ interface UserAttributes {
   yard_id?:number;
   user_type?:string;
   profiles?: UserProfile[];
+  driver_number?:string
 }
 
 
@@ -28,6 +29,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public profiles?: UserProfile[]; // Add this line
   public user_type?: string | undefined;
   public yard_id?: number | undefined;
+  public driver_number?: string | undefined;
   static associate(models: any) {
     User.hasMany(models.UserProfile, { foreignKey: 'userId', as: 'profiles' });
   
@@ -46,6 +48,10 @@ User.init({
     allowNull: true,
   },
   user_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  driver_number: {
     type: DataTypes.STRING,
     allowNull: true,
   },

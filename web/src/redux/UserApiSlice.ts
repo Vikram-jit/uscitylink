@@ -1,5 +1,6 @@
 import { ApiResponse, apiSlice } from './apiSlice';
 import { pagination } from './models/ChannelModel';
+import { DashboardModel } from './models/DashboardModel';
 import { UserModel } from './models/UserModel';
 
 export const UserApiSlice = apiSlice.injectEndpoints({
@@ -123,6 +124,20 @@ export const UserApiSlice = apiSlice.injectEndpoints({
         method: 'GET',
       }),
     }),
+    dashbaord: builder.query<
+    {
+      status: boolean;
+      message: string;
+      data: DashboardModel;
+    },
+    Partial<void>
+  >({
+    providesTags: ['dashboard'],
+    query: () => ({
+      url: 'user/dashboard-web',
+      method: 'GET',
+    }),
+  }),
   }),
 });
 
@@ -137,5 +152,6 @@ export const {
   useSyncDriverMutation,
   useSyncUserMutation,
   useUpdateDeviceTokenMutation,
-  useGetProfileQuery
+  useGetProfileQuery,
+  useDashbaordQuery
 } = UserApiSlice;

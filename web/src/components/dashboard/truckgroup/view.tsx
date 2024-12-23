@@ -223,7 +223,11 @@ const ChatInterface = ({ type }: { type: string }) => {
   };
 
   const handleReceiveMessage = useCallback(
-    (message: any) => {
+    (message: any,groupId:string) => {
+   
+      if (message.groupId !== selectedGroup) {
+        return; // Ignore the message if the groupId does not match selectedId
+      }
       setMessages((prevMessages: any) => {
         if (prevMessages.some((msg: any) => msg.id === message.id)) {
           return prevMessages;
@@ -295,8 +299,12 @@ const ChatInterface = ({ type }: { type: string }) => {
           );
           return [...prevMessages, ...newMessages];
         });
-
-        setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
+          if(groupMessage?.data?.messages.length == 0){
+            setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
+          }else{
+            setHasMoreMessage(false);
+          }
+        
         setSenderId(groupMessage?.data?.senderId);
       }
     }
@@ -306,9 +314,10 @@ const ChatInterface = ({ type }: { type: string }) => {
   useEffect(() => {
     if (socket) {
       if (type == 'group') {
-        socket.on('new_group_message_received', handleReceiveMessage);
+        
+        socket.on('new_group_message_received', (message:MessageModel)=>handleReceiveMessage(message,selectedGroup));
       } else {
-        socket.on('receive_message_group', handleReceiveMessage);
+        socket.on('receive_message_group', (message:MessageModel)=>handleReceiveMessage(message,selectedGroup));
       }
 
       // Cleanup the event listener when the component unmounts or socket changes
@@ -320,7 +329,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         }
       };
     }
-  }, [socket]);
+  }, [socket,selectedGroup]);
 
   useEffect(() => {
     scrollToBottom();
@@ -405,7 +414,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-
+  console.log(selectedGroup)
     try {
       // userId,groupId,body,direction,url
 

@@ -6,7 +6,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import type { SxProps } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { ListBullets as ListBulletsIcon } from '@phosphor-icons/react/dist/ssr/ListBullets';
+import { Envelope as ListBulletsIcon } from '@phosphor-icons/react/dist/ssr/Envelope';
 
 export interface TasksProgressProps {
   sx?: SxProps;
@@ -21,9 +21,9 @@ export function TasksProgress({ value, sx }: TasksProgressProps): React.JSX.Elem
           <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }} spacing={3}>
             <Stack spacing={1}>
               <Typography color="text.secondary" gutterBottom variant="overline">
-                Task Progress
+                Unread Messages
               </Typography>
-              <Typography variant="h4">{value}%</Typography>
+              <Typography variant="h4">{value}</Typography>
             </Stack>
             <Avatar sx={{ backgroundColor: 'var(--mui-palette-warning-main)', height: '56px', width: '56px' }}>
               <ListBulletsIcon fontSize="var(--icon-fontSize-lg)" />

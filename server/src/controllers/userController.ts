@@ -262,13 +262,13 @@ export async function getUserProfile(
   res: Response
 ): Promise<any> {
   try {
-    const user = await UserProfile.findByPk(req.user?.id,{
-      include:[
+    const user = await UserProfile.findByPk(req.user?.id, {
+      include: [
         {
-          model:User,
-          as:"user"
-        }
-      ]
+          model: User,
+          as: "user",
+        },
+      ],
     });
 
     return res.status(200).json({
@@ -292,9 +292,9 @@ export async function getUserProfileById(
       include: [
         {
           model: User,
-          as: "user"
-        }
-      ]
+          as: "user",
+        },
+      ],
     });
 
     return res.status(200).json({
@@ -308,8 +308,6 @@ export async function getUserProfileById(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
-
-
 
 export async function updateDeviceToken(
   req: Request,
@@ -364,18 +362,21 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
             },
           });
           if (isCheckRegister) {
-            await User.update({yard_id:e.id,user_type:"staff"},{
-              where:{
-                email:e.email
+            await User.update(
+              { yard_id: e.id, user_type: "staff" },
+              {
+                where: {
+                  email: e.email,
+                },
               }
-            })
+            );
           } else {
             const isUser = await User.create({
               email: e.email,
               phone_number: e?.phone,
               status: "active",
               user_type: "staff",
-              yard_id: e.id
+              yard_id: e.id,
             });
 
             if (isUser) {
@@ -408,6 +409,7 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
 }
 
 export async function syncDriver(req: Request, res: Response): Promise<any> {
+  console.log("eneterß");
   try {
     const isRole = await Role.findOne({
       where: {
@@ -427,21 +429,30 @@ export async function syncDriver(req: Request, res: Response): Promise<any> {
           const isCheckRegister = await User.findOne({
             where: {
               email: e.email,
+              user_type: "driver",
             },
           });
           if (isCheckRegister) {
-            await User.update({yard_id:e.id,user_type:"driver"},{
-              where:{
-                email:e.email
+            await User.update(
+              {
+                yard_id: e.id,
+                user_type: "driver",
+                driver_number: e.driver_number,
+              },
+              {
+                where: {
+                  id: isCheckRegister.id,
+                },
               }
-            })
+            );
           } else {
             const isUser = await User.create({
               email: e.email,
               phone_number: e?.phone_number,
               status: "active",
               user_type: "driver",
-              yard_id: e.id
+              yard_id: e.id,
+              driver_number: e.driver_number,
             });
 
             if (isUser) {
@@ -518,32 +529,26 @@ export async function changePassword(
   }
 }
 
-
-export async function dashboard(
-  req: Request,
-  res: Response
-): Promise<any> {
+export async function dashboard(req: Request, res: Response): Promise<any> {
   try {
-
     const userChannelCount = await UserChannel.count({
       where: {
         userProfileId: req?.user?.id,
-        status: "active"
-      }
+        status: "active",
+      },
     });
-
 
     const userTotalMessage = await Message.count({
       where: {
         userProfileId: req?.user?.id,
-      }
+      },
     });
 
     const userTotalGroups = await GroupUser.count({
       where: {
         userProfileId: req?.user?.id,
-        status: "active"
-      }
+        status: "active",
+      },
     });
 
     const truckCount = await secondarySequelize.query<any>(
@@ -562,94 +567,82 @@ export async function dashboard(
     const distinctChannelIds = await UserChannel.findAll({
       where: {
         userProfileId: req?.user?.id,
-        last_message_id: { [Op.not]: null }
+        last_message_id: { [Op.not]: null },
       },
 
       raw: true,
-      order: [['last_message_utc', 'DESC']],
-      limit: 2
+      order: [["last_message_utc", "DESC"]],
+      limit: 2,
     });
 
-    const channelIds = distinctChannelIds.map(item => item.channelId);
+    const channelIds = distinctChannelIds.map((item) => item.channelId);
 
     const latestMessage = await Message.findAll({
       where: {
         userProfileId: req?.user?.id,
         channelId: { [Op.in]: channelIds },
         groupId: null, // Use the dynamic groupIds
-
       },
       include: [
         {
           model: UserProfile,
-          as: 'sender',
-          attributes: ['id', 'username', 'isOnline'],
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
         },
         {
           model: Channel,
-          as: 'channel',
-          attributes: ['id', 'name'],
+          as: "channel",
+          attributes: ["id", "name"],
         },
       ],
-      order: [['messageTimestampUtc', 'DESC']],
+      order: [["messageTimestampUtc", "DESC"]],
       limit: 2,
     });
-
-
 
     const distinctGroupIds = await GroupUser.findAll({
       where: {
         userProfileId: req?.user?.id,
-        last_message_id: { [Op.not]: null }
+        last_message_id: { [Op.not]: null },
       },
 
       raw: true,
-      order: [['updatedAt', 'DESC']],
-      limit: 2
+      order: [["updatedAt", "DESC"]],
+      limit: 2,
     });
 
-    const groupIds = distinctGroupIds.map(item => item.groupId);
+    const groupIds = distinctGroupIds.map((item) => item.groupId);
 
     const latestGroupMessages = await Message.findAll({
       where: {
-
         groupId: { [Op.in]: groupIds }, // Use the dynamic groupIds
         channelId: { [Op.not]: null },
       },
       include: [
         {
           model: UserProfile,
-          as: 'sender',
-          attributes: ['id', 'username', 'isOnline'],
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
         },
         {
           model: Channel,
-          as: 'channel',
-          attributes: ['id', 'name'],
+          as: "channel",
+          attributes: ["id", "name"],
         },
       ],
-      order: [['messageTimestampUtc', 'DESC']],
+      order: [["messageTimestampUtc", "DESC"]],
       limit: 2,
     });
 
     let messagesWithGroup = [];
     if (latestGroupMessages.length > 0) {
-
       messagesWithGroup = await Promise.all(
         latestGroupMessages.map(async (message) => {
-
-          const group = await Group.findByPk(
-            message?.groupId!,
-          );
-
+          const group = await Group.findByPk(message?.groupId!);
 
           return { ...message.dataValues, group };
         })
       );
-
-
     }
-
 
     return res.status(200).json({
       status: true,
@@ -662,8 +655,8 @@ export async function dashboard(
         trailerCount: trailerCount?.[0]?.trailerCount,
         latestMessage,
         latestGroupMessage: messagesWithGroup,
-        distinctChannelIds
-      }
+        distinctChannelIds,
+      },
     });
   } catch (err: any) {
     return res
@@ -672,39 +665,30 @@ export async function dashboard(
   }
 }
 
-
-
-export async function updateProfile(
-  req: Request,
-  res: Response
-): Promise<any> {
+export async function updateProfile(req: Request, res: Response): Promise<any> {
   try {
-
-    const yard_id = req.params?.id
-    const role = req.params?.role
-
+    const yard_id = req.params?.id;
+    const role = req.params?.role;
 
     const isUser = await User.findOne({
       where: {
         yard_id: yard_id,
-        user_type: role
-      }
-    })
+        user_type: role,
+      },
+    });
 
     const isUserProfile = await UserProfile.findOne({
       where: {
-        userId: isUser?.id
+        userId: isUser?.id,
       },
     });
 
     if (!isUserProfile) throw new Error("User not found");
 
-
-
     await UserProfile.update(
       {
         username: req.body.username,
-        status: req.body.status
+        status: req.body.status,
       },
       {
         where: {
@@ -713,17 +697,19 @@ export async function updateProfile(
       }
     );
 
-    await User.update({
-      email: req.body.email,
-      phone_number: req.body.phone_number,
-      status: req.body.status
-    }
-      , {
+    await User.update(
+      {
+        email: req.body.email,
+        phone_number: req.body.phone_number,
+        status: req.body.status,
+        driver_number: req.body.driver_number || isUser?.driver_number,
+      },
+      {
         where: {
-          id: isUser?.id
-        }
+          id: isUser?.id,
+        },
       }
-    )
+    );
 
     return res.status(200).json({
       status: true,
@@ -741,24 +727,20 @@ export async function updateProfileByWeb(
   res: Response
 ): Promise<any> {
   try {
-
-    const userId = req.params?.id
-
+    const userId = req.params?.id;
 
     const isUserProfile = await UserProfile.findOne({
       where: {
-        id: userId
+        id: userId,
       },
     });
 
     if (!isUserProfile) throw new Error("User not found");
 
-
-
     await UserProfile.update(
       {
         username: req.body.username,
-        status: req.body.status
+        status: req.body.status,
       },
       {
         where: {
@@ -766,8 +748,6 @@ export async function updateProfileByWeb(
         },
       }
     );
-
-
 
     return res.status(200).json({
       status: true,
@@ -785,31 +765,29 @@ export async function gernateNewPassword(
   res: Response
 ): Promise<any> {
   try {
-
-    const userId = req.params?.id
-
+    const userId = req.params?.id;
 
     const isUserProfile = await UserProfile.findOne({
       where: {
-        id: userId
+        id: userId,
       },
-      include: [{
-        model: User,
-        as: "user"
-      }]
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+      ],
     });
 
     if (!isUserProfile) throw new Error("User not found");
 
-    const password = await generateNumericPassword()
+    const password = await generateNumericPassword();
 
-    const hash = await hashPassword(password)
-
+    const hash = await hashPassword(password);
 
     await UserProfile.update(
       {
         password: hash,
-
       },
       {
         where: {
@@ -817,10 +795,9 @@ export async function gernateNewPassword(
         },
       }
     );
-    const user = await User.findByPk(isUserProfile?.userId)
+    const user = await User.findByPk(isUserProfile?.userId);
 
-    await sendNewPasswordEmail(user!.email!, password)
-
+    await sendNewPasswordEmail(user!.email!, password);
 
     return res.status(200).json({
       status: true,
@@ -830,5 +807,163 @@ export async function gernateNewPassword(
     return res
       .status(400)
       .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function dashboardWeb(req: Request, res: Response): Promise<any> {
+  try {
+    const userChannelCount = await Channel.count({
+    
+    });
+
+    const userTotalMessage = await Message.count({where:{
+       channelId:req.activeChannel
+    }});
+    const userUnMessage = await getUnrepliedMessagesCount();
+    const userUnReadMessage = await getUnrepliedMessages();
+    const driverCount = await User.count({where:{
+      user_type:"driver"
+    }})
+    const userTotalGroups = await GroupChannel.count({
+      where: {
+        
+         channelId:req.activeChannel
+      },
+    });
+
+    const lastFiveDriver = await User.findAll({
+      where:{
+        user_type:"driver",
+
+      },
+      include:[{
+        model:UserProfile,
+        as:"profiles",
+        attributes:['username','id']
+      }],
+      order:[["createdAt","DESC"]],
+      limit:5
+    })
+
+    return res.status(200).json({
+      status: true,
+      message: `Dashboard fetch successfully.`,
+      data: {
+        channelCount: userChannelCount,
+        messageCount: userTotalMessage,
+        groupCount: userTotalGroups,
+        userUnMessage,
+        lastFiveDriver,
+        driverCount,
+        channelId:req.activeChannel,
+        userUnReadMessage
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getUnrepliedMessagesCount(): Promise<number> {
+  try {
+    // Fetch all received messages (R)
+    const receivedMessages = await Message.findAll({
+      where: {
+        messageDirection: "R", // Only consider received messages
+        type: {
+          [Op.ne]: "group", // Exclude messages where the type is 'group'
+        },
+      },
+      attributes: ["id", "userProfileId", "channelId", "createdAt"],
+    });
+
+    let unrepliedMessagesCount = 0;
+
+    // Loop through each received message to check if it has a corresponding reply
+    for (const receivedMessage of receivedMessages) {
+      // Check if there is a sent message replying to this received message
+      const replyExists = await Message.findOne({
+        where: {
+          type: {
+            [Op.ne]: "group", // Exclude messages where the type is 'group'
+          },
+          userProfileId: receivedMessage.userProfileId,
+          channelId: receivedMessage.channelId,
+          messageDirection: "S", // Sent message (reply)
+          createdAt: {
+            [Op.gt]: receivedMessage.createdAt, // Sent message must be after the received one
+          },
+        },
+      });
+
+    
+      if (!replyExists) {
+        unrepliedMessagesCount += 1;
+      }
+    }
+
+    
+    return unrepliedMessagesCount;
+  } catch (error) {
+    console.error("Error counting unreplied messages:", error);
+    throw new Error("Internal server error");
+  }
+}
+
+export async function getUnrepliedMessages(): Promise<any[]> { 
+  try {
+   
+    const receivedMessages = await Message.findAll({
+      where: {
+        
+        messageDirection: "R", 
+        type: {
+          [Op.ne]: "group", 
+        },
+      },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+        include:[{
+          model:User,
+          as:"user"
+        }]
+      },
+      // attributes: ["id", "userProfileId", "channelId", "createdAt","body"],
+    });
+
+    const unrepliedMessages: any[] = [];
+
+  
+    for (const receivedMessage of receivedMessages) {
+      
+      const replyExists = await Message.findOne({
+        where: {
+          type: {
+            [Op.ne]: "group", 
+          },
+          userProfileId: receivedMessage.userProfileId,
+          channelId: receivedMessage.channelId,
+          messageDirection: "S", 
+          createdAt: {
+            [Op.gt]: receivedMessage.createdAt, 
+          },
+        },
+      });
+
+      
+      if (!replyExists) {
+        unrepliedMessages.push(receivedMessage);
+      }
+    }
+
+   
+    return unrepliedMessages;
+  } catch (error) {
+    console.error("Error fetching unreplied messages:", error);
+    throw new Error("Internal server error");
   }
 }

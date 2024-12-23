@@ -129,13 +129,13 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
                 options={data?.data?.users || []}
                 disableCloseOnSelect
                 onChange={handleChange}
-                getOptionLabel={(option) => option.username}
+                getOptionLabel={(option) => `${option.username} (${option.user.driver_number})`}
                 renderOption={(props: any, option, { selected }) => {
                   const { key, ...optionProps } = props;
                   return (
                     <li key={key + moment().utc} {...optionProps}>
                       <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                      {option.username}
+                      {`${option.username} (${option.user.driver_number})`}
                     </li>
                   );
                 }}

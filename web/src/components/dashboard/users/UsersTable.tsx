@@ -30,9 +30,10 @@ interface UsersTableProps {
 
   setPage:React.Dispatch<React.SetStateAction<number>>
   pagination:pagination|undefined
+  role:string
 }
 
-export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage}: UsersTableProps): React.JSX.Element {
+export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage,role}: UsersTableProps): React.JSX.Element {
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
@@ -40,9 +41,12 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage}
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
+              {role == "driver" &&  <TableCell>Driver number</TableCell> }
               <TableCell>Email</TableCell>
               <TableCell>Phone Number</TableCell>
+
               <TableCell>Role</TableCell>
+              
               <TableCell>Status</TableCell>
               <TableCell>Is Online</TableCell>
               <TableCell>Action</TableCell>
@@ -58,6 +62,7 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage}
                       <Typography variant="subtitle2">{row.username}</Typography>
                     </Stack>
                   </TableCell>
+                  {role == "driver" &&  <TableCell>{row.user?.driver_number }</TableCell> }
                   <TableCell>{row.user?.email}</TableCell>
                   <TableCell>{row.user?.phone_number || '-'}</TableCell>
                   <TableCell>{row.role?.name || '-'}</TableCell>

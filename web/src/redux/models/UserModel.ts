@@ -31,4 +31,6 @@ export interface User {
   status:       string;
   createdAt:    Date;
   updatedAt:    Date;
+  profiles? : UserModel[]
+  driver_number:    null | string
 }

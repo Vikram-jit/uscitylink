@@ -153,13 +153,13 @@ export default function AddGroupDialog({ open, setOpen, type }: AddGroupDialog) 
                 options={data?.data?.users || []}
                 disableCloseOnSelect
                 onChange={handleChange}
-                getOptionLabel={(option) => option.username}
+                getOptionLabel={(option) => `${option.username} (${option.user.driver_number})`}
                 renderOption={(props: any, option, { selected }) => {
                   const { key, ...optionProps } = props;
                   return (
                     <li key={key} {...optionProps}>
                       <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                      {option.username}
+                      {`${option.username} (${option.user.driver_number})`}
                     </li>
                   );
                 }}

@@ -14,6 +14,8 @@ import type { SxProps } from '@mui/material/styles';
 import { ArrowRight as ArrowRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowRight';
 import { DotsThreeVertical as DotsThreeVerticalIcon } from '@phosphor-icons/react/dist/ssr/DotsThreeVertical';
 import dayjs from 'dayjs';
+import { MessageModel } from '@/redux/models/MessageModel';
+import { Avatar } from '@mui/material';
 
 export interface Product {
   id: string;
@@ -23,41 +25,44 @@ export interface Product {
 }
 
 export interface LatestProductsProps {
-  products?: Product[];
+  products?: MessageModel[];
   sx?: SxProps;
 }
 
 export function LatestProducts({ products = [], sx }: LatestProductsProps): React.JSX.Element {
   return (
     <Card sx={sx}>
-      <CardHeader title="Latest products" />
+      <CardHeader title="Unread Messages" />
       <Divider />
       <List>
         {products.map((product, index) => (
           <ListItem divider={index < products.length - 1} key={product.id}>
             <ListItemAvatar>
-              {product.image ? (
+              {/* {product.image ? (
                 <Box component="img" src={product.image} sx={{ borderRadius: 1, height: '48px', width: '48px' }} />
-              ) : (
-                <Box
+              ) : ( */}
+                <Avatar
+                
                   sx={{
                     borderRadius: 1,
                     backgroundColor: 'var(--mui-palette-neutral-200)',
                     height: '48px',
                     width: '48px',
+                    
                   }}
-                />
-              )}
+                    
+                >{product.sender?.username?.split("")?.[0]?.toUpperCase()}</Avatar>
+              {/* )} */}
             </ListItemAvatar>
             <ListItemText
-              primary={product.name}
+              primary={product.body}
               primaryTypographyProps={{ variant: 'subtitle1' }}
-              secondary={`Updated ${dayjs(product.updatedAt).format('MMM D, YYYY')}`}
+              secondary={`${dayjs(product.updatedAt).format('MMM D, YYYY')} by ${product.sender?.username}(${product.sender?.user?.driver_number})`}
               secondaryTypographyProps={{ variant: 'body2' }}
             />
-            <IconButton edge="end">
+            {/* <IconButton edge="end">
               <DotsThreeVerticalIcon weight="bold" />
-            </IconButton>
+            </IconButton> */}
           </ListItem>
         ))}
       </List>

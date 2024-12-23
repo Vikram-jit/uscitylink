@@ -75,7 +75,8 @@ if (res.data) {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
+            <TableCell>Name</TableCell>
+            <TableCell>Driver Number</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Phone Number</TableCell>
 
@@ -89,6 +90,7 @@ if (res.data) {
               return (
                 <TableRow hover key={row.id}>
                   <TableCell>{row.UserProfile?.username}</TableCell>
+                  <TableCell>{row.UserProfile.user.driver_number}</TableCell>
                   <TableCell>{row.UserProfile?.user?.email || '-'}</TableCell>
                   <TableCell>{row.UserProfile?.user?.phone_number || '-'}</TableCell>
 

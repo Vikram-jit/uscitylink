@@ -1,8 +1,11 @@
+import { User } from "./UserModel";
+
 // Sender model interface
 export interface SenderModel {
   id: string;
   username: string;
   isOnline:boolean
+  user?:User
 }
 
 // Message model interface

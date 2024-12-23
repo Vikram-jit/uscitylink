@@ -30,7 +30,7 @@ export default function UserList() {
       {isLoading ? (
         <CircularProgress />
       ) : (
-        <UsersTable count={data?.data?.users.length} page={page} rows={data?.data.users} setPage={setPage} pagination={data?.data?.pagination}  />
+        <UsersTable role={role as string} count={data?.data?.users.length} page={page} rows={data?.data.users} setPage={setPage} pagination={data?.data?.pagination}  />
       )}
     </>
   );

@@ -92,6 +92,7 @@ Message.init(
   }
 );
 
+
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
 Message.belongsTo(Channel, { foreignKey: 'channelId', as: 'channel' });
 

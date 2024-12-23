@@ -56,7 +56,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({ group, setViewDetailGroup, is
           <Typography variant="caption" color="text.secondary">
             {group?.data?.members?.length === 0
               ? 'No members yet'
-              : ` Members: ${group?.data?.members?.map((e: any) => e?.UserProfile?.username)?.join(', ')}`}
+              : ` Members: ${group?.data?.members?.map((e: any) => `${e?.UserProfile?.username} (${e?.UserProfile?.user?.driver_number})`)?.join(', ')}`}
           </Typography>
         </Box>
       </Box>
