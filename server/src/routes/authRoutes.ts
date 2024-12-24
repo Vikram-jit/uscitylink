@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, loginWithPassword, loginWithWeb, sendOtp, validateOtp, resendOtp, logout } from '../controllers/authController';
+import { register, login, loginWithPassword, loginWithWeb, sendOtp, validateOtp, resendOtp, logout, loginWithToken } from '../controllers/authController';
 import { syncDriver, syncUser } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
@@ -10,6 +10,7 @@ router.post('/sendOtp', sendOtp);
 router.post('/re-sendOtp', resendOtp);
 router.post('/validateOtp', validateOtp);
 router.post('/login', login);
+router.get('/loginWithToken/:token', loginWithToken);
 router.post('/loginWithPassword', loginWithPassword);
 router.post('/loginWithWeb', loginWithWeb);
 router.post('/syncUser', syncUser);

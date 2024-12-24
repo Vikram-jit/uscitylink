@@ -95,7 +95,7 @@ export const UserApiSlice = apiSlice.injectEndpoints({
       }),
     }),
     updateActiveChannel: builder.mutation<ApiResponse, { channelId: string }>({
-      invalidatesTags: ['channels', 'groups', 'channel', 'channelUsers'],
+      invalidatesTags: ['channels', 'groups', 'channel', 'channelUsers',"dashboard","media","members","trucks"],
       query: (newPost) => ({
         url: `user/updateActiveChannel`,
         method: 'PUT',

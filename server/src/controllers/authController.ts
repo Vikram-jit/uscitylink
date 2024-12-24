@@ -418,3 +418,88 @@ export async function logout(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+export async function loginWithToken(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+
+    const key = 'base64:ZZ5rmCRJD8S9awqHtgwN1z3WRa+UlXAoITHSrFUBZIU'
+
+    const decodedInput = atob(req.params.token);
+    
+    // XOR Decrypt the input
+    const decrypted = xorDecrypt(decodedInput, key);
+
+    // Assuming the decrypted string format is "email_timestamp"
+    const [email, timestamp] = decrypted.split('_'); // Split by the delimiter '_'
+    // Check if the timestamp is valid (within the last 2 hours)
+    if (!isTimestampValid(timestamp)) throw new Error("Invaild Login")
+
+    const isRole = await Role.findOne({
+      where: {
+        name: "staff",
+      },
+    });
+
+    const isUser = await User.findOne({
+      where: {
+        email :email,
+      },
+    });
+
+    if(!isUser) throw new Error("Invaild Login")
+    
+    const isProfile = await UserProfile.findOne({
+      where: {
+        userId: isUser?.id,
+        role_id: isRole?.id,
+      },
+
+      include: [
+        {
+          model: Role,
+          as: "role",
+        },
+      ],
+    });  
+
+    if(!isProfile) throw new Error("Inavild Login")
+
+    const token = await generateToken(isProfile?.id!);
+
+    return res.status(200).json({
+      status: true,
+      message: `Login with Successfully.`,
+      data: {
+        access_toke: token,
+        user: isProfile,
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+function xorDecrypt(input:string, key:string) {
+  let decrypted = '';
+  for (let i = 0; i < input.length; i++) {
+    decrypted += String.fromCharCode(input.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return decrypted;
+}
+
+// Check if the timestamp is within the last 2 hours
+function isTimestampValid(timestamp:any) {
+  const currentTime = Date.now();
+  const messageTime = new Date(timestamp * 1000).getTime(); // assuming the timestamp is in seconds
+  const timeDifference = currentTime - messageTime;
+
+  // Check if the timestamp is within 2 hours (2 hours = 2 * 60 * 60 * 1000 ms)
+  return timeDifference <= 2 * 60 * 60 * 1000; // 2 hours
+}

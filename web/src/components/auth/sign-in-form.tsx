@@ -54,7 +54,6 @@ export function SignInForm(): React.JSX.Element {
       setIsPending(true);
 
       const res: any = await login(values);
-      console.log(res);
       if (res?.error) {
         if ('data' in res?.error) {
           setError('root', { type: 'server', message: res?.error?.data?.message });

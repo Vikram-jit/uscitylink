@@ -11,9 +11,22 @@ export const AuthApiSlice = apiSlice.injectEndpoints({
         body: {...newPost},
       }),
     }),
-
+    loginWithToken: builder.query<
+      {
+        status: boolean;
+        message: string;
+        data: any;
+      },
+      {token:string}
+    >({
+      providesTags: ['trucks'],
+      query: (payload) => ({
+        url: `auth/loginWithToken/${payload.token}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
 
-export const {useLoginMutation} = AuthApiSlice;
+export const {useLoginMutation,useLoginWithTokenQuery} = AuthApiSlice;
