@@ -934,7 +934,7 @@ export async function getUnrepliedMessages(channelId:string): Promise<any[]> {
           as:"user"
         }]
       },
-      limit:1,
+    
       order:[['messageTimestampUtc','DESC']]
       // attributes: ["id", "userProfileId", "channelId", "createdAt","body"],
     });
@@ -942,27 +942,40 @@ export async function getUnrepliedMessages(channelId:string): Promise<any[]> {
     const unrepliedMessages: any[] = [];
 
   
+    const trackedMessages = new Set(); // To track unique userProfileId and channelId combinations
+
     for (const receivedMessage of receivedMessages) {
-      
+      const { userProfileId, channelId } = receivedMessage;
+    
+      // Check if this combination of userProfileId and channelId has already been processed
+      const messageKey = `${userProfileId}-${channelId}`;
+      if (trackedMessages.has(messageKey)) {
+        continue; // Skip if the combination has already been processed
+      }
+    
+      // Look for a reply in the database
       const replyExists = await Message.findOne({
         where: {
           type: {
-            [Op.ne]: "group", 
+            [Op.ne]: "group", // Exclude group messages
           },
-          userProfileId: receivedMessage.userProfileId,
-          channelId: receivedMessage.channelId,
-          messageDirection: "S", 
+          userProfileId,
+          channelId,
+          messageDirection: "S", // Sent message (reply)
           createdAt: {
-            [Op.gt]: receivedMessage.createdAt, 
+            [Op.gt]: receivedMessage.createdAt, // Reply should be after the received message
           },
         },
+        order: [["messageTimestampUtc", "DESC"]], // Order by messageTimestampUtc
       });
-
-      
+    
+      // If no reply exists, push the first message for this combination to the unrepliedMessages array
       if (!replyExists) {
         unrepliedMessages.push(receivedMessage);
+        trackedMessages.add(messageKey); // Mark this combination as processed
       }
     }
+    
 
    
     return unrepliedMessages;
