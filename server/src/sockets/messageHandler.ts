@@ -123,7 +123,7 @@ export async function messageToChannelToUser(
                 );
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received --`
+                  `New Message received `
                 );
                 isCheckAnyStaffOpenChat += 1;
               }
@@ -165,7 +165,7 @@ export async function messageToChannelToUser(
                 });
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received ++`
+                  `New Message received `
                 );
               }
             } else {
