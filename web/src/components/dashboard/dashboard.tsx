@@ -1,6 +1,6 @@
 "use client"
 import * as React from 'react';
-import type { Metadata } from 'next';
+
 import { Container, Typography } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 
@@ -10,10 +10,8 @@ import { Sales } from '@/components/dashboard/overview/sales';
 import { TasksProgress } from '@/components/dashboard/overview/tasks-progress';
 import { TotalCustomers } from '@/components/dashboard/overview/total-customers';
 import { TotalProfit } from '@/components/dashboard/overview/total-profit';
-import { Traffic } from '@/components/dashboard/overview/traffic';
 import { useDashbaordQuery } from '@/redux/UserApiSlice';
-import dayjs from 'dayjs';
-import { LatestProducts } from './overview/latest-products';
+import { UnreadMessage } from './overview/unread-messages';
 import { LatestOrders } from './overview/latest-orders';
 
 
@@ -52,8 +50,8 @@ export default function Dashboard(): React.JSX.Element {
           <Traffic chartSeries={[63, 15, 22]} labels={['Desktop', 'Tablet', 'Phone']} sx={{ height: '100%' }} />
         </Grid> */}
        <Grid lg={4} md={6} xs={12}>
-        <LatestProducts
-          products={data?.data?.userUnReadMessage || []}
+        <UnreadMessage
+          messages={data?.data?.userUnReadMessage || []}
           sx={{ height: '100%' }}
         />
       </Grid>

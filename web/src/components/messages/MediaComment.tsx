@@ -54,8 +54,8 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
               src={url}
               alt=""
               width={181}
-              style={{ height: 200, width: 181, objectFit: 'cover' }}
-              objectFit="cover"
+              style={{ height: 200, width: 181, objectFit: 'contain' }}
+              objectFit="contain"
             />
           </IconButton>
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
@@ -65,7 +65,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
       return (
         <>
           <IconButton onClick={() => setOpenDocument(true)}>
-            <img height={height || 60} src={url} alt="" />
+            <img height={height || 60} src={url} alt="" style={{objectFit:"contain"}}/>
           </IconButton>
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
@@ -94,7 +94,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
           return (
             <>
               <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt="" />
+                <img height={height || 60} src={url} alt=""  style={{objectFit:"contain"}}/>
               </IconButton>
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>
@@ -103,7 +103,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
           return (
             <>
               <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt="" />
+                <img height={height || 60} src={url} alt="" style={{objectFit:"contain"}} />
               </IconButton>
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>

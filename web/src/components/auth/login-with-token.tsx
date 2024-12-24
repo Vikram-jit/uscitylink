@@ -62,9 +62,9 @@ export function LoginWithToken(): React.JSX.Element {
 
   return (
     <Stack spacing={4}>
-      <Alert color="error">
+      <Alert color={message ? "error":"success"}>
         <Typography sx={{ fontWeight: 700 }} variant="inherit">
-          {message}
+          {message? message :"Login successfully wait for redirect to dashboard."}
         </Typography>
       </Alert>
     </Stack>

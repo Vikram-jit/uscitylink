@@ -128,7 +128,10 @@ export default function Viewer({documentKey}:Viewer) {
               alt=""
               width={500}
               height={500}
-              objectFit="cover"
+              objectFit="contain"
+              style={{
+                objectFit:"contain"
+              }}
               onLoadingComplete={handleLoadingComplete}
             />
           </Box>

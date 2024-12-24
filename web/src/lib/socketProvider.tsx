@@ -32,6 +32,7 @@ export const SocketProvider = ({
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [audioContext, setAudioContext] = useState<any>(null)
 
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
@@ -82,12 +83,44 @@ export const SocketProvider = ({
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
-      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
+      dispatch(apiSlice.util.invalidateTags(['channelUsers','dashboard', 'channels', 'members', 'messages']));
+      const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
+
+      audio.addEventListener('canplaythrough', () => {
+        // the audio is now playable; play it if permissions allow
+        audio.play()
+      })
     });
     socketServer.on("notification_group",(message)=>{
       toast.success(message);
+      const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
+
+      audio.addEventListener('canplaythrough', () => {
+        // the audio is now playable; play it if permissions allow
+        audio.play()
+      })
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
+
+    const createAudioContext = () => {
+      if (!audioContext) {
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+        setAudioContext(context)
+
+        // Play a muted sound to satisfy browser policies
+        const dummyAudio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav') // Path to your audio file
+
+        
+        dummyAudio.muted = true // Ensure it's muted
+        dummyAudio.play().catch(error => console.log('Muted playback failed:', error))
+      }
+    }
+
+    document.addEventListener('click', createAudioContext, { once: true })
+    document.addEventListener('touchstart', createAudioContext, { once: true })
+
+
     socketServer.on('reconnect_attempt', onReconnectAttempt);
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
@@ -117,7 +150,7 @@ export const SocketProvider = ({
       socketServer.off('pong');
       socketServer.disconnect();
     };
-  }, [token, dispatch]);
+  }, [token, dispatch,audioContext]);
 
   useEffect(() => {
     const handleFocus = () => {

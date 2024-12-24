@@ -64,7 +64,21 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
 
       invalidatesTags: ['media','messages'],
     }),
+    quickMessage: builder.mutation<
+    {status:string,message:string},
+    {
+      body: string;
+      userProfileId: string;
+    }
+  >({
+    invalidatesTags: ['messages',"dashboard"],
+    query: (payload) => ({
+      url: 'message/quickMessageAndReply',
+      method: 'POST',
+      body: payload,
+    }),
+  }),
   }),
 });
 
-export const { useGetMessagesByUserIdQuery, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;
+export const { useQuickMessageMutation, useGetMessagesByUserIdQuery, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;

@@ -819,8 +819,8 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
     const userTotalMessage = await Message.count({where:{
        channelId:req.activeChannel
     }});
-    const userUnMessage = await getUnrepliedMessagesCount();
-    const userUnReadMessage = await getUnrepliedMessages();
+    const userUnMessage = await getUnrepliedMessagesCount(req.activeChannel || '');
+    const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
     const driverCount = await User.count({where:{
       user_type:"driver"
     }})
@@ -866,17 +866,20 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
   }
 }
 
-export async function getUnrepliedMessagesCount(): Promise<number> {
+export async function getUnrepliedMessagesCount(   channelId:string,): Promise<number> {
   try {
     // Fetch all received messages (R)
     const receivedMessages = await Message.findAll({
       where: {
+        channelId:channelId,
         messageDirection: "R", // Only consider received messages
         type: {
           [Op.ne]: "group", // Exclude messages where the type is 'group'
         },
       },
       attributes: ["id", "userProfileId", "channelId", "createdAt"],
+      limit:1,
+      order:[['messageTimestampUtc','DESC']]
     });
 
     let unrepliedMessagesCount = 0;
@@ -912,12 +915,12 @@ export async function getUnrepliedMessagesCount(): Promise<number> {
   }
 }
 
-export async function getUnrepliedMessages(): Promise<any[]> { 
+export async function getUnrepliedMessages(channelId:string): Promise<any[]> { 
   try {
    
     const receivedMessages = await Message.findAll({
       where: {
-        
+        channelId:channelId,
         messageDirection: "R", 
         type: {
           [Op.ne]: "group", 
@@ -932,6 +935,8 @@ export async function getUnrepliedMessages(): Promise<any[]> {
           as:"user"
         }]
       },
+      limit:1,
+      order:[['messageTimestampUtc','DESC']]
       // attributes: ["id", "userProfileId", "channelId", "createdAt","body"],
     });
 

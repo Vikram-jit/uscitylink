@@ -8,9 +8,14 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"; // AWS SDK v3 i
 import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import Channel from "../models/Channel";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
+import moment from "moment";
+import { getSocketInstance } from "../sockets/socket";
+import SocketEvents from "../sockets/socketEvents";
+import UserChannel from "../models/UserChannel";
+import { sendNotificationToDevice } from "../utils/fcmService";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -90,35 +95,36 @@ export const getMessages = async (
         type: {
           [Op.ne]: "group",
         },
-     
       },
-      include: [{
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline"],
-      }],
+      include: [
+        {
+          model: UserProfile,
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
+        },
+      ],
       order: [["messageTimestampUtc", "DESC"]],
-     
     });
 
-
-    const modifiedMessage = await Promise.all(messages.map(async(e)=>{
-      let group  = null;
-        if(e.type == "truck_group"){
+    const modifiedMessage = await Promise.all(
+      messages.map(async (e) => {
+        let group = null;
+        if (e.type == "truck_group") {
           group = await Group.findOne({
-            where:{
-              id:e?.groupId!
+            where: {
+              id: e?.groupId!,
             },
-            include:[{
-              model:GroupChannel,
-              as:"group_channel"
-            }]
-          })
+            include: [
+              {
+                model: GroupChannel,
+                as: "group_channel",
+              },
+            ],
+          });
         }
-        return {...e.dataValues,group}
-
-    }))
-
+        return { ...e.dataValues, group };
+      })
+    );
 
     return res.status(200).json({
       status: true,
@@ -141,11 +147,10 @@ export const getGroupMessages = async (
 
     const { channelId, groupId } = req.params;
 
-    const page = parseInt(req.query.page as string) || 1; 
-    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const offset = (page - 1) * pageSize;
-
 
     const messages = await Message.findAndCountAll({
       where: {
@@ -159,8 +164,8 @@ export const getGroupMessages = async (
         attributes: ["id", "username", "isOnline"],
       },
       order: [["messageTimestampUtc", "DESC"]],
-      limit: pageSize,  
-      offset: offset,   
+      limit: pageSize,
+      offset: offset,
     });
 
     const totalMessages = messages.count;
@@ -169,12 +174,16 @@ export const getGroupMessages = async (
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: { senderId, messages:messages.rows,pagination: {
-        currentPage: page,
-        pageSize: pageSize,
-        total:totalMessages,
-        totalPages,
-      } },
+      data: {
+        senderId,
+        messages: messages.rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total: totalMessages,
+          totalPages,
+        },
+      },
     });
   } catch (err: any) {
     return res
@@ -189,8 +198,8 @@ export const getMessagesByUserId = async (
 ): Promise<any> => {
   try {
     const { id } = req.params;
-    const page = parseInt(req.query.page as string) || 1; 
-    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const offset = (page - 1) * pageSize;
 
@@ -200,7 +209,7 @@ export const getMessagesByUserId = async (
       where: {
         channelId: req.activeChannel,
         userProfileId: id,
-        groupId:null
+        groupId: null,
       },
       include: {
         model: UserProfile,
@@ -208,8 +217,8 @@ export const getMessagesByUserId = async (
         attributes: ["id", "username", "isOnline"],
       },
       order: [["messageTimestampUtc", "DESC"]],
-      limit: pageSize,  
-      offset: offset,   
+      limit: pageSize,
+      offset: offset,
     });
 
     const totalMessages = messages.count;
@@ -218,14 +227,16 @@ export const getMessagesByUserId = async (
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
-      data: { userProfile,
+      data: {
+        userProfile,
         messages: messages.rows,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
           totalMessages,
           totalPages,
-        },},
+        },
+      },
     });
   } catch (err: any) {
     return res
@@ -250,7 +261,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         mime_type: req.file.mimetype,
         key: file?.key,
         file_type: req.body.type,
-        groupId:groupId
+        groupId: groupId,
       });
     }
 
@@ -273,7 +284,7 @@ export const fileUploadWeb = async (
     const channelId = req.activeChannel;
     const userId = req.body.userId?.length > 0 ? req.body.userId : req.user?.id;
     const groupId = req.body.groupId as string;
-    const source = req.body.source || "message"
+    const source = req.body.source || "message";
     if (req.file) {
       const file = req.file as any;
 
@@ -286,7 +297,7 @@ export const fileUploadWeb = async (
         mime_type: req.file.mimetype,
         key: file?.key,
         file_type: req.body.type,
-        upload_source:source
+        upload_source: source,
       });
     }
 
@@ -304,10 +315,9 @@ export const fileUploadWeb = async (
 
 export const getMedia = async (req: Request, res: Response): Promise<any> => {
   try {
-    const page = parseInt(req.query.page + "") || 1; 
-    const limit = parseInt(req.query.limit + "") || 10; 
-    const offset = (page - 1) * limit; 
-
+    const page = parseInt(req.query.page + "") || 1;
+    const limit = parseInt(req.query.limit + "") || 10;
+    const offset = (page - 1) * limit;
 
     const channelId =
       req.params.channelId == "null" ? req.activeChannel : req.params.channelId;
@@ -318,36 +328,39 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       source == "channel"
         ? await Channel.findByPk(channelId)
         : await Group.findByPk(req.params.channelId);
-      
+
     const media = await Media.findAndCountAll({
       where: {
         [Op.or]: [
-          
           ...(source === "channel"
-            ? [{
-                channelId: channelId,
-                upload_source: "message",
-                user_profile_id: userId
-              }]
+            ? [
+                {
+                  channelId: channelId,
+                  upload_source: "message",
+                  user_profile_id: userId,
+                },
+              ]
             : []),
-    
-         
+
           ...(source === "channel"
-            ? [{
-                channelId: channelId,
-                upload_source: "truck"
-              }]
+            ? [
+                {
+                  channelId: channelId,
+                  upload_source: "truck",
+                },
+              ]
             : []),
-    
-          
+
           ...(source !== "channel"
-            ? [{
-                groupId: channelId,
-                upload_source: "group"
-              }]
-            : [])
+            ? [
+                {
+                  groupId: channelId,
+                  upload_source: "group",
+                },
+              ]
+            : []),
         ],
-       
+
         file_type: req.query.type || "media",
       },
       limit: limit,
@@ -375,3 +388,174 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
 };
 
 export const uploadMiddleware = upload.single("file"); // 'file' is the key used in form-data
+
+export const quickMessageAndReply = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { userProfileId, body } = req.body;
+    const channelId = req.activeChannel;
+
+
+    
+    const findDriverSocket = global.driverOpenChat.find(
+      (driver) => driver?.driverId === userProfileId
+    );
+  
+
+    const messageSave = await Message.create({
+      channelId: req.activeChannel,
+      userProfileId,
+      groupId: null,
+      body,
+      messageDirection: "S",
+      deliveryStatus: "sent",
+      messageTimestampUtc: moment.utc().format(),
+      senderId: req.user?.id,
+      isRead: false,
+      status: "sent",
+    });
+
+    const message = await Message.findOne({
+      where:{
+        id:messageSave.id
+      },
+      include: {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    })
+
+    const findStaffActiveChannel = global.staffActiveChannel[req.user?.id];
+
+    //Check Before send driver active room channel
+    const isDriverSocket = global.userSockets[userProfileId];
+  
+    if (
+      findDriverSocket &&
+      findDriverSocket?.channelId == findStaffActiveChannel?.channelId
+    ) {
+      if (isDriverSocket) {
+        await messageSave.update(
+          {
+            deliveryStatus: "seen",
+          },
+          {
+            where: {
+              id: messageSave.id,
+            },
+          }
+        );
+        getSocketInstance().to(isDriverSocket?.id).emit(
+          SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+          message
+        );
+      }
+    } else {
+      if (isDriverSocket) {
+        getSocketInstance().to(isDriverSocket?.id).emit("update_user_channel_list", message);
+        getSocketInstance().to(isDriverSocket?.id).emit(
+          "new_message_count_update",
+          message?.channelId
+        );
+        const isUser = await UserProfile.findOne({
+          where: {
+            id: userProfileId,
+          },
+        });
+        if (isUser) {
+          if (isUser.device_token) {
+            const isChannel = await Channel.findByPk(
+              findStaffActiveChannel?.channelId
+            );
+  
+            await sendNotificationToDevice(isUser.device_token, {
+              title: isChannel?.name || "",
+              body: body,
+              data: {
+                channelId: isChannel?.id,
+  
+                type: "NEW MESSAGE",
+                title: isChannel?.name,
+              },
+            });
+          }
+        }
+      } else {
+        const isUser = await UserProfile.findOne({
+          where: {
+            id: userProfileId,
+          },
+        });
+        if (isUser) {
+          if (isUser.device_token) {
+            const isChannel = await Channel.findByPk(
+              findStaffActiveChannel?.channelId
+            );
+  
+            await sendNotificationToDevice(isUser.device_token, {
+              title: isChannel?.name || "",
+              body: body,
+              data: {
+                channelId: isChannel?.id,
+  
+                type: "NEW MESSAGE",
+                title: isChannel?.name,
+              },
+            });
+          }
+        }
+      }
+  
+      await UserChannel.update(
+        {
+          recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
+        },
+        {
+          where: {
+            userProfileId: userProfileId, // The user you want to update
+            channelId: findStaffActiveChannel?.channelId, // The channel to target
+          },
+        }
+      );
+    }
+    const utcTime = moment.utc().toDate();
+  
+    await UserChannel.update(
+      {
+        last_message_id: message?.id,
+        last_message_utc: utcTime,
+      },
+      {
+        where: {
+          userProfileId: userProfileId,
+          channelId: findStaffActiveChannel?.channelId,
+        },
+      }
+    );
+    //Return Message To Staff After Store
+    Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
+      if (e.channelId === findStaffActiveChannel?.channelId) {
+        const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+  
+        if (isSocket) {
+          getSocketInstance().to(isSocket.id).emit(
+            SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+            message
+          );
+        }
+      }
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: `Message sent successfully`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
