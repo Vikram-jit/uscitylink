@@ -878,8 +878,7 @@ export async function getUnrepliedMessagesCount(   channelId:string,): Promise<n
         },
       },
       attributes: ["id", "userProfileId", "channelId", "createdAt"],
-      limit:1,
-      order:[['messageTimestampUtc','DESC']]
+   
     });
 
     let unrepliedMessagesCount = 0;
