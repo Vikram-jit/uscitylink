@@ -23,7 +23,7 @@ export async function messageToChannelToUser(
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
-
+   console.log(findUserChannel,"socket")
   if (findUserChannel) {
     const messageSave = await Message.create({
       channelId: findUserChannel.channelId,
