@@ -18,14 +18,15 @@ export async function messageToChannelToUser(
   io: Server,
   socket: CustomSocket,
   body: string,
-  url: string | null
+  url: string | null,
+  channelId:string
 ) {
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
   if (findUserChannel) {
     const messageSave = await Message.create({
-      channelId: findUserChannel.channelId,
+      channelId: findUserChannel.channelId || channelId,
       userProfileId: socket?.user?.id,
       body,
       messageDirection: "R",

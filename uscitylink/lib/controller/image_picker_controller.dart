@@ -73,7 +73,7 @@ class ImagePickerController extends GetxController {
           socketService.sendGroupMessage(
               groupId!, channelId, caption.value, res.data.key!);
         } else {
-          socketService.sendMessage(caption.value, res.data.key!);
+          socketService.sendMessage(caption.value, res.data.key!, channelId);
         }
 
         Get.back();

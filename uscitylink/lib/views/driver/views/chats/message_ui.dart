@@ -82,7 +82,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
-      socketService.sendMessage(_controller.text, null);
+      socketService.sendMessage(_controller.text, null, widget.channelId);
       _controller.clear();
     }
   }
@@ -172,7 +172,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         width: 100,
                         child: InkWell(
                           onTap: () {
-                            socketService.sendMessage("Hi", null);
+                            socketService.sendMessage(
+                                "Hi", null, widget.channelId);
                           },
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,

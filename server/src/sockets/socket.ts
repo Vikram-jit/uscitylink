@@ -403,8 +403,8 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null }) =>
-        await messageToChannelToUser(io, socket, body, url)
+      async ({ body, url = null,channelId }) =>
+        await messageToChannelToUser(io, socket, body, url,channelId)
     );
 
     //Typing Staff Event

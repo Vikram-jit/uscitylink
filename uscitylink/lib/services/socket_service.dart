@@ -169,9 +169,10 @@ class SocketService extends GetxController {
   }
 
   // Method to send a message to the server
-  void sendMessage(String body, String? url) {
+  void sendMessage(String body, String? url, String? channelId) {
     if (isConnected.value) {
-      socket.emit("send_message_to_channel", {"body": body, "url": url});
+      socket.emit("send_message_to_channel",
+          {"body": body, "url": url, "channelId": channelId});
     } else {
       print("Not connected to socket.");
     }
