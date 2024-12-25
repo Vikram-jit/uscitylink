@@ -102,6 +102,7 @@ class FilePickerController extends GetxController {
           socketService.sendGroupMessage(
               groupId!, channelId, caption.value, res.data.key!);
         } else {
+          socketService.updateActiveChannel(channelId);
           socketService.sendMessage(caption.value, res.data.key!);
         }
 
