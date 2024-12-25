@@ -249,6 +249,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
     const channelId = req.body.channelId;
     const groupId = req.query.groupId || null;
+    console.log(groupId,typeof groupId)
     const userId = req.user?.id;
     if (req.file) {
       const file = req.file as any;
@@ -262,6 +263,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         key: file?.key,
         file_type: req.body.type,
         groupId: groupId,
+        upload_source: groupId ? "group":"message"
       });
     }
 
