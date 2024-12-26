@@ -14,6 +14,8 @@ import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
 import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
 import 'package:uscitylink/views/splash_view.dart';
+import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
+import 'package:uscitylink/views/staff/view/staff_view.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -39,6 +41,8 @@ class AppRoutes {
   static const String groupInfo = '/group_info';
   static const String groupMedia = '/group_media';
   static const String vehicleDetails = '/vehicle_details';
+
+  static const String staff_dashboard = "/staff_dashboard";
 
   static final routes = [
     GetPage(
@@ -174,5 +178,10 @@ class AppRoutes {
             type: type,
           );
         }),
+
+    GetPage(
+      name: AppRoutes.staff_dashboard,
+      page: () => StaffView(),
+    ),
   ];
 }

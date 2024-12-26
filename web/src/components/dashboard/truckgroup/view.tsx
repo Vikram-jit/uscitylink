@@ -50,6 +50,7 @@ import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
 import MediaPane from '@/components/messages/MediaPane';
+import { apiSlice } from '@/redux/apiSlice';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -586,7 +587,8 @@ const ChatInterface = ({ type }: { type: string }) => {
                           } else {
                             socket?.emit('staff_open_truck_group', group.id);
                           }
-
+        dispatch(apiSlice.util.invalidateTags(['channels']));
+   
                           setSelectedGroup(group.id);
                           setSelectedChannel(group.group_channel.channelId);
                           setTimeout(() => {

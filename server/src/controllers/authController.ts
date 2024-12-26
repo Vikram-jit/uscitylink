@@ -349,26 +349,35 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
     const isEmailValid = isValidEmail(email);
     const queryValue = isEmailValid ? email : email;
 
-    const isUser = await User.findOne({
+    const isUser = await User.findAll({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
       },
+      include:[{
+        model:UserProfile,
+        as:"profiles",
+        include:[
+          {
+            model:Role,
+            as:"role"
+          }
+        ]
+      }]
     });
+    let userStaffId:string|null = null;
+    let isProfile:any = null
+    isUser.forEach(async(item)=>{
+      item.profiles?.forEach((el)=>{
+        if(el.role?.name == "staff"){
+          userStaffId = item.id;
+          isProfile = el
+        }
+      })
+    })
 
-    if (!isUser) throw new Error("Invalid credentials");
+    if (!isProfile) throw new Error("Invalid credentials");
 
-    const isProfile = await UserProfile.findOne({
-      where: {
-        userId: isUser?.id,
-      },
-
-      include: [
-        {
-          model: Role,
-          as: "role",
-        },
-      ],
-    });
+    
     const isMatch = await comparePasswords(password, isProfile?.password!);
 
     if (!isMatch) throw new Error("Invalid credentials");
@@ -445,27 +454,33 @@ export async function loginWithToken(
       },
     });
 
-    const isUser = await User.findOne({
+    const isUser = await User.findAll({
       where: {
-        email :email,
+       email:email,
       },
+      include:[{
+        model:UserProfile,
+        as:"profiles",
+        include:[
+          {
+            model:Role,
+            as:"role"
+          }
+        ]
+      }]
     });
-
-    if(!isUser) throw new Error("Invaild Login")
+    let userStaffId:string|null = null;
+    let isProfile:any = null
+    isUser.forEach(async(item)=>{
+      item.profiles?.forEach((el)=>{
+        if(el.role?.name == "staff"){
+          userStaffId = item.id;
+          isProfile = el
+        }
+      })
+    })
     
-    const isProfile = await UserProfile.findOne({
-      where: {
-        userId: isUser?.id,
-        role_id: isRole?.id,
-      },
-
-      include: [
-        {
-          model: Role,
-          as: "role",
-        },
-      ],
-    });  
+  
 
     if(!isProfile) throw new Error("Inavild Login")
 

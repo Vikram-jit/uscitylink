@@ -28,6 +28,9 @@ class _SplashViewState extends State<SplashView> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: TColors.white,
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

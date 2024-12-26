@@ -13,6 +13,8 @@ import { useSocket } from '@/lib/socketProvider';
 import AvatarWithStatus from './AvatarWithStatus';
 import { MessageProps } from './types';
 import { formatDate, toggleMessagesPane } from './utils';
+import { useDispatch } from 'react-redux';
+import { apiSlice } from '@/redux/apiSlice';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
@@ -30,17 +32,21 @@ export default function ChatListItem(props: ChatListItemProps) {
   const { id, user, selectedUserId, setSelectedUserId, channelId } = props;
   const selected = selectedUserId === id;
   const { socket } = useSocket();
+  const dispatch = useDispatch()
   React.useEffect(() => {}, [socket]);
   return (
     <>
       <ListItem sx={{ padding: 0 }}>
         <ListItemButton
           onClick={() => {
+            
+            
             toggleMessagesPane();
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
             if (user.sent_message_count > 0) {
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
+              dispatch(apiSlice.util.invalidateTags(['channels']));
             }
           }}
           selected={selected}

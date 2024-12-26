@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
@@ -115,7 +117,7 @@ class AuthService {
 
     if (response != null && response['data'] != null) {
       Profiles userProfile = Profiles.fromJson(response['data']);
-
+      print(jsonEncode(response['data']));
       return ApiResponse<Profiles>(
         data: userProfile,
         message: response['message'] ?? 'User Profile successful',

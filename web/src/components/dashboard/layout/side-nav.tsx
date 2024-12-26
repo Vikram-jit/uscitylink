@@ -19,9 +19,10 @@ import { navIcons } from './nav-icons';
 import { usePopover } from '@/hooks/use-popover';
 import { ChannelPopover } from './channel-popover';
 import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
-import { CircularProgress } from '@mui/material';
+import { Chip, CircularProgress } from '@mui/material';
 import { useSocket } from '@/lib/socketProvider';
 import moment from 'moment';
+import { ChannelModel } from '@/redux/models/ChannelModel';
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
@@ -78,7 +79,7 @@ export function SideNav(): React.JSX.Element {
               Active Channel
             </Typography>
             <Typography color="inherit" variant="subtitle1">
-              {data && data?.data?.name}
+              {data && data?.data?.channel?.name}
             </Typography></>}
           </Box>
           <CaretUpDownIcon />
@@ -87,7 +88,7 @@ export function SideNav(): React.JSX.Element {
       </Stack>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
-        {renderNavItems({ pathname, items: navItems })}
+        {renderNavItems({ pathname, items: navItems ,data:data?.data})}
       </Box>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Stack spacing={2} sx={{ p: '12px' }}>
@@ -105,7 +106,7 @@ export function SideNav(): React.JSX.Element {
   );
 }
 
-function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
+function renderNavItems({ items = [], pathname ,data}: { items?: NavItemConfig[]; pathname: string,data?: {channel:ChannelModel,messages:number,group:number} }): React.JSX.Element {
   // const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
   //   const { key, ...item } = curr;
 
@@ -116,7 +117,7 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
 
   const children = items.reduce(
 
-    (acc, item) => reduceChildRoutes({ acc,pathname, item }),
+    (acc, item) => reduceChildRoutes({ acc,pathname, item ,data}),
     []
   )
 
@@ -128,7 +129,7 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
 }
 
 function reduceChildRoutes({
-  acc, pathname, item, depth = 0
+  acc, pathname, item, depth = 0,data
 }:any) {
   if (item.items) {
     // const open = matchPath(pathname, {
@@ -140,6 +141,7 @@ function reduceChildRoutes({
       <NavItem
       key={Math.random() * 10000000}
       pathname={pathname} {...item}
+      data={data}
       onC
       >
         {renderNavItems({
@@ -151,7 +153,7 @@ function reduceChildRoutes({
     );
   } else {
     acc.push(
-      <NavItem key={Math.random() * 10000000}  pathname={pathname} {...item} />
+      <NavItem key={Math.random() * 10000000}  pathname={pathname} data={data} {...item}  />
     );
   }
 
@@ -162,9 +164,10 @@ function reduceChildRoutes({
 interface NavItemProps extends Omit<NavItemConfig, 'items'> {
   pathname: string;
   children?:NavItemConfig[]
+  data: {channel:ChannelModel,messages:number,group:number}
 }
 
-function NavItem({ disabled, external, href, icon, matcher, pathname, title}: NavItemProps): React.JSX.Element {
+function NavItem({ disabled, external, href, icon, matcher, pathname, title,badge,data,key}: NavItemProps): React.JSX.Element {
 
   const {socket} = useSocket()
 
@@ -215,13 +218,21 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title}: Na
             />
           ) : null}
         </Box>
-        <Box sx={{ flex: '1 1 auto' }}>
+        <Box sx={{ flex: '1 1 auto' , display:"flex", flexDirection:"row",justifyContent:"space-between"}}>
           <Typography
             component="span"
             sx={{ color: 'inherit', fontSize: '0.875rem', fontWeight: 500, lineHeight: '28px' }}
           >
             {title}
           </Typography>
+        {badge && title == "Messages" &&  data?.messages > 0 && <Chip sx={{
+            background:"#fff",
+            borderRadius:"10px!important"
+          }} label={data?.messages}></Chip> }  
+           {badge && title == "Groups" &&  data?.group > 0 && <Chip sx={{
+            background:"#fff",
+            borderRadius:"10px!important"
+          }} label={data?.group}></Chip> }  
         </Box>
       </Box>
     </li>

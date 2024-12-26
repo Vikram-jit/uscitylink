@@ -11,12 +11,28 @@ class UserPreferenceController extends GetxController {
     return true;
   }
 
+  Future<bool> storeRole(LoginWithPasswordModel loginModel) async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+
+    sp.setString('role', loginModel.profiles!.role!.name!);
+
+    return true;
+  }
+
   Future<dynamic> getToken() async {
     SharedPreferences sp = await SharedPreferences.getInstance();
 
     String? token = sp.getString('token');
 
     return token;
+  }
+
+  Future<dynamic> getRole() async {
+    SharedPreferences sp = await SharedPreferences.getInstance();
+
+    String? role = sp.getString('role');
+
+    return role;
   }
 
   Future<dynamic> removeStore() async {

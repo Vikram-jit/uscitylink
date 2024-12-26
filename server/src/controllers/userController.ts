@@ -268,6 +268,9 @@ export async function getUserProfile(
           model: User,
           as: "user",
         },
+        {model:Role,
+          as:"role"
+        }
       ],
     });
 
@@ -984,3 +987,4 @@ export async function getUnrepliedMessages(channelId:string): Promise<any[]> {
     throw new Error("Internal server error");
   }
 }
+

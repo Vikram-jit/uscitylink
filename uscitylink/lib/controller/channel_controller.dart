@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
@@ -14,6 +16,7 @@ class ChannelController extends GetxController {
   final __channelService = ChannelService();
   final _truckController = TruckController();
   var currentIndex = 0.obs;
+  var totalUnReadMessage = 0.obs;
 
   GroupController groupController = Get.put(GroupController());
   DashboardController dashboardController = Get.put(DashboardController());
@@ -43,9 +46,14 @@ class ChannelController extends GetxController {
 
   void getUserChannels() {
     loading.value = true;
+    totalUnReadMessage.value = 0;
     __channelService.getUserChannels().then((response) {
       channels.value = response.data;
       loading.value = false;
+      response.data.forEach((item) => {
+            totalUnReadMessage.value =
+                totalUnReadMessage.value + item.recieve_message_count!
+          });
     }).onError((error, stackTrace) {
       loading.value = false;
       Utils.snackBar('Error', error.toString());

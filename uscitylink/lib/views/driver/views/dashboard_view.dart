@@ -8,6 +8,7 @@ import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
+import 'package:badges/badges.dart' as badges;
 
 class DashboardView extends StatefulWidget {
   int? currentStep = 0;
@@ -83,7 +84,15 @@ class _DashboardViewState extends State<DashboardView>
           SalomonBottomBarItem(
               icon: const Icon(Icons.home), title: const Text("Home")),
           SalomonBottomBarItem(
-              icon: const Icon(Icons.chat), title: const Text("Chat")),
+              icon: badges.Badge(
+                position: badges.BadgePosition.topEnd(top: -15, end: -9),
+                badgeContent: Obx(() {
+                  return Text('${channelController.totalUnReadMessage.value}',
+                      style: TextStyle(color: Colors.white));
+                }),
+                child: const Icon(Icons.chat), // Add the icon with a badge
+              ),
+              title: const Text("Chat")),
           SalomonBottomBarItem(
               icon: const Icon(Icons.edit_document),
               title: const Text("vehicles")),

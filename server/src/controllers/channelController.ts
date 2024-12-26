@@ -8,6 +8,7 @@ import User from "../models/User";
 import { getSocketInstance } from "../sockets/socket";
 import { Message } from "../models/Message";
 import { Op } from "sequelize";
+import { getUnrepliedMessagesCount } from "./userController";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -304,11 +305,17 @@ export async function getActiveChannel(
         userProfile?.dataValues?.channelId || ""
       );
     }
-
+    const userUnMessage = await UserChannel.sum("sent_message_count",{
+      where:{
+        channelId:req.activeChannel,
+        isGroup:0
+      }
+    });
+    const groupCount = await Group.sum('message_count');
     return res.status(200).json({
       status: true,
       message: `Active channel Fetch Successfully.`,
-      data: channel,
+      data: {channel,messages:userUnMessage,group:groupCount},
     });
   } catch (err: any) {
     return res

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
@@ -48,13 +49,6 @@ class LoginController extends GetxController {
     Map data = {"email": emailController.value.text};
     __authService.login(data).then((value) {
       if (value.status == true) {
-        if (value.data.profiles != null && value.data.profiles!.isNotEmpty) {
-          if (value.data.profiles![0].role?.name != "driver") {
-            throw Exception('Error: Invalid credentials');
-          }
-        } else {
-          throw Exception('Error: No profiles found');
-        }
         showAdaptiveActionSheet(
           context: context,
           actions: <BottomSheetAction>[
@@ -107,7 +101,9 @@ class LoginController extends GetxController {
     __authService.loginWithPassword(loginData).then((value) {
       if (value.status == true) {
         if (value.data.access_token!.isNotEmpty) {
-          userPreferenceController.storeToken(value.data).then((value) async {
+          userPreferenceController
+              .storeToken(value.data)
+              .then((response) async {
             Utils.toastMessage("Login Successfully");
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
@@ -115,7 +111,11 @@ class LoginController extends GetxController {
               await fcmService.updateDeviceToken(token);
             }
             await socketService.connectSocket();
-            Get.offAllNamed(AppRoutes.driverDashboard);
+            if (value.data.profiles?.role?.name == "staff") {
+              Get.offAllNamed(AppRoutes.staff_dashboard);
+            } else {
+              Get.offAllNamed(AppRoutes.driverDashboard);
+            }
           });
         }
       }
@@ -177,8 +177,36 @@ class LoginController extends GetxController {
     });
   }
 
+  void checkRole() {
+    __authService.getProfile().then((value) async {
+      if (value.status == true) {
+        if (value?.data?.role?.name == "staff") {
+          final fcmService = Get.put(FCMService());
+          String? token = fcmService.fcmToken.value;
+          if (token != null && token.isNotEmpty) {
+            await fcmService.updateDeviceToken(token);
+          }
+
+          Timer(const Duration(seconds: 1),
+              () => Get.offAllNamed(AppRoutes.staff_dashboard));
+        } else {
+          final fcmService = Get.put(FCMService());
+          String? token = fcmService.fcmToken.value;
+          if (token != null && token.isNotEmpty) {
+            await fcmService.updateDeviceToken(token);
+          }
+
+          Timer(const Duration(seconds: 1),
+              () => Get.offAllNamed(AppRoutes.driverDashboard));
+        }
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
   void getProfile() {
-    __authService.getProfile().then((value) {
+    __authService.getProfile().then((value) async {
       if (value.status == true) {
         userProfile.value = {
           Profiles(

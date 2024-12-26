@@ -74,7 +74,7 @@ export const SocketProvider = ({
       setIsConnected(false);
     }
     socketServer.on('user_online', () => {
-      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages']));
+      dispatch(apiSlice.util.invalidateTags(['channelUsers', 'channels', 'members', 'messages','dashboard']));
     });
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
@@ -99,6 +99,8 @@ export const SocketProvider = ({
         // the audio is now playable; play it if permissions allow
         audio.play()
       })
+     // 
+     dispatch(apiSlice.util.invalidateTags(['channels']));
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
 
