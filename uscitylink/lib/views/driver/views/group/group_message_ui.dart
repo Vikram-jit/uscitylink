@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
@@ -32,6 +33,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
+  ChannelController _channelController = Get.find<ChannelController>();
 
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
@@ -156,6 +158,9 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   groupController.messages.clear();
                   groupController.currentPage.value = 1;
                   groupController.totalPages.value = 1;
+                  if (_channelController.initialized) {
+                    _channelController.getCount();
+                  }
                   Get.back();
                 },
               ),

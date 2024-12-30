@@ -26,3 +26,26 @@ class ChannelModel {
     return data;
   }
 }
+
+class CountModel {
+  int? total;
+  int? channel;
+  int? group;
+
+  CountModel({this.total, this.channel, this.group});
+
+  CountModel.fromJson(Map<String, dynamic> json) {
+    total = json['total'];
+    channel = json['channel'];
+    group = json['group'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+
+    data['group'] = group;
+    data['channel'] = channel;
+    data['total'] = total;
+    return data;
+  }
+}

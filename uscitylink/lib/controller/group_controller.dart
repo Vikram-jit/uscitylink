@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
 

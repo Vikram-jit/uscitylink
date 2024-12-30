@@ -84,15 +84,23 @@ class _DashboardViewState extends State<DashboardView>
           SalomonBottomBarItem(
               icon: const Icon(Icons.home), title: const Text("Home")),
           SalomonBottomBarItem(
-              icon: badges.Badge(
-                position: badges.BadgePosition.topEnd(top: -15, end: -9),
-                badgeContent: Obx(() {
-                  return Text('${channelController.totalUnReadMessage.value}',
-                      style: TextStyle(color: Colors.white));
-                }),
-                child: const Icon(Icons.chat), // Add the icon with a badge
-              ),
-              title: const Text("Chat")),
+            icon: Obx(() {
+              return channelController.totalUnReadMessage.value > 0
+                  ? badges.Badge(
+                      position: badges.BadgePosition.topEnd(top: -15, end: -9),
+                      badgeContent: channelController.totalUnReadMessage.value >
+                              0
+                          ? Text(
+                              '${channelController.totalUnReadMessage.value}',
+                              style: TextStyle(color: Colors.white),
+                            )
+                          : null, // Hide the badge if unread message count is 0
+                      child: const Icon(Icons.chat), // Icon for the chat
+                    )
+                  : const Icon(Icons.chat);
+            }),
+            title: const Text("Chat"),
+          ),
           SalomonBottomBarItem(
               icon: const Icon(Icons.edit_document),
               title: const Text("vehicles")),

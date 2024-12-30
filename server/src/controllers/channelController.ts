@@ -9,6 +9,7 @@ import { getSocketInstance } from "../sockets/socket";
 import { Message } from "../models/Message";
 import { Op } from "sequelize";
 import { getUnrepliedMessagesCount } from "./userController";
+import GroupUser from "../models/GroupUser";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -371,3 +372,33 @@ export async function channelStatusMember(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+export async function countMessageAndGroup(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+  const messageCount =  await UserChannel.sum("recieve_message_count",{
+      where:{
+        userProfileId:req.user?.id,
+        
+      }
+    })
+
+    const userGroupsCount  = await GroupUser.sum("message_count",{
+      where:{userProfileId:req.user?.id}
+    })
+
+    return res.status(200).json({
+      status: true,
+      message: `Get count Successfully.`,
+      data: {total:messageCount + userGroupsCount,channel:messageCount,group:userGroupsCount}
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+

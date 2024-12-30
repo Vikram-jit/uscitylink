@@ -16,6 +16,7 @@ import { getSocketInstance } from "../sockets/socket";
 import SocketEvents from "../sockets/socketEvents";
 import UserChannel from "../models/UserChannel";
 import { sendNotificationToDevice } from "../utils/fcmService";
+import GroupUser from "../models/GroupUser";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -472,9 +473,19 @@ export const quickMessageAndReply = async (
             const isChannel = await Channel.findByPk(
               findStaffActiveChannel?.channelId
             );
-  
+            const messageCount =  await UserChannel.sum("recieve_message_count",{
+              where:{
+                userProfileId:userProfileId,
+                
+              }
+            })
+        
+            const userGroupsCount  = await GroupUser.sum("message_count",{
+              where:{userProfileId:userProfileId}
+            })
             await sendNotificationToDevice(isUser.device_token, {
               title: isChannel?.name || "",
+              badge:messageCount+ userGroupsCount,
               body: body,
               data: {
                 channelId: isChannel?.id,
@@ -496,8 +507,18 @@ export const quickMessageAndReply = async (
             const isChannel = await Channel.findByPk(
               findStaffActiveChannel?.channelId
             );
-  
+            const messageCount =  await UserChannel.sum("recieve_message_count",{
+              where:{
+                userProfileId:userProfileId,
+                
+              }
+            })
+        
+            const userGroupsCount  = await GroupUser.sum("message_count",{
+              where:{userProfileId:userProfileId}
+            })
             await sendNotificationToDevice(isUser.device_token, {
+              badge:messageCount+ userGroupsCount,
               title: isChannel?.name || "",
               body: body,
               data: {

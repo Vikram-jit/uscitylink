@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
@@ -23,7 +24,7 @@ class Messageui extends StatefulWidget {
 
 class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
-
+  ChannelController _channelController = Get.find<ChannelController>();
   late MessageController messageController;
   SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
@@ -129,6 +130,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
                   socketService.updateActiveChannel("");
+                  if (_channelController.initialized) {
+                    _channelController.getCount();
+                  }
                   Get.back();
                 },
               ),

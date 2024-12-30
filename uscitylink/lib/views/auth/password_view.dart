@@ -56,79 +56,81 @@ class _PasswordViewState extends State<PasswordView>
           onPressed: () => Get.back(), // Go back to the previous screen
         ),
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Padding(
-          padding: const EdgeInsets.all(18.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const LogoWidgets(),
-              SizedBox(
-                height: TDeviceUtils.getScreenHeight() * 0.01,
-              ),
-              TextField(
-                readOnly: true, // Make the TextField read-only
-                controller: TextEditingController(
-                    text: widget.email.toString()), // Set the initial value
-                decoration: const InputDecoration(
-                  hintText:
-                      "Email Address", // Change hint text to reflect email
-                  hintStyle: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  border: OutlineInputBorder(), // Optional: Add a border
+      body: SingleChildScrollView(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Padding(
+            padding: const EdgeInsets.all(18.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const LogoWidgets(),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.01,
                 ),
-              ),
-              SizedBox(
-                height: TDeviceUtils.getScreenHeight() * 0.01,
-              ),
-              TextField(
-                controller: loginController.passwordController.value,
-                focusNode: loginController.passwordFoucsNode.value,
-                obscureText: true,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: "Enter Password",
-                  hintStyle: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                TextField(
+                  readOnly: true, // Make the TextField read-only
+                  controller: TextEditingController(
+                      text: widget.email.toString()), // Set the initial value
+                  decoration: const InputDecoration(
+                    hintText:
+                        "Email Address", // Change hint text to reflect email
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    border: OutlineInputBorder(), // Optional: Add a border
                   ),
                 ),
-              ),
-              SizedBox(
-                height: TDeviceUtils.getScreenHeight() * 0.03,
-              ),
-              CustomButton(
-                  label: "Submit",
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.01,
+                ),
+                TextField(
+                  controller: loginController.passwordController.value,
+                  focusNode: loginController.passwordFoucsNode.value,
+                  obscureText: true,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: "Enter Password",
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.03,
+                ),
+                CustomButton(
+                    label: "Submit",
+                    onPressed: () {
+                      loginController.loginWithPassword(
+                          context, widget.email, widget.role);
+                    }),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.01,
+                ),
+                _buildDividerWithText("or"),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.01,
+                ),
+                CustomButton(
+                  label: "Send OTP",
                   onPressed: () {
-                    loginController.loginWithPassword(
-                        context, widget.email, widget.role);
-                  }),
-              SizedBox(
-                height: TDeviceUtils.getScreenHeight() * 0.01,
-              ),
-              _buildDividerWithText("or"),
-              SizedBox(
-                height: TDeviceUtils.getScreenHeight() * 0.01,
-              ),
-              CustomButton(
-                label: "Send OTP",
-                onPressed: () {
-                  Get.to(() => const OtpView(email: 'user@example.com'));
-                },
-                backgroundColor: TColors.white,
-                textColor: TColors.primary,
-              ),
-              // Obx(() {
-              //   return loadingController.isLoading.value
-              //       ? Center(child: CircularProgressIndicator())
-              //       : SizedBox.shrink();
-              // }),
-            ],
+                    Get.to(() => const OtpView(email: 'user@example.com'));
+                  },
+                  backgroundColor: TColors.white,
+                  textColor: TColors.primary,
+                ),
+                // Obx(() {
+                //   return loadingController.isLoading.value
+                //       ? Center(child: CircularProgressIndicator())
+                //       : SizedBox.shrink();
+                // }),
+              ],
+            ),
           ),
         ),
       ),

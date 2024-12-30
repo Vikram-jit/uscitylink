@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+// import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
@@ -41,19 +41,20 @@ class DocumentController extends GetxController {
       final Uint8List bytes = data.buffer.asUint8List();
 
       // Save the image to gallery
-      final result = await ImageGallerySaver.saveImage(bytes);
-      if (result['isSuccess']) {
-        Utils.hideLoader();
-        saveSuccess.value = true;
-        showSuccessSnackBar(
-            "Image Saved Successfully!"); // Show success snackbar
-        errorMessage.value = ''; // Clear any previous errors
-      } else {
-        Utils.hideLoader();
-        saveSuccess.value = false;
-        errorMessage.value = 'Failed to Save Image!';
-        showErrorSnackBar("Failed to Save Image!"); // Show error snackbar
-      }
+      // final result = await ImageGallerySaver.saveImage(bytes);
+      // if (result['isSuccess']) {
+      //   Utils.hideLoader();
+      //   saveSuccess.value = true;
+      //   showSuccessSnackBar(
+      //       "Image Saved Successfully!"); // Show success snackbar
+      //   errorMessage.value = ''; // Clear any previous errors
+      // } else {
+      //   Utils.hideLoader();
+      //   saveSuccess.value = false;
+      //   errorMessage.value = 'Failed to Save Image!';
+      //   showErrorSnackBar("Failed to Save Image!"); // Show error snackbar
+      // }
+      Utils.hideLoader();
     } catch (e) {
       Utils.hideLoader();
       // Handle any errors during the saving process

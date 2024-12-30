@@ -24,7 +24,6 @@ export async function messageToChannelToUser(
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
-  console.log(findUserChannel,channelId)
   if (findUserChannel) {
     const messageSave = await Message.create({
       channelId: findUserChannel.channelId || channelId,
@@ -284,14 +283,27 @@ export async function messageToDriver(
             findStaffActiveChannel?.channelId
           );
 
+          const messageCount =  await UserChannel.sum("recieve_message_count",{
+            where:{
+              userProfileId:userId,
+              
+            }
+          })
+      
+          const userGroupsCount  = await GroupUser.sum("message_count",{
+            where:{userProfileId:userId}
+          })
+
           await sendNotificationToDevice(isUser.device_token, {
             title: isChannel?.name || "",
+            badge:messageCount+userGroupsCount,
             body: body,
             data: {
               channelId: isChannel?.id,
-
+    
               type: "NEW MESSAGE",
               title: isChannel?.name,
+
             },
           });
         }
@@ -307,9 +319,19 @@ export async function messageToDriver(
           const isChannel = await Channel.findByPk(
             findStaffActiveChannel?.channelId
           );
-
+          const messageCount =  await UserChannel.sum("recieve_message_count",{
+            where:{
+              userProfileId:userId,
+              
+            }
+          })
+      
+          const userGroupsCount  = await GroupUser.sum("message_count",{
+            where:{userProfileId:userId}
+          })
           await sendNotificationToDevice(isUser.device_token, {
             title: isChannel?.name || "",
+            badge:messageCount+userGroupsCount,
             body: body,
             data: {
               channelId: isChannel?.id,
@@ -445,8 +467,19 @@ export async function messageToDriverByTruckGroup(
           const isChannel = await Channel.findByPk(
             findStaffActiveChannel?.channelId
           );
+          const messageCount =  await UserChannel.sum("recieve_message_count",{
+            where:{
+              userProfileId:userId,
+              
+            }
+          })
+      
+          const userGroupsCount  = await GroupUser.sum("message_count",{
+            where:{userProfileId:userId}
+          })
           await sendNotificationToDevice(isUser.device_token, {
             title: isChannel?.name || "",
+            badge:messageCount+userGroupsCount,
             body: body,
             data: {
               channelId: isChannel?.id,
@@ -465,8 +498,19 @@ export async function messageToDriverByTruckGroup(
           const isChannel = await Channel.findByPk(
             findStaffActiveChannel?.channelId
           );
+          const messageCount =  await UserChannel.sum("recieve_message_count",{
+            where:{
+              userProfileId:userId,
+              
+            }
+          })
+      
+          const userGroupsCount  = await GroupUser.sum("message_count",{
+            where:{userProfileId:userId}
+          })
           await sendNotificationToDevice(isUser.device_token, {
             title: isChannel?.name || "",
+            badge:messageCount+userGroupsCount,
             body: body,
             data: {
               channelId: isChannel?.id,
@@ -703,8 +747,19 @@ export async function messageToGroup(
     
     if (isUser && isUser.device_token) {
       const isGroup = await Group.findByPk(groupId);
+      const messageCount =  await UserChannel.sum("recieve_message_count",{
+        where:{
+          userProfileId:isUser?.id,
+          
+        }
+      })
+  
+      const userGroupsCount  = await GroupUser.sum("message_count",{
+        where:{userProfileId:isUser?.id,}
+      })
       await sendNotificationToDevice(isUser.device_token, {
         title:  `${isGroup?.name}(Group)` || "",
+        badge:messageCount + userGroupsCount,
         body: body,
         data: {
           groupId: isGroup?.id,

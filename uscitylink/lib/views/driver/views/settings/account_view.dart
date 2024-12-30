@@ -179,7 +179,6 @@ class _AccountViewState extends State<AccountView> {
         pickedImage = tempImage;
       });
     } catch (e) {
-      print(e.toString());
       return ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
     }

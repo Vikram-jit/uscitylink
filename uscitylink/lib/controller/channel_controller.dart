@@ -8,6 +8,8 @@ import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/services/channel_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+// import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
+import 'package:flutter_app_badge_control/flutter_app_badge_control.dart';
 
 class ChannelController extends GetxController {
   var channels = <UserChannelModel>[].obs;
@@ -17,6 +19,9 @@ class ChannelController extends GetxController {
   final _truckController = TruckController();
   var currentIndex = 0.obs;
   var totalUnReadMessage = 0.obs;
+  var channelCount = 0.obs;
+  var groupCount = 0.obs;
+  RxBool isSupportBadge = false.obs;
 
   GroupController groupController = Get.put(GroupController());
   DashboardController dashboardController = Get.put(DashboardController());
@@ -26,34 +31,57 @@ class ChannelController extends GetxController {
     currentIndex.listen((index) {
       if (index == 0) {
         dashboardController.getDashboard();
+        getCount();
       }
       if (index == 1) {
         getUserChannels();
+        getCount();
       }
       if (index == 2) {
         _truckController.fetchTrucks();
+        getCount();
       }
     });
     innerTabIndex.listen((index) {
       if (index == 0) {
         getUserChannels();
+        getCount();
       }
       if (index == 1) {
         groupController.getUserGroups();
+        getCount();
       }
     });
   }
 
   void getUserChannels() {
+    getCount();
     loading.value = true;
     totalUnReadMessage.value = 0;
     __channelService.getUserChannels().then((response) {
       channels.value = response.data;
       loading.value = false;
-      response.data.forEach((item) => {
-            totalUnReadMessage.value =
-                totalUnReadMessage.value + item.recieve_message_count!
-          });
+    }).onError((error, stackTrace) {
+      loading.value = false;
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void getCount() {
+    loading.value = true;
+    totalUnReadMessage.value = 0;
+
+    __channelService.getCount().then((response) async {
+      FlutterAppBadgeControl.isAppBadgeSupported().then((res) async {
+        print(res);
+        await FlutterAppBadgeControl.updateBadgeCount(response.data.total ?? 0);
+      });
+      // await FlutterDynamicIcon.setApplicationIconBadgeNumber(
+      //     response.data.total ?? 0);
+      totalUnReadMessage.value = response.data.total ?? 0;
+      channelCount.value = response.data.channel ?? 0;
+      groupCount.value = response.data.group ?? 0;
+      loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
       Utils.snackBar('Error', error.toString());

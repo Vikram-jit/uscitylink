@@ -15,6 +15,7 @@ interface NotificationMessage {
   title: string;
   body: string;
   data: any;
+  badge:number
 }
 
 interface DataMessage {
@@ -26,13 +27,14 @@ export const sendNotificationToDevice = async (
   deviceToken: string,
   message: NotificationMessage
 ) => {
-  const { title, body, data } = message;
+  const { title, body, data ,badge} = message;
 
   const messagePayload = {
     notification: {
       title: title,
       body: body,
       // sound: "default"
+     
     },
     token: deviceToken,
     // priority: "high",
@@ -46,6 +48,7 @@ export const sendNotificationToDevice = async (
       payload: {
         aps: {
           sound: "default",
+          badge:badge
         },
       },
     },

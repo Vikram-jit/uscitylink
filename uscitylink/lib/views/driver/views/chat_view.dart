@@ -8,6 +8,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
 import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
+import 'package:badges/badges.dart' as badges;
 
 class ChatView extends StatefulWidget {
   const ChatView({super.key});
@@ -86,9 +87,45 @@ class _ChatViewState extends State<ChatView>
           indicatorColor: Colors.white,
           onTap: (index) => channelController.setInnerTabIndex(index),
           controller: _tabController,
-          tabs: const [
-            Tab(text: "Channels"),
-            Tab(text: "Groups"),
+          tabs: [
+            Obx(() {
+              // Check if unread messages are more than 0
+              if (channelController.channelCount.value > 0) {
+                // Show the badge if unread messages > 0
+                return Tab(
+                  child: badges.Badge(
+                    position: badges.BadgePosition.topEnd(top: -15, end: -15),
+                    badgeContent: Text(
+                      '${channelController.channelCount.value}',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    child: Text('Channels'),
+                  ),
+                );
+              } else {
+                // No badge if unread messages are 0
+                return const Tab(text: 'Channels');
+              }
+            }),
+            Obx(() {
+              // Check if unread messages are more than 0
+              if (channelController.groupCount.value > 0) {
+                // Show the badge if unread messages > 0
+                return Tab(
+                  child: badges.Badge(
+                    position: badges.BadgePosition.topEnd(top: -15, end: -15),
+                    badgeContent: Text(
+                      '${channelController.groupCount.value}',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    child: Text('Groups'),
+                  ),
+                );
+              } else {
+                // No badge if unread messages are 0
+                return const Tab(text: 'Groups');
+              }
+            }),
           ],
         ),
       ),

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic to the specific IP address -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Allow cleartext traffic for localhost -->
+        <domain includeSubdomains="true">aa55-2401-4900-8147-210-712e-349a-e54e-3303.ngrok-free</domain>
+
+        <!-- Allow cleartext traffic for the specific IP address -->
+        <domain includeSubdomains="true">52.9.12.189</domain>
+    </domain-config>
+</network-security-config>

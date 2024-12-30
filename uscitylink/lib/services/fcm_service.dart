@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'dart:io' show Platform;
 
 import 'package:uscitylink/routes/app_routes.dart';
@@ -17,6 +18,8 @@ class FCMService extends GetxController {
       FlutterLocalNotificationsPlugin();
 
   AuthService _authService = AuthService();
+  ChannelController _channelController = Get.put(ChannelController());
+
   RxString fcmToken = ''.obs;
 
   SocketService socketService = Get.find<SocketService>();
@@ -32,7 +35,7 @@ class FCMService extends GetxController {
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings(
-            'app_icon'); // Make sure to add an icon to your assets
+            'ic_launcher'); // Make sure to add an icon to your assets
 
     const DarwinInitializationSettings iosInitializationSettings =
         DarwinInitializationSettings(
@@ -133,24 +136,23 @@ class FCMService extends GetxController {
     });
 
     // Listen to foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print('Received a message in the foreground:');
-
+      // Initialize the badge count to 0
       var data = jsonEncode(message.data);
-      print(data);
-      // if (data) {
-
+      _channelController.getCount();
       _showNotification(data, message.notification?.title ?? '',
           message.notification?.body ?? '');
       // }
     });
 
     // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     FirebaseMessaging.instance
         .getInitialMessage()
-        .then((RemoteMessage? message) {
+        .then((RemoteMessage? message) async {
+      // await FlutterDynamicIcon.setApplicationIconBadgeNumber(20);
       if (message != null) {
         // Handle the notification and navigate to the desired screen
         var data = message.data;
@@ -262,12 +264,21 @@ class FCMService extends GetxController {
       }
     } else if (Platform.isAndroid) {
       // Android permission request
-      NotificationSettings settings =
-          await _firebaseMessaging.getNotificationSettings();
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        print('Android permissions granted.');
+      if (Platform.version.startsWith('33') || Platform.isAndroid) {
+        // Android 13+ (API 33) requires runtime permission to post notifications
+        NotificationSettings settings =
+            await FirebaseMessaging.instance.requestPermission();
+        if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+          print('Android permissions granted.');
+        } else if (settings.authorizationStatus ==
+            AuthorizationStatus.provisional) {
+          print('Android provisional permission granted.');
+        } else {
+          print('Android permission denied.');
+        }
       } else {
-        print('Android permissions not granted.');
+        // For Android 12 and below, FirebaseMessaging automatically handles permissions.
+        print('Android 12 and below: Permissions are granted automatically');
       }
     }
   }
@@ -278,10 +289,12 @@ class FCMService extends GetxController {
     // Android specific details
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'your_channel_id',
-      'your_channel_name',
-      importance: Importance.high,
-      priority: Priority.high,
+      'high_importance_channel', // The same channel ID used when creating the channel
+      'High Importance Notifications',
+      channelDescription:
+          'This channel is used for high importance notifications.',
+      importance: Importance.high, // High priority
+      priority: Priority.high, // High priority
       playSound: true,
     );
 
@@ -319,20 +332,21 @@ class FCMService extends GetxController {
     }
   }
 
-  // Handler for background messages
-  static Future<void> _firebaseMessagingBackgroundHandler(
-      RemoteMessage message) async {
+// Handler for background messages
+  @pragma('vm:entry-point')
+  Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     print('Handling a background message: ${message.notification?.title}');
-
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'your_channel_id',
-      'your_channel_name',
-      importance: Importance.high,
-      priority: Priority.high,
+      'high_importance_channel', // The same channel ID used when creating the channel
+      'High Importance Notifications',
+      channelDescription:
+          'This channel is used for high importance notifications.',
+      importance: Importance.high, // High priority
+      priority: Priority.high, // High priority
       playSound: true,
     );
 
@@ -347,6 +361,7 @@ class FCMService extends GetxController {
       android: androidDetails,
       iOS: iosDetails,
     );
+
     String? channelId = message.data['channelId'];
     String? title = message.data['title'];
     String? body = message.data['message'];

@@ -1,4 +1,4 @@
-package com.example.uscitylink
+package com.uscitylink.app
 
 import io.flutter.embedding.android.FlutterActivity
 
