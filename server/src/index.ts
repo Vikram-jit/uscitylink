@@ -12,6 +12,7 @@ import { UserProfile } from "./models/UserProfile";
 import Role from "./models/Role";
 import userRoutes from "./routes/userRoutes";
 import channelRoutes from "./routes/channelRoutes";
+import channelStaffRoutes from "./routes/staff/channelRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import yardRoutes from "./routes/yardRoutes";
 import templateRoutes from "./routes/templateRoutes";
@@ -25,8 +26,6 @@ import Group from "./models/Group";
 
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
-import { Message } from "./models/Message";
-
 
 
 
@@ -61,6 +60,7 @@ app.use("/api/v1/message", messageRoutes);
 app.use("/api/v1/media", mediaRoutes);
 app.use("/api/v1/yard", yardRoutes);
 app.use("/api/v1/template", templateRoutes);
+app.use("/api/v1/staff/channel", channelStaffRoutes);
 
 
 // Start server

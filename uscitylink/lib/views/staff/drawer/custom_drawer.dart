@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
 
@@ -14,6 +16,8 @@ class CustomDrawer extends StatefulWidget {
 class _CustomDrawerState extends State<CustomDrawer>
     with WidgetsBindingObserver {
   final loginController = Get.put(LoginController());
+  final customDrawerController = Get.find<CustomDrawerController>();
+
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
@@ -74,7 +78,7 @@ class _CustomDrawerState extends State<CustomDrawer>
 
             // List of Drawer Items
             _buildDrawerItem(context, Icons.card_membership, 'Channel Members',
-                () => _navigateToHome(context)),
+                () => _navigateToHome(context, customDrawerController)),
             _buildDrawerItem(context, Icons.group, 'Groups',
                 () => _navigateToProfile(context)),
             _buildDrawerItem(context, Icons.contacts, 'Drivers',
@@ -109,8 +113,10 @@ class _CustomDrawerState extends State<CustomDrawer>
   }
 
   // Navigation methods
-  void _navigateToHome(BuildContext context) {
-    Navigator.pop(context);
+  void _navigateToHome(
+      BuildContext context, CustomDrawerController customDrawerController) {
+    customDrawerController.closeDrawer();
+    Get.toNamed(AppRoutes.staff_channel_member);
     // Add navigation to Home screen
   }
 

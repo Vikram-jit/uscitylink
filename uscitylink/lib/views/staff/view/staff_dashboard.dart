@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:get/get.dart';
+import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 
@@ -11,12 +13,13 @@ class StaffDashboard extends StatefulWidget {
 }
 
 class _StaffDashboardState extends State<StaffDashboard> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final CustomDrawerController _customDrawerController =
+      Get.put(CustomDrawerController());
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        key: _scaffoldKey,
+        key: _customDrawerController.scaffoldKey,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Column(
@@ -29,7 +32,7 @@ class _StaffDashboardState extends State<StaffDashboard> {
                   ),
                   onPressed: () {
                     // Open the drawer using the scaffold key
-                    _scaffoldKey.currentState?.openDrawer();
+                    _customDrawerController.openDrawer();
                   },
                 ),
 
