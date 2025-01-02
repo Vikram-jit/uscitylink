@@ -11,7 +11,9 @@ class StaffviewController extends GetxController {
     super.onInit();
     currentIndex.listen((index) {
       if (index == 0) {}
-      if (index == 1) {}
+      if (index == 1) {
+        _staffchannelController.getChnnelChatUser();
+      }
       if (index == 2) {}
       if (index == 3) {
         _staffchannelController.getUserChannels();

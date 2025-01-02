@@ -15,7 +15,9 @@ import 'package:uscitylink/views/driver/views/settings/change_password_view.dart
 import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
 import 'package:uscitylink/views/splash_view.dart';
 import 'package:uscitylink/views/staff/view/staff_channel_members_view.dart';
+import 'package:uscitylink/views/staff/view/staff_chat_view.dart';
 import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
+import 'package:uscitylink/views/staff/view/staff_message_view.dart';
 import 'package:uscitylink/views/staff/view/staff_view.dart';
 
 class AppRoutes {
@@ -45,6 +47,7 @@ class AppRoutes {
 
   static const String staff_dashboard = "/staff_dashboard";
   static const String staff_channel_member = "/staff_channel_member";
+  static const String staff_user_message = "/staff_user_message";
 
   static final routes = [
     GetPage(
@@ -189,5 +192,17 @@ class AppRoutes {
       name: AppRoutes.staff_channel_member,
       page: () => StaffChannelMembersView(),
     ),
+    GetPage(
+        name: AppRoutes.staff_user_message,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['channelId'];
+          final name = args['name'];
+          final userId = args['userId'];
+
+          return StaffMessageView(
+              channelId: channelId, userId: userId, name: name);
+        }),
   ];
 }

@@ -1,6 +1,7 @@
 // ignore_for_file: unnecessary_set_literal
 
 import 'package:get/get.dart';
+import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/model/staff/channel_model.dart';
 import 'package:uscitylink/model/staff/driver_model.dart';
@@ -13,12 +14,11 @@ class StaffchannelController extends GetxController {
   var drivers = <DriverModel>[].obs;
   var loading = false.obs;
   var selectedDriversIds = <String>[].obs;
-
+  var channelChatUser = ChannelChatUserModel().obs;
   final __channelService = ChannelService();
 
   void getUserChannels() {
     loading.value = true;
-
     __channelService.getChannelList().then((response) {
       channels.value = response.data;
       loading.value = false;
@@ -29,24 +29,33 @@ class StaffchannelController extends GetxController {
   }
 
   Future<void> getChannelMembers() async {
-    loading.value = true; // Start loading
+    loading.value = true;
 
     try {
-      // Call your API and await the result
       var response = await __channelService.getStaffChannelMember();
       channelMebers.value = response.data;
     } catch (error) {
-      // Handle any errors
       Utils.snackBar('Error', error.toString());
     } finally {
-      loading.value =
-          false; // Stop loading whether the API call was successful or not
+      loading.value = false;
+    }
+  }
+
+  Future<void> getChnnelChatUser() async {
+    loading.value = true;
+
+    try {
+      var response = await __channelService.getChatUserChannel();
+      channelChatUser.value = response.data;
+    } catch (error) {
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      loading.value = false;
     }
   }
 
   Future<void> getDrivers() async {
     loading.value = true;
-
     try {
       selectedDriversIds.value = [];
       var response = await __channelService.getStaffDrivers();
@@ -65,21 +74,50 @@ class StaffchannelController extends GetxController {
     }
   }
 
-  void addMemberIntoChannel(String id, bool value) {
+  void addMemberIntoChannel(String id, bool value) async {
     loading.value = true;
     var index = drivers.indexWhere((member) => member.id == id);
     if (index.isNegative == false) {
       drivers[index].isChannelExist = value;
 
       if (value) {
-        selectedDriversIds.add(drivers[index]!.profiles![0].id!);
+        selectedDriversIds.refresh();
       } else {
-        selectedDriversIds.remove(id);
+        selectedDriversIds.remove(drivers[index]!.profiles![0].id!);
+        selectedDriversIds.refresh();
       }
 
       drivers.refresh();
+
+      var response = await __channelService
+          .updateChannelMembers(drivers[index]!.profiles![0].id!);
+
+      if (response.status) {
+        await getChannelMembers();
+        await getChnnelChatUser();
+      }
+
       loading.value = false;
     }
     loading.value = false;
+  }
+
+  Future<void> updateActiveChannel(String id) async {
+    loading.value = true;
+
+    try {
+      var response = await __channelService.updateActiveChannel(id);
+      channelMebers.clear();
+      selectedDriversIds.clear();
+
+      getUserChannels();
+      getChnnelChatUser();
+      channelChatUser.refresh();
+      channels.refresh();
+    } catch (error) {
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      loading.value = false;
+    }
   }
 }

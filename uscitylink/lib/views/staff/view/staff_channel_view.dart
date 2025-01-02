@@ -83,7 +83,7 @@ class _StaffChannelViewState extends State<StaffChannelView> {
                     title: Text('${channel.name}'),
                     trailing: InkWell(
                       onTap: () {
-                        print("Action ${index + 1} selected");
+                        _channelController.updateActiveChannel(channel.id!);
                       },
                       child: Container(
                         decoration: BoxDecoration(
