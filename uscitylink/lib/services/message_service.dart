@@ -34,7 +34,7 @@ class MessageService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getChannelMessages: $e');
     }
   }
 
@@ -62,7 +62,7 @@ class MessageService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getMedia: $e');
     }
   }
 

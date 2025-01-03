@@ -30,15 +30,13 @@ void main() async {
     if (token != null && token.isNotEmpty) {
       await fcmService.updateDeviceToken(token);
     }
+    Get.lazyPut(() => MessageController());
   }
   //BackgroundService.start();
-  Get.lazyPut(() => MessageController());
 
-  // Set the status bar color (Android only)
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.blue, // Set your color here
-    statusBarIconBrightness:
-        Brightness.light, // Set icon brightness: light or dark
+    statusBarIconBrightness: Brightness.light,
   ));
   runApp(const MyApp());
 }

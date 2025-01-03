@@ -29,7 +29,7 @@ class DocumentService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error document: $e');
     }
   }
 
@@ -51,7 +51,7 @@ class DocumentService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error dd\ocument : $e');
     }
   }
 }

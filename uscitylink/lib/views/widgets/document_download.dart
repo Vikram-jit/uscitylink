@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:get/get.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:uscitylink/controller/document_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:path_provider/path_provider.dart';
@@ -65,16 +67,12 @@ class DocumentDownload extends StatelessWidget {
         ),
         body: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              // Handle Image File Preview
               if (['png', 'jpg', 'jpeg'].contains(extension))
                 _buildImagePreview(file)
-              // Handle PDF File Preview
               else if (extension == 'pdf')
                 _buildPdfPreview(file)
-              // Handle Unsupported File Types
               else
                 const Center(
                     child: Text("Unsupported File Type",
@@ -151,21 +149,26 @@ class DocumentDownload extends StatelessWidget {
   // Widget to build the image preview
   Widget _buildImagePreview(String imageUrl) {
     return Center(
-      child: Image.network(
-        imageUrl,
-        width: double.infinity,
-        height: 400,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            return child; // Image loaded
-          } else {
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.error, size: 40, color: Colors.red);
-        },
+      child: Container(
+        constraints: BoxConstraints
+            .expand(), // Ensure the container takes the full screen
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          fit: BoxFit
+              .contain, // This will make the image fit within the screen while preserving aspect ratio
+          imageBuilder: (context, imageProvider) {
+            return PhotoView(
+              imageProvider: imageProvider,
+              minScale: PhotoViewComputedScale
+                  .contained, // Image will be contained within the screen
+              maxScale: PhotoViewComputedScale
+                  .covered, // Image can zoom up to cover the screen
+            );
+          },
+          placeholder: (context, url) =>
+              Center(child: CircularProgressIndicator()),
+          errorWidget: (context, url, error) => Icon(Icons.error),
+        ),
       ),
     );
   }

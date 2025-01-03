@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'dart:io' show Platform;
 
 import 'package:uscitylink/routes/app_routes.dart';
@@ -16,7 +17,8 @@ class FCMService extends GetxController {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-
+  UserPreferenceController userPreferenceController =
+      UserPreferenceController();
   AuthService _authService = AuthService();
   ChannelController _channelController = Get.put(ChannelController());
 
@@ -126,7 +128,12 @@ class FCMService extends GetxController {
     String? token = await _firebaseMessaging.getToken();
     if (token != null) {
       fcmToken.value = token;
-      await updateDeviceToken(token);
+      userPreferenceController.getToken().then((value) async {
+        if (value == null || value.isEmpty) {
+        } else {
+          await updateDeviceToken(token);
+        }
+      });
     }
 
     // Listen to token refresh events

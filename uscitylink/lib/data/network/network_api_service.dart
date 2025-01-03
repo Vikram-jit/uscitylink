@@ -74,7 +74,6 @@ class NetworkApiService extends BaseApiServices {
 
   Future putApi(dynamic data, String url) async {
     try {
-      print(jsonEncode(data));
       Utils.showLoader();
       dynamic responseJson;
       final headers = {

@@ -82,61 +82,63 @@ class _OtpViewState extends State<OtpView> {
         title: const Text('Enter OTP'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Get.back(), // Go back to the previous screen
+          onPressed: () => {Get.back()},
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(18.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const LogoWidgets(),
-            const Text(
-              'Verification Code',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(
-              height: TDeviceUtils.getScreenHeight() * 0.01,
-            ),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                children: [
-                  const TextSpan(
-                    text: 'Please enter the OTP sent to ',
-                    style: TextStyle(fontWeight: FontWeight.normal),
-                  ),
-                  TextSpan(
-                    text: widget.email,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const TextSpan(
-                    text: '.',
-                    style: TextStyle(fontWeight: FontWeight.normal),
-                  ),
-                ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(18.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const LogoWidgets(),
+              const Text(
+                'Verification Code',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 24),
-            OtpInputField(onOtpChanged: _submitOtp),
-            SizedBox(
-              height: TDeviceUtils.getScreenHeight() * 0.02,
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: _remainingTime == 0
-                    ? _resendOtp
-                    : null, // Disable button if timer is running
-                child: _remainingTime == 0
-                    ? const Text('Please waiting re-send otp...')
-                    : Text('Resend OTP in ${_formatTime(_remainingTime)}'),
+              SizedBox(
+                height: TDeviceUtils.getScreenHeight() * 0.01,
               ),
-            ),
-          ],
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  children: [
+                    const TextSpan(
+                      text: 'Please enter the OTP sent to ',
+                      style: TextStyle(fontWeight: FontWeight.normal),
+                    ),
+                    TextSpan(
+                      text: widget.email,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const TextSpan(
+                      text: '.',
+                      style: TextStyle(fontWeight: FontWeight.normal),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              OtpInputField(onOtpChanged: _submitOtp),
+              SizedBox(
+                height: TDeviceUtils.getScreenHeight() * 0.02,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _remainingTime == 0
+                      ? _resendOtp
+                      : null, // Disable button if timer is running
+                  child: _remainingTime == 0
+                      ? const Text('Please waiting re-send otp...')
+                      : Text('Resend OTP in ${_formatTime(_remainingTime)}'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -117,7 +117,7 @@ class AuthService {
 
     if (response != null && response['data'] != null) {
       Profiles userProfile = Profiles.fromJson(response['data']);
-      print(jsonEncode(response['data']));
+
       return ApiResponse<Profiles>(
         data: userProfile,
         message: response['message'] ?? 'User Profile successful',

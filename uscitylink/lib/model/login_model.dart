@@ -1,3 +1,5 @@
+import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
+
 class LoginModel {
   String? id;
   String? phoneNumber;
@@ -63,24 +65,25 @@ class Profiles {
   String? createdAt;
   String? updatedAt;
   Role? role;
+  User? user;
 
-  Profiles({
-    this.id,
-    this.userId,
-    this.username,
-    this.profilePic,
-    this.status,
-    this.roleId,
-    this.lastMessageId,
-    this.isOnline,
-    this.deviceId,
-    this.deviceToken,
-    this.platform,
-    this.lastLogin,
-    this.createdAt,
-    this.updatedAt,
-    this.role,
-  });
+  Profiles(
+      {this.id,
+      this.userId,
+      this.username,
+      this.profilePic,
+      this.status,
+      this.roleId,
+      this.lastMessageId,
+      this.isOnline,
+      this.deviceId,
+      this.deviceToken,
+      this.platform,
+      this.lastLogin,
+      this.createdAt,
+      this.updatedAt,
+      this.role,
+      this.user});
 
   // Factory constructor to create a Profiles from JSON
   factory Profiles.fromJson(Map<String, dynamic> json) {
@@ -100,6 +103,7 @@ class Profiles {
       createdAt: json['createdAt'],
       updatedAt: json['updatedAt'],
       role: json['role'] != null ? Role.fromJson(json['role']) : null,
+      user: json['user'] != null ? User.fromJson(json['user']) : null,
     );
   }
 
@@ -121,6 +125,7 @@ class Profiles {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'role': role?.toJson(),
+      'user': user?.toJson(),
     };
   }
 }

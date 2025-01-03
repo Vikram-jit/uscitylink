@@ -86,7 +86,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
                   SizedBox(height: TDeviceUtils.getScreenHeight() * 0.01),
                   Obx(() {
                     return Text(
-                        "${loginController.userProfile.isNotEmpty ? loginController.userProfile.first.username : ""}",
+                        "${loginController.userProfile.value != null ? loginController.userProfile.value.username : ""}",
                         style: Theme.of(context).textTheme.headlineLarge);
                   }),
                 ],

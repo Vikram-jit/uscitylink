@@ -31,7 +31,7 @@ class GroupService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching group: $e');
     }
   }
 
@@ -53,7 +53,7 @@ class GroupService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching groupbyid: $e');
     }
   }
 }

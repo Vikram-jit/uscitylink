@@ -66,7 +66,6 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
-
     // Calculate total pages (for pagination metadata)
     const totalCount = totalTrucks[0].total;
     const totalPages = Math.ceil(totalCount / pageSize);

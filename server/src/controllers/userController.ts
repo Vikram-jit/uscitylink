@@ -273,7 +273,7 @@ export async function getUserProfile(
         }
       ],
     });
-
+  console.log(user)
     return res.status(200).json({
       status: true,
       message: `Get Profile User Successfully.`,

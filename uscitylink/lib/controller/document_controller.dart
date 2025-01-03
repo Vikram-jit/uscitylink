@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:gal/gal.dart';
 import 'package:get/get.dart';
 // import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,7 +19,7 @@ class DocumentController extends GetxController {
 
   // Function to save image to gallery
   Future<void> saveImageToGallery(String imageUrl) async {
-    Utils.showLoader();
+    // Utils.showLoader();
     // Show loader while saving
     isSaving.value = true;
     isDownloading.value = true; // Show downloading indicator
@@ -26,7 +27,6 @@ class DocumentController extends GetxController {
     // Request storage permission (for Android)
     PermissionStatus status = await Permission.storage.request();
     if (!status.isGranted) {
-      Utils.hideLoader();
       errorMessage.value = "Permission Denied!";
       showErrorSnackBar("Permission Denied!"); // Show snack bar
       isSaving.value = false;
@@ -40,8 +40,7 @@ class DocumentController extends GetxController {
           await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
       final Uint8List bytes = data.buffer.asUint8List();
 
-      // Save the image to gallery
-      // final result = await ImageGallerySaver.saveImage(bytes);
+      await Gal.putImageBytes(bytes);
       // if (result['isSuccess']) {
       //   Utils.hideLoader();
       //   saveSuccess.value = true;
@@ -54,15 +53,17 @@ class DocumentController extends GetxController {
       //   errorMessage.value = 'Failed to Save Image!';
       //   showErrorSnackBar("Failed to Save Image!"); // Show error snackbar
       // }
-      Utils.hideLoader();
+      //Utils.hideLoader();
     } catch (e) {
-      Utils.hideLoader();
-      // Handle any errors during the saving process
+      //Utils.hideLoader();
+
       saveSuccess.value = false;
       errorMessage.value = 'Error saving image: $e';
       showErrorSnackBar("Error saving image: $e"); // Show error snackbar
     } finally {
-      Utils.hideLoader();
+      saveSuccess.value = true;
+      showSuccessSnackBar("Image Saved Successfully!");
+      //Utils.hideLoader();
       isSaving.value = false; // Set saving state to false when done
       isDownloading.value = false; // Set downloading state to false when done
     }
@@ -89,7 +90,7 @@ class DocumentController extends GetxController {
 
       // Get the directory where we want to save the file
       final directory = await getApplicationSupportDirectory();
-      print(directory.path);
+
       final filePath = '${directory.path}/downloaded_document.pdf';
 
       // Save the PDF file to local storage

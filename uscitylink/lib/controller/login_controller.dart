@@ -28,7 +28,7 @@ class LoginController extends GetxController {
   final emailFoucsNode = FocusNode().obs;
   final passwordFoucsNode = FocusNode().obs;
 
-  var userProfile = <Profiles>{}.obs; // A reactive Set of Profiles
+  var userProfile = Profiles().obs; // A reactive Set of Profiles
   var currentIndex = 0.obs;
 
   @override
@@ -49,35 +49,139 @@ class LoginController extends GetxController {
     Map data = {"email": emailController.value.text};
     __authService.login(data).then((value) {
       if (value.status == true) {
-        showAdaptiveActionSheet(
-          context: context,
-          actions: <BottomSheetAction>[
-            BottomSheetAction(
-              title: const Text(
-                'Send OTP',
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
-              ),
-              onPressed: (_) {
-                sendOtp(context, emailController.value.text);
-              },
+        if (value.data.profiles?.length == 2) {
+          showAdaptiveActionSheet(
+            context: context,
+            title: Text(
+              "Select Profile",
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-            BottomSheetAction(
-              title: const Text(
-                'Use Password',
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
+            actions: <BottomSheetAction>[
+              if (value?.data?.profiles?[0] != null)
+                BottomSheetAction(
+                  title: Text(
+                    '${value.data.profiles?[0].role?.name?.toUpperCase()}',
+                    style: TextStyle(
+                        color: Colors.blue, fontWeight: FontWeight.w600),
+                  ),
+                  onPressed: (_) {
+                    showAdaptiveActionSheet(
+                      context: context,
+                      actions: <BottomSheetAction>[
+                        BottomSheetAction(
+                          title: const Text(
+                            'Send OTP',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
+
+                            sendOtp(context, emailController.value.text);
+                          },
+                        ),
+                        BottomSheetAction(
+                          title: const Text(
+                            'Use Password',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
+
+                            Get.to(() => PasswordView(
+                                email: emailController.value.text,
+                                role: value.data.profiles?[0].role?.name
+                                    as String));
+                            //Navigator.of(context).pop();
+                            // Pass email to Password view
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              if (value?.data?.profiles?[1] != null)
+                BottomSheetAction(
+                  title: Text(
+                    '${value.data.profiles?[1].role?.name?.toUpperCase()}',
+                    style: TextStyle(
+                        color: Colors.blue, fontWeight: FontWeight.w600),
+                  ),
+                  onPressed: (_) {
+                    showAdaptiveActionSheet(
+                      context: context,
+                      actions: <BottomSheetAction>[
+                        BottomSheetAction(
+                          title: const Text(
+                            'Send OTP',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
+
+                            sendOtp(context, emailController.value.text);
+                          },
+                        ),
+                        BottomSheetAction(
+                          title: const Text(
+                            'Use Password',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
+
+                            Get.to(() => PasswordView(
+                                email: emailController.value.text,
+                                role: value.data.profiles?[1].role?.name
+                                    as String));
+                            //Navigator.of(context).pop();
+                            // Pass email to Password view
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+            ],
+          );
+        } else {
+          showAdaptiveActionSheet(
+            context: context,
+            actions: <BottomSheetAction>[
+              BottomSheetAction(
+                title: const Text(
+                  'Send OTP',
+                  style: TextStyle(
+                      color: Colors.blue, fontWeight: FontWeight.w600),
+                ),
+                onPressed: (_) {
+                  sendOtp(context, emailController.value.text);
+                },
               ),
-              onPressed: (_) {
-                Get.to(() => PasswordView(
-                    email: emailController.value.text,
-                    role: value.data.profiles?[0].role?.name as String));
-                //Navigator.of(context).pop();
-                // Pass email to Password view
-              },
-            ),
-          ],
-        );
+              BottomSheetAction(
+                title: const Text(
+                  'Use Password',
+                  style: TextStyle(
+                      color: Colors.blue, fontWeight: FontWeight.w600),
+                ),
+                onPressed: (_) {
+                  Get.to(() => PasswordView(
+                      email: emailController.value.text,
+                      role: value.data.profiles?[0].role?.name as String));
+                  //Navigator.of(context).pop();
+                  // Pass email to Password view
+                },
+              ),
+            ],
+          );
+        }
       }
       // if (value != null) {
       //   print('Login successful: $value');
@@ -208,12 +312,7 @@ class LoginController extends GetxController {
   void getProfile() {
     __authService.getProfile().then((value) async {
       if (value.status == true) {
-        userProfile.value = {
-          Profiles(
-            id: value.data.id,
-            username: value.data.username,
-          )
-        };
+        userProfile.value = value.data;
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());

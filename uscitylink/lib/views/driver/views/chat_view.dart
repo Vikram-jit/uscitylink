@@ -21,7 +21,7 @@ class _ChatViewState extends State<ChatView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   SocketService socketService = Get.find<SocketService>();
-  ChannelController channelController = Get.put(ChannelController());
+  ChannelController channelController = Get.find<ChannelController>();
   GroupController groupController = Get.put(GroupController());
 
   @override
@@ -65,7 +65,10 @@ class _ChatViewState extends State<ChatView>
   @override
   void dispose() {
     _tabController.dispose();
-    channelController.dispose();
+    // if (channelController.initialized) {
+    //   channelController.dispose();
+    // }
+
     groupController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

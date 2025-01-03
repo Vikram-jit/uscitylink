@@ -35,7 +35,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getChannelList: $e');
     }
   }
 
@@ -62,7 +62,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getChatUserChannel: $e');
     }
   }
 
@@ -92,7 +92,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getStaffChannelMember: $e');
     }
   }
 
@@ -121,7 +121,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching getStaffDrivers: $e');
     }
   }
 
@@ -150,7 +150,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching updateChannelMembers: $e');
     }
   }
 
@@ -179,7 +179,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching channels: $e');
+      throw Exception('Error fetching updateActiveChannel: $e');
     }
   }
 }

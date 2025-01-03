@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -22,6 +24,7 @@ class _AccountViewState extends State<AccountView> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _driverNumberController = TextEditingController();
 
   File? pickedImage;
 
@@ -29,8 +32,17 @@ class _AccountViewState extends State<AccountView> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    _nameController.text = loginController.userProfile.isNotEmpty
-        ? loginController.userProfile.first.username!
+    _nameController.text = loginController.userProfile != null
+        ? loginController.userProfile.value.username!
+        : "";
+    _emailController.text = loginController.userProfile != null
+        ? loginController.userProfile.value.user?.email ?? ""
+        : "";
+    _phoneController.text = loginController.userProfile != null
+        ? loginController.userProfile.value.user?.phoneNumber ?? ""
+        : "";
+    _driverNumberController.text = loginController.userProfile != null
+        ? loginController.userProfile.value.user?.driverNumber ?? ""
         : "";
   }
 
@@ -120,6 +132,20 @@ class _AccountViewState extends State<AccountView> {
                 ),
                 keyboardType: TextInputType.phone,
               ),
+              const SizedBox(height: 20),
+
+              if (loginController.userProfile.value?.role?.name == "driver")
+                TextFormField(
+                  controller: _driverNumberController,
+                  decoration: InputDecoration(
+                    hintText: 'Driver Number',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    prefixIcon: const Icon(Icons.numbers),
+                  ),
+                  keyboardType: TextInputType.text,
+                ),
               const SizedBox(height: 20),
 
               // Save Button

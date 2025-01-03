@@ -24,7 +24,7 @@ class _DriverDashboardState extends State<DriverDashboard>
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
-    // TODO: implement initState
+    _dashboardController.getDashboard();
     super.initState();
   }
 

@@ -58,7 +58,7 @@ class _CustomDrawerState extends State<CustomDrawer>
                 return Container(
                   margin: EdgeInsets.only(top: 8),
                   child: Text(
-                    "${loginController.userProfile.isNotEmpty ? loginController.userProfile.first.username : ""}",
+                    "${loginController.userProfile.value != null ? loginController.userProfile?.value?.username : ""}",
                     style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -66,10 +66,12 @@ class _CustomDrawerState extends State<CustomDrawer>
                   ),
                 );
               }),
-              accountEmail: Text(
-                'john.doe@example.com',
-                style: TextStyle(color: Colors.white),
-              ),
+              accountEmail: Obx(() {
+                return Text(
+                  "${loginController.userProfile.value != null ? loginController.userProfile?.value?.user?.email : ""}",
+                  style: TextStyle(color: Colors.white),
+                );
+              }),
               currentAccountPicture: CircleAvatar(
                 backgroundImage: AssetImage(TImages.logoWhite),
                 radius: 40,
