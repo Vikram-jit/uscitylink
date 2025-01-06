@@ -66,8 +66,8 @@ class FilePickerController extends GetxController {
   }
 
   // Optional: Function to allow file selection based on specific extensions
-  Future<void> pickFileWithExtension(
-      String channelId, String location, String? groupId) async {
+  Future<void> pickFileWithExtension(String channelId, String location,
+      String? groupId, String? source) async {
     // Open the file picker dialog and allow only specific file types (e.g., PDFs)
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -88,8 +88,8 @@ class FilePickerController extends GetxController {
     }
   }
 
-  void uploadFile(
-      String channelId, String type, String location, String? groupId) async {
+  void uploadFile(String channelId, String type, String location,
+      String? groupId, String? source) async {
     try {
       var file = File(filePath.value);
       var res = await _apiService.fileUpload(
@@ -98,12 +98,23 @@ class FilePickerController extends GetxController {
           channelId,
           type);
       if (res.status) {
-        if (location == "group") {
-          socketService.sendGroupMessage(
-              groupId!, channelId, caption.value, res.data.key!);
+        if (source == "staff") {
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else {
+            socketService.updateStaffActiveUserChat(channelId);
+            socketService.sendMessageToUser(
+                channelId, caption.value, res.data.key!);
+          }
         } else {
-          socketService.updateActiveChannel(channelId);
-          socketService.sendMessage(caption.value, res.data.key!, channelId);
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else {
+            socketService.updateActiveChannel(channelId);
+            socketService.sendMessage(caption.value, res.data.key!, channelId);
+          }
         }
 
         Get.back();

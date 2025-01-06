@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:ffi';
 
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
+import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 
 class SocketService extends GetxController {
@@ -71,6 +74,9 @@ class SocketService extends GetxController {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().onNewMessage(data);
       }
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().onNewMessage(data);
+      }
 
       if (Get.find<ChannelController>().channels.isNotEmpty) {
         Get.find<ChannelController>().addNewMessage(data);
@@ -118,9 +124,14 @@ class SocketService extends GetxController {
     });
 
     socket.on("typingStaff", (data) {
-      print(data);
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().updateTypingStatus(data);
+      }
+    });
+
+    socket.on("typingUser", (data) {
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().updateTypingStatus(data);
       }
     });
     socket.on('pong', (_) {
@@ -243,6 +254,33 @@ class SocketService extends GetxController {
       print('Not connected to socket');
     }
   }
+
+  //staff  socket
+
+  void updateStaffActiveUserChat(String userId) {
+    socket.emit("staff_open_chat", userId);
+  }
+
+  void sendMessageToUser(String userId, String body, String? url) {
+    if (isConnected.value) {
+      socket.emit("send_message_to_user",
+          {"userId": userId, "body": body, "direction": "S", "url": url});
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
+  void staffTyping(String userId, bool isTyping) {
+    if (isConnected.value) {
+      socket.emit("typing", {"userId": userId, "isTyping": isTyping});
+    }
+  }
+
+  // void staffListeningDriverTyping(String userId, bool isTyping) {
+  //   if (isConnected.value) {
+  //     socket.on("typing", {"userId": userId, "isTyping": isTyping});
+  //   }
+  // }
 
   void logout() {
     if (isConnected.value) {

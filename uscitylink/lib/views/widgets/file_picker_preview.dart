@@ -10,6 +10,7 @@ class FilePickerPreview extends StatelessWidget {
   final String type;
   final String location;
   final String? groupId;
+  final String? source;
   // Initialize the controller
   final FilePickerController _controller = Get.put(FilePickerController());
 
@@ -18,7 +19,8 @@ class FilePickerPreview extends StatelessWidget {
       required this.channelId,
       required this.type,
       required this.location,
-      this.groupId});
+      this.groupId,
+      this.source});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +102,7 @@ class FilePickerPreview extends StatelessWidget {
                         suffixIcon: InkWell(
                           onTap: () {
                             _controller.uploadFile(
-                                channelId, type, location, groupId);
+                                channelId, type, location, groupId, source);
                           },
                           child: const Icon(
                             Icons.send,

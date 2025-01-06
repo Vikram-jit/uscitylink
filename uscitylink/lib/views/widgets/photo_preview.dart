@@ -8,6 +8,8 @@ class PhotoPreviewScreen extends StatelessWidget {
   final String type;
   final String location;
   final String? groupId;
+  final String? source;
+  final String? userId;
   // Access the controller instance
   final ImagePickerController controller = Get.find();
 
@@ -16,7 +18,9 @@ class PhotoPreviewScreen extends StatelessWidget {
       required this.channelId,
       required this.type,
       required this.location,
-      this.groupId});
+      this.groupId,
+      this.userId,
+      this.source});
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +85,8 @@ class PhotoPreviewScreen extends StatelessWidget {
                               vertical: 12, horizontal: 16),
                           suffixIcon: InkWell(
                             onTap: () {
-                              controller.uploadFile(
-                                  channelId, type, location, groupId);
+                              controller.uploadFile(channelId, type, location,
+                                  groupId, source, userId);
                             },
                             child: const Icon(
                               Icons.send,

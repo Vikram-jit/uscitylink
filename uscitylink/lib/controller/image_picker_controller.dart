@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,12 +18,13 @@ class ImagePickerController extends GetxController {
 
   final ImagePicker _picker = ImagePicker();
   var isLoading = false.obs; // Loading state for image
-  Future<void> pickImageFromCamera(
-      String channelId, String location, String? groupId) async {
+  Future<void> pickImageFromCamera(String channelId, String location,
+      String? groupId, String? source, String? userId) async {
     try {
       isLoading.value = true;
       selectedSource.value = "camera";
-      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+      final XFile? image =
+          await _picker.pickImage(source: ImageSource.camera, imageQuality: 25);
       if (image != null) {
         selectedImage.value = File(image.path);
         isLoading.value = false;
@@ -31,6 +33,8 @@ class ImagePickerController extends GetxController {
               type: "media",
               location: location,
               groupId: groupId,
+              source: source,
+              userId: userId,
             ));
       }
     } catch (e) {
@@ -38,42 +42,56 @@ class ImagePickerController extends GetxController {
     }
   }
 
-  Future<void> pickImageFromGallery(
-      String channelId, String location, String? groupId) async {
+  Future<void> pickImageFromGallery(String channelId, String location,
+      String? groupId, String source, String userId) async {
     try {
       selectedSource.value = "gallery";
       isLoading.value = true;
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _picker.pickImage(
+          source: ImageSource.gallery, imageQuality: 25);
 
       if (image != null) {
         selectedImage.value = File(image.path);
         isLoading.value = false;
         Get.to(() => PhotoPreviewScreen(
-              channelId: channelId,
-              type: "media",
-              location: location,
-              groupId: groupId,
-            ));
+            channelId: channelId,
+            type: "media",
+            location: location,
+            groupId: groupId,
+            source: source,
+            userId: userId));
       }
     } catch (e) {
       print('Error picking image from gallery: $e');
     }
   }
 
-  void uploadFile(
-      String channelId, String type, String location, String? groupId) async {
+  void uploadFile(String channelId, String type, String location,
+      String? groupId, String? source, String? userId) async {
     try {
       var res = await _apiService.fileUpload(
           selectedImage.value!,
-          "${Constant.url}/message/fileUpload?groupId=$groupId",
+          "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId",
           channelId,
           type);
+
       if (res.status) {
-        if (location == "group") {
-          socketService.sendGroupMessage(
-              groupId!, channelId, caption.value, res.data.key!);
+        if (source == "staff") {
+          print(jsonEncode(res.data));
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else {
+            socketService.sendMessageToUser(
+                userId!, caption.value, res.data.key!);
+          }
         } else {
-          socketService.sendMessage(caption.value, res.data.key!, channelId);
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else {
+            socketService.sendMessage(caption.value, res.data.key!, channelId);
+          }
         }
 
         Get.back();

@@ -410,6 +410,7 @@ export const initSocket = (httpServer: any) => {
     //Typing Staff Event
 
     socket.on("typing", (data) => {
+  
       const staff = global.staffActiveChannel[socket?.user?.id!];
       const driver = global.driverOpenChat.find(
         (e) => e.driverId == data.userId
@@ -428,6 +429,7 @@ export const initSocket = (httpServer: any) => {
     });
 
     socket.on("driverTyping", (data) => {
+      
       const userId = socket?.user?.id;
       const driver = global.driverOpenChat.find((e) => e.driverId == userId);
       Object.entries(global.staffOpenChat).map(([key, value]) => {

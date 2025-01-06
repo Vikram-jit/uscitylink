@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
@@ -13,6 +14,8 @@ class StaffChatView extends StatelessWidget {
   StaffchannelController _staffchannelController =
       Get.find<StaffchannelController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  SocketService socketService = Get.find<SocketService>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,6 +140,7 @@ class StaffChatView extends StatelessWidget {
                     key: Key(
                         '${channel?.channelId}'), // Use the unique channel ID
                     direction: DismissDirection.endToStart, // Swipe to delete
+
                     onDismissed: (direction) {
                       // Handle item removal and show a snackbar
                       ScaffoldMessenger.of(context).showSnackBar(

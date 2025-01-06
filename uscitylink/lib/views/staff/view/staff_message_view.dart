@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -7,6 +8,7 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
@@ -22,16 +24,27 @@ class StaffMessageView extends StatelessWidget {
       required this.userId,
       required this.name});
   StaffchatController _staffchatController = Get.put(StaffchatController());
+  SocketService socketService = Get.find<SocketService>();
+
+  void _sendMessage() {
+    //if (_controller.text.isNotEmpty) {
+    socketService.updateStaffActiveUserChat(userId);
+    socketService.sendMessageToUser(
+        userId, _staffchatController.messageController.text, null);
+    _staffchatController.messageController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
-    //WidgetsBinding.instance.addPostFrameCallback((_) {
-    // This ensures any state change happens after the widget build is complete.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      socketService.updateStaffActiveUserChat(userId);
+    });
     _staffchatController.getChannelMembers(userId);
-    // });
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
+              socketService.updateStaffActiveUserChat("");
               Get.back();
             },
             icon: Icon(
@@ -39,12 +52,26 @@ class StaffMessageView extends StatelessWidget {
               color: Colors.white,
             )),
         backgroundColor: TColors.primaryStaff,
-        title: Text(
-          "${name}",
-          style: Theme.of(context)
-              .textTheme
-              .headlineMedium
-              ?.copyWith(color: Colors.white),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "${name}",
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(color: Colors.white),
+            ),
+            Obx(() {
+              return Text(
+                "${_staffchatController.message.value.userProfile?.isOnline ?? false ? "online" : _staffchatController.message.value.userProfile?.lastLogin}",
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: Colors.white),
+              );
+            })
+          ],
         ),
       ),
       body: SafeArea(
@@ -102,8 +129,8 @@ class StaffMessageView extends StatelessWidget {
                           itemCount: _staffchatController
                               .message.value.messages?.length,
                           itemBuilder: (context, index) {
-                            MessageModel message =
-                                _staffchatController.message.value.messages![0];
+                            MessageModel message = _staffchatController
+                                .message.value.messages![index];
 
                             return _buildChatMessage(message, context);
                           },
@@ -111,27 +138,27 @@ class StaffMessageView extends StatelessWidget {
                       }),
                     ),
                   ),
-                  // Obx(() {
-                  //   return messageController.typing.value
-                  //       ? Align(
-                  //           alignment: Alignment.centerLeft,
-                  //           child: Container(
-                  //             decoration: BoxDecoration(
-                  //               borderRadius: BorderRadius.circular(8),
-                  //               color: Colors.grey.shade300,
-                  //             ),
-                  //             width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                  //             child: Padding(
-                  //               padding: const EdgeInsets.all(8.0),
-                  //               child: Obx(() {
-                  //                 return Text(
-                  //                     messageController.typingMessage.value);
-                  //               }),
-                  //             ),
-                  //           ),
-                  //         )
-                  //       : Container();
-                  // }),
+                  Obx(() {
+                    return _staffchatController.typing.value
+                        ? Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey.shade300,
+                              ),
+                              width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Obx(() {
+                                  return Text(
+                                      _staffchatController.typingMessage.value);
+                                }),
+                              ),
+                            ),
+                          )
+                        : Container();
+                  }),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
@@ -141,9 +168,12 @@ class StaffMessageView extends StatelessWidget {
                           child: TextField(
                             onChanged: (text) {
                               if (text.isNotEmpty) {
-                              } else {}
+                                _staffchatController.startTyping(userId);
+                              } else {
+                                _staffchatController.stopTyping(userId);
+                              }
                             },
-                            // controller: _controller,
+                            controller: _staffchatController.messageController,
                             decoration: InputDecoration(
                               hintText: "Type your message...",
                               border: OutlineInputBorder(
@@ -158,7 +188,9 @@ class StaffMessageView extends StatelessWidget {
                                   // Handle the icon press action
                                   Get.bottomSheet(
                                     AttachmentBottomSheet(
-                                      channelId: channelId,
+                                      channelId: _staffchatController!.message!
+                                          .value.userProfile!.channelId!,
+                                      userId: userId,
                                     ),
                                     isScrollControlled: true,
                                     backgroundColor: Colors.white,
@@ -171,7 +203,7 @@ class StaffMessageView extends StatelessWidget {
                         const SizedBox(width: 8),
                         // Plus button to send the message
                         GestureDetector(
-                          onTap: () {},
+                          onTap: _sendMessage,
                           child: Container(
                             height: 50,
                             width: 50,
@@ -199,13 +231,13 @@ class StaffMessageView extends StatelessWidget {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
-      alignment: message.messageDirection == "R"
+      alignment: message.messageDirection == "S"
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
-          crossAxisAlignment: message.messageDirection == "R"
+          crossAxisAlignment: message.messageDirection == "S"
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
@@ -213,13 +245,13 @@ class StaffMessageView extends StatelessWidget {
               width: TDeviceUtils.getScreenWidth(context) * 0.5,
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
-                color: message.messageDirection == "R"
+                color: message.messageDirection == "S"
                     ? Colors.blue[200]
                     : Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                crossAxisAlignment: message.messageDirection == "R"
+                crossAxisAlignment: message.messageDirection == "S"
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
@@ -237,7 +269,7 @@ class StaffMessageView extends StatelessWidget {
                     height: 5,
                   ),
                   Text(
-                    message.messageDirection == "R"
+                    message.messageDirection == "S"
                         ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
                         : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
                     style: const TextStyle(
@@ -255,7 +287,7 @@ class StaffMessageView extends StatelessWidget {
                 ],
               ),
             ),
-            if (message.messageDirection == "R")
+            if (message.messageDirection == "S")
               if (message.deliveryStatus == "sent")
                 Icon(
                   Icons.done,
@@ -277,12 +309,14 @@ class StaffMessageView extends StatelessWidget {
 
 class AttachmentBottomSheet extends StatelessWidget {
   final String channelId;
+  final String userId;
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
 
-  AttachmentBottomSheet({super.key, required this.channelId});
+  AttachmentBottomSheet(
+      {super.key, required this.channelId, required this.userId});
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +334,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "chat", "");
+                      channelId, "chat", "", "staff", userId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -319,7 +353,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromCamera(
-                      channelId, "chat", "");
+                      channelId, "chat", "", "staff", userId);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -338,7 +372,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   filePickerController.pickFileWithExtension(
-                      channelId, "chat", "");
+                      channelId, "chat", "", "staff");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

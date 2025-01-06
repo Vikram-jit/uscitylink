@@ -1,22 +1,33 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/user_message_model.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class StaffchatController {
+  SocketService _socketService = Get.find<SocketService>();
   var message = UserMessageModel().obs;
-
+  TextEditingController messageController = TextEditingController();
   final __channelService = ChatService();
-
+  var typing = false.obs;
+  var typingMessage = "".obs;
   var loading = false.obs;
+
+  Timer? typingTimer;
+  late DateTime typingStartTime;
 
   Future<void> getChannelMembers(String id) async {
     loading.value = true;
 
     try {
       var response = await __channelService.getMesssageByUserId(id);
+
       message.value = response.data;
       loading.value = false;
     } catch (error) {
@@ -25,5 +36,41 @@ class StaffchatController {
     } finally {
       loading.value = false;
     }
+  }
+
+  void updateTypingStatus(dynamic data) {
+    typing.value = data['isTyping'];
+    typingMessage.value = data['message'];
+  }
+
+  void startTyping(String userId) {
+    if (typingTimer != null && typingTimer!.isActive) {
+      typingTimer!.cancel();
+    }
+
+    _socketService.staffTyping(userId, true);
+
+    typingStartTime = DateTime.now();
+
+    typingTimer = Timer(const Duration(seconds: 1), () {
+      if (DateTime.now().difference(typingStartTime).inSeconds >= 1) {
+        stopTyping(userId);
+      }
+    });
+  }
+
+  // Stop typing event
+  void stopTyping(String userId) {
+    _socketService.staffTyping(userId, false);
+  }
+
+  void onNewMessage(dynamic data) {
+    // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
+    MessageModel newMessage =
+        MessageModel.fromJson(data); // Convert the data to MessageModel
+
+    message.value.messages
+        ?.insert(0, newMessage); // Append the new message to the list
+    message?.refresh();
   }
 }

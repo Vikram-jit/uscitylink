@@ -168,7 +168,11 @@ class _GroupMessageuiState extends State<GroupMessageui>
                 InkWell(
                     onTap: () {
                       imagePickerController.pickImageFromCamera(
-                          widget.channelId, "group", widget.groupId);
+                          widget.channelId,
+                          "group",
+                          widget.groupId,
+                          "driver_chat",
+                          "");
                     },
                     child: const Icon(
                       Icons.add_a_photo,
@@ -429,7 +433,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "group", groupId);
+                      channelId, "group", groupId, "driver_chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -448,7 +452,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromCamera(
-                      channelId, "group", groupId);
+                      channelId, "group", groupId, "driver_chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -467,7 +471,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   filePickerController.pickFileWithExtension(
-                      channelId, "group", groupId);
+                      channelId, "group", groupId, "driver_chat");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
