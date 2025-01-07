@@ -189,7 +189,9 @@ class VehicleList extends StatelessWidget {
       if (_controller.isLoading.value && _controller.trucks.isEmpty) {
         return Center(child: CircularProgressIndicator());
       }
-
+      if (_controller.trucks.isEmpty) {
+        return Center(child: Text("No any record found."));
+      }
       return ListView.builder(
         controller: ScrollController()
           ..addListener(() {

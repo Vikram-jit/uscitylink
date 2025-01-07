@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
@@ -25,6 +27,8 @@ class Messageui extends StatefulWidget {
 class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   ChannelController _channelController = Get.find<ChannelController>();
+  Timer? _channelUpdateTimer; // Timer for updating channelId
+
   late MessageController messageController;
   SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
@@ -42,6 +46,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     if (widget.channelId.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
     }
+    _startChannelUpdateTimer();
   }
 
   @override
@@ -65,14 +70,25 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         socketService.updateActiveChannel(widget.channelId);
       }
       messageController.getChannelMessages(widget.channelId);
+      _startChannelUpdateTimer();
       print("App is in the foreground");
       // socketService
       //     .connectSocket(); // Reconnect the socket when the app comes back to foreground
     }
   }
 
+  void _startChannelUpdateTimer() {
+    _channelUpdateTimer = Timer.periodic(Duration(seconds: 15), (_) {
+      if (widget.channelId.isNotEmpty) {
+        socketService.updateActiveChannel(
+            widget.channelId); // Update the active channel every 15 seconds
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _channelUpdateTimer?.cancel();
     // messageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     socketService.updateActiveChannel("");

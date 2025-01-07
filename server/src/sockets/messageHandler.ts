@@ -21,6 +21,7 @@ export async function messageToChannelToUser(
   url: string | null,
   channelId:string
 ) {
+  console.log(body,url,channelId,"dataMessage")
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -56,9 +57,9 @@ export async function messageToChannelToUser(
       const promises = Object.entries(global.staffOpenChat).map(
         async ([staffId, e]) => {
           const isSocket = global.userSockets[staffId];
-
+           
           if (
-            e.channelId === findUserChannel.channelId &&
+            e.channelId === (findUserChannel.channelId || channelId) &&
             socket?.user?.id === e.userId
           ) {
             if (isSocket) {
@@ -75,7 +76,7 @@ export async function messageToChannelToUser(
               isCheckAnyStaffOpenChat += 1;
               io.to(isSocket.id).emit(
                 SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-                message
+                messageSave
               );
             }
           } else {
@@ -84,7 +85,7 @@ export async function messageToChannelToUser(
                 const channel = await Channel.findByPk(message?.channelId);
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel`
+                  `New Message received on ${channel?.name} channel ++`
                 );
                 await UserChannel.update(
                   {
@@ -123,7 +124,7 @@ export async function messageToChannelToUser(
                 );
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received `
+                  `New Message received --- `
                 );
                 isCheckAnyStaffOpenChat += 1;
               }
@@ -164,7 +165,7 @@ export async function messageToChannelToUser(
                   message,
                 });
                 io.to(isSocket?.id).emit(
-                  "notification_new_message",
+                  "notification_new_message @@@",
                   `New Message received `
                 );
               }
@@ -176,7 +177,7 @@ export async function messageToChannelToUser(
                 const channel = await Channel.findByPk(message?.channelId);
                 if (isSocket) {
                   io.to(isSocket?.id).emit(
-                    "notification_new_message",
+                    "notification_new_message ###",
                     `New Message received on ${channel?.name} channel`
                   );
                 }
@@ -199,7 +200,7 @@ export async function messageToChannelToUser(
           },
         }
       );
-      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, messageSave);
     }
   }
 }
@@ -262,7 +263,7 @@ export async function messageToDriver(
       );
       io.to(isDriverSocket?.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-        message
+        messageSave
       );
     }
   } else {
@@ -378,7 +379,7 @@ export async function messageToDriver(
       if (isSocket) {
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          message
+          messageSave
         );
       }
     }

@@ -144,12 +144,21 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
     }
 
+    const intervalId = setInterval(() => {
+      if (userId && socket) {
+        socket.emit('staff_open_chat', userId);
+      }
+    }, 15000); // Every 15 seconds
+
+    // Cleanup the interval when the component is unmounted or userId changes
     return () => {
       if (socket) {
         socket.off('receive_message_channel');
-        socket.off('staff_open_chat', null);
+        socket.off('staff_open_chat', userId);
       }
+      clearInterval(intervalId); // Clear interval to avoid memory leaks
     };
+    
   }, [socket, userId]);
 
 
@@ -192,7 +201,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         <MediaPane userId={props.userId} source='channel' channelId={"null"}/>
       ) : (
         <>
-          {data?.data && messages.length > 0 ? (
+          {data?.status && messages.length > 0 ? (
             <>
 
               <Box

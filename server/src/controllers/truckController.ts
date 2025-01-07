@@ -25,7 +25,21 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
     const truckIds = groupUsers.map((e: any) => {
       return e?.Group?.name
     })
-
+    if (truckIds.length === 0) {
+      return res.status(200).json({
+        status: true,
+        message: "No trucks found.",
+        data: {
+          data: [],
+          pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            totalPages: 0,
+            totalItems: 0,
+          },
+        },
+      });
+    }
     // Get pagination parameters from the request query, with defaults if not provided
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
