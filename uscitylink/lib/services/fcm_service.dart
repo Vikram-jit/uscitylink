@@ -35,6 +35,7 @@ class FCMService extends GetxController {
 
   // Initialize local notifications for both iOS and Android
   Future<void> _initializeNotifications() async {
+    print("hello initial");
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings(
             'ic_launcher'); // Make sure to add an icon to your assets
@@ -55,7 +56,7 @@ class FCMService extends GetxController {
         onDidReceiveNotificationResponse:
             (NotificationResponse notificationResponse) async {
       String payload = notificationResponse?.payload ?? '';
-
+      socketService.connectSocket();
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
@@ -99,6 +100,7 @@ class FCMService extends GetxController {
                   },
                 );
               } else {
+                socketService.updateActiveChannel(decodedPayload['channelId']);
                 Get.back();
                 Get.toNamed(
                   AppRoutes.driverMessage,
@@ -159,8 +161,8 @@ class FCMService extends GetxController {
     FirebaseMessaging.instance
         .getInitialMessage()
         .then((RemoteMessage? message) async {
-      // await FlutterDynamicIcon.setApplicationIconBadgeNumber(20);
       if (message != null) {
+        socketService.connectSocket();
         // Handle the notification and navigate to the desired screen
         var data = message.data;
         if (data['type'] == "GROUP MESSAGE") {
@@ -200,55 +202,55 @@ class FCMService extends GetxController {
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var data = message.data;
 
-      if (data['type'] == "GROUP MESSAGE") {
-        if (AppRoutes.driverGroupMessage.isNotEmpty) {
-          if (Get.currentRoute == AppRoutes.driverMessage) {
-            Get.back();
-            Get.toNamed(
-              AppRoutes.driverGroupMessage,
-              arguments: {
-                'channelId': data['channelId'],
-                'name': data['name'],
-                'groupId': data['groupId']
-              },
-            );
-          } else {
-            Get.back();
-            Get.toNamed(
-              AppRoutes.driverGroupMessage,
-              arguments: {
-                'channelId': data['channelId'],
-                'name': data['name'],
-                'groupId': data['groupId']
-              },
-            );
-          }
-        }
-      } else {
-        if (AppRoutes.driverMessage.isNotEmpty) {
-          socketService.updateActiveChannel(data['channelId']);
+      // if (data['type'] == "GROUP MESSAGE") {
+      //   if (AppRoutes.driverGroupMessage.isNotEmpty) {
+      //     if (Get.currentRoute == AppRoutes.driverMessage) {
+      //       Get.back();
+      //       Get.toNamed(
+      //         AppRoutes.driverGroupMessage,
+      //         arguments: {
+      //           'channelId': data['channelId'],
+      //           'name': data['name'],
+      //           'groupId': data['groupId']
+      //         },
+      //       );
+      //     } else {
+      //       Get.back();
+      //       Get.toNamed(
+      //         AppRoutes.driverGroupMessage,
+      //         arguments: {
+      //           'channelId': data['channelId'],
+      //           'name': data['name'],
+      //           'groupId': data['groupId']
+      //         },
+      //       );
+      //     }
+      //   }
+      // } else {
+      //   if (AppRoutes.driverMessage.isNotEmpty) {
+      //     socketService.updateActiveChannel(data['channelId']);
 
-          if (Get.currentRoute == AppRoutes.driverMessage) {
-            Get.back();
-            Get.toNamed(
-              AppRoutes.driverMessage,
-              arguments: {
-                'channelId': data['channelId'],
-                'name': data['title']
-              },
-            );
-          } else {
-            Get.back();
-            Get.toNamed(
-              AppRoutes.driverMessage,
-              arguments: {
-                'channelId': data['channelId'],
-                'name': data['title']
-              },
-            );
-          }
-        }
-      }
+      //     if (Get.currentRoute == AppRoutes.driverMessage) {
+      //       Get.back();
+      //       Get.toNamed(
+      //         AppRoutes.driverMessage,
+      //         arguments: {
+      //           'channelId': data['channelId'],
+      //           'name': data['title']
+      //         },
+      //       );
+      //     } else {
+      //       Get.back();
+      //       Get.toNamed(
+      //         AppRoutes.driverMessage,
+      //         arguments: {
+      //           'channelId': data['channelId'],
+      //           'name': data['title']
+      //         },
+      //       );
+      //     }
+      //   }
+      // }
     });
   }
 
