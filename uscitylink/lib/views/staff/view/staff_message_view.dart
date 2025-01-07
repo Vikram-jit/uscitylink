@@ -270,8 +270,8 @@ class StaffMessageView extends StatelessWidget {
                   ),
                   Text(
                     message.messageDirection == "S"
-                        ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
-                        : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
+                        ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} ${message?.sender?.username}(staff)"
+                        : "${message.sender?.username} ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
                     style: const TextStyle(
                         fontSize: 10,
                         color: Colors.black54,

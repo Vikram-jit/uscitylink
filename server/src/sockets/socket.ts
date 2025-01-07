@@ -360,6 +360,8 @@ export const initSocket = (httpServer: any) => {
       "driver_open_chat",
       async (channelId) => await driverActiveChannelUpdate(socket, channelId)
     );
+
+    
     socket.on(
       "update_channel_message_count",
       async (channelId) => await unreadAllMessage(io, socket, channelId)

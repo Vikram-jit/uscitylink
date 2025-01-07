@@ -59,7 +59,6 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
-          print(payload);
           if (decodedPayload['type'] == "GROUP MESSAGE") {
             if (AppRoutes.driverGroupMessage.isNotEmpty) {
               if (Get.currentRoute == AppRoutes.driverMessage) {
@@ -100,6 +99,7 @@ class FCMService extends GetxController {
                   },
                 );
               } else {
+                Get.back();
                 Get.toNamed(
                   AppRoutes.driverMessage,
                   arguments: {
@@ -165,7 +165,7 @@ class FCMService extends GetxController {
         var data = message.data;
         if (data['type'] == "GROUP MESSAGE") {
           Utils.showLoader();
-          Timer(const Duration(seconds: 1), () {
+          Timer(const Duration(seconds: 3), () {
             socketService.addUserToGroup(data['channelId'], data['groupId']);
             socketService.updateCountGroup(data['groupId']);
 
@@ -182,7 +182,7 @@ class FCMService extends GetxController {
         } else {
           Utils.showLoader();
           Timer(
-            const Duration(seconds: 1),
+            const Duration(seconds: 3),
             () => Get.toNamed(
               AppRoutes.driverMessage,
               arguments: {
@@ -213,6 +213,7 @@ class FCMService extends GetxController {
               },
             );
           } else {
+            Get.back();
             Get.toNamed(
               AppRoutes.driverGroupMessage,
               arguments: {

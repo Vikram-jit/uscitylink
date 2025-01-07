@@ -74,6 +74,7 @@ class MessageController extends GetxController {
   void getChannelMessages(String channelId) {
     __messageService.getChannelMessages(channelId).then((response) {
       messages.value = response.data;
+      socketService.updateActiveChannel(channelId);
     }).onError((error, stackTrace) {
       print('Error: $error');
       Utils.snackBar('Error', error.toString());

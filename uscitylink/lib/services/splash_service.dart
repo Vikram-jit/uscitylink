@@ -19,8 +19,7 @@ class SplashService {
   void isLogin() {
     userPreferenceController.getToken().then((value) async {
       if (value == null || value.isEmpty) {
-        Timer(
-            const Duration(seconds: 1), () => Get.offAllNamed(AppRoutes.login));
+        Get.offAllNamed(AppRoutes.login);
       } else {
         _loginController.checkRole();
       }

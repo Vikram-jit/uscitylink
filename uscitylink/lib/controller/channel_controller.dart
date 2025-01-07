@@ -73,7 +73,6 @@ class ChannelController extends GetxController {
 
     __channelService.getCount().then((response) async {
       FlutterAppBadgeControl.isAppBadgeSupported().then((res) async {
-        print(res);
         await FlutterAppBadgeControl.updateBadgeCount(response.data.total ?? 0);
       });
       // await FlutterDynamicIcon.setApplicationIconBadgeNumber(

@@ -51,6 +51,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       // App is in the background

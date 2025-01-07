@@ -21,7 +21,6 @@ export async function messageToChannelToUser(
   url: string | null,
   channelId:string
 ) {
-  console.log(body,url,channelId,"dataMessage")
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -63,7 +62,7 @@ export async function messageToChannelToUser(
             socket?.user?.id === e.userId
           ) {
             if (isSocket) {
-              await messageSave.update(
+              await message?.update(
                 {
                   deliveryStatus: "seen",
                 },
@@ -76,7 +75,7 @@ export async function messageToChannelToUser(
               isCheckAnyStaffOpenChat += 1;
               io.to(isSocket.id).emit(
                 SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-                messageSave
+                message
               );
             }
           } else {
@@ -124,7 +123,7 @@ export async function messageToChannelToUser(
                 );
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received --- `
+                  `New Message received`
                 );
                 isCheckAnyStaffOpenChat += 1;
               }
@@ -200,7 +199,7 @@ export async function messageToChannelToUser(
           },
         }
       );
-      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, messageSave);
+      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
     }
   }
 }
@@ -251,7 +250,7 @@ export async function messageToDriver(
     findDriverSocket?.channelId == findStaffActiveChannel?.channelId
   ) {
     if (isDriverSocket) {
-      await messageSave.update(
+      await message?.update(
         {
           deliveryStatus: "seen",
         },
@@ -263,7 +262,7 @@ export async function messageToDriver(
       );
       io.to(isDriverSocket?.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-        messageSave
+        message
       );
     }
   } else {
@@ -379,7 +378,7 @@ export async function messageToDriver(
       if (isSocket) {
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          messageSave
+          message
         );
       }
     }
@@ -592,7 +591,33 @@ export async function unreadAllMessage(
         },
       }
     );
+    await Message.update(
+      {
+        deliveryStatus: "seen",
+      },
+      {
+        where: {
+          channelId: channelId,
+          userProfileId:socket?.user?.id,
+          senderId: {
+            [Op.ne]:socket?.user?.id
+          },
+        },
+      }
+    );
 
+    // Object.entries(global.staffOpenChat).map(([key,value])=>{
+     
+    //     if(value.channelId == channelId && value.userId == socket?.user?.id){
+    //       const isStaffSocket = userSockets[key]
+    //       if(isStaffSocket)
+    //       io.to(isStaffSocket?.id).emit("update_channel_sent_message_count", {
+    //         channelId,
+    //         userId:socket?.user?.id,
+    //       });
+    //     }
+    // })
+   
     io.to(socket.id).emit("update_channel_message_count", channelId);
   }
 }
