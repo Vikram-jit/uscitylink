@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/message_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
@@ -13,6 +14,8 @@ class MessageController extends GetxController {
   var typingMessage = "".obs;
   final __messageService = MessageService();
   var currentIndex = 0.obs;
+  var channelId = "".obs;
+  var name = "".obs;
 
   var isTyping = false.obs;
   // Timer for typing timeout
@@ -25,10 +28,9 @@ class MessageController extends GetxController {
 
     Map args = Get.arguments as Map? ?? {};
 
-    String channelId = args['channelId'] ?? '';
-
+    channelId.value = args['channelId'] ?? '';
     if (channelId.isNotEmpty) {
-      getChannelMessages(channelId);
+      getChannelMessages(channelId.value);
     } else {
       print("Error: channelId is empty or invalid.");
     }
@@ -75,6 +77,27 @@ class MessageController extends GetxController {
     __messageService.getChannelMessages(channelId).then((response) {
       messages.value = response.data;
       socketService.updateActiveChannel(channelId);
+    }).onError((error, stackTrace) {
+      print('Error: $error');
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void updateChannelMessagesByNotification(
+      String newChannelId, String channelName) {
+    Get.back();
+    Get.toNamed(
+      AppRoutes.driverMessage,
+      arguments: {'channelId': newChannelId, 'name': channelName},
+    );
+    channelId.value = newChannelId;
+    name.value = channelName;
+
+    messages.clear();
+
+    __messageService.getChannelMessages(newChannelId).then((response) {
+      messages.value = response.data;
+      socketService.updateActiveChannel(newChannelId);
     }).onError((error, stackTrace) {
       print('Error: $error');
       Utils.snackBar('Error', error.toString());

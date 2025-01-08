@@ -18,6 +18,9 @@ class StaffchatController {
   var typing = false.obs;
   var typingMessage = "".obs;
   var loading = false.obs;
+  var userId = "".obs;
+  var channelId = "".obs;
+  var userName = "".obs;
 
   Timer? typingTimer;
   late DateTime typingStartTime;
@@ -65,12 +68,11 @@ class StaffchatController {
   }
 
   void onNewMessage(dynamic data) {
-    // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
-    MessageModel newMessage =
-        MessageModel.fromJson(data); // Convert the data to MessageModel
+    MessageModel newMessage = MessageModel.fromJson(data);
 
-    message.value.messages
-        ?.insert(0, newMessage); // Append the new message to the list
-    message?.refresh();
+    if (userId.value == newMessage.userProfileId) {
+      message.value.messages?.insert(0, newMessage);
+      message?.refresh();
+    }
   }
 }

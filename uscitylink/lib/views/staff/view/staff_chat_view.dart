@@ -158,14 +158,50 @@ class StaffChatView extends StatelessWidget {
                     ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.all(0),
-                      leading: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.grey.shade400,
-                        child: Text(
-                          channel?.userProfile?.username?.substring(0, 1) ?? '',
-                          style: const TextStyle(
-                              color: Colors.black, fontSize: 18),
-                        ),
+                      leading: GetBuilder<StaffchannelController>(
+                        builder: (controller) {
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              CircleAvatar(
+                                radius: 25,
+                                backgroundColor: Colors.grey.shade400,
+                                child: Text(
+                                  channel?.userProfile?.username
+                                          ?.substring(0, 1)
+                                          .toUpperCase() ??
+                                      '', // Show first letter of username
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+
+                              // Online Badge in the top-right corner, wrapped in Obx
+                              if (channel?.userProfile?.isOnline ??
+                                  false) // Show badge if user is online
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Colors
+                                          .green, // Green color for online status
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors
+                                            .white, // White border around the badge
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -195,17 +231,17 @@ class StaffChatView extends StatelessWidget {
                               ),
 
                               // Badge showing unread message count
-                              // channel?.recieve_message_count != 0
-                              //     ? Badge(
-                              //         label: Text(
-                              //           channel.recieve_message_count == 0
-                              //               ? ""
-                              //               : '${channel.recieve_message_count}', // Example unread count, replace with actual count
-                              //           style: const TextStyle(fontSize: 11),
-                              //         ),
-                              //         backgroundColor: TColors.primary,
-                              //       )
-                              //     : const SizedBox(),
+                              channel?.sentMessageCount != 0
+                                  ? Badge(
+                                      label: Text(
+                                        channel?.sentMessageCount == 0
+                                            ? ""
+                                            : '${channel?.sentMessageCount}', // Example unread count, replace with actual count
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                      backgroundColor: TColors.primary,
+                                    )
+                                  : const SizedBox(),
                             ],
                           ),
                         ],
@@ -218,6 +254,10 @@ class StaffChatView extends StatelessWidget {
                         style: const TextStyle(color: Colors.black54),
                       ),
                       onTap: () {
+                        if (socketService.isConnected.value) {
+                          socketService.staffUnreadAllUserMessage(
+                              channel?.channelId, channel?.userProfile?.id);
+                        }
                         Get.toNamed(
                           AppRoutes.staff_user_message,
                           arguments: {

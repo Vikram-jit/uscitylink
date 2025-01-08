@@ -40,6 +40,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // Initialize the MessageController and fetch messages for the given channelId
     messageController = Get.put(MessageController());
+    messageController.channelId.value = widget.channelId;
+    messageController.name.value = widget.name;
     messageController.getChannelMessages(
         widget.channelId); // Fetch the messages for the given channelId
 
@@ -67,10 +69,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
-      if (!widget.channelId.isNotEmpty) {
-        socketService.updateActiveChannel(widget.channelId);
+      if (messageController.channelId.value.isNotEmpty) {
+        socketService.updateActiveChannel(messageController.channelId.value);
       }
-      messageController.getChannelMessages(widget.channelId);
+      messageController.getChannelMessages(messageController.channelId.value);
       _startChannelUpdateTimer();
       print("App is in the foreground");
       // socketService
@@ -80,15 +82,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
   void _startChannelUpdateTimer() {
     _channelUpdateTimer = Timer.periodic(Duration(seconds: 15), (_) {
-      if (widget.channelId.isNotEmpty) {
-        socketService.updateActiveChannel(
-            widget.channelId); // Update the active channel every 15 seconds
+      if (messageController.channelId.value.isNotEmpty) {
+        socketService.updateActiveChannel(messageController
+            .channelId.value); // Update the active channel every 15 seconds
       }
     });
   }
 
   @override
   void dispose() {
+    print("dispose");
     _channelUpdateTimer?.cancel();
     // messageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -99,8 +102,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
-      socketService.updateActiveChannel(widget.channelId);
-      socketService.sendMessage(_controller.text, null, widget.channelId);
+      socketService.updateActiveChannel(messageController.channelId.value);
+      socketService.sendMessage(
+          _controller.text, null, messageController.channelId.value);
       _controller.clear();
     }
   }
@@ -119,19 +123,22 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 onTap: () {
                   Get.toNamed(
                     AppRoutes.profileView,
-                    arguments: {'channelId': widget.channelId},
+                    arguments: {'channelId': messageController.channelId.value},
                   );
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.name, // Display the channel name
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(color: Colors.white),
-                    ),
+                    Obx(() {
+                      return Text(
+                        messageController
+                            .name.value, // Display the channel name
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(color: Colors.white),
+                      );
+                    })
                     // Text(
                     //   lastLogin, // Display the last login info
                     //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
@@ -157,7 +164,11 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 InkWell(
                     onTap: () {
                       imagePickerController.pickImageFromCamera(
-                          widget.channelId, "chat", "", "driver_chat", "");
+                          messageController.channelId.value,
+                          "chat",
+                          "",
+                          "driver_chat",
+                          "");
                     },
                     child: const Icon(
                       Icons.add_a_photo,
@@ -183,7 +194,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    messageController.getChannelMessages(widget.channelId);
+                    messageController
+                        .getChannelMessages(messageController.channelId.value);
                   },
                   child: Obx(() {
                     if (messageController.messages.isEmpty) {
@@ -194,7 +206,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         child: InkWell(
                           onTap: () {
                             socketService.sendMessage(
-                                "Hi", null, widget.channelId);
+                                "Hi", null, messageController.channelId.value);
                           },
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -280,7 +292,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                               // Handle the icon press action
                               Get.bottomSheet(
                                 AttachmentBottomSheet(
-                                  channelId: widget.channelId,
+                                  channelId: messageController.channelId.value,
                                 ),
                                 isScrollControlled: true,
                                 backgroundColor: Colors.white,

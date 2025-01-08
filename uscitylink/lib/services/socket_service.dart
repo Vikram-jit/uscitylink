@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:get/get.dart';
@@ -28,7 +29,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://52.9.12.189:4300?token=$token';
+    return 'http://52.9.12.189:4300/?token=$token';
   }
 
   // Method to connect to the socket server
@@ -81,6 +82,15 @@ class SocketService extends GetxController {
       if (Get.find<ChannelController>().channels.isNotEmpty) {
         Get.find<ChannelController>().addNewMessage(data);
       }
+      if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {
+        Get.find<StaffchannelController>().addNewMessage(data);
+      }
+    });
+
+    socket.on("new_message_count_update_staff", (data) {
+      if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {
+        Get.find<StaffchannelController>().addNewMessageWithouIncrement(data);
+      }
     });
 
     socket.on('update_user_channel_list', (data) {
@@ -120,6 +130,20 @@ class SocketService extends GetxController {
     socket.on("update_all_message_seen", (data) {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().updateSeenStatus(data);
+      }
+    });
+
+    socket.on("user_online_driver", (data) {
+      if (Get.isRegistered<StaffchannelController>()) {
+        if (data != null) {
+          String userId = data["userId"] ?? "";
+          String channelId = data["channelId"] ?? "";
+          bool isOnline = data["isOnline"] ?? false;
+          Get.find<StaffchannelController>()
+              .updateOnlineStatusMember(userId, channelId, isOnline);
+        } else {
+          print('Data is null');
+        }
       }
     });
 
@@ -273,6 +297,16 @@ class SocketService extends GetxController {
   void staffTyping(String userId, bool isTyping) {
     if (isConnected.value) {
       socket.emit("typing", {"userId": userId, "isTyping": isTyping});
+    }
+  }
+
+  void staffUnreadAllUserMessage(String? channelId, String? userId) {
+    if (isConnected.value) {
+      socket.emit("update_channel_sent_message_count",
+          {"channelId": channelId, "userId": userId});
+      if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {
+        Get.find<StaffchannelController>().updateCount(channelId!, userId!);
+      }
     }
   }
 

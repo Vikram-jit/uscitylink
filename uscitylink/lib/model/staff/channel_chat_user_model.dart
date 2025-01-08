@@ -1,3 +1,5 @@
+import 'package:uscitylink/model/message_model.dart';
+
 class ChannelChatUserModel {
   String? id;
   String? name;
@@ -117,6 +119,12 @@ class UserChannels {
       data['last_message'] = this.lastMessage?.toJson();
     }
     return data;
+  }
+
+  void updateWithNewMessage(
+    LastMessage message,
+  ) {
+    lastMessage = message;
   }
 }
 

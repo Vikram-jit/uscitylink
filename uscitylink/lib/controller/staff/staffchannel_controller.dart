@@ -1,6 +1,9 @@
 // ignore_for_file: unnecessary_set_literal
 
+import 'dart:convert';
+
 import 'package:get/get.dart';
+import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/model/staff/channel_model.dart';
@@ -46,6 +49,7 @@ class StaffchannelController extends GetxController {
 
     try {
       var response = await __channelService.getChatUserChannel();
+
       channelChatUser.value = response.data;
     } catch (error) {
       Utils.snackBar('Error', error.toString());
@@ -118,6 +122,103 @@ class StaffchannelController extends GetxController {
       Utils.snackBar('Error', error.toString());
     } finally {
       loading.value = false;
+    }
+  }
+
+  void updateOnlineStatusMember(
+      String userId, String channelId, bool isOnline) {
+    if (channelChatUser.value.id != null) {
+      if (channelChatUser.value.userChannels?.isNotEmpty ?? false) {
+        var member = channelChatUser.value.userChannels?.firstWhere(
+          (member) {
+            return member.userProfileId == userId;
+          },
+          orElse: () => UserChannels(),
+        );
+        if (member?.id != null) {
+          member?.userProfile?.isOnline = isOnline ?? false;
+          channelChatUser.refresh();
+        }
+      }
+    }
+  }
+
+// Update a channel with a new message
+  void updateCount(String channelId, String userId) {
+    try {
+      if (channelChatUser.value.id != null) {
+        if (channelChatUser.value.userChannels?.isNotEmpty ?? false) {
+          var member = channelChatUser.value.userChannels?.firstWhere(
+            (member) {
+              return member.userProfileId == userId &&
+                  member.channelId == channelId;
+            },
+            orElse: () => UserChannels(),
+          );
+          if (member?.id != null) {
+            member?.sentMessageCount = 0;
+            channelChatUser.refresh();
+          }
+        }
+      }
+    } catch (e) {
+      print("Error while adding new message: $e");
+    }
+  }
+
+  // Update a channel with a new message
+  void addNewMessageWithouIncrement(dynamic messageData) {
+    try {
+      LastMessage message = LastMessage.fromJson(messageData['message']);
+
+      String userId = message.userProfileId!;
+      String channelId = message.channelId!;
+
+      if (channelChatUser.value.id != null) {
+        if (channelChatUser.value.userChannels?.isNotEmpty ?? false) {
+          var member = channelChatUser.value.userChannels?.firstWhere(
+            (member) {
+              return member.userProfileId == userId &&
+                  member.channelId == channelId;
+            },
+            orElse: () => UserChannels(),
+          );
+          if (member?.id != null) {
+            member?.lastMessage = message;
+            member?.sentMessageCount = (member.sentMessageCount ?? 0) + 1;
+            channelChatUser.refresh();
+          }
+        }
+      }
+    } catch (e) {
+      print("Error while adding new message: $e");
+    }
+  }
+
+  void addNewMessage(dynamic messageData) {
+    try {
+      LastMessage message = LastMessage.fromJson(messageData);
+
+      String userId = message.userProfileId!;
+      String channelId = message.channelId!;
+
+      if (channelChatUser.value.id != null) {
+        if (channelChatUser.value.userChannels?.isNotEmpty ?? false) {
+          var member = channelChatUser.value.userChannels?.firstWhere(
+            (member) {
+              return member.userProfileId == userId &&
+                  member.channelId == channelId;
+            },
+            orElse: () => UserChannels(),
+          );
+          if (member?.id != null) {
+            member?.lastMessage = message;
+            channelChatUser.refresh();
+          }
+        }
+      }
+    } catch (e) {
+      print("Error while adding new message: $e");
     }
   }
 }

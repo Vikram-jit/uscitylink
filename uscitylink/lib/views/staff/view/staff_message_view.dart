@@ -8,6 +8,7 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/staff/user_message_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -37,6 +38,10 @@ class StaffMessageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _staffchatController.channelId.value = channelId;
+      _staffchatController.userId.value = userId;
+      _staffchatController.userName.value = name;
+
       socketService.updateStaffActiveUserChat(userId);
     });
     _staffchatController.getChannelMembers(userId);
@@ -45,6 +50,10 @@ class StaffMessageView extends StatelessWidget {
         leading: IconButton(
             onPressed: () {
               socketService.updateStaffActiveUserChat("");
+              _staffchatController.channelId.value = "";
+              _staffchatController.userId.value = "";
+              _staffchatController.userName.value = "";
+
               Get.back();
             },
             icon: Icon(

@@ -249,6 +249,11 @@ export const initSocket = (httpServer: any) => {
                     userId: key,
                     channelId: value.channelId,
                   });
+                  io.to(isSocket.id).emit("user_online_driver", {
+                    userId: userProfile?.id,
+                    channelId: value.channelId,
+                    isOnline:true
+                  });
                 }
               }
             );
@@ -388,6 +393,11 @@ export const initSocket = (httpServer: any) => {
           url
         )
     );
+
+
+    socket.on("staff_list_update_driver_online",(data)=>{
+      console.log(data)
+    })
 
     socket.on(
       "send_group_message",
@@ -551,6 +561,11 @@ export const initSocket = (httpServer: any) => {
             const isSocket = global.userSockets[key];
             if (isSocket) {
               io.to(isSocket.id).emit("user_online", null);
+              io.to(isSocket.id).emit("user_online_driver", {
+                userId: socket.user?.id,
+                channelId: value.channelId,
+                isOnline:false
+              });
             }
           });
         } else {

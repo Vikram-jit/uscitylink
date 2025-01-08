@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'dart:io' show Platform;
 
@@ -21,7 +22,7 @@ class FCMService extends GetxController {
       UserPreferenceController();
   AuthService _authService = AuthService();
   ChannelController _channelController = Get.put(ChannelController());
-
+  MessageController _messageController = Get.put(MessageController());
   RxString fcmToken = ''.obs;
 
   SocketService socketService = Get.find<SocketService>();
@@ -35,7 +36,6 @@ class FCMService extends GetxController {
 
   // Initialize local notifications for both iOS and Android
   Future<void> _initializeNotifications() async {
-    print("hello initial");
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings(
             'ic_launcher'); // Make sure to add an icon to your assets
@@ -60,6 +60,7 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
+
           if (decodedPayload['type'] == "GROUP MESSAGE") {
             if (AppRoutes.driverGroupMessage.isNotEmpty) {
               if (Get.currentRoute == AppRoutes.driverMessage) {
@@ -91,14 +92,18 @@ class FCMService extends GetxController {
               socketService.updateActiveChannel(decodedPayload['channelId']);
               // If already on the target screen, just update the state or pop the stack
               if (Get.currentRoute == AppRoutes.driverMessage) {
-                Get.back();
-                Get.toNamed(
-                  AppRoutes.driverMessage,
-                  arguments: {
-                    'channelId': decodedPayload['channelId'],
-                    'name': decodedPayload['title']
-                  },
-                );
+                _messageController.channelId.value =
+                    decodedPayload['channelId'];
+                _messageController.name.value = decodedPayload['title'];
+                _messageController.updateChannelMessagesByNotification(
+                    decodedPayload['channelId'], decodedPayload['title']);
+                // Get.toNamed(
+                //   AppRoutes.driverMessage,
+                //   arguments: {
+                //     'channelId': decodedPayload['channelId'],
+                //     'name': decodedPayload['title']
+                //   },
+                // );
               } else {
                 socketService.updateActiveChannel(decodedPayload['channelId']);
                 Get.back();
@@ -201,7 +206,7 @@ class FCMService extends GetxController {
     // Handle when the app is opened from a notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var data = message.data;
-
+      print(jsonEncode(data));
       // if (data['type'] == "GROUP MESSAGE") {
       //   if (AppRoutes.driverGroupMessage.isNotEmpty) {
       //     if (Get.currentRoute == AppRoutes.driverMessage) {

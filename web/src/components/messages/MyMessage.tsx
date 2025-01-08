@@ -105,7 +105,6 @@ export default function MyMessage() {
         userId: string;
         message: MessageModel;
       }) => {
-        console.log(userList?.id, channelId, userId, message);
 
         // Check if the current channel matches the one receiving the socket update
         if (data?.data?.id === channelId) {
