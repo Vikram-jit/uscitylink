@@ -22,7 +22,7 @@ const notificationQueue = new Queue("jobQueue", {
   },
 });
 
-notificationQueue.process(async (job) => {
+notificationQueue.process(async (job:any) => {
   const { staffId, title, body, channel_id, userName, userId } = job.data;
 
   const user = await UserProfile.findByPk(staffId);
