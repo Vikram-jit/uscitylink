@@ -96,10 +96,23 @@ export async function create(req: Request, res: Response): Promise<any> {
         }
       }
     }
+    const newGroup = await Group.findByPk(group.id,{
+      include: [
+        {
+          model: GroupChannel,
+          as: "group_channel",
+        },
+        {
+          model: Message,
+          as: "last_message",
+        },
+      ],
+    })
 
     return res.status(201).json({
       status: true,
       message: `Group Created Successfully.`,
+      data:newGroup
     });
   } catch (err: any) {
     return res

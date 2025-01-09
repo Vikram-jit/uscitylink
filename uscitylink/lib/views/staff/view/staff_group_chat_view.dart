@@ -4,6 +4,8 @@ import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
+import 'package:uscitylink/views/staff/widgets/group_tab.dart';
+import 'package:uscitylink/views/staff/widgets/truck_group_tab.dart';
 
 class StaffGroupChatView extends StatefulWidget {
   const StaffGroupChatView({super.key});
@@ -23,17 +25,21 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
   @override
   void initState() {
     super.initState();
-
+    _staffGroupController.getTrucks();
     // Initializing the tab controller with 2 tabs (Channels & Groups)
     _tabController = TabController(length: 2, vsync: this);
 
     // Listen to tab changes if needed
     _tabController.addListener(() {
       if (_tabController.index == 0 && !_tabController.indexIsChanging) {
-        // Logic when switching to Channels tab
+        _staffGroupController.type.value = "group";
+        _staffGroupController
+            .getGroups(_staffGroupController.currentPage.value);
       }
       if (_tabController.index == 1 && !_tabController.indexIsChanging) {
-        // Logic when switching to Groups tab
+        _staffGroupController.type.value = "truck";
+        _staffGroupController
+            .getGroups(_staffGroupController.currentPage.value);
       }
     });
   }
@@ -59,6 +65,30 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.amber,
+        onPressed: () {
+          _showGroupNameDialog(_staffGroupController.type.value);
+        },
+        label: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 4.0),
+              child: Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
+            ),
+            Obx(() {
+              return Text(
+                  _staffGroupController.type.value == "group"
+                      ? "Add Group"
+                      : "ADD TRUCK GROUP",
+                  style: TextStyle(color: Colors.white));
+            })
+          ],
+        ),
+      ),
       key: _scaffoldKey,
       appBar: AppBar(
         leading: IconButton(
@@ -94,16 +124,163 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
         controller: _tabController,
         children: [
           // Channels tab content
-          Center(
-            child: Text("Channels content goes here"),
-          ),
+          GroupTab(),
           // Groups tab content
-          Center(
-            child: Text("Groups content goes here"),
-          ),
+          TruckGroupTab(),
         ],
       ),
       drawer: CustomDrawer(),
+    );
+  }
+
+  // Function to show dialog
+  void _showGroupNameDialog(String type) {
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: TColors.primaryStaff,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(6),
+                ),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        type == "group" ? 'ADD GROUP' : 'ADD TRUCK GROUP',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: InkWell(
+                        onTap: () {
+                          Get.back();
+                        },
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // TextField for entering the group name
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  if (type == "group")
+                    TextField(
+                      controller: _staffGroupController.groupName,
+                      decoration: InputDecoration(
+                        hintText: 'Enter group name',
+                        helperStyle: TextStyle(color: Colors.grey.shade500),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(0)),
+                      ),
+                    ),
+                  if (type == "truck")
+                    Obx(
+                      () => SizedBox(
+                        width: double
+                            .infinity, // Makes the DropdownButton take up all available width
+                        child: DropdownButton<String>(
+                          value:
+                              _staffGroupController.selectedTruck.value.isEmpty
+                                  ? null
+                                  : _staffGroupController.selectedTruck.value,
+                          hint: Text('Select Truck Number '),
+                          // value: _staffGroupController.selectedTruck.value, // Bind the selected value here
+                          onChanged: (String? newValue) {
+                            _staffGroupController.selectedTruck.value =
+                                newValue ?? ""; // Update selected truck
+                          },
+                          items: _staffGroupController.trucks
+                              .map<DropdownMenuItem<String>>((value) {
+                            return DropdownMenuItem<String>(
+                              value: value.number,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 10),
+                                    child: Text(
+                                      "${value.number}",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall,
+                                    ),
+                                  ),
+                                  Divider()
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    )
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0, bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Submit button
+                  InkWell(
+                    onTap: () {
+                      _staffGroupController.addGroup();
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.0),
+                      decoration: BoxDecoration(
+                          color: TColors.primaryStaff,
+                          borderRadius: BorderRadius.circular(6)),
+                      height: 30,
+                      child: Center(
+                        child: Text(
+                          "submit",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  )
+                  // Close button
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

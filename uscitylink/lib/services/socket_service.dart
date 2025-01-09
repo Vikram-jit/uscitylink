@@ -14,6 +14,15 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 class SocketService extends GetxController {
   UserPreferenceController userPreferenceController =
       UserPreferenceController();
+  // late StaffchannelController _staffchannelController;
+  // @override
+  // void onInit() {
+  //   super.onInit();
+
+  //   // Inject controllers using Get.put() inside the service
+
+  //   _staffchannelController = Get.put(StaffchannelController());
+  // }
 
   late IO.Socket socket;
   var pingResponse = "No pong received yet".obs;
@@ -29,7 +38,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://52.9.12.189:4300/?token=$token';
+    return 'http://52.9.12.189:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -280,6 +289,10 @@ class SocketService extends GetxController {
   }
 
   //staff  socket
+
+  void switchStaffChannel(String channelId) {
+    socket.emit("staff_channel_update", channelId);
+  }
 
   void updateStaffActiveUserChat(String userId) {
     socket.emit("staff_open_chat", userId);

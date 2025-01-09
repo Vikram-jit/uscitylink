@@ -200,14 +200,14 @@ export async function messageToChannelToUser(
                   userId: message?.userProfileId,
                   message,
                 });
-                notificationQueue.add({
-                  staffId: staffId,
-                  title: "",
-                  body,
-                  channel_id: channelId,
-                  userId: findUserChannel.driverId,
-                  userName:findUserChannel.name
-                });
+                // notificationQueue.add({
+                //   staffId: staffId,
+                //   title: "",
+                //   body,
+                //   channel_id: channelId,
+                //   userId: findUserChannel.driverId,
+                //   userName:findUserChannel.name
+                // });
                 io.to(isSocket?.id).emit(
                   "notification_new_message @@@",
                   `New Message received `

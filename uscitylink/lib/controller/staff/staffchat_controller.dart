@@ -21,22 +21,43 @@ class StaffchatController {
   var userId = "".obs;
   var channelId = "".obs;
   var userName = "".obs;
+  var currentPage = 1.obs;
+  var totalPages = 1.obs;
 
   Timer? typingTimer;
   late DateTime typingStartTime;
 
-  Future<void> getChannelMembers(String id) async {
+  Future<void> getChannelMembers(String id, int page) async {
+    if (loading.value) return; // Prevent multiple simultaneous requests
+
     loading.value = true;
 
     try {
-      var response = await __channelService.getMesssageByUserId(id);
+      // Fetch messages from the server with pagination.
+      var response = await __channelService.getMesssageByUserId(
+          page: page, id: id, pageSize: 10);
 
-      message.value = response.data;
-      loading.value = false;
+      // Check if the response is valid
+      if (response.data != null) {
+        // Append new messages if it's not the first page
+        if (page > 1) {
+          message.value.messages?.addAll(response.data.messages ?? []);
+        } else {
+          // Reset the message list if it's the first page
+          message.value = response.data;
+        }
+
+        // Update pagination info
+        currentPage.value = response.data.pagination!.currentPage!;
+        totalPages.value = response.data.pagination!.totalPages!;
+      } else {
+        Utils.snackBar('No data', 'No messages found.');
+      }
     } catch (error) {
-      loading.value = false;
+      // Handle error by showing a snack bar
       Utils.snackBar('Error', error.toString());
     } finally {
+      // Ensure loading state is reset
       loading.value = false;
     }
   }

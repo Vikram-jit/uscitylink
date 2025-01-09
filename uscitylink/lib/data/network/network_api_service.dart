@@ -171,7 +171,9 @@ dynamic returnResponse(http.Response response) {
     case 200:
       Utils.hideLoader();
       return responseJson;
-
+    case 201:
+      Utils.hideLoader();
+      return responseJson;
     case 400:
       Utils.hideLoader();
       throw Exception(responseJson['message']);

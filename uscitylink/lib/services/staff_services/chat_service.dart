@@ -5,10 +5,14 @@ import 'package:uscitylink/model/staff/user_message_model.dart';
 
 class ChatService {
   final _apiService = NetworkApiService();
-  Future<ApiResponse<UserMessageModel>> getMesssageByUserId(String id) async {
+  Future<ApiResponse<UserMessageModel>> getMesssageByUserId({
+    int page = 1, // Default to page 1
+    int pageSize = 10, // Default to 10 items per page
+    String id = "",
+  }) async {
     try {
-      dynamic response =
-          await _apiService.getApi('${Constant.url}/staff/chat/message/$id');
+      dynamic response = await _apiService.getApi(
+          '${Constant.url}/staff/chat/message/$id?page=$page&pageSize=$pageSize');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

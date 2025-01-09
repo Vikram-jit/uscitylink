@@ -5,6 +5,7 @@ export async function staffActiveChannelUpdate(
   socket: CustomSocket,
   channelId: string
 ) {
+  console.log(channelId,"channelIdUpdate")
   const userId = socket?.user?.id!;
   
   // Check if the staffId already exists in the global.staffActiveChannel object

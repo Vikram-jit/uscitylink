@@ -8,6 +8,7 @@ import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/model/staff/channel_model.dart';
 import 'package:uscitylink/model/staff/driver_model.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/channel_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
@@ -19,7 +20,7 @@ class StaffchannelController extends GetxController {
   var selectedDriversIds = <String>[].obs;
   var channelChatUser = ChannelChatUserModel().obs;
   final __channelService = ChannelService();
-
+  SocketService _socketService = Get.find<SocketService>();
   void getUserChannels() {
     loading.value = true;
     __channelService.getChannelList().then((response) {
@@ -118,6 +119,9 @@ class StaffchannelController extends GetxController {
       getChnnelChatUser();
       channelChatUser.refresh();
       channels.refresh();
+      if (_socketService.isConnected.value) {
+        _socketService.switchStaffChannel(id);
+      }
     } catch (error) {
       Utils.snackBar('Error', error.toString());
     } finally {
