@@ -31,12 +31,12 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
 
     // Listen to tab changes if needed
     _tabController.addListener(() {
-      if (_tabController.index == 0 && !_tabController.indexIsChanging) {
+      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
         _staffGroupController.type.value = "group";
         _staffGroupController
             .getGroups(_staffGroupController.currentPage.value);
       }
-      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+      if (_tabController.index == 0 && !_tabController.indexIsChanging) {
         _staffGroupController.type.value = "truck";
         _staffGroupController
             .getGroups(_staffGroupController.currentPage.value);
@@ -107,26 +107,61 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
                 .textTheme
                 .headlineMedium
                 ?.copyWith(color: Colors.white)),
-        bottom: TabBar(
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey.shade500,
-          indicatorColor: Colors.white,
-          controller: _tabController,
-          tabs: [
-            Tab(text: 'Groups'),
-            Tab(
-              text: 'Truck Groups',
-            )
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: Column(
+            children: [
+              Container(
+                height: 50.0, // Height for the search bar
+                color: TColors.primaryStaff,
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Column(
+                  children: [
+                    Container(
+                      height: 40,
+                      child: TextField(
+                        // onChanged: _onSearchChanged,
+                        decoration: InputDecoration(
+                          hintText: "Search ...",
+                          hintStyle: TextStyle(color: Colors.grey),
+                          prefixIcon: Icon(Icons.search, color: Colors.grey),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          isDense: true,
+                          contentPadding: EdgeInsets.all(0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey.shade500,
+                indicatorColor: Colors.white,
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    text: 'Truck Groups',
+                  ),
+                  Tab(text: 'Groups'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           // Channels tab content
+          TruckGroupTab(),
           GroupTab(),
           // Groups tab content
-          TruckGroupTab(),
         ],
       ),
       drawer: CustomDrawer(),
@@ -209,6 +244,7 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
                         width: double
                             .infinity, // Makes the DropdownButton take up all available width
                         child: DropdownButton<String>(
+                          dropdownColor: Colors.white,
                           value:
                               _staffGroupController.selectedTruck.value.isEmpty
                                   ? null

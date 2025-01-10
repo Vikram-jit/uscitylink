@@ -14,7 +14,9 @@ import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
 import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
 import 'package:uscitylink/views/splash_view.dart';
+import 'package:uscitylink/views/staff/view/group/staff_group_chat_ui.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_detail.dart';
+import 'package:uscitylink/views/staff/view/group/staff_truck_group_ui.dart';
 import 'package:uscitylink/views/staff/view/staff_channel_members_view.dart';
 import 'package:uscitylink/views/staff/view/staff_chat_view.dart';
 import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
@@ -37,6 +39,7 @@ class AppRoutes {
 
   static const String driverMessage = '/driver/chat/message';
   static const String driverGroupMessage = '/driver/chat/group_message';
+  static const String staffGroupMessage = '/staff/chat/group_message_ui';
 
   static const String splashView = '/';
 
@@ -50,6 +53,7 @@ class AppRoutes {
   static const String staff_channel_member = "/staff_channel_member";
   static const String staff_user_message = "/staff_user_message";
   static const String staff_group_detail = "/staff_group_detail";
+  static const String staff_truck_group_detail = "/staff_truck_group_detail";
 
   static final routes = [
     GetPage(
@@ -115,6 +119,21 @@ class AppRoutes {
           final name = args['name'];
 
           return GroupMessageui(
+            channelId: channelId,
+            groupId: groupId,
+            name: name,
+          );
+        }),
+    GetPage(
+        name: AppRoutes.staffGroupMessage,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+          final channelId = args['channelId'];
+          final groupId = args['groupId'];
+          final name = args['name'];
+
+          return StaffGroupChatUi(
             channelId: channelId,
             groupId: groupId,
             name: name,
@@ -214,6 +233,18 @@ class AppRoutes {
           final groupId = args['groupId'];
 
           return StaffGroupDetail(groupId: groupId);
+        }),
+    GetPage(
+        name: AppRoutes.staff_truck_group_detail,
+        page: () {
+          // Access arguments as a Map
+          final args = Get.arguments as Map;
+
+          final groupId = args['groupId'];
+
+          return StaffTruckGroupUi(
+            groupId: groupId,
+          );
         }),
   ];
 }

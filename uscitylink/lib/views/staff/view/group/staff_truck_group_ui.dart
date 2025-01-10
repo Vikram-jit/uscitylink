@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
@@ -6,6 +8,7 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/staff/truck_group_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -13,23 +16,17 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 
-class GroupMessageui extends StatefulWidget {
-  final String channelId;
+class StaffTruckGroupUi extends StatefulWidget {
   final String groupId;
-  final String name;
   final int page;
-  const GroupMessageui(
-      {required this.channelId,
-      super.key,
-      required this.name,
-      required this.groupId,
-      this.page = 1});
+
+  const StaffTruckGroupUi({super.key, required this.groupId, this.page = 1});
 
   @override
-  _GroupMessageuiState createState() => _GroupMessageuiState();
+  _StaffTruckGroupUiState createState() => _StaffTruckGroupUiState();
 }
 
-class _GroupMessageuiState extends State<GroupMessageui>
+class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
@@ -41,11 +38,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
       Get.put(ImagePickerController());
   @override
   void initState() {
-    if (socketService.isConnected.value) {
-      socketService.addUserToGroup(widget.channelId, widget.groupId);
-      socketService.updateCountGroup(widget.channelId);
-    }
-
     super.initState();
     _scrollController = ScrollController();
 
@@ -53,15 +45,10 @@ class _GroupMessageuiState extends State<GroupMessageui>
       // Ensure the current page is less than the total pages
       if (_scrollController.position.pixels ==
           _scrollController.position.maxScrollExtent) {
-        // print(groupController.isLoading.value &&
-        //     groupController.currentPage.value <
-        //         groupController.totalPages.value);
-        // When scrolled to the bottom, load next page
         if (!groupController.isLoading.value &&
             groupController.currentPage.value <
                 groupController.totalPages.value) {
-          groupController.getGroupMessages(
-            widget.channelId,
+          groupController.getTruckGroupMessages(
             widget.groupId,
             groupController.currentPage.value + 1,
           );
@@ -71,15 +58,8 @@ class _GroupMessageuiState extends State<GroupMessageui>
     WidgetsBinding.instance.addObserver(this);
     // Initialize the MessageController and fetch messages for the given channelId
     groupController = Get.put(GroupController());
-    groupController.getGroupMessages(
-        widget.channelId,
-        widget.groupId,
-        groupController
-            .currentPage.value); // Fetch the messages for the given channelId
-
-    // if (widget.channelId.isNotEmpty) {
-    //   socketService.updateActiveChannel(widget.channelId);
-    // }
+    groupController.getTruckGroupMessages(
+        widget.groupId, groupController.currentPage.value);
   }
 
   @override
@@ -90,9 +70,8 @@ class _GroupMessageuiState extends State<GroupMessageui>
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
-      if (!widget.channelId.isNotEmpty) {}
-      groupController.getGroupMessages(
-          widget.channelId, widget.groupId, widget.page);
+      if (!widget.groupId.isNotEmpty) {}
+      groupController.getTruckGroupMessages(widget.groupId, widget.page);
       print("App is in the foreground");
     }
   }
@@ -107,13 +86,46 @@ class _GroupMessageuiState extends State<GroupMessageui>
 
   // Function to send a new message
   void _sendMessage() {
-    if (_controller.text.isNotEmpty) {
-      socketService.addUserToGroup(widget.channelId, widget.groupId);
-      socketService.updateCountGroup(widget.channelId);
-      socketService.sendGroupMessage(
-          widget.groupId, widget.channelId, _controller.text, null);
-      _controller.clear();
+    String userProfileIds = groupController.truckGroup?.value?.members
+            ?.map(
+                (member) => member.userProfileId ?? '') // Extract userProfileId
+            .where((id) => id.isNotEmpty) // Filter out any empty values
+            .join(',') ??
+        ''; // Join and provide default empty string if null
+    if (userProfileIds.isEmpty) {
+      showAlert(context);
+    } else {
+      if (_controller.text.isNotEmpty) {
+        if (socketService.isConnected.value) {
+          socketService.sendMessageToTruck(
+              userProfileIds,
+              groupController.truckGroup.value!.group!.id!,
+              _controller.text,
+              "");
+        }
+        _controller.clear();
+      }
     }
+  }
+
+  void showAlert(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Alert'),
+          content: Text('Please Add member before send message into group.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -124,8 +136,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
         child: Column(
           children: [
             AppBar(
-              centerTitle: true,
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.primaryStaff,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
@@ -136,13 +147,33 @@ class _GroupMessageuiState extends State<GroupMessageui>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.name, // Display the channel name
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(color: Colors.white),
-                    ),
+                    Obx(() {
+                      return Text(
+                        "${groupController.truckGroup.value.group?.name}",
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(color: Colors.white),
+                      );
+                    }),
+                    Obx(() {
+                      String userNames = groupController
+                              .truckGroup?.value?.members
+                              ?.map((member) =>
+                                  member.userProfile?.username ??
+                                  '') // Extract userProfileId
+                              .where((id) =>
+                                  id.isNotEmpty) // Filter out any empty values
+                              .join(',') ??
+                          "";
+                      return Text(
+                        "${userNames.isEmpty ? "No members" : userNames}",
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: Colors.white),
+                      );
+                    })
                   ],
                 ),
               ),
@@ -153,26 +184,25 @@ class _GroupMessageuiState extends State<GroupMessageui>
                 ), // Back icon
                 onPressed: () {
                   // Trigger the socket event when the back icon is clicked
-                  socketService.removeFromGroup(widget.groupId);
-                  groupController.getUserGroups();
-                  groupController.messages.clear();
+                  // socketService.removeFromGroup(widget.groupId);
+                  // groupController.getUserGroups();
+                  groupController.truckGroup.value = TruckGroupModel();
+                  groupController.truckMessages.clear();
                   groupController.currentPage.value = 1;
                   groupController.totalPages.value = 1;
-                  if (_channelController.initialized) {
-                    _channelController.getCount();
-                  }
+
                   Get.back();
                 },
               ),
               actions: [
                 InkWell(
                     onTap: () {
-                      imagePickerController.pickImageFromCamera(
-                          widget.channelId,
-                          "group",
-                          widget.groupId,
-                          "driver_chat",
-                          "");
+                      // imagePickerController.pickImageFromCamera(
+                      //     groupController.truckGroup.value.group. .channelId,
+                      //     "group",
+                      //     widget.groupId,
+                      //     "driver_chat",
+                      //     "");
                     },
                     child: const Icon(
                       Icons.add_a_photo,
@@ -198,22 +228,28 @@ class _GroupMessageuiState extends State<GroupMessageui>
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    groupController.refreshMessages(
-                        widget.channelId, widget.groupId);
+                    // groupController.refreshMessages(
+                    //     widget.channelId, widget.groupId);
                   },
                   child: Obx(() {
-                    if (groupController.messages.isEmpty) {
+                    if (groupController.isLoading.value) {
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    //print(jsonEncode(groupController.truckMessages?.length));
+                    if (groupController.truckMessages.isEmpty) {
                       return Center(
                           child: SizedBox(
                         height: 100,
                         width: 100,
                         child: InkWell(
                           onTap: () {
-                            socketService.addUserToGroup(
-                                widget.channelId, widget.groupId);
-                            socketService.updateCountGroup(widget.channelId);
-                            socketService.sendGroupMessage(
-                                widget.groupId, widget.channelId, "Hi", null);
+                            // socketService.addUserToGroup(
+                            //     widget.channelId, widget.groupId);
+                            // socketService.updateCountGroup(widget.channelId);
+                            // socketService.sendGroupMessage(
+                            //     widget.groupId, widget.channelId, "Hi", null);
                           },
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -239,46 +275,26 @@ class _GroupMessageuiState extends State<GroupMessageui>
                     return ListView.builder(
                       controller: _scrollController,
                       reverse: true,
-                      itemCount: groupController.messages.length,
+                      itemCount: groupController.truckMessages.length,
                       itemBuilder: (context, index) {
-                        if (index == groupController.messages.length - 1) {
-                          if (groupController.isLoading.value) {
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          } else {
-                            return SizedBox.shrink();
-                          }
-                        }
+                        // print(groupController.truckMessages.length);
+                        // if (index == groupController.truckMessages.length - 1) {
+                        //   if (groupController.isLoading.value) {
+                        //     return Padding(
+                        //       padding: const EdgeInsets.all(8.0),
+                        //       child: Center(child: CircularProgressIndicator()),
+                        //     );
+                        //   } else {
+                        //     return SizedBox.shrink();
+                        //   }
+                        // }
                         return _buildChatMessage(
-                            groupController.messages[index],
-                            groupController.senderId.value);
+                            groupController.truckMessages[index], "..");
                       },
                     );
                   }),
                 ),
               ),
-              Obx(() {
-                return groupController.typing.value
-                    ? Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade300,
-                          ),
-                          width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Obx(() {
-                              return Text(groupController.typingMessage.value);
-                            }),
-                          ),
-                        ),
-                      )
-                    : Container();
-              }),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -286,15 +302,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
                     // Text Field for typing the message
                     Expanded(
                       child: TextField(
-                        onChanged: (text) {
-                          if (text.isNotEmpty) {
-                            groupController
-                                .startTyping(widget.groupId); // Start typing
-                          } else {
-                            groupController.stopTyping(
-                                widget.groupId); // Stop typing if text is empty
-                          }
-                        },
                         controller: _controller,
                         decoration: InputDecoration(
                           hintText: "Type your message...",
@@ -310,7 +317,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
                               // Handle the icon press action
                               Get.bottomSheet(
                                 AttachmentBottomSheet(
-                                  channelId: widget.channelId,
+                                  channelId: "",
                                   groupId: widget.groupId,
                                 ),
                                 isScrollControlled: true,
@@ -348,17 +355,17 @@ class _GroupMessageuiState extends State<GroupMessageui>
     );
   }
 
-  Widget _buildChatMessage(MessageModel message, String senderId) {
+  Widget _buildChatMessage(Messages message, String senderId) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
-      alignment: message.senderId == senderId
+      alignment: message.senderId != senderId
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
-          crossAxisAlignment: message.senderId == senderId
+          crossAxisAlignment: message.senderId != senderId
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
@@ -366,13 +373,13 @@ class _GroupMessageuiState extends State<GroupMessageui>
               width: TDeviceUtils.getScreenWidth(context) * 0.5,
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
-                color: message.senderId == senderId
+                color: message.senderId != senderId
                     ? Colors.blue[200]
                     : Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                crossAxisAlignment: message.senderId == senderId
+                crossAxisAlignment: message.senderId != senderId
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [

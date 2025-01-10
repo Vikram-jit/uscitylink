@@ -1,19 +1,25 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/staff/truck_group_model.dart';
 
 import 'package:uscitylink/services/group_service.dart';
 import 'package:uscitylink/services/message_service.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class GroupController extends GetxController {
+  SocketService socketService = Get.find<SocketService>();
+
   var groups = <GroupModel>[].obs;
   var loading = false.obs;
   var isLoading = false.obs;
   var messages = <MessageModel>[].obs;
+  var truckMessages = <Messages>[].obs;
   final __groupService = GroupService();
   final __messageService = MessageService();
   var currentPage = 1.obs;
@@ -21,8 +27,17 @@ class GroupController extends GetxController {
   var previousGroupId = ''.obs;
   final group = GroupSingleModel().obs;
 
+  Timer? typingTimer;
+  late DateTime typingStartTime;
+  var isTyping = false.obs;
+  var typing = false.obs;
+  var typingMessage = "".obs;
+  var openGroupId = "".obs;
   var currentIndex = 0.obs;
   var senderId = "".obs;
+
+  var truckGroup = TruckGroupModel().obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -37,7 +52,7 @@ class GroupController extends GetxController {
 
     String channelId = args['channelId'] ?? '';
     String groupId = args['groupId'] ?? '';
-
+    openGroupId.value = groupId;
     if (channelId.isNotEmpty && groupId.isNotEmpty) {
       getGroupMessages(channelId, groupId, currentPage.value);
     } else {
@@ -95,32 +110,85 @@ class GroupController extends GetxController {
     }
   }
 
+// Start typing event
+  void startTyping(String groupId) {
+    if (typingTimer != null && typingTimer!.isActive) {
+      typingTimer!.cancel();
+    }
+
+    isTyping.value = true;
+    socketService.socket
+        .emit('groupTyping', {'isTyping': true, "groupId": groupId});
+
+    typingStartTime = DateTime.now();
+
+    // Stop typing after 1.5 seconds of inactivity
+    typingTimer = Timer(const Duration(seconds: 1), () {
+      if (DateTime.now().difference(typingStartTime).inSeconds >= 1) {
+        stopTyping(groupId);
+      }
+    });
+  }
+
+  // Stop typing event
+  void stopTyping(String groupId) {
+    isTyping.value = false;
+    socketService.socket
+        .emit('groupTyping', {'isTyping': false, "groupId": groupId});
+  }
+
   void getGroupMessages(String channelId, String groupId, int page) {
     // Debugging logs to track the page number and loading state
-
-    // Prevent duplicate requests if already loading
+    openGroupId.value = groupId;
     if (isLoading.value) return;
 
     // Set the loading state to true
     isLoading.value = true;
-    // if (previousGroupId.value != groupId) {
-    //   // Clear messages if the groupId has changed
-    //   messages.clear();
-    //   previousGroupId.value = groupId; // Update the stored groupId
-    // }
+
     // Simulating API call (replace with your actual API call)
     __messageService
         .getGroupMessages(channelId, groupId, page)
         .then((response) {
       // Check the response structure
 
-      // Safeguard to ensure response contains messages and pagination info
       if (response.data.messages != null) {
         messages.addAll(response.data.messages ?? []);
       }
 
       if (response.data.pagination != null) {
         senderId.value = response.data.senderId ?? '';
+        currentPage.value = response.data.pagination!.currentPage!;
+        totalPages.value = response.data.pagination!.totalPages!;
+      } else {
+        print("Pagination data is missing in the response!");
+      }
+
+      // Reset loading state after processing response
+      isLoading.value = false;
+    }).onError((error, stackTrace) {
+      // Handle error
+      print("Error: $error");
+      Utils.snackBar('Error', error.toString());
+
+      // Reset loading state in case of error as well
+      isLoading.value = false;
+    });
+  }
+
+  void getTruckGroupMessages(String groupId, int page) {
+    // Debugging logs to track the page number and loading state
+    openGroupId.value = groupId;
+    if (isLoading.value) return;
+
+    isLoading.value = true;
+
+    __messageService.getTruckGroupMessages(groupId, page).then((response) {
+      if (response.status) {
+        truckGroup.value = response.data;
+        truckMessages.addAll(response.data.messages ?? []);
+      }
+
+      if (response.data.pagination != null) {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
       } else {
@@ -206,5 +274,20 @@ class GroupController extends GetxController {
 
     messages.insert(0, newMessage);
     messages.refresh();
+  }
+
+  void updateTypingStatus(dynamic data) {
+    if (data['groupId'] == openGroupId.value) {
+      typing.value = data['typing'];
+      typingMessage.value = data['message'];
+    }
+  }
+
+  void onNewMessageToTruck(dynamic data) {
+    Messages newMessage = Messages.fromJson(data);
+    if (truckGroup.value.group?.id == newMessage.groupId) {
+      truckMessages.insert(0, newMessage);
+      truckMessages.refresh();
+    }
   }
 }

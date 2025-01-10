@@ -23,7 +23,7 @@ class StaffgroupController extends GetxController {
   var group = singleModel.GroupSingleModel().obs;
   var selectedTruck = "".obs;
   TextEditingController groupName = TextEditingController();
-  var type = "group".obs;
+  var type = "truck".obs;
   void setInnerTabIndex(int index) {
     innerTabIndex.value = index;
   }
@@ -115,5 +115,17 @@ class StaffgroupController extends GetxController {
       loading.value = false;
       Utils.snackBar('Error', error.toString());
     });
+  }
+
+  void updateGroupCount(dynamic data) {
+    if (groups.value.data?.isNotEmpty == true) {
+      var groupFind = groups.value.data?.firstWhere((item) {
+        return item.id == data;
+      });
+      if (groupFind != null) {
+        groupFind.messageCount = 0;
+        groups.refresh();
+      }
+    }
   }
 }

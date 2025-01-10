@@ -9,11 +9,13 @@ import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
+import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 
 class SocketService extends GetxController {
   UserPreferenceController userPreferenceController =
       UserPreferenceController();
+
   // late StaffchannelController _staffchannelController;
   // @override
   // void onInit() {
@@ -87,12 +89,16 @@ class SocketService extends GetxController {
       if (Get.isRegistered<StaffchatController>()) {
         Get.find<StaffchatController>().onNewMessage(data);
       }
-
-      if (Get.find<ChannelController>().channels.isNotEmpty) {
-        Get.find<ChannelController>().addNewMessage(data);
+      if (Get.isRegistered<ChannelController>()) {
+        if (Get.find<ChannelController>().channels.isNotEmpty) {
+          Get.find<ChannelController>().addNewMessage(data);
+        }
       }
-      if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {
-        Get.find<StaffchannelController>().addNewMessage(data);
+      if (Get.isRegistered<StaffchannelController>()) {
+        if (Get.find<StaffchannelController>().channelChatUser.value.id !=
+            null) {
+          Get.find<StaffchannelController>().addNewMessage(data);
+        }
       }
     });
 
@@ -117,6 +123,12 @@ class SocketService extends GetxController {
     socket.on('new_group_message_received', (data) {
       if (Get.isRegistered<GroupController>()) {
         Get.find<GroupController>().onNewMessage(data);
+      }
+    });
+
+    socket.on("receive_message_group", (data) {
+      if (Get.isRegistered<GroupController>()) {
+        Get.find<GroupController>().onNewMessageToTruck(data);
       }
     });
 
@@ -162,11 +174,24 @@ class SocketService extends GetxController {
       }
     });
 
-    socket.on("typingUser", (data) {
-      if (Get.isRegistered<StaffchatController>()) {
-        Get.find<StaffchatController>().updateTypingStatus(data);
+    socket.on("typingStaff", (data) {
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().updateTypingStatus(data);
       }
     });
+
+    socket.on("update_group_staff_message_count", (data) {
+      if (Get.isRegistered<StaffgroupController>()) {
+        Get.find<StaffgroupController>().updateGroupCount(data);
+      }
+    });
+
+    socket.on("groupTypingRecive", (data) {
+      if (Get.isRegistered<GroupController>()) {
+        Get.find<GroupController>().updateTypingStatus(data);
+      }
+    });
+
     socket.on('pong', (_) {
       pingResponse.value = 'Pong received!';
       print('Received pong from server');
@@ -298,10 +323,29 @@ class SocketService extends GetxController {
     socket.emit("staff_open_chat", userId);
   }
 
+  void updateStaffGroup(String groupId) {
+    socket.emit("update_group_staff_message_count", groupId);
+  }
+
   void sendMessageToUser(String userId, String body, String? url) {
     if (isConnected.value) {
       socket.emit("send_message_to_user",
           {"userId": userId, "body": body, "direction": "S", "url": url});
+    } else {
+      print("Not connected to socket.");
+    }
+  }
+
+  void sendMessageToTruck(
+      String userId, String groupId, String body, String? url) {
+    if (isConnected.value) {
+      socket.emit("send_message_to_user_by_group", {
+        "userId": userId,
+        "groupId": groupId,
+        "body": body,
+        "direction": "S",
+        "url": url
+      });
     } else {
       print("Not connected to socket.");
     }

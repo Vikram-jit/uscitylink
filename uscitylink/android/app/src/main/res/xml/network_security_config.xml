@@ -3,7 +3,7 @@
     <!-- Allow cleartext traffic to the specific IP address -->
     <domain-config cleartextTrafficPermitted="true">
         <!-- Allow cleartext traffic for localhost -->
-        <domain includeSubdomains="true">8bbf-2401-4900-8147-210-4555-aed8-4e0e-31ec.ngrok-free.app</domain>
+        <domain includeSubdomains="true">fde2-2401-4900-8157-214-c1fe-ddc4-cef1-6861.ngrok-free.app</domain>
 
         <!-- Allow cleartext traffic for the specific IP address -->
         <domain includeSubdomains="true">52.9.12.189</domain>

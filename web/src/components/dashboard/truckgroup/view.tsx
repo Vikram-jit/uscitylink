@@ -587,7 +587,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                           } else {
                             socket?.emit('staff_open_truck_group', group.id);
                           }
-        dispatch(apiSlice.util.invalidateTags(['channels']));
+                              dispatch(apiSlice.util.invalidateTags(['channels']));
    
                           setSelectedGroup(group.id);
                           setSelectedChannel(group.group_channel.channelId);

@@ -440,6 +440,39 @@ export const initSocket = (httpServer: any) => {
       }
     });
 
+    socket.on("groupTyping", (data) => {
+   
+      const {groupId,isTyping} = data
+       
+       const userName:string[] = []
+      Object.values(global.group_open_chat[groupId]).map((e) => {
+        
+        const onlineUser:any = global.userSockets[e.userId];
+        if (onlineUser && (e.userId == socket.user?.id)) {
+           console.log(onlineUser?.user)
+          userName.push(onlineUser.user?.name);
+        
+       }
+      });
+      Object.values(global.group_open_chat[groupId]).map((e) => {
+        
+        const onlineUser = global.userSockets[e.userId];
+        if (e.userId != socket.user?.id) {
+          if(onlineUser){
+            io.to(onlineUser.id).emit("groupTypingRecive", {
+              userId:socket.user?.id,
+              groupId:groupId,
+              typing: isTyping,
+              message: `${userName?.join(",")} typing...`
+            });
+          }
+         
+        }
+      });
+    
+    });
+
+
     socket.on("driverTyping", (data) => {
       
       const userId = socket?.user?.id;

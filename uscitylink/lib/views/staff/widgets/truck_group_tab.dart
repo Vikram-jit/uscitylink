@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/utils.dart';
 
@@ -14,7 +16,7 @@ class TruckGroupTab extends StatefulWidget {
 
 class _TruckGroupTabState extends State<TruckGroupTab> {
   StaffgroupController _staffgroupController = Get.find<StaffgroupController>();
-
+  SocketService _socketService = Get.find<SocketService>();
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -76,28 +78,24 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
                             style: const TextStyle(
                                 fontSize: 12, color: Colors.black45),
                           ),
-                          group?.messageCount != 0
-                              ? Badge(
-                                  label: Text(
-                                    group?.messageCount == 0
-                                        ? ""
-                                        : '${group?.messageCount}',
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                  backgroundColor: TColors.primary,
-                                )
-                              : const SizedBox(),
                         ],
                       ),
                     ],
                   ),
                   subtitle: Text(
-                    group?.lastMessage?.body ?? "Not message yet",
+                    group?.lastMessage?.body ?? "messages",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black54),
                   ),
-                  onTap: () {},
+                  onTap: () {
+                    _socketService?.socket
+                        ?.emit('staff_open_truck_group', group?.id);
+                    Get.toNamed(
+                      AppRoutes.staff_truck_group_detail,
+                      arguments: {'groupId': group?.id},
+                    );
+                  },
                 ),
               );
             });

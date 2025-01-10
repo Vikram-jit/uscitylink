@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/utils.dart';
 
@@ -14,20 +17,48 @@ class GroupTab extends StatefulWidget {
 
 class _GroupTabState extends State<GroupTab> {
   StaffgroupController _staffgroupController = Get.find<StaffgroupController>();
+  SocketService _socketService = Get.find<SocketService>();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Obx(() {
-        if (_staffgroupController.loading.value) {
+        if (_staffgroupController.loading.value &&
+            (_staffgroupController.groups.value?.data?.isEmpty ?? true)) {
           return Center(
             child: CircularProgressIndicator(),
           );
         }
+        if (_staffgroupController.groups.value?.data?.isEmpty ?? true) {
+          return Center(child: Text("No any record found."));
+        }
         return ListView.builder(
+            controller: ScrollController()
+              ..addListener(() {
+                if (_staffgroupController.loading.value) return;
+                if (_staffgroupController.currentPage.value <
+                    _staffgroupController.totalPages.value) {
+                  final groupData = _staffgroupController.groups.value.data;
+                  if (groupData != null && groupData.isNotEmpty) {
+                    final lastItem = groupData[groupData.length - 1];
+                    if (lastItem == groupData[groupData.length - 1]) {
+                      _staffgroupController.getGroups(
+                          _staffgroupController.currentPage.value + 1);
+                    }
+                  }
+                }
+              }),
             itemCount: _staffgroupController.groups.value.data?.length,
             itemBuilder: (context, index) {
+              if (index == _staffgroupController.groups?.value?.data?.length) {
+                if (_staffgroupController.currentPage.value <
+                    _staffgroupController.totalPages.value) {
+                  return Center(child: CircularProgressIndicator());
+                } else {
+                  return SizedBox(); // No more data to load
+                }
+              }
               var group = _staffgroupController.groups.value.data?[index];
               return Dismissible(
                 key: Key('${group?.id}'),
@@ -97,7 +128,20 @@ class _GroupTabState extends State<GroupTab> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black54),
                   ),
-                  onTap: () {},
+                  onTap: () {
+                    if (group != null) {
+                      _socketService.updateStaffGroup(group.id!);
+                    }
+
+                    Get.toNamed(
+                      AppRoutes.staffGroupMessage,
+                      arguments: {
+                        'channelId': group?.groupChannel?.channelId,
+                        'name': group?.name,
+                        'groupId': group?.id
+                      },
+                    );
+                  },
                 ),
               );
             });

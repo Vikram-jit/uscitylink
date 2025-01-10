@@ -4,6 +4,7 @@ import 'package:uscitylink/data/response/api_response.dart';
 import 'package:uscitylink/model/group_message_model.dart';
 import 'package:uscitylink/model/media_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/staff/truck_group_model.dart';
 
 class MessageService {
   final _apiService = NetworkApiService();
@@ -82,6 +83,39 @@ class MessageService {
           return ApiResponse<GroupMessageModel>(
             data: groupMessages,
             message: response['message'] ?? 'Get Messages Successfully.',
+            status: response['status'] ?? true,
+          );
+        } else {
+          throw Exception(
+              'Expected a Map in response["data"], got: ${data.runtimeType}');
+        }
+      } else {
+        throw Exception(
+            'Unexpected response format, expected a Map<String, dynamic>');
+      }
+    } catch (e) {
+      // Handle errors with a descriptive message
+      throw Exception('Error fetching group messages: $e');
+    }
+  }
+
+  Future<ApiResponse<TruckGroupModel>> getTruckGroupMessages(
+      String groupId, int page) async {
+    try {
+      dynamic response = await _apiService
+          .getApi('${Constant.url}/group/messages/$groupId?page=$page');
+
+      if (response != null && response is Map<String, dynamic>) {
+        var data = response['data'];
+
+        if (data != null && data is Map<String, dynamic>) {
+          TruckGroupModel groupMessages = TruckGroupModel.fromJson(data);
+
+          // Return the ApiResponse with the parsed data
+          return ApiResponse<TruckGroupModel>(
+            data: groupMessages,
+            message:
+                response['message'] ?? 'Get Truck Group Messages Successfully.',
             status: response['status'] ?? true,
           );
         } else {

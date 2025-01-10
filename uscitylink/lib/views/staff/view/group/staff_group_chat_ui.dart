@@ -13,12 +13,12 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 
-class GroupMessageui extends StatefulWidget {
+class StaffGroupChatUi extends StatefulWidget {
   final String channelId;
   final String groupId;
   final String name;
   final int page;
-  const GroupMessageui(
+  const StaffGroupChatUi(
       {required this.channelId,
       super.key,
       required this.name,
@@ -26,10 +26,10 @@ class GroupMessageui extends StatefulWidget {
       this.page = 1});
 
   @override
-  _GroupMessageuiState createState() => _GroupMessageuiState();
+  _StaffGroupChatUiState createState() => _StaffGroupChatUiState();
 }
 
-class _GroupMessageuiState extends State<GroupMessageui>
+class _StaffGroupChatUiState extends State<StaffGroupChatUi>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
@@ -125,7 +125,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
           children: [
             AppBar(
               centerTitle: true,
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.primaryStaff,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(

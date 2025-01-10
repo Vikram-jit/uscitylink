@@ -612,6 +612,8 @@ export async function messageToDriverByTruckGroup(
       }
     }
   });
+
+ 
 }
 
 export async function unreadAllMessage(
