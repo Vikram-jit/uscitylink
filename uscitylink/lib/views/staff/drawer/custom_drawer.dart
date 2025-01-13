@@ -81,14 +81,12 @@ class _CustomDrawerState extends State<CustomDrawer>
             // List of Drawer Items
             _buildDrawerItem(context, Icons.card_membership, 'Channel Members',
                 () => _navigateToHome(context, customDrawerController)),
-            _buildDrawerItem(context, Icons.group, 'Groups',
-                () => _navigateToProfile(context)),
+
             _buildDrawerItem(context, Icons.contacts, 'Drivers',
-                () => _navigateToSettings(context)),
+                () => _navigateToDrivers(context)),
             _buildDrawerItem(context, Icons.camera_roll, 'Templates',
-                () => _navigateToHelp(context)),
-            _buildDrawerItem(context, Icons.password, 'Change Password',
-                () => _logout(context)),
+                () => _navigateToTemplates(context)),
+            _buildDrawerItem(context, Icons.settings, 'Settings', () => {}),
 
             Divider(color: Colors.grey),
             ListTile(
@@ -127,8 +125,15 @@ class _CustomDrawerState extends State<CustomDrawer>
     // Add navigation to Profile screen
   }
 
-  void _navigateToSettings(BuildContext context) {
-    Navigator.pop(context);
+  void _navigateToDrivers(BuildContext context) {
+    customDrawerController.closeDrawer();
+    Get.toNamed(AppRoutes.staff_drivers);
+    // Add navigation to Settings screen
+  }
+
+  void _navigateToTemplates(BuildContext context) {
+    customDrawerController.closeDrawer();
+    Get.toNamed(AppRoutes.staff_templates);
     // Add navigation to Settings screen
   }
 

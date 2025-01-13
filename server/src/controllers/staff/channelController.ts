@@ -3,6 +3,8 @@ import { Request, Response } from "express";
 import { UserProfile } from "../../models/UserProfile";
 import UserChannel from "../../models/UserChannel";
 import User from "../../models/User";
+import GroupUser from "../../models/GroupUser";
+import Role from "../../models/Role";
 
 export async function updateStaffActiceChannel(
   req: Request,
@@ -152,7 +154,6 @@ export async function driverList(req: Request, res: Response): Promise<any> {
 export async function addOrRemoveDriverFromChannel(req: Request, res: Response): Promise<any> {
   try {
       
-    console.log(req.activeChannel)
     
     const userChannels = await UserChannel.findOne({
       where: {
@@ -181,6 +182,76 @@ export async function addOrRemoveDriverFromChannel(req: Request, res: Response):
       status: true,
       message: `Channel members updated Successfully.`,
     
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getDrivers(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const isDriverRole = await Role.findOne({
+      where: {
+        name: "driver",
+      },
+    });
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const offset = (page - 1) * pageSize;
+
+    const users: any = await UserProfile.findAndCountAll({
+      where: {
+        role_id: isDriverRole?.id,
+      },
+      attributes: {
+        exclude: ["password"],
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: Role,
+          as: "role",
+        },
+        {
+          model: UserChannel,
+          as: "userChannels",
+          required: false,
+          where: {
+            channelId: req.activeChannel,
+          },
+        },
+      ],
+      order: [["id", "DESC"]],
+      limit: pageSize,
+        offset: offset,
+    });
+    const total= users.count;
+    const totalPages = Math.ceil(total / pageSize);
+
+   
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Driver Users Successfully.`,
+      data: {
+      
+        driver:users.rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total,
+          totalPages,
+        },
+      },
     });
   } catch (err: any) {
     return res

@@ -3,10 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/group_controller.dart';
+import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/driver/views/group/member_search.dart';
+import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
 
 class StaffGroupDetail extends StatefulWidget {
   String groupId = "";
@@ -18,6 +20,8 @@ class StaffGroupDetail extends StatefulWidget {
 
 class _StaffGroupDetailState extends State<StaffGroupDetail> {
   GroupController groupController = Get.put(GroupController());
+  StaffchannelController _staffchannelController =
+      Get.put(StaffchannelController());
   @override
   void initState() {
     // TODO: implement initState
@@ -50,28 +54,28 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
             },
           ),
           actions: [
-            Container(
-              height:
-                  40, // Height of the container to match the search bar height
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  // Set button color
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5), // Rounded corners
-                  ),
-                  padding: EdgeInsets.zero, // No padding inside the button
-                ),
-                child: Text(
-                  "Add Member",
-                  style: TextStyle(
-                    color: Colors.white, // Text color
-                    fontSize: 16, // Font size
-                  ),
-                ),
-              ),
-            ),
+            // Container(
+            //   height:
+            //       40, // Height of the container to match the search bar height
+            //   child: ElevatedButton(
+            //     onPressed: () {},
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: Colors.amber,
+            //       // Set button color
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(5), // Rounded corners
+            //       ),
+            //       padding: EdgeInsets.zero, // No padding inside the button
+            //     ),
+            //     child: Text(
+            //       "Add Member",
+            //       style: TextStyle(
+            //         color: Colors.white, // Text color
+            //         fontSize: 16, // Font size
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
         body: Obx(() {
@@ -110,15 +114,15 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.001,
               ),
-              Center(
-                child: Text(
+              Center(child: Obx(() {
+                return Text(
                   "Group ${groupController?.group?.value?.groupMembers?.length ?? 0} members",
                   style: Theme.of(context)
                       .textTheme
                       .labelSmall
                       ?.copyWith(color: Colors.grey.shade500),
-                ),
-              ),
+                );
+              })),
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.02,
               ),
@@ -176,71 +180,158 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                         fontWeight: FontWeight.w700,
                         fontSize: 12),
                   ),
-                  InkWell(
-                    onTap: () {
-                      Get.bottomSheet(
-                          MemberSearch(
-                            groupId: widget.groupId,
-                            groupMembers:
-                                groupController?.group?.value?.groupMembers ??
-                                    [],
+                  Row(
+                    children: [
+                      // InkWell(
+                      //   onTap: () {
+                      //     Get.bottomSheet(
+                      //         MemberSearch(
+                      //           groupId: widget.groupId,
+                      //           groupMembers: groupController
+                      //                   ?.group?.value?.groupMembers ??
+                      //               [],
+                      //         ),
+                      //         isScrollControlled: true,
+                      //         backgroundColor: Colors.transparent,
+                      //         barrierColor: Colors.black.withOpacity(0.3),
+                      //         enableDrag:
+                      //             true, // Keep the drag functionality active
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.vertical(
+                      //               top: Radius.circular(5)),
+                      //         ),
+                      //         clipBehavior: Clip.none);
+                      //   },
+                      //   child: Icon(
+                      //     Icons.search,
+                      //     size: 18,
+                      //     color: Colors.black,
+                      //   ),
+                      // ),
+                      // SizedBox(
+                      //   width: 10,
+                      // ),
+                      Container(
+                        height:
+                            20, // Height of the container to match the search bar height
+                        child: ElevatedButton(
+                          onPressed: () {
+                            DriverDialog.showDriverGroupBottomSheet(
+                                context,
+                                _staffchannelController,
+                                groupController.group.value.group?.id ?? "");
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            // Set button color
+                            side: BorderSide(width: 2.0, color: Colors.amber),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            padding:
+                                EdgeInsets.zero, // No padding inside the button
                           ),
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          barrierColor: Colors.black.withOpacity(0.3),
-                          enableDrag:
-                              true, // Keep the drag functionality active
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(5)),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 5, right: 5),
+                            child: Text(
+                              "Add Member",
+                              style: TextStyle(
+                                color: Colors.white, // Text color
+                                fontSize: 12, // Font size
+                              ),
+                            ),
                           ),
-                          clipBehavior: Clip.none);
-                    },
-                    child: Icon(
-                      Icons.search,
-                      size: 18,
-                      color: Colors.black,
-                    ),
+                        ),
+                      ),
+                    ],
                   )
                 ],
               ),
               SizedBox(
                 height: TDeviceUtils.getScreenHeight() * 0.02,
               ),
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount:
-                    groupController?.group?.value?.groupMembers?.length ?? 0,
-                physics: NeverScrollableScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return Column(
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 5),
-                        leading: CircleAvatar(
-                          child: Text(
-                            "${groupController?.group?.value?.groupMembers?[index]?.userProfile?.username?[0]}",
-                            style: TextStyle(color: Colors.black),
+              Obx(() {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount:
+                      groupController?.group?.value?.groupMembers?.length ?? 0,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemBuilder: (context, index) {
+                    return Column(
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 0),
+                          leading: GetBuilder<GroupController>(
+                            builder: (controller) {
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 25,
+                                    backgroundColor: Colors.grey.shade400,
+                                    child: Text(
+                                      groupController
+                                              ?.group
+                                              ?.value
+                                              ?.groupMembers?[index]
+                                              ?.userProfile
+                                              ?.username?[0] ??
+                                          '', // Show first letter of username
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Online Badge in the top-right corner, wrapped in Obx
+                                  if (groupController
+                                          ?.group
+                                          ?.value
+                                          ?.groupMembers?[index]
+                                          ?.userProfile
+                                          ?.isOnline ??
+                                      false) // Show badge if user is online
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: Colors
+                                              .green, // Green color for online status
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors
+                                                .white, // White border around the badge
+                                            width: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
                           ),
-                          backgroundColor: Colors.grey.shade400,
+                          title: Text(
+                              "${groupController?.group?.value?.groupMembers?[index]?.userProfile?.username}"),
                         ),
-                        title: Text(
-                            "${groupController?.group?.value?.groupMembers?[index]?.userProfile?.username}"),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 0.0),
-                        child: SizedBox(
-                          width: TDeviceUtils.getScreenWidth(context) * 0.75,
-                          child: Divider(
-                            color: Colors.grey.shade300,
-                            height: 0,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 0.0),
+                          child: SizedBox(
+                            width: TDeviceUtils.getScreenWidth(context) * 0.75,
+                            child: Divider(
+                              color: Colors.grey.shade300,
+                              height: 0,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              )
+                      ],
+                    );
+                  },
+                );
+              }),
             ],
           );
         }));

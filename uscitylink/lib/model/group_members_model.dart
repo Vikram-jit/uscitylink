@@ -54,3 +54,26 @@ class GroupMembers {
     return data;
   }
 }
+
+class EventGroupMemberModel {
+  String? event;
+  GroupMembers? member;
+
+  EventGroupMemberModel({this.event, this.member});
+
+  EventGroupMemberModel.fromJson(Map<String, dynamic> json) {
+    member = json['member'] != null
+        ? new GroupMembers.fromJson(json['member'])
+        : null;
+    event = json['event'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    if (this.member != null) {
+      data['member'] = this.member!.toJson();
+    }
+    data['event'] = this.event;
+    return data;
+  }
+}

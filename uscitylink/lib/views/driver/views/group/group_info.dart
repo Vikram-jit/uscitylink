@@ -8,7 +8,8 @@ import 'package:uscitylink/views/driver/views/group/member_search.dart';
 
 class GroupInfo extends StatefulWidget {
   String groupId = "";
-  GroupInfo({super.key, required this.groupId});
+  String type = "";
+  GroupInfo({super.key, required this.groupId, this.type = "driver"});
 
   @override
   State<GroupInfo> createState() => _GroupInfoState();

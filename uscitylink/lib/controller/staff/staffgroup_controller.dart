@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/model/group_members_model.dart';
 // ignore: library_prefixes
 import 'package:uscitylink/model/group_model.dart' as singleModel;
 import 'package:uscitylink/model/staff/group_model.dart';
@@ -127,5 +128,20 @@ class StaffgroupController extends GetxController {
         groups.refresh();
       }
     }
+  }
+
+  void updateGroupMember(EventGroupMemberModel _model) {
+    if (_model.event == "add") {
+      if (_model.member != null) {
+        group.value.groupMembers?.add(_model.member!);
+      }
+    } else {
+      if (_model.member != null) {
+        group.value.groupMembers
+            ?.removeWhere((item) => item.id == _model.member!.id);
+      }
+    }
+    group.refresh();
+    // Instead of _staffgroupController.group.refresh(), use:
   }
 }

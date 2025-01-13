@@ -129,8 +129,8 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
-                    AppRoutes.groupInfo,
-                    arguments: {'groupId': widget.groupId},
+                    AppRoutes.staff_group_detail,
+                    arguments: {'groupId': widget.groupId, 'type': 'staff'},
                   );
                 },
                 child: Column(

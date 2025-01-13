@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/model/group_members_model.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/truck_group_model.dart';
@@ -289,5 +290,22 @@ class GroupController extends GetxController {
       truckMessages.insert(0, newMessage);
       truckMessages.refresh();
     }
+  }
+
+  void updateGroupMember(EventGroupMemberModel _model) {
+    print(jsonEncode(_model));
+    if (_model.event == "add") {
+      if (_model.member != null) {
+        group.value.groupMembers?.add(_model.member!);
+      }
+    } else {
+      if (_model.member != null) {
+        group.value.groupMembers?.removeWhere((item) {
+          return item.id == _model.member!.id;
+        });
+      }
+    }
+    group.refresh();
+    // Instead of _staffgroupController.group.refresh(), use:
   }
 }

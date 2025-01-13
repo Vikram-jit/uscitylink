@@ -20,7 +20,9 @@ import 'package:uscitylink/views/staff/view/group/staff_truck_group_ui.dart';
 import 'package:uscitylink/views/staff/view/staff_channel_members_view.dart';
 import 'package:uscitylink/views/staff/view/staff_chat_view.dart';
 import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
+import 'package:uscitylink/views/staff/view/staff_driver_view.dart';
 import 'package:uscitylink/views/staff/view/staff_message_view.dart';
+import 'package:uscitylink/views/staff/view/staff_templates_view.dart';
 import 'package:uscitylink/views/staff/view/staff_view.dart';
 
 class AppRoutes {
@@ -54,6 +56,8 @@ class AppRoutes {
   static const String staff_user_message = "/staff_user_message";
   static const String staff_group_detail = "/staff_group_detail";
   static const String staff_truck_group_detail = "/staff_truck_group_detail";
+  static const String staff_drivers = "/staff_drivers";
+  static const String staff_templates = "/staff_templates";
 
   static final routes = [
     GetPage(
@@ -180,10 +184,9 @@ class AppRoutes {
           // Access arguments as a Map
           final args = Get.arguments as Map;
           final groupId = args['groupId'];
+          final type = args['type'] ?? "driver";
 
-          return GroupInfo(
-            groupId: groupId,
-          );
+          return GroupInfo(groupId: groupId, type: type);
         }),
     GetPage(
         name: AppRoutes.splashView,
@@ -246,5 +249,13 @@ class AppRoutes {
             groupId: groupId,
           );
         }),
+    GetPage(
+      name: AppRoutes.staff_drivers,
+      page: () => StaffDriverView(),
+    ),
+    GetPage(
+      name: AppRoutes.staff_templates,
+      page: () => StaffTemplatesView(),
+    ),
   ];
 }

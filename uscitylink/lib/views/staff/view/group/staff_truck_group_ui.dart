@@ -140,8 +140,8 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
-                    AppRoutes.groupInfo,
-                    arguments: {'groupId': widget.groupId},
+                    AppRoutes.staff_group_detail,
+                    arguments: {'groupId': widget.groupId, 'type': 'truck'},
                   );
                 },
                 child: Column(
