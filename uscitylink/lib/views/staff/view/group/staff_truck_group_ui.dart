@@ -7,6 +7,7 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/truck_group_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
@@ -15,6 +16,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
+import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
 
 class StaffTruckGroupUi extends StatefulWidget {
   final String groupId;
@@ -101,9 +103,10 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
               userProfileIds,
               groupController.truckGroup.value!.group!.id!,
               _controller.text,
-              "");
+              groupController.templateurl.value);
         }
         _controller.clear();
+        groupController.templateurl.value = "";
       }
     }
   }
@@ -295,6 +298,38 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                   }),
                 ),
               ),
+              if (groupController.templateurl.isNotEmpty)
+                const SizedBox(width: 8),
+              if (groupController.templateurl.isNotEmpty)
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    child: Image.network(
+                      "${Constant.aws}/${groupController.templateurl.value}",
+                      fit: BoxFit.contain,
+                      loadingBuilder: (BuildContext context, Widget child,
+                          ImageChunkEvent? loadingProgress) {
+                        if (loadingProgress == null) {
+                          // Image has finished loading
+                          return child;
+                        } else {
+                          // Show a loading indicator while the image is loading
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: TColors.primaryStaff,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      (loadingProgress.expectedTotalBytes ?? 1)
+                                  : null,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -302,6 +337,8 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                     // Text Field for typing the message
                     Expanded(
                       child: TextField(
+                        keyboardType: TextInputType.multiline,
+                        maxLines: null,
                         controller: _controller,
                         decoration: InputDecoration(
                           hintText: "Type your message...",
@@ -319,6 +356,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                                 AttachmentBottomSheet(
                                   channelId: "",
                                   groupId: widget.groupId,
+                                  textEditingController: _controller,
                                 ),
                                 isScrollControlled: true,
                                 backgroundColor: Colors.white,
@@ -445,13 +483,18 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
 class AttachmentBottomSheet extends StatelessWidget {
   final String channelId;
   final String groupId;
+  TextEditingController textEditingController;
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
-
+  GroupController _groupController = Get.find<GroupController>();
+  TemplateController _templateController = Get.put(TemplateController());
   AttachmentBottomSheet(
-      {super.key, required this.channelId, required this.groupId});
+      {super.key,
+      required this.channelId,
+      required this.groupId,
+      required this.textEditingController});
 
   @override
   Widget build(BuildContext context) {
@@ -466,6 +509,28 @@ class AttachmentBottomSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              InkWell(
+                onTap: () {
+                  TemplateDialog.showGroupTemplateBottomSheet(
+                      context,
+                      _templateController,
+                      textEditingController,
+                      _groupController);
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.backup_table,
+                      color: Colors.black,
+                      size: 34,
+                    ),
+                    Text("Templates",
+                        style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(

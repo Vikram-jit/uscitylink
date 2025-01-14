@@ -14,6 +14,7 @@ class StaffchatController {
   SocketService _socketService = Get.find<SocketService>();
   var message = UserMessageModel().obs;
   TextEditingController messageController = TextEditingController();
+  var templateUrl = "".obs;
   final __channelService = ChatService();
   var typing = false.obs;
   var typingMessage = "".obs;

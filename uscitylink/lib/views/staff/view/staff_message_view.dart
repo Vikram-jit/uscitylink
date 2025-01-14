@@ -1,15 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
+import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
+import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
 
 class StaffMessageView extends StatefulWidget {
   final String channelId;
@@ -77,8 +83,9 @@ class _StaffMessageViewState extends State<StaffMessageView> {
       socketService.sendMessageToUser(
         widget.userId,
         _staffchatController.messageController.text,
-        null,
+        _staffchatController.templateUrl.value,
       );
+      _staffchatController.templateUrl.value = "";
       _staffchatController.messageController.clear();
     }
   }
@@ -117,8 +124,8 @@ class _StaffMessageViewState extends State<StaffMessageView> {
                 _staffchatController.message.value.userProfile?.isOnline ??
                         false
                     ? "online"
-                    : _staffchatController
-                            .message.value.userProfile?.lastLogin ??
+                    : Utils.formatUtcDateTime(_staffchatController
+                            .message.value.userProfile?.lastLogin) ??
                         "",
                 style: Theme.of(context)
                     .textTheme
@@ -222,6 +229,40 @@ class _StaffMessageViewState extends State<StaffMessageView> {
                         )
                       : Container();
                 }),
+                if (_staffchatController.templateUrl.isNotEmpty)
+                  const SizedBox(width: 8),
+                if (_staffchatController.templateUrl.isNotEmpty)
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      child: Image.network(
+                        "${Constant.aws}/${_staffchatController.templateUrl.value}",
+                        fit: BoxFit.contain,
+                        loadingBuilder: (BuildContext context, Widget child,
+                            ImageChunkEvent? loadingProgress) {
+                          if (loadingProgress == null) {
+                            // Image has finished loading
+                            return child;
+                          } else {
+                            // Show a loading indicator while the image is loading
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: TColors.primaryStaff,
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        (loadingProgress.expectedTotalBytes ??
+                                            1)
+                                    : null,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
@@ -236,6 +277,8 @@ class _StaffMessageViewState extends State<StaffMessageView> {
                               _staffchatController.stopTyping(widget.userId);
                             }
                           },
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
                           controller: _staffchatController.messageController,
                           decoration: InputDecoration(
                             hintText: "Type your message...",
@@ -249,8 +292,8 @@ class _StaffMessageViewState extends State<StaffMessageView> {
                               onPressed: () {
                                 Get.bottomSheet(
                                   AttachmentBottomSheet(
-                                    channelId: _staffchatController
-                                        .message.value.userProfile!.channelId!,
+                                    channelId:
+                                        _staffchatController.channelId.value,
                                     userId: widget.userId,
                                   ),
                                   isScrollControlled: true,
@@ -363,7 +406,8 @@ class AttachmentBottomSheet extends StatelessWidget {
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
-
+  final templateController = Get.put(TemplateController());
+  StaffchatController _staffchatController = Get.find<StaffchatController>();
   AttachmentBottomSheet(
       {super.key, required this.channelId, required this.userId});
 
@@ -380,6 +424,25 @@ class AttachmentBottomSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              InkWell(
+                onTap: () {
+                  TemplateDialog.showDriverBottomSheet(
+                      context, templateController, _staffchatController);
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.backup_table,
+                      color: Colors.black,
+                      size: 34,
+                    ),
+                    Text("Templates",
+                        style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(

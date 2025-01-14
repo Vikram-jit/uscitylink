@@ -16,22 +16,22 @@ class StaffDriverView extends StatelessWidget {
     });
     return Scaffold(
       key: _scaffoldKey,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.amber,
-        onPressed: () {},
-        label: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 4.0),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-              ),
-            ),
-            Text("Add Driver", style: TextStyle(color: Colors.white))
-          ],
-        ),
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   backgroundColor: Colors.amber,
+      //   onPressed: () {},
+      //   label: Row(
+      //     children: [
+      //       Padding(
+      //         padding: const EdgeInsets.only(right: 4.0),
+      //         child: Icon(
+      //           Icons.add,
+      //           color: Colors.white,
+      //         ),
+      //       ),
+      //       Text("Add Driver", style: TextStyle(color: Colors.white))
+      //     ],
+      //   ),
+      // ),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(120),
         child: Column(

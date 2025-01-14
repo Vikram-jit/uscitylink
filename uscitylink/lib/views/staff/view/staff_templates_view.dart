@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/template_controller.dart';
+import 'package:uscitylink/model/template_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/view/template/template_details_view.dart';
 
 class StaffTemplatesView extends StatelessWidget {
   StaffTemplatesView({super.key});
@@ -16,7 +18,9 @@ class StaffTemplatesView extends StatelessWidget {
       key: _scaffoldKey,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.amber,
-        onPressed: () {},
+        onPressed: () {
+          Get.to(() => TemplateDetailsView(template: Template()));
+        },
         label: Row(
           children: [
             Padding(
@@ -119,6 +123,9 @@ class StaffTemplatesView extends StatelessWidget {
           itemBuilder: (context, index) {
             var template = _templateController.templates?[index];
             return ListTile(
+              onTap: () {
+                Get.to(() => TemplateDetailsView(template: template!));
+              },
               trailing: Icon(Icons.arrow_right),
               title: Text("${template?.name} "),
               subtitle: Text(

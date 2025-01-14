@@ -252,7 +252,6 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
     const groupId = req.query.groupId || null;
   
     const userId = req.query.userId || req.user?.id;
-    console.log(userId)
     if (req.file) {
       const file = req.file as any;
 

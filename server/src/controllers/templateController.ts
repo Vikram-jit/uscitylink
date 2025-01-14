@@ -2,6 +2,54 @@ import { Request, Response } from "express";
 import { Template } from "../models/Template";
 import { Op } from "sequelize";
 
+
+export async function createOrUpdate(req: Request, res: Response): Promise<any> {
+  try {
+    const { name, body, url,id,action } = req.body;
+     const file = req.file as any
+     let template = null;
+    if(action == "add"){
+      template =  await Template.create({
+        user_profile_id: req.user?.id,
+        channelId: req.activeChannel,
+        name: name,
+        body: body,
+        url: file?.key || "" ,
+        
+      });
+    } else if(action == "delete"){
+      template =await Template.findByPk(id);
+      await Template.destroy({
+        where:{
+          id
+        }
+      })
+    } else{
+      await Template.update({
+        name,
+        body,
+        url: file?.key || url ,
+      },{
+        where:{
+          id:id
+        }
+      })
+      template =await Template.findByPk(id);
+    }
+  
+
+    return res.status(201).json({
+      status: true,
+      message: `Template ${action}ed successfully.`,
+      data:template
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
 export async function create(req: Request, res: Response): Promise<any> {
   try {
     const { name, body, url } = req.body;

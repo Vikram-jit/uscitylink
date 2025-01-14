@@ -27,6 +27,7 @@ class GroupController extends GetxController {
   var totalPages = 1.obs;
   var previousGroupId = ''.obs;
   final group = GroupSingleModel().obs;
+  var templateurl = "".obs;
 
   Timer? typingTimer;
   late DateTime typingStartTime;

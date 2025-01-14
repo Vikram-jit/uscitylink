@@ -102,6 +102,68 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
+  Future<ApiResponse<dynamic>> formData(
+      String url, Map<String, dynamic> extraFields, File? file) async {
+    try {
+      Utils.showLoader();
+
+      final headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+
+      String? token = await userPreferenceController.getToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..headers.addAll(headers);
+
+      extraFields.forEach((key, value) {
+        request.fields[key] = value.toString();
+      });
+
+      if (file != null) {
+        String fieldName = 'file'; // This is the key for the file in the form
+        String filePath = file.path; // Get the path of the file
+
+        // Add the file to the request
+        var multipartFile =
+            await http.MultipartFile.fromPath(fieldName, filePath);
+        request.files.add(multipartFile);
+      }
+
+      final response = await request.send().timeout(const Duration(hours: 1));
+
+      final responseString = await response.stream.bytesToString();
+
+      if (response.statusCode == 201) {
+        Map<String, dynamic> responseJson = jsonDecode(responseString);
+
+        Utils.hideLoader();
+        return ApiResponse<dynamic>(
+          data: responseJson['data'] ?? {},
+          message: responseJson['message'] ?? 'Uploaded successfully',
+          status: responseJson['status'] ?? true,
+        );
+      }
+
+      // Handle failure response
+      Utils.hideLoader();
+      throw Exception("SERVER ERROR: ${response.statusCode}");
+    } on SocketException {
+      Utils.hideLoader();
+      throw InternetException(); // Handle no internet connection
+    } on TimeoutException {
+      Utils.hideLoader();
+      throw RequestTimeout(); // Handle timeout errors
+    } catch (e) {
+      Utils.hideLoader();
+      throw Exception(
+          "An unexpected error occurred: $e"); // Handle any other exceptions
+    }
+  }
+
   Future<ApiResponse<FileModel>> fileUpload(
       File data, String url, String channelId, String type) async {
     try {
