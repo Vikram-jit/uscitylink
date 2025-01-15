@@ -73,6 +73,7 @@ export async function selectedChannelMembers(
       where: {
         channelId: req.activeChannel,
         isGroup: 0,
+        status:"active"
       },
       include: [
         {
@@ -122,11 +123,12 @@ export async function driverList(req: Request, res: Response): Promise<any> {
         if (driver.profiles?.length || 0 > 0) {
           const profile = await UserChannel.findOne({
             where: {
+              
               channelId:req.activeChannel,
               userProfileId: driver.profiles?.[0]?.id,
             },
           });
-          if (profile) {
+          if (profile && profile.status == "active") {
             isExsit = true;
           }
         }
@@ -165,7 +167,9 @@ export async function addOrRemoveDriverFromChannel(req: Request, res: Response):
      });
      
     if(userChannels){
-      await UserChannel.destroy({
+      await UserChannel.update({
+        status:userChannels.status =="active"?"inactive":"active"
+      },{
         where:{
           id:userChannels.id
         }

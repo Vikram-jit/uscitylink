@@ -9,14 +9,14 @@ import 'package:uscitylink/model/staff/user_message_model.dart';
 
 class GroupService {
   final _apiService = NetworkApiService();
-  Future<ApiResponse<GroupModel>> getGroups({
-    int page = 1, // Default to page 1
-    int pageSize = 10, // Default to 10 items per page
-    String type = "group",
-  }) async {
+  Future<ApiResponse<GroupModel>> getGroups(
+      {int page = 1, // Default to page 1
+      int pageSize = 10, // Default to 10 items per page
+      String type = "group",
+      String search = ""}) async {
     try {
       dynamic response = await _apiService.getApi(
-          '${Constant.url}/staff/groups?page=$page&pageSize=$pageSize&type=$type');
+          '${Constant.url}/staff/groups?page=$page&pageSize=$pageSize&type=$type&search=$search');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

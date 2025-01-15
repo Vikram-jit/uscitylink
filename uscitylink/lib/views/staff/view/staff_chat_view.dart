@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
+import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -15,9 +16,23 @@ class StaffChatView extends StatelessWidget {
       Get.find<StaffchannelController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   SocketService socketService = Get.find<SocketService>();
+  StaffchatController _staffchatController = Get.put(StaffchatController());
+  final ScrollController _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
+    _scrollController.addListener(() {
+      if (_staffchannelController.loading.value) return;
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        if (_staffchannelController.currentPage.value <
+            _staffchannelController.totalPages.value) {
+          _staffchannelController.getChnnelChatUser(
+              _staffchannelController.currentPage.value + 1,
+              _staffchannelController.searchController.text);
+        }
+      }
+    });
     return Scaffold(
       key: _scaffoldKey,
       appBar: PreferredSize(
@@ -59,6 +74,10 @@ class StaffChatView extends StatelessWidget {
                     child: Container(
                       height: 40,
                       child: TextField(
+                        onChanged: (value) {
+                          _staffchannelController.onSearchChanged(value);
+                        },
+                        controller: _staffchannelController.searchController,
                         decoration: InputDecoration(
                           hintText: "Search user...",
                           hintStyle: TextStyle(color: Colors.grey),
@@ -116,10 +135,14 @@ class StaffChatView extends StatelessWidget {
         child: RefreshIndicator(
           onRefresh: () async {
             // Trigger the refresh action when the user pulls down the list
-            _staffchannelController.getChnnelChatUser();
+            _staffchannelController.getChnnelChatUser(
+                _staffchannelController.currentPage.value,
+                _staffchannelController.searchController.text);
           },
           child: Obx(() {
-            if (_staffchannelController.loading.value) {
+            if (_staffchannelController.loading.value &&
+                _staffchannelController.channelChatUser.value.userChannels ==
+                    null) {
               return const Center(child: CircularProgressIndicator());
             }
             // If no channels are available, show loading indicator
@@ -129,6 +152,7 @@ class StaffChatView extends StatelessWidget {
               return const Center(child: Text("No Users Found Yet."));
             } else {
               return ListView.builder(
+                controller: _scrollController,
                 itemCount: _staffchannelController
                         .channelChatUser?.value?.userChannels?.length ??
                     0,
@@ -142,13 +166,8 @@ class StaffChatView extends StatelessWidget {
                     direction: DismissDirection.endToStart, // Swipe to delete
 
                     onDismissed: (direction) {
-                      // Handle item removal and show a snackbar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              "Channel ${channel?.userProfile?.username} deleted"),
-                        ),
-                      );
+                      _staffchatController
+                          .deleteMember(channel!.userProfile!.id!);
                     },
                     background: Container(
                       color: Colors.red,

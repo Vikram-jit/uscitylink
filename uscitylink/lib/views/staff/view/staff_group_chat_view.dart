@@ -33,13 +33,15 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
     _tabController.addListener(() {
       if (_tabController.index == 1 && !_tabController.indexIsChanging) {
         _staffGroupController.type.value = "group";
-        _staffGroupController
-            .getGroups(_staffGroupController.currentPage.value);
+        _staffGroupController.getGroups(_staffGroupController.currentPage.value,
+            _staffGroupController.searchController.text);
+        _staffGroupController.searchController.text = "";
       }
       if (_tabController.index == 0 && !_tabController.indexIsChanging) {
         _staffGroupController.type.value = "truck";
-        _staffGroupController
-            .getGroups(_staffGroupController.currentPage.value);
+        _staffGroupController.getGroups(_staffGroupController.currentPage.value,
+            _staffGroupController.searchController.text);
+        _staffGroupController.searchController.text = "";
       }
     });
   }
@@ -120,7 +122,8 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
                     Container(
                       height: 40,
                       child: TextField(
-                        // onChanged: _onSearchChanged,
+                        controller: _staffGroupController.searchController,
+                        onChanged: _staffGroupController.onSearchChanged,
                         decoration: InputDecoration(
                           hintText: "Search ...",
                           hintStyle: TextStyle(color: Colors.grey),

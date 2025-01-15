@@ -102,6 +102,36 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
+  Future deleteApi(String url) async {
+    try {
+      Utils.showLoader();
+      dynamic responseJson;
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+
+      String? token = await userPreferenceController.getToken();
+
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      responseJson = returnResponse(response);
+
+      return responseJson;
+    } on SocketException {
+      Utils.hideLoader();
+      throw InternetException();
+    } on RequestTimeout {
+      Utils.hideLoader();
+      throw RequestTimeout();
+    }
+  }
+
   Future<ApiResponse<dynamic>> formData(
       String url, Map<String, dynamic> extraFields, File? file) async {
     try {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
@@ -31,21 +32,59 @@ class StaffgroupController extends GetxController {
 
   final _groupService = GroupService();
   final __groupService = groupS.GroupService();
+
+  TextEditingController searchController = TextEditingController();
+  Timer? _debounce;
+
   @override
   void onInit() {
     super.onInit();
 
-    getGroups(currentPage.value);
+    getGroups(currentPage.value, searchController.text);
   }
 
-  Future<void> getGroups(int page) async {
+  void onSearchChanged(String query) {
+    // If the previous timer is active, cancel it
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+
+    // Start a new timer for debounce (500ms delay)
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      getGroups(1, query);
+    });
+  }
+
+  Future<void> deleteGroup(String id) async {
+    groups.value.data?.removeWhere((item) => item.id == id);
+    if (loading.value) return;
+
+    loading.value = true;
+
+    try {
+      // Fetch messages from the server with pagination.
+      var response = await __groupService.deletedById(id);
+
+      // Check if the response is valid
+      if (response.status) {
+        refresh();
+        Utils.toastMessage(response.message);
+      }
+    } catch (error) {
+      // Handle error by showing a snack bar
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      // Ensure loading state is reset
+      loading.value = false;
+    }
+  }
+
+  Future<void> getGroups(int page, String search) async {
     if (loading.value) return;
 
     loading.value = true;
 
     try {
       var response = await _groupService.getGroups(
-          page: page, type: type.value, pageSize: 10);
+          page: page, type: type.value, pageSize: 10, search: search);
 
       if (response.data != null) {
         if (page > 1) {
@@ -143,5 +182,12 @@ class StaffgroupController extends GetxController {
     }
     group.refresh();
     // Instead of _staffgroupController.group.refresh(), use:
+  }
+
+  @override
+  void onClose() {
+    // Cancel debounce timer when the controller is disposed
+    _debounce?.cancel();
+    super.onClose();
   }
 }

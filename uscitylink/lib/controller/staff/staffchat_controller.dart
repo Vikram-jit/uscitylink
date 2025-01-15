@@ -63,6 +63,28 @@ class StaffchatController {
     }
   }
 
+  Future<void> deleteMember(String id) async {
+    if (loading.value) return;
+
+    loading.value = true;
+
+    try {
+      // Fetch messages from the server with pagination.
+      var response = await __channelService.deletedById(id);
+
+      // Check if the response is valid
+      if (response.status) {
+        Utils.toastMessage(response.message);
+      }
+    } catch (error) {
+      // Handle error by showing a snack bar
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      // Ensure loading state is reset
+      loading.value = false;
+    }
+  }
+
   void updateTypingStatus(dynamic data) {
     typing.value = data['isTyping'];
     typingMessage.value = data['message'];

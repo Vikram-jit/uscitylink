@@ -35,4 +35,25 @@ class ChatService {
       throw Exception('Error fetching getMesssageByUserId: $e');
     }
   }
+
+  Future<ApiResponse<Null>> deletedById(String id) async {
+    try {
+      dynamic response =
+          await _apiService.deleteApi('${Constant.url}/staff/chat/message/$id');
+
+      if (response != null) {
+        /// var data = response['data'];
+
+        return ApiResponse<Null>(
+          data: null,
+          message: response['message'] ?? 'Deleted Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error Deleted : $e');
+    }
+  }
 }

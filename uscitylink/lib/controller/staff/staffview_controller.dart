@@ -12,7 +12,9 @@ class StaffviewController extends GetxController {
     currentIndex.listen((index) {
       if (index == 0) {}
       if (index == 1) {
-        _staffchannelController.getChnnelChatUser();
+        _staffchannelController.getChnnelChatUser(
+            _staffchannelController.currentPage.value,
+            _staffchannelController.searchController.text);
       }
       if (index == 2) {}
       if (index == 3) {

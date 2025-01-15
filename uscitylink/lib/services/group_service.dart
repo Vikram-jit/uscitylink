@@ -56,4 +56,25 @@ class GroupService {
       throw Exception('Error fetching groupbyid: $e');
     }
   }
+
+  Future<ApiResponse<Null>> deletedById(String id) async {
+    try {
+      dynamic response =
+          await _apiService.deleteApi('${Constant.url}/group/$id');
+
+      if (response != null) {
+        /// var data = response['data'];
+
+        return ApiResponse<Null>(
+          data: null,
+          message: response['message'] ?? 'Deleted Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error Deleted : $e');
+    }
+  }
 }

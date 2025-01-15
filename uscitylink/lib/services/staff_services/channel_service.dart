@@ -44,10 +44,11 @@ class ChannelService {
     }
   }
 
-  Future<ApiResponse<ChannelChatUserModel>> getChatUserChannel() async {
+  Future<ApiResponse<ChannelChatUserModel>> getChatUserChannel(
+      int page, String search) async {
     try {
-      dynamic response =
-          await _apiService.getApi('${Constant.url}/staff/channel/chatUsers');
+      dynamic response = await _apiService.getApi(
+          '${Constant.url}/staff/channel/chatUsers?page=$page&search=$search');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];
@@ -190,10 +191,11 @@ class ChannelService {
     }
   }
 
-  Future<ApiResponse<TemplateModel>> getTemplates(int page) async {
+  Future<ApiResponse<TemplateModel>> getTemplates(
+      int page, String search) async {
     try {
-      dynamic response = await _apiService
-          .getApi('${Constant.url}/template?page=$page&source=pagination');
+      dynamic response = await _apiService.getApi(
+          '${Constant.url}/template?page=$page&source=paginationWithSearch&search=$search');
 
       if (response != null) {
         var data = response['data'];

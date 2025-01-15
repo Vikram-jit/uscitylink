@@ -31,7 +31,8 @@ class TemplateDialog {
       GroupController _groupController) {
     // Ensure you're in the right context
     if (context != null) {
-      _templateController.getTemplates(_templateController.currentPage.value);
+      _templateController.getTemplates(_templateController.currentPage.value,
+          _templateController.searchController.text);
 
       showModalBottomSheet(
         context: context,
@@ -63,8 +64,9 @@ class TemplateDialog {
                   Container(
                     height: 40,
                     child: TextField(
+                      controller: _templateController.searchController,
                       onChanged: (query) {
-                        // _staffChannelController.searchDrivers(query);
+                        _templateController.onSearchChanged(query);
                       },
                       decoration: InputDecoration(
                         hintText: "Search templates...",
@@ -101,8 +103,9 @@ class TemplateDialog {
                                                     .templates.length -
                                                 1]) {
                                   _templateController.getTemplates(
-                                      _templateController.currentPage.value +
-                                          1);
+                                      _templateController.currentPage.value + 1,
+                                      _templateController
+                                          .searchController.text);
                                 }
                               }
                             }),
@@ -189,7 +192,8 @@ class TemplateDialog {
       StaffchatController _staffchatController) {
     // Ensure you're in the right context
     if (context != null) {
-      _templateController.getTemplates(_templateController.currentPage.value);
+      _templateController.getTemplates(_templateController.currentPage.value,
+          _templateController.searchController.text);
 
       showModalBottomSheet(
         context: context,
@@ -221,8 +225,9 @@ class TemplateDialog {
                   Container(
                     height: 40,
                     child: TextField(
+                      controller: _templateController.searchController,
                       onChanged: (query) {
-                        // _staffChannelController.searchDrivers(query);
+                        _templateController.onSearchChanged(query);
                       },
                       decoration: InputDecoration(
                         hintText: "Search templates...",
@@ -259,8 +264,9 @@ class TemplateDialog {
                                                     .templates.length -
                                                 1]) {
                                   _templateController.getTemplates(
-                                      _templateController.currentPage.value +
-                                          1);
+                                      _templateController.currentPage.value + 1,
+                                      _templateController
+                                          .searchController.text);
                                 }
                               }
                             }),

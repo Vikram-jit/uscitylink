@@ -233,20 +233,23 @@ class StaffDriverView extends StatelessWidget {
                     ),
                     Row(
                       children: [
-                        IconButton(
-                          icon: Icon(Icons.edit),
-                          onPressed: () {},
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.delete,
-                            color: Colors.redAccent,
-                          ),
-                          onPressed: () {},
-                        ),
+                        // IconButton(
+                        //   icon: Icon(Icons.edit),
+                        //   onPressed: () {},
+                        // ),
+                        // IconButton(
+                        //   icon: Icon(
+                        //     Icons.delete,
+                        //     color: Colors.redAccent,
+                        //   ),
+                        //   onPressed: () {},
+                        // ),
                       ],
                     )
                   ],
+                ),
+                SizedBox(
+                  height: 10,
                 ),
               ],
             );

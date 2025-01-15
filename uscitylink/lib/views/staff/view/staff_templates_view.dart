@@ -12,7 +12,8 @@ class StaffTemplatesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _templateController.getTemplates(_templateController.currentPage.value);
+      _templateController.getTemplates(_templateController.currentPage.value,
+          _templateController.searchController.text);
     });
     return Scaffold(
       key: _scaffoldKey,
@@ -64,6 +65,8 @@ class StaffTemplatesView extends StatelessWidget {
                     child: Container(
                       height: 40,
                       child: TextField(
+                        controller: _templateController.searchController,
+                        onChanged: _templateController.onSearchChanged,
                         decoration: InputDecoration(
                           hintText: "Search templates...",
                           hintStyle: TextStyle(color: Colors.grey),
@@ -114,8 +117,9 @@ class StaffTemplatesView extends StatelessWidget {
                     _templateController.templates.last ==
                         _templateController.templates[
                             _templateController.templates.length - 1]) {
-                  _templateController
-                      .getTemplates(_templateController.currentPage.value + 1);
+                  _templateController.getTemplates(
+                      _templateController.currentPage.value + 1,
+                      _templateController.searchController.text);
                 }
               }
             }),

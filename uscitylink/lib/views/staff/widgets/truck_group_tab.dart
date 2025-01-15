@@ -35,11 +35,7 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
                 key: Key('${group?.id}'),
                 direction: DismissDirection.endToStart,
                 onDismissed: (direction) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Channel ${group?.name} deleted"),
-                    ),
-                  );
+                  _staffgroupController.deleteGroup(group!.id!);
                 },
                 background: Container(
                   color: Colors.red,

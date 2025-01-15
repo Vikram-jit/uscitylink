@@ -14,6 +14,7 @@ import GroupMessage from "../models/GroupMessage";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import Queue from "bull";
+import Role from "../models/Role";
 
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -22,27 +23,44 @@ const notificationQueue = new Queue("jobQueue", {
   },
 });
 
-notificationQueue.process(async (job:any) => {
-  const { staffId, title, body, channel_id, userName, userId } = job.data;
+notificationQueue.process(async (job: any) => {
+  const { title, body, channel_id, userName, userId } = job.data;
 
-  const user = await UserProfile.findByPk(staffId);
+  const roleId = await Role.findOne({
+    where: {
+      name: "staff",
+    },
+  });
+  const channel = await Channel.findByPk(channel_id)
 
-  if (user) {
-    const deviceToken = user.device_token;
-    if (deviceToken) {
-      await sendNotificationToDevice(deviceToken, {
-        title: userName || "",
-        badge: 0,
-        body: body,
-        data: {
-          channelId: channel_id,
-          type: "DRIVER NEW MESSAGE",
-          title: userName,
-          userId: userId,
-        },
-      });
-    }
-  }
+  const users = await UserProfile.findAll({
+    where: {
+      role_id: roleId?.id,
+      device_token: {
+        [Op.ne]: null,
+      },
+    },
+  });
+  await Promise.all(
+    users.map(async (user) => {
+      if (user) {
+        const deviceToken = user.device_token;
+        if (deviceToken) {
+          await sendNotificationToDevice(deviceToken, {
+            title: `${userName} (${channel?.name})` || "",
+            badge: 0,
+            body: body,
+            data: {
+              channelId: channel_id,
+              type: "DRIVER NEW MESSAGE",
+              title: userName,
+              userId: userId,
+            },
+          });
+        }
+      }
+    })
+  );
 });
 
 // Optional: Handle failed jobs
@@ -200,14 +218,7 @@ export async function messageToChannelToUser(
                   userId: message?.userProfileId,
                   message,
                 });
-                // notificationQueue.add({
-                //   staffId: staffId,
-                //   title: "",
-                //   body,
-                //   channel_id: channelId,
-                //   userId: findUserChannel.driverId,
-                //   userName:findUserChannel.name
-                // });
+
                 io.to(isSocket?.id).emit(
                   "notification_new_message @@@",
                   `New Message received `
@@ -246,6 +257,13 @@ export async function messageToChannelToUser(
       );
       io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
     }
+    notificationQueue.add({
+      title: "",
+      body,
+      channel_id: channelId,
+      userId: findUserChannel.driverId,
+      userName: `${findUserChannel.name}`,
+    });
   }
 }
 
@@ -612,8 +630,6 @@ export async function messageToDriverByTruckGroup(
       }
     }
   });
-
- 
 }
 
 export async function unreadAllMessage(

@@ -44,7 +44,8 @@ class _GroupTabState extends State<GroupTab> {
                     final lastItem = groupData[groupData.length - 1];
                     if (lastItem == groupData[groupData.length - 1]) {
                       _staffgroupController.getGroups(
-                          _staffgroupController.currentPage.value + 1);
+                          _staffgroupController.currentPage.value + 1,
+                          _staffgroupController.searchController.text);
                     }
                   }
                 }
@@ -64,11 +65,7 @@ class _GroupTabState extends State<GroupTab> {
                 key: Key('${group?.id}'),
                 direction: DismissDirection.endToStart,
                 onDismissed: (direction) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Channel ${group?.name} deleted"),
-                    ),
-                  );
+                  _staffgroupController.deleteGroup(group!.id!);
                 },
                 background: Container(
                   color: Colors.red,

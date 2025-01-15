@@ -1,7 +1,9 @@
 // ignore_for_file: unnecessary_set_literal
 
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
@@ -25,7 +27,24 @@ class StaffchannelController extends GetxController {
   var channelChatUser = ChannelChatUserModel().obs;
   final __channelService = ChannelService();
 
+  var currentPage = 1.obs;
+  var totalPages = 1.obs;
+
+  TextEditingController searchController = TextEditingController();
+  Timer? _debounce;
+
   SocketService _socketService = Get.find<SocketService>();
+
+  void onSearchChanged(String query) {
+    // If the previous timer is active, cancel it
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+
+    // Start a new timer for debounce (500ms delay)
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      getChnnelChatUser(1, query);
+    });
+  }
+
   void getUserChannels() {
     loading.value = true;
     __channelService.getChannelList().then((response) {
@@ -70,13 +89,27 @@ class StaffchannelController extends GetxController {
     }
   }
 
-  Future<void> getChnnelChatUser() async {
+  Future<void> getChnnelChatUser(int page, String search) async {
+    if (loading.value) return;
     loading.value = true;
 
     try {
-      var response = await __channelService.getChatUserChannel();
+      var response = await __channelService.getChatUserChannel(
+          page, searchController.text);
 
-      channelChatUser.value = response.data;
+      if (response.data != null) {
+        if (page > 1) {
+          channelChatUser.value?.userChannels
+              ?.addAll(response.data.userChannels ?? []);
+        } else {
+          channelChatUser.value = response.data;
+        }
+
+        currentPage.value = response.data.pagination!.currentPage!;
+        totalPages.value = response.data.pagination!.totalPages!;
+      } else {
+        Utils.snackBar('No data', 'No user found.');
+      }
     } catch (error) {
       Utils.snackBar('Error', error.toString());
     } finally {
@@ -146,7 +179,7 @@ class StaffchannelController extends GetxController {
 
       if (response.status) {
         await getChannelMembers();
-        await getChnnelChatUser();
+        await getChnnelChatUser(currentPage.value, searchController.text);
       }
 
       loading.value = false;
@@ -199,7 +232,9 @@ class StaffchannelController extends GetxController {
       selectedDriversIds.clear();
 
       getUserChannels();
-      getChnnelChatUser();
+      currentPage.value = 1;
+      searchController.text = "";
+      getChnnelChatUser(currentPage.value, searchController.text);
       channelChatUser.refresh();
       channels.refresh();
       if (_socketService.isConnected.value) {
@@ -307,5 +342,12 @@ class StaffchannelController extends GetxController {
     } catch (e) {
       print("Error while adding new message: $e");
     }
+  }
+
+  @override
+  void onClose() {
+    // Cancel debounce timer when the controller is disposed
+    _debounce?.cancel();
+    super.onClose();
   }
 }
