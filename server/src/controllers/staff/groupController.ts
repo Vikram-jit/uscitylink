@@ -150,7 +150,13 @@ export async function getTruckList(req: Request, res: Response): Promise<any> {
     });
 
     const truckIds: any = groupTruckList?.map((el) => el.dataValues.Group.name);
-
+   if(truckIds.length == 0){
+    return res.status(200).json({
+      status: true,
+      message: `Get Trucks Successfully.`,
+      data: [],
+    });
+   }
     const trucks = await secondarySequelize.query<any>(
       `SELECT number FROM trucks WHERE number NOT IN (:id)`,
       {
@@ -158,7 +164,7 @@ export async function getTruckList(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
-
+   
     return res.status(200).json({
       status: true,
       message: `Get Trucks Successfully.`,

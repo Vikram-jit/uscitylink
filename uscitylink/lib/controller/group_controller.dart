@@ -152,9 +152,14 @@ class GroupController extends GetxController {
         .getGroupMessages(channelId, groupId, page)
         .then((response) {
       // Check the response structure
-
-      if (response.data.messages != null) {
-        messages.addAll(response.data.messages ?? []);
+      if (page > 1) {
+        if (response.data.messages != null) {
+          messages.addAll(response.data.messages ?? []);
+        }
+      } else {
+        if (response.data.messages != null) {
+          messages.value = response.data.messages ?? [];
+        }
       }
 
       if (response.data.pagination != null) {

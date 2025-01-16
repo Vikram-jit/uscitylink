@@ -17,6 +17,24 @@ class _StaffDashboardState extends State<StaffDashboard> {
       Get.put(CustomDrawerController());
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
+    // Handle app lifecycle changes (background/foreground)
+    if (state == AppLifecycleState.paused) {
+      // App is in the background
+
+      print("App is in the background");
+      // socketService.disconnect(); // Disconnect the socket when the app goes to background
+    } else if (state == AppLifecycleState.resumed) {
+      // App is in the foreground
+
+      print("App is in the foreground");
+      // socketService
+      //     .connectSocket(); // Reconnect the socket when the app comes back to foreground
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
         key: _customDrawerController.scaffoldKey,

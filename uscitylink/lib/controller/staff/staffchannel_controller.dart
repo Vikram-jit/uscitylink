@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/model/group_members_model.dart';
+import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
@@ -26,7 +27,7 @@ class StaffchannelController extends GetxController {
   var selectedDriversIds = <String>[].obs;
   var channelChatUser = ChannelChatUserModel().obs;
   final __channelService = ChannelService();
-
+  StaffgroupController _staffgroupController = Get.put(StaffgroupController());
   var currentPage = 1.obs;
   var totalPages = 1.obs;
 
@@ -235,8 +236,13 @@ class StaffchannelController extends GetxController {
       currentPage.value = 1;
       searchController.text = "";
       getChnnelChatUser(currentPage.value, searchController.text);
+
+      _staffgroupController.getGroups(1, "");
+
       channelChatUser.refresh();
       channels.refresh();
+      _staffgroupController.update();
+      _staffgroupController.groups.refresh();
       if (_socketService.isConnected.value) {
         _socketService.switchStaffChannel(id);
       }

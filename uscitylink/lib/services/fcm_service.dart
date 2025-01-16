@@ -5,7 +5,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
+import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'dart:io' show Platform;
 
@@ -20,9 +23,12 @@ class FCMService extends GetxController {
       FlutterLocalNotificationsPlugin();
   UserPreferenceController userPreferenceController =
       UserPreferenceController();
+
   AuthService _authService = AuthService();
   ChannelController _channelController = Get.put(ChannelController());
   MessageController _messageController = Get.put(MessageController());
+  StaffchatController _staffchatController = Get.put(StaffchatController());
+
   RxString fcmToken = ''.obs;
 
   SocketService socketService = Get.find<SocketService>();
@@ -60,7 +66,7 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
-
+          print(decodedPayload);
           if (decodedPayload['type'] == "GROUP MESSAGE") {
             if (AppRoutes.driverGroupMessage.isNotEmpty) {
               if (Get.currentRoute == AppRoutes.driverMessage) {
@@ -87,6 +93,81 @@ class FCMService extends GetxController {
                 );
               }
             }
+          } else if (decodedPayload["type"] == "DRIVER NEW MESSAGE") {
+            if (decodedPayload["isActiveChannel"] == "0") {
+              if (Get.isRegistered<StaffchannelController>()) {
+                Get.find<StaffchannelController>()
+                    .updateActiveChannel(decodedPayload['channelId']);
+              }
+            }
+            if (AppRoutes.driverMessage.isNotEmpty) {
+              if (socketService.isConnected.value) {
+                socketService.staffUnreadAllUserMessage(
+                    decodedPayload['channelId'], decodedPayload['userId']);
+              }
+
+              // If already on the target screen, just update the state or pop the stack
+              if (Get.currentRoute == AppRoutes.staff_user_message) {
+                _staffchatController.channelId.value =
+                    decodedPayload['channelId'];
+                _staffchatController.userName.value = decodedPayload['title'];
+                _staffchatController.updateChannelMessagesByNotification(
+                    decodedPayload['channelId'],
+                    decodedPayload['title'],
+                    decodedPayload['userId']);
+              } else {
+                if (socketService.isConnected.value) {
+                  socketService.staffUnreadAllUserMessage(
+                      decodedPayload['channelId'], decodedPayload['userId']);
+                }
+                Get.back();
+                Get.toNamed(
+                  AppRoutes.staff_user_message,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title'],
+                    'userId': decodedPayload['userId']
+                  },
+                );
+              }
+            }
+          } else if (decodedPayload['type'] == "GROUP NEW MESSAGE STAFF") {
+            if (AppRoutes.staffGroupMessage.isNotEmpty) {
+              if (decodedPayload["isActiveChannel"] == "0") {
+                if (Get.isRegistered<StaffchannelController>()) {
+                  Get.find<StaffchannelController>()
+                      .updateActiveChannel(decodedPayload['channelId']);
+                }
+              }
+              if (Get.currentRoute == AppRoutes.staffGroupMessage) {
+                socketService.updateStaffGroup(decodedPayload['groupId']);
+
+                Get.back();
+
+                if (Get.isRegistered<GroupController>()) {
+                  Get.find<GroupController>().currentPage.value = 1;
+                  Get.find<GroupController>().totalPages.value = 1;
+                  Get.find<GroupController>().messages.value = [];
+                }
+                Get.toNamed(
+                  AppRoutes.staffGroupMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title'],
+                    'groupId': decodedPayload['groupId']
+                  },
+                );
+              } else {
+                Get.toNamed(
+                  AppRoutes.staffGroupMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title'],
+                    'groupId': decodedPayload['groupId']
+                  },
+                );
+              }
+            }
           } else {
             if (AppRoutes.driverMessage.isNotEmpty) {
               socketService.updateActiveChannel(decodedPayload['channelId']);
@@ -97,13 +178,6 @@ class FCMService extends GetxController {
                 _messageController.name.value = decodedPayload['title'];
                 _messageController.updateChannelMessagesByNotification(
                     decodedPayload['channelId'], decodedPayload['title']);
-                // Get.toNamed(
-                //   AppRoutes.driverMessage,
-                //   arguments: {
-                //     'channelId': decodedPayload['channelId'],
-                //     'name': decodedPayload['title']
-                //   },
-                // );
               } else {
                 socketService.updateActiveChannel(decodedPayload['channelId']);
                 Get.back();
@@ -154,15 +228,144 @@ class FCMService extends GetxController {
       print('Received a message in the foreground:');
       // Initialize the badge count to 0
       var data = jsonEncode(message.data);
+
       _channelController.getCount();
       _showNotification(data, message.notification?.title ?? '',
           message.notification?.body ?? '');
       // }
     });
 
+    //App IN BACKGROUND
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      var decodedPayload = message.data;
+
+      if (decodedPayload['type'] == "GROUP MESSAGE") {
+        if (AppRoutes.driverGroupMessage.isNotEmpty) {
+          if (Get.currentRoute == AppRoutes.driverMessage) {
+            socketService.addUserToGroup(
+                decodedPayload['channelId'], decodedPayload['groupId']);
+            socketService.updateCountGroup(decodedPayload['groupId']);
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverGroupMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['name'],
+                'groupId': decodedPayload['groupId']
+              },
+            );
+          } else {
+            Get.toNamed(
+              AppRoutes.driverGroupMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['name'],
+                'groupId': decodedPayload['groupId']
+              },
+            );
+          }
+        }
+      } else if (decodedPayload["type"] == "DRIVER NEW MESSAGE") {
+        if (decodedPayload["isActiveChannel"] == "0") {
+          if (Get.isRegistered<StaffchannelController>()) {
+            Get.find<StaffchannelController>()
+                .updateActiveChannel(decodedPayload['channelId']);
+          }
+        }
+        if (AppRoutes.driverMessage.isNotEmpty) {
+          if (socketService.isConnected.value) {
+            socketService.staffUnreadAllUserMessage(
+                decodedPayload['channelId'], decodedPayload['userId']);
+          }
+
+          // If already on the target screen, just update the state or pop the stack
+          if (Get.currentRoute == AppRoutes.staff_user_message) {
+            _staffchatController.channelId.value = decodedPayload['channelId'];
+            _staffchatController.userName.value = decodedPayload['title'];
+            _staffchatController.updateChannelMessagesByNotification(
+                decodedPayload['channelId'],
+                decodedPayload['title'],
+                decodedPayload['userId']);
+          } else {
+            if (socketService.isConnected.value) {
+              socketService.staffUnreadAllUserMessage(
+                  decodedPayload['channelId'], decodedPayload['userId']);
+            }
+            Get.back();
+            Get.toNamed(
+              AppRoutes.staff_user_message,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['title'],
+                'userId': decodedPayload['userId']
+              },
+            );
+          }
+        }
+      } else if (decodedPayload['type'] == "GROUP NEW MESSAGE STAFF") {
+        if (AppRoutes.staffGroupMessage.isNotEmpty) {
+          if (decodedPayload["isActiveChannel"] == "0") {
+            if (Get.isRegistered<StaffchannelController>()) {
+              Get.find<StaffchannelController>()
+                  .updateActiveChannel(decodedPayload['channelId']);
+            }
+          }
+          if (Get.currentRoute == AppRoutes.staffGroupMessage) {
+            socketService.updateStaffGroup(decodedPayload['groupId']);
+
+            Get.back();
+
+            if (Get.isRegistered<GroupController>()) {
+              Get.find<GroupController>().currentPage.value = 1;
+              Get.find<GroupController>().totalPages.value = 1;
+              Get.find<GroupController>().messages.value = [];
+            }
+            Get.toNamed(
+              AppRoutes.staffGroupMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['title'],
+                'groupId': decodedPayload['groupId']
+              },
+            );
+          } else {
+            Get.toNamed(
+              AppRoutes.staffGroupMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['title'],
+                'groupId': decodedPayload['groupId']
+              },
+            );
+          }
+        }
+      } else {
+        if (AppRoutes.driverMessage.isNotEmpty) {
+          socketService.updateActiveChannel(decodedPayload['channelId']);
+          // If already on the target screen, just update the state or pop the stack
+          if (Get.currentRoute == AppRoutes.driverMessage) {
+            _messageController.channelId.value = decodedPayload['channelId'];
+            _messageController.name.value = decodedPayload['title'];
+            _messageController.updateChannelMessagesByNotification(
+                decodedPayload['channelId'], decodedPayload['title']);
+          } else {
+            socketService.updateActiveChannel(decodedPayload['channelId']);
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['title']
+              },
+            );
+          }
+        }
+      }
+    });
+
     // Handle background messages
     // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
+    //WHEN APP  TERMINATED
     FirebaseMessaging.instance
         .getInitialMessage()
         .then((RemoteMessage? message) async {
@@ -170,6 +373,7 @@ class FCMService extends GetxController {
         socketService.connectSocket();
         // Handle the notification and navigate to the desired screen
         var data = message.data;
+        print(data);
         if (data['type'] == "GROUP MESSAGE") {
           Utils.showLoader();
           Timer(const Duration(seconds: 3), () {
@@ -182,6 +386,47 @@ class FCMService extends GetxController {
                 'channelId': data['channelId'],
                 'name': data['name'],
                 'groupId': data['groupId']
+              },
+            );
+            Utils.hideLoader();
+          });
+        } else if (data['type'] == "GROUP NEW MESSAGE STAFF") {
+          Utils.showLoader();
+          Timer(const Duration(seconds: 3), () {
+            socketService.updateStaffGroup(data['groupId']);
+            socketService.socket
+                .emit("staff_channel_update", data['channelId']);
+            Get.toNamed(
+              AppRoutes.staffGroupMessage,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['title'],
+                'groupId': data['groupId']
+              },
+            );
+            Utils.hideLoader();
+          });
+        } else if (data['type'] == "DRIVER NEW MESSAGE") {
+          Utils.showLoader();
+          Timer(const Duration(seconds: 3), () {
+            if (socketService.isConnected.value) {
+              socketService.staffUnreadAllUserMessage(
+                  data['channelId'], data['userId']);
+              socketService.socket
+                  .emit("staff_channel_update", data['channelId']);
+            }
+
+            // if (data["isActiveChannel"] == "0") {
+            //   Get.put(StaffchannelController())
+            //       .updateActiveChannel(data['channelId']);
+            // }
+
+            Get.toNamed(
+              AppRoutes.staff_user_message,
+              arguments: {
+                'channelId': data['channelId'],
+                'name': data['title'],
+                'userId': data['userId']
               },
             );
             Utils.hideLoader();
@@ -201,61 +446,6 @@ class FCMService extends GetxController {
           Utils.hideLoader();
         }
       }
-    });
-
-    // Handle when the app is opened from a notification
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      var data = message.data;
-      print(jsonEncode(data));
-      // if (data['type'] == "GROUP MESSAGE") {
-      //   if (AppRoutes.driverGroupMessage.isNotEmpty) {
-      //     if (Get.currentRoute == AppRoutes.driverMessage) {
-      //       Get.back();
-      //       Get.toNamed(
-      //         AppRoutes.driverGroupMessage,
-      //         arguments: {
-      //           'channelId': data['channelId'],
-      //           'name': data['name'],
-      //           'groupId': data['groupId']
-      //         },
-      //       );
-      //     } else {
-      //       Get.back();
-      //       Get.toNamed(
-      //         AppRoutes.driverGroupMessage,
-      //         arguments: {
-      //           'channelId': data['channelId'],
-      //           'name': data['name'],
-      //           'groupId': data['groupId']
-      //         },
-      //       );
-      //     }
-      //   }
-      // } else {
-      //   if (AppRoutes.driverMessage.isNotEmpty) {
-      //     socketService.updateActiveChannel(data['channelId']);
-
-      //     if (Get.currentRoute == AppRoutes.driverMessage) {
-      //       Get.back();
-      //       Get.toNamed(
-      //         AppRoutes.driverMessage,
-      //         arguments: {
-      //           'channelId': data['channelId'],
-      //           'name': data['title']
-      //         },
-      //       );
-      //     } else {
-      //       Get.back();
-      //       Get.toNamed(
-      //         AppRoutes.driverMessage,
-      //         arguments: {
-      //           'channelId': data['channelId'],
-      //           'name': data['title']
-      //         },
-      //       );
-      //     }
-      //   }
-      // }
     });
   }
 

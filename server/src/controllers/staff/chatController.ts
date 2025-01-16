@@ -89,7 +89,7 @@ export const getMessagesByUserId = async (
   res: Response
 ): Promise<any> => {
   try {
-    const { id } = req.params;
+    const { id,channelId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
@@ -99,7 +99,7 @@ export const getMessagesByUserId = async (
 
     const messages = await Message.findAndCountAll({
       where: {
-        channelId: req.activeChannel,
+        channelId: channelId,
         userProfileId: id,
         groupId: null,
       },

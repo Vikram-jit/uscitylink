@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';

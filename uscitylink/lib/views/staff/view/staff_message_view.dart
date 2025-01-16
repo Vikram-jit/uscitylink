@@ -1,15 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
-import 'package:uscitylink/controller/message_controller.dart';
-import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/staff/user_message_model.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -33,7 +31,8 @@ class StaffMessageView extends StatefulWidget {
   _StaffMessageViewState createState() => _StaffMessageViewState();
 }
 
-class _StaffMessageViewState extends State<StaffMessageView> {
+class _StaffMessageViewState extends State<StaffMessageView>
+    with WidgetsBindingObserver {
   late ScrollController _scrollController;
 
   StaffchatController _staffchatController = Get.put(StaffchatController());
@@ -42,6 +41,7 @@ class _StaffMessageViewState extends State<StaffMessageView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController = ScrollController();
     _scrollController.addListener(_scrollListener);
 
@@ -49,15 +49,53 @@ class _StaffMessageViewState extends State<StaffMessageView> {
     _staffchatController.userId.value = widget.userId;
     _staffchatController.userName.value = widget.name;
 
-    socketService.updateStaffActiveUserChat(widget.userId);
+    socketService.updateStaffActiveUserChat(_staffchatController.userId.value);
     _staffchatController.getChannelMembers(
-        widget.userId, _staffchatController.currentPage.value);
+        _staffchatController.userId.value,
+        _staffchatController.currentPage.value,
+        _staffchatController.channelId.value);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
+    // Handle app lifecycle changes (background/foreground)
+    if (state == AppLifecycleState.paused) {
+      // App is in the background
+      socketService.updateStaffActiveUserChat("");
+      _staffchatController.currentPage.value = 1;
+      _staffchatController.totalPages.value = 1;
+      if (socketService.isConnected.value) {
+        socketService.socket.disconnect();
+      }
+      print("App is in the background");
+      // socketService.disconnect(); // Disconnect the socket when the app goes to background
+    } else if (state == AppLifecycleState.resumed) {
+      // App is in the foreground
+      if (!socketService.isConnected.value) {
+        socketService.connectSocket();
+      }
+
+      socketService
+          .updateStaffActiveUserChat(_staffchatController.userId.value);
+
+      _staffchatController.getChannelMembers(_staffchatController.userId.value,
+          1, _staffchatController.channelId.value);
+
+      print("App is in the foreground");
+      // socketService
+      //     .connectSocket(); // Reconnect the socket when the app comes back to foreground
+    }
   }
 
   @override
   void dispose() {
+    socketService.updateStaffActiveUserChat('');
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _staffchatController.currentPage.value = 1;
+    _staffchatController.totalPages.value = 1;
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -69,9 +107,9 @@ class _StaffMessageViewState extends State<StaffMessageView> {
       if (_staffchatController.currentPage.value <
           _staffchatController.totalPages.value) {
         _staffchatController.getChannelMembers(
-          widget.userId,
-          _staffchatController.currentPage.value + 1,
-        );
+            _staffchatController.userId.value,
+            _staffchatController.currentPage.value + 1,
+            _staffchatController.channelId.value);
       }
     }
   }
@@ -79,9 +117,10 @@ class _StaffMessageViewState extends State<StaffMessageView> {
   // Function to send a message
   void _sendMessage() {
     if (_staffchatController.messageController.text.isNotEmpty) {
-      socketService.updateStaffActiveUserChat(widget.userId);
+      socketService
+          .updateStaffActiveUserChat(_staffchatController.userId.value);
       socketService.sendMessageToUser(
-        widget.userId,
+        _staffchatController.userId.value,
         _staffchatController.messageController.text,
         _staffchatController.templateUrl.value,
       );
@@ -100,7 +139,9 @@ class _StaffMessageViewState extends State<StaffMessageView> {
             _staffchatController.channelId.value = "";
             _staffchatController.userId.value = "";
             _staffchatController.userName.value = "";
-
+            _staffchatController.currentPage.value = 1;
+            _staffchatController.totalPages.value = 1;
+            _staffchatController.message.value = UserMessageModel();
             Get.back();
           },
           icon: const Icon(
@@ -109,31 +150,44 @@ class _StaffMessageViewState extends State<StaffMessageView> {
           ),
         ),
         backgroundColor: TColors.primaryStaff,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.name,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(color: Colors.white),
-            ),
-            Obx(() {
-              return Text(
-                _staffchatController.message.value.userProfile?.isOnline ??
-                        false
-                    ? "online"
-                    : Utils.formatUtcDateTime(_staffchatController
-                            .message.value.userProfile?.lastLogin) ??
-                        "",
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: Colors.white),
-              );
-            })
-          ],
+        title: InkWell(
+          onTap: () {
+            Get.toNamed(
+              AppRoutes.profileView,
+              arguments: {
+                'channelId': _staffchatController.userId.value,
+                'type': "staff"
+              },
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Obx(() {
+                return Text(
+                  _staffchatController.userName.value,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(color: Colors.white),
+                );
+              }),
+              Obx(() {
+                return Text(
+                  _staffchatController.message.value.userProfile?.isOnline ??
+                          false
+                      ? "online"
+                      : Utils.formatUtcDateTime(_staffchatController
+                              .message.value.userProfile?.lastLogin) ??
+                          "",
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: Colors.white),
+                );
+              })
+            ],
+          ),
         ),
       ),
       body: SafeArea(
@@ -272,9 +326,11 @@ class _StaffMessageViewState extends State<StaffMessageView> {
                         child: TextField(
                           onChanged: (text) {
                             if (text.isNotEmpty) {
-                              _staffchatController.startTyping(widget.userId);
+                              _staffchatController.startTyping(
+                                  _staffchatController.userId.value);
                             } else {
-                              _staffchatController.stopTyping(widget.userId);
+                              _staffchatController.stopTyping(
+                                  _staffchatController.userId.value);
                             }
                           },
                           keyboardType: TextInputType.multiline,

@@ -43,6 +43,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
       Get.put(ImagePickerController());
   @override
   void initState() {
+    print(widget.groupId);
     if (socketService.isConnected.value) {
       socketService.addUserToGroup(widget.channelId, widget.groupId);
       socketService.updateCountGroup(widget.channelId);

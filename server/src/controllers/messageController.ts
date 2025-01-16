@@ -321,12 +321,69 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const page = parseInt(req.query.page + "") || 1;
     const limit = parseInt(req.query.limit + "") || 10;
     const offset = (page - 1) * limit;
+    const source = req.query.source as string;
+    if(source == "staff" ){
+      const userProfile = await UserProfile.findByPk(req.params.channelId);
+      const media = await Media.findAndCountAll({
+        where: {
+          [Op.or]: [
+            ...(source === "staff"
+              ? [
+                  {
+                    channelId: req.activeChannel,
+                    upload_source: "message",
+                    user_profile_id: req.params.channelId,
+                  },
+                ]
+              : []),
+  
+            ...(source === "staff"
+              ? [
+                  {
+                    channelId: req.activeChannel,
+                    upload_source: "truck",
+                  },
+                ]
+              : []),
+  
+         
+          ],
+  
+          file_type: req.query.type || "media",
+        },
+        limit: limit,
+        offset: offset,
+        order: [["createdAt", "DESC"]],
+      });
+   
+      return res.status(200).json({
+        status: true,
+        message: `Get media successfully`,
+        data: {
+          channel:{
+            id:userProfile?.id,
+            name:userProfile?.username,
+            description:"",
+            createdAt:userProfile?.createdAt,
+            updatedAt:userProfile?.updatedAt
+          },
+          media: media.rows,
+          page,
+          limit,
+          totalItems: media.count,
+          totalPages: Math.ceil(media.count / limit),
+        },
+      });
+
+    }
+
+
 
     const channelId =
       req.params.channelId == "null" ? req.activeChannel : req.params.channelId;
     const userId = req.query.userId ?? req.user?.id;
 
-    const source = req.query.source as string;
+   
     const channel =
       source == "channel"
         ? await Channel.findByPk(channelId)

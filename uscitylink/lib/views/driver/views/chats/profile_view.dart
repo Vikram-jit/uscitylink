@@ -11,16 +11,18 @@ import 'package:uscitylink/widegts/CustomWidget.dart';
 
 class ProfileView extends StatelessWidget {
   final String channelId;
-  const ProfileView({super.key, required this.channelId});
+  final String type;
+  const ProfileView({super.key, required this.channelId, this.type = "driver"});
 
   @override
   Widget build(BuildContext context) {
     // Use the channelId in the controller
-    final mediaController =
-        Get.put(MediaController(channelId: channelId, source: "channel"));
+    final mediaController = Get.put(MediaController(
+        channelId: channelId, source: type == "driver" ? "channel" : "staff"));
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: TColors.primary,
+        backgroundColor:
+            type == "driver" ? TColors.primary : TColors.primaryStaff,
         centerTitle: true,
         title: Obx(() {
           return Text(

@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/user_message_model.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
@@ -28,7 +29,7 @@ class StaffchatController {
   Timer? typingTimer;
   late DateTime typingStartTime;
 
-  Future<void> getChannelMembers(String id, int page) async {
+  Future<void> getChannelMembers(String id, int page, String channelId) async {
     if (loading.value) return; // Prevent multiple simultaneous requests
 
     loading.value = true;
@@ -36,7 +37,7 @@ class StaffchatController {
     try {
       // Fetch messages from the server with pagination.
       var response = await __channelService.getMesssageByUserId(
-          page: page, id: id, pageSize: 10);
+          page: page, id: id, pageSize: 10, channelId: channelId);
 
       // Check if the response is valid
       if (response.data != null) {
@@ -61,6 +62,20 @@ class StaffchatController {
       // Ensure loading state is reset
       loading.value = false;
     }
+  }
+
+  void updateChannelMessagesByNotification(
+      String newChannelId, String channelName, String id) {
+    _socketService.updateStaffActiveUserChat("");
+    channelId.value = newChannelId;
+    userName.value = channelName;
+    userId.value = id;
+    currentPage.value = 1;
+    totalPages.value = 1;
+    if (_socketService.isConnected.value) {
+      _socketService.updateStaffActiveUserChat(id);
+    }
+    getChannelMembers(id, 1, newChannelId);
   }
 
   Future<void> deleteMember(String id) async {

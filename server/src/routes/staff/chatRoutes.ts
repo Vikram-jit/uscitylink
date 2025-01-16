@@ -4,7 +4,7 @@ import { deletedByUserId, getChatMessageUser, getMessagesByUserId } from '../../
 
 const router = Router(); 
 
-router.get('/message/:id',authMiddleware, getMessagesByUserId);
+router.get('/message/:id/:channelId',authMiddleware, getMessagesByUserId);
 router.delete('/message/:id',authMiddleware, deletedByUserId);
 
 export default router
