@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/model/group_members_model.dart';
@@ -119,9 +120,30 @@ class StaffgroupController extends GetxController {
     }
   }
 
-  Future<void> addGroup() async {
+  Future<void> addGroup(BuildContext context) async {
     try {
       var data = type.value == "group" ? groupName.text : selectedTruck.value;
+      if (data.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Alert'),
+              content: Text(
+                  '${type == "group" ? "Group name" : "Selected truck"} is empty. Please check again.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+        return;
+      }
       var response = await _groupService.addGroup(data, type.value);
 
       if (response.status) {

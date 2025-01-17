@@ -299,7 +299,7 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
                   // Submit button
                   InkWell(
                     onTap: () {
-                      _staffGroupController.addGroup();
+                      _staffGroupController.addGroup(context);
                     },
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 6.0),

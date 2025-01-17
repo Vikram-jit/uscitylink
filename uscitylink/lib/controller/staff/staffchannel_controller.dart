@@ -92,12 +92,20 @@ class StaffchannelController extends GetxController {
   }
 
   Future<void> deleteMember(String id) async {
-    channelMebers.removeWhere((item) => item.userProfileId == id);
-    channelMebers?.refresh();
-    channelChatUser.value.userChannels
-        ?.removeWhere((item) => item.userProfileId == id);
-    channelChatUser.refresh();
-    refresh();
+    if (channelMebers.isNotEmpty) {
+      channelMebers.removeWhere((item) => item.userProfileId == id);
+      channelMebers?.refresh();
+    }
+
+    if (channelChatUser.value.userChannels!.isNotEmpty) {
+      var index = channelChatUser.value.userChannels
+          ?.indexWhere((item) => item.userProfileId == id);
+
+      channelChatUser.value.userChannels
+          ?.removeWhere((item) => item.userProfileId == id);
+      channelChatUser.refresh();
+      refresh();
+    }
 
     loading.value = true;
 
