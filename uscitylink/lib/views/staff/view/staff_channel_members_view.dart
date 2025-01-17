@@ -149,10 +149,16 @@ class StaffChannelMembersView extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: Colors.red,
                             ),
-                            child: Icon(
-                              Icons.delete,
-                              size: 32,
-                              color: Colors.white,
+                            child: IconButton(
+                              onPressed: () {
+                                _staffChannelController
+                                    .deleteMember(channel.userProfile!.id!);
+                              },
+                              icon: Icon(
+                                Icons.delete,
+                                size: 32,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         )

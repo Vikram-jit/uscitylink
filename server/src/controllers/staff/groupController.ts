@@ -158,7 +158,8 @@ export async function getTruckList(req: Request, res: Response): Promise<any> {
     });
    }
     const trucks = await secondarySequelize.query<any>(
-      `SELECT number FROM trucks WHERE number NOT IN (:id)`,
+      `SELECT number FROM trucks WHERE number NOT IN (:id) ORDER BY
+    CAST(number AS UNSIGNED) ASC, number ASC`,
       {
         replacements: { id: truckIds }, // Passing the array of truck IDs to the query
         type: QueryTypes.SELECT,

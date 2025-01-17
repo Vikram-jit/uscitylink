@@ -158,10 +158,9 @@ class AppRoutes {
           // Access arguments as a Map
           final args = Get.arguments as Map;
           final channelId = args['groupId'];
-          print(channelId);
-          return GroupMedia(
-            groupId: channelId,
-          );
+          final type = args['type'] ?? "driver";
+
+          return GroupMedia(groupId: channelId, type: type);
         }),
     GetPage(
         name: AppRoutes.membersView,

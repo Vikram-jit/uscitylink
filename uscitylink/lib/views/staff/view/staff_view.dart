@@ -30,7 +30,7 @@ class _StaffViewState extends State<StaffView> with WidgetsBindingObserver {
   }
 
   final List<Widget> _screens = [
-    const StaffDashboard(),
+    StaffDashboard(),
     StaffChatView(),
     StaffGroupChatView(),
     StaffChannelView()

@@ -7,7 +7,6 @@ import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:uscitylink/views/driver/views/group/member_search.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
 
 class StaffGroupDetail extends StatefulWidget {
@@ -108,7 +107,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
               ),
               Center(
                   child: Text(
-                "${groupController.group?.value?.group?.name}",
+                "${groupController.group.value.group?.name}",
                 style: Theme.of(context).textTheme.headlineMedium,
               )),
               SizedBox(
@@ -116,7 +115,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
               ),
               Center(child: Obx(() {
                 return Text(
-                  "Group ${groupController?.group?.value?.groupMembers?.length ?? 0} members",
+                  "Group ${groupController.group.value.groupMembers?.length ?? 0} members",
                   style: Theme.of(context)
                       .textTheme
                       .labelSmall
@@ -134,7 +133,8 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                       Get.toNamed(
                         AppRoutes.groupMedia,
                         arguments: {
-                          'groupId': groupController?.group.value?.group?.id
+                          'type': "staff",
+                          'groupId': groupController.group.value.group?.id
                         },
                       );
                     },
@@ -174,7 +174,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   Text(
-                    "${groupController?.group?.value?.groupMembers?.length ?? 0} members",
+                    "${groupController.group.value.groupMembers?.length ?? 0} members",
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: Colors.black,
                         fontWeight: FontWeight.w700,
@@ -234,8 +234,9 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                           child: Padding(
                             padding: const EdgeInsets.only(left: 5, right: 5),
                             child: Text(
-                              "Add Member",
+                              "+ Add Member",
                               style: TextStyle(
+                                fontWeight: FontWeight.w700,
                                 color: Colors.white, // Text color
                                 fontSize: 12, // Font size
                               ),
@@ -254,69 +255,99 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                 return ListView.builder(
                   shrinkWrap: true,
                   itemCount:
-                      groupController?.group?.value?.groupMembers?.length ?? 0,
+                      groupController.group.value.groupMembers?.length ?? 0,
                   physics: NeverScrollableScrollPhysics(),
                   itemBuilder: (context, index) {
                     return Column(
                       children: [
                         ListTile(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 0),
-                          leading: GetBuilder<GroupController>(
-                            builder: (controller) {
-                              return Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 25,
-                                    backgroundColor: Colors.grey.shade400,
-                                    child: Text(
-                                      groupController
-                                              ?.group
-                                              ?.value
-                                              ?.groupMembers?[index]
-                                              ?.userProfile
-                                              ?.username?[0] ??
-                                          '', // Show first letter of username
-                                      style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Online Badge in the top-right corner, wrapped in Obx
-                                  if (groupController
-                                          ?.group
-                                          ?.value
-                                          ?.groupMembers?[index]
-                                          ?.userProfile
-                                          ?.isOnline ??
-                                      false) // Show badge if user is online
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: Colors
-                                              .green, // Green color for online status
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors
-                                                .white, // White border around the badge
-                                            width: 2,
-                                          ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 0),
+                            leading: GetBuilder<GroupController>(
+                              builder: (controller) {
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 25,
+                                      backgroundColor: Colors.grey.shade400,
+                                      child: Text(
+                                        groupController
+                                                .group
+                                                .value
+                                                .groupMembers?[index]
+                                                .userProfile
+                                                ?.username?[0] ??
+                                            '', // Show first letter of username
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 18,
                                         ),
                                       ),
                                     ),
-                                ],
-                              );
-                            },
-                          ),
-                          title: Text(
-                              "${groupController?.group?.value?.groupMembers?[index]?.userProfile?.username}"),
-                        ),
+
+                                    // Online Badge in the top-right corner, wrapped in Obx
+                                    if (groupController
+                                            .group
+                                            .value
+                                            .groupMembers?[index]
+                                            .userProfile
+                                            ?.isOnline ??
+                                        false) // Show badge if user is online
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: Colors
+                                                .green, // Green color for online status
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors
+                                                  .white, // White border around the badge
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                    "${groupController.group.value.groupMembers?[index].userProfile?.username}"),
+                                Row(
+                                  children: [
+                                    Switch(
+                                      activeTrackColor: TColors.primaryStaff,
+                                      padding: EdgeInsets.all(0),
+                                      value: groupController.group.value
+                                              .groupMembers?[index].status ==
+                                          "active",
+                                      onChanged: (vl) {
+                                        _showConfirmationStatusDialog(
+                                            context,
+                                            groupController.group.value
+                                                .groupMembers![index].id!,
+                                            vl);
+                                      },
+                                    ),
+                                    IconButton(
+                                        onPressed: () {
+                                          _showConfirmationDialog(
+                                              context,
+                                              groupController.group.value
+                                                  .groupMembers![index].id!);
+                                        },
+                                        icon: Icon(Icons.delete))
+                                  ],
+                                )
+                              ],
+                            )),
                         Padding(
                           padding: const EdgeInsets.only(right: 0.0),
                           child: SizedBox(
@@ -335,5 +366,80 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
             ],
           );
         }));
+  }
+
+  void _showConfirmationDialog(BuildContext context, String id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          insetPadding: EdgeInsets.all(8.0),
+          backgroundColor: Colors.white,
+          title: Text(
+            'Confirm Delete',
+            textAlign: TextAlign.center,
+          ),
+          content: Text(
+            'Are you sure you want to delete this driver?',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Get.back();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                groupController.deleteGroupMember(id);
+              },
+              child: Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showConfirmationStatusDialog(
+      BuildContext context, String id, bool value) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          insetPadding: EdgeInsets.all(8.0),
+          backgroundColor: Colors.white,
+          title: Text(
+            'Confirm ${!value ? "Disable" : "Enable"} Driver',
+            textAlign: TextAlign.center,
+          ),
+          content: Text(
+            'Are you sure you want to ${!value ? "disable" : "enable"} this driver?',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Get.back();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                groupController.updateStatus(id, value);
+              },
+              child: Text(
+                'Update',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

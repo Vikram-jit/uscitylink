@@ -94,36 +94,6 @@ class StaffChatView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(
-                      width: 10), // Space between the search bar and button
-                  // Button next to the search bar
-                  Container(
-                    height:
-                        40, // Height of the container to match the search bar height
-                    child: ElevatedButton(
-                      onPressed: () {
-                        DriverDialog.showDriverBottomSheet(
-                            context, _staffchannelController);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
-                        // Set button color
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(5), // Rounded corners
-                        ),
-                        padding:
-                            EdgeInsets.zero, // No padding inside the button
-                      ),
-                      child: Text(
-                        "Add",
-                        style: TextStyle(
-                          color: Colors.white, // Text color
-                          fontSize: 16, // Font size
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -136,8 +106,7 @@ class StaffChatView extends StatelessWidget {
           onRefresh: () async {
             // Trigger the refresh action when the user pulls down the list
             _staffchannelController.getChnnelChatUser(
-                _staffchannelController.currentPage.value,
-                _staffchannelController.searchController.text);
+                1, _staffchannelController.searchController.text);
           },
           child: Obx(() {
             if (_staffchannelController.loading.value &&
@@ -154,11 +123,11 @@ class StaffChatView extends StatelessWidget {
               return ListView.builder(
                 controller: _scrollController,
                 itemCount: _staffchannelController
-                        .channelChatUser?.value?.userChannels?.length ??
+                        .channelChatUser.value.userChannels?.length ??
                     0,
                 itemBuilder: (context, index) {
                   var channel = _staffchannelController
-                      .channelChatUser?.value?.userChannels?[index];
+                      .channelChatUser.value.userChannels?[index];
 
                   return Dismissible(
                     key: Key(
@@ -166,7 +135,7 @@ class StaffChatView extends StatelessWidget {
                     direction: DismissDirection.endToStart, // Swipe to delete
 
                     onDismissed: (direction) {
-                      _staffchatController
+                      _staffchannelController
                           .deleteMember(channel!.userProfile!.id!);
                     },
                     background: Container(
@@ -296,6 +265,21 @@ class StaffChatView extends StatelessWidget {
         ),
       ),
       drawer: CustomDrawer(),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: "chat-1",
+        backgroundColor: Colors.amber,
+        onPressed: () {
+          DriverDialog.showDriverBottomSheet(context, _staffchannelController);
+        },
+        label: Text(
+          "Add Driver",
+          style: TextStyle(color: Colors.white),
+        ),
+        icon: Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }

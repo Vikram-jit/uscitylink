@@ -94,7 +94,7 @@ class FilePickerController extends GetxController {
       var file = File(filePath.value);
       var res = await _apiService.fileUpload(
           file,
-          "${Constant.url}/message/fileUpload?groupId=$groupId",
+          "${Constant.url}/message/fileUpload?groupId=$groupId&source=$location",
           channelId,
           type);
       if (res.status) {

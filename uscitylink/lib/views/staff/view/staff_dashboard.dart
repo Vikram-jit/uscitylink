@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 
 class StaffDashboard extends StatefulWidget {
@@ -12,9 +15,18 @@ class StaffDashboard extends StatefulWidget {
   State<StaffDashboard> createState() => _StaffDashboardState();
 }
 
-class _StaffDashboardState extends State<StaffDashboard> {
+class _StaffDashboardState extends State<StaffDashboard>
+    with WidgetsBindingObserver {
   final CustomDrawerController _customDrawerController =
       Get.put(CustomDrawerController());
+  DashboardController _dashboardController = Get.find<DashboardController>();
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    _dashboardController.getStaffDashboard();
+    super.initState();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -89,7 +101,99 @@ class _StaffDashboardState extends State<StaffDashboard> {
             ],
           ),
         ),
-        body: CustomScrollView(),
+        body: SingleChildScrollView(
+          child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18.0),
+              child: Obx(() {
+                if (_dashboardController.loading.value) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.3,
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 1.2,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              title: "TOTAL CHANNEL",
+                              value: _dashboardController
+                                      .dashboardStaff.value.channelCount ??
+                                  0,
+                              icon: Icons.wifi_channel,
+                              gradientColors: const [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
+                          ),
+                          Expanded(
+                            child: StatCard(
+                              title: "TOTAL MESSAGE",
+                              icon: Icons.message,
+                              value: _dashboardController
+                                      .dashboardStaff.value.messageCount ??
+                                  0,
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.1,
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 1.2,
+                      child: Row(
+                        children: [
+                          StatCard(
+                            icon: Icons.message,
+                            title: "UNREAD MESSAGES",
+                            value: _dashboardController
+                                    .dashboardStaff.value.userUnMessage ??
+                                0,
+                            gradientColors: [
+                              Color(
+                                  0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                              Color(0xFFe5e5e5),
+                            ], // Gradient colors
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: StatCard(
+                              icon: Icons.group,
+                              title: "GROUPS",
+                              value: _dashboardController
+                                      .dashboardStaff.value.groupCount ??
+                                  0,
+                              gradientColors: [
+                                Color(0xFFe5e5e5),
+                                Color(0xFFe5e5e5),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.1,
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.30,
+                    ),
+                  ],
+                );
+              })),
+        ),
         drawer: CustomDrawer());
   }
 }

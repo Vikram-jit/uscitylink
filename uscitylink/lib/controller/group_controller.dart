@@ -182,6 +182,65 @@ class GroupController extends GetxController {
     });
   }
 
+  Future<void> deleteGroupMember(String id) async {
+    if (loading.value) return;
+
+    loading.value = true;
+
+    try {
+      // Fetch messages from the server with pagination.
+      var response = await __groupService.deleteGroupMemberById(id);
+
+      // Check if the response is valid
+      if (response.status) {
+        group.value.groupMembers?.removeWhere((item) => item.id == id);
+        refresh();
+        Utils.toastMessage(response.message);
+        Get.back();
+      }
+    } catch (error) {
+      Get.back();
+      // Handle error by showing a snack bar
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      // Ensure loading state is reset
+      loading.value = false;
+    }
+  }
+
+  Future<void> updateStatus(String id, bool value) async {
+    if (loading.value) return;
+
+    loading.value = true;
+
+    try {
+      // Fetch messages from the server with pagination.
+      var response = await __groupService.updateStatusGroupMemberById(
+          value ? "active" : "inactive", id);
+
+      // Check if the response is valid
+      if (response.status) {
+        var index =
+            group.value.groupMembers?.indexWhere((item) => item.id == id);
+        if (index != null) {
+          group.value.groupMembers?[index].status =
+              value ? "active" : "inactive";
+        }
+
+        refresh();
+        Utils.toastMessage(response.message);
+        Get.back();
+      }
+    } catch (error) {
+      Get.back();
+      // Handle error by showing a snack bar
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      // Ensure loading state is reset
+      loading.value = false;
+    }
+  }
+
   void getTruckGroupMessages(String groupId, int page) {
     // Debugging logs to track the page number and loading state
     openGroupId.value = groupId;

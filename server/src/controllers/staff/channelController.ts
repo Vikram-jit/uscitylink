@@ -110,8 +110,12 @@ export async function driverList(req: Request, res: Response): Promise<any> {
         {
           model: UserProfile,
           as: "profiles",
-          attributes:["id","username"]
+          attributes:["id","username"],
+         
         },
+      ],
+       order: [
+        [{ model: UserProfile, as: "profiles" }, "username", "ASC"], // Sort by username
       ],
      
     });
@@ -142,7 +146,6 @@ export async function driverList(req: Request, res: Response): Promise<any> {
       message: `Channel members Fetch Successfully.`,
       data: newdrivers.sort((a, b) => (b.isChannelExist ? 1 : 0) - (a.isChannelExist ? 1 : 0))
 
-      
     });
   } catch (err: any) {
     return res

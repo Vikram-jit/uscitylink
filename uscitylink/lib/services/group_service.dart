@@ -77,4 +77,48 @@ class GroupService {
       throw Exception('Error Deleted : $e');
     }
   }
+
+  Future<ApiResponse<Null>> deleteGroupMemberById(String id) async {
+    try {
+      dynamic response =
+          await _apiService.deleteApi('${Constant.url}/group/member/$id');
+
+      if (response != null) {
+        /// var data = response['data'];
+
+        return ApiResponse<Null>(
+          data: null,
+          message: response['message'] ?? 'Deleted Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error Deleted : $e');
+    }
+  }
+
+  Future<ApiResponse<Null>> updateStatusGroupMemberById(
+      String status, String id) async {
+    try {
+      Map<String, String> obj = {"status": status};
+      dynamic response =
+          await _apiService.putApi(obj, '${Constant.url}/group/member/$id');
+
+      if (response != null) {
+        /// var data = response['data'];
+
+        return ApiResponse<Null>(
+          data: null,
+          message: response['message'] ?? 'Deleted Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error Deleted : $e');
+    }
+  }
 }

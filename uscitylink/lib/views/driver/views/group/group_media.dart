@@ -7,7 +7,8 @@ import 'package:uscitylink/widegts/CustomWidget.dart';
 
 class GroupMedia extends StatefulWidget {
   final String groupId;
-  GroupMedia({super.key, required this.groupId});
+  final String type;
+  GroupMedia({super.key, required this.groupId, this.type = "driver"});
 
   @override
   State<GroupMedia> createState() => _GroupMediaState();
@@ -28,7 +29,8 @@ class _GroupMediaState extends State<GroupMedia> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: TColors.primary,
+        backgroundColor:
+            widget.type == "staff" ? TColors.primaryStaff : TColors.primary,
         centerTitle: true,
         title: Obx(() {
           // Ensure that the channel is properly loaded before displaying its name

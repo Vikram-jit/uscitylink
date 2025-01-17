@@ -576,7 +576,22 @@ export async function messageToDriverByTruckGroup(
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
-  const userIds = userId.split(",");
+  let userIds:String[] = [];
+  console.log(userId.length,"length")
+  if(userId.length == 0){
+    const users = await GroupUser.findAll({
+      where:{
+        groupId:groupId
+      }
+    })
+    users.forEach((item)=>{
+      userIds.push(item.dataValues.userProfileId)
+    })
+
+  }else{
+    userIds =  userId.split(",")
+  }
+  console.log(userIds);
 
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(

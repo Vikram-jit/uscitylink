@@ -225,7 +225,8 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
 
     const userChannels = await  UserChannel.findAndCountAll({
       where:{
-        channelId:req.activeChannel
+        channelId:req.activeChannel,
+        status:"active"
       },
       include: [
         {

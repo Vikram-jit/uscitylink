@@ -71,15 +71,20 @@ class ImagePickerController extends GetxController {
     try {
       var res = await _apiService.fileUpload(
           selectedImage.value!,
-          "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId",
+          "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId&source=$location",
           channelId,
           type);
 
       if (res.status) {
+        print(source);
+        print(location);
         if (source == "staff") {
           if (location == "group") {
             socketService.sendGroupMessage(
                 groupId!, channelId, caption.value, res.data.key!);
+          } else if (location == "truck") {
+            socketService.sendMessageToTruck(
+                "", groupId!, caption.value, res.data.key!);
           } else {
             socketService.sendMessageToUser(
                 userId!, caption.value, res.data.key!);

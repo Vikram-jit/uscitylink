@@ -66,8 +66,10 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
 
   @override
   Widget build(BuildContext context) {
+    _staffGroupController.getTrucks();
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "kjdld",
         backgroundColor: Colors.amber,
         onPressed: () {
           _showGroupNameDialog(_staffGroupController.type.value);
@@ -247,39 +249,42 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
                         width: double
                             .infinity, // Makes the DropdownButton take up all available width
                         child: DropdownButton<String>(
-                          dropdownColor: Colors.white,
-                          value:
-                              _staffGroupController.selectedTruck.value.isEmpty
-                                  ? null
-                                  : _staffGroupController.selectedTruck.value,
-                          hint: Text('Select Truck Number '),
-                          // value: _staffGroupController.selectedTruck.value, // Bind the selected value here
-                          onChanged: (String? newValue) {
-                            _staffGroupController.selectedTruck.value =
-                                newValue ?? ""; // Update selected truck
-                          },
-                          items: _staffGroupController.trucks
-                              .map<DropdownMenuItem<String>>((value) {
-                            return DropdownMenuItem<String>(
-                              value: value.number,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 10),
-                                    child: Text(
-                                      "${value.number}",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall,
-                                    ),
+                            dropdownColor: Colors.white,
+                            value: _staffGroupController
+                                    .selectedTruck.value.isEmpty
+                                ? null
+                                : _staffGroupController.selectedTruck.value,
+                            hint: Text('Select Truck Number '),
+                            // value: _staffGroupController.selectedTruck.value, // Bind the selected value here
+                            onChanged: (String? newValue) {
+                              _staffGroupController.selectedTruck.value =
+                                  newValue ?? ""; // Update selected truck
+                            },
+                            items: [
+                              ..._staffGroupController.trucks
+                                  .map<DropdownMenuItem<String>>((value) {
+                                return DropdownMenuItem<String>(
+                                  value: value.number,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 10),
+                                        child: Text(
+                                          "${value.number}",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineSmall,
+                                        ),
+                                      ),
+                                      Divider()
+                                    ],
                                   ),
-                                  Divider()
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                                );
+                              }).toList(),
+                            ]),
                       ),
                     )
                 ],

@@ -16,6 +16,7 @@ import 'package:uscitylink/model/staff/channel_model.dart';
 import 'package:uscitylink/model/staff/driver_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/channel_service.dart';
+import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class StaffchannelController extends GetxController {
@@ -30,7 +31,7 @@ class StaffchannelController extends GetxController {
   StaffgroupController _staffgroupController = Get.put(StaffgroupController());
   var currentPage = 1.obs;
   var totalPages = 1.obs;
-
+  final _chatService = ChatService();
   TextEditingController searchController = TextEditingController();
   Timer? _debounce;
 
@@ -86,6 +87,33 @@ class StaffchannelController extends GetxController {
     } catch (error) {
       Utils.snackBar('Error', error.toString());
     } finally {
+      loading.value = false;
+    }
+  }
+
+  Future<void> deleteMember(String id) async {
+    channelMebers.removeWhere((item) => item.userProfileId == id);
+    channelMebers?.refresh();
+    channelChatUser.value.userChannels
+        ?.removeWhere((item) => item.userProfileId == id);
+    channelChatUser.refresh();
+    refresh();
+
+    loading.value = true;
+
+    try {
+      // Fetch messages from the server with pagination.
+      var response = await _chatService.deletedById(id);
+
+      // Check if the response is valid
+      if (response.status) {
+        Utils.toastMessage(response.message);
+      }
+    } catch (error) {
+      // Handle error by showing a snack bar
+      Utils.snackBar('Error', error.toString());
+    } finally {
+      // Ensure loading state is reset
       loading.value = false;
     }
   }

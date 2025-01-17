@@ -91,7 +91,9 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     String userProfileIds = groupController.truckGroup?.value?.members
             ?.map(
                 (member) => member.userProfileId ?? '') // Extract userProfileId
-            .where((id) => id.isNotEmpty) // Filter out any empty values
+            .where((id) => id.isNotEmpty)
+            .where(
+                (status) => status == "active") // Filter out any empty values
             .join(',') ??
         ''; // Join and provide default empty string if null
     if (userProfileIds.isEmpty) {
@@ -534,7 +536,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "group", groupId, "driver_chat", "");
+                      channelId, "truck", groupId, "staff", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -553,7 +555,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromCamera(
-                      channelId, "group", groupId, "driver_chat", "");
+                      channelId, "truck", groupId, "staff", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -572,7 +574,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   filePickerController.pickFileWithExtension(
-                      channelId, "group", groupId, "driver_chat");
+                      channelId, "truck", groupId, "staff");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

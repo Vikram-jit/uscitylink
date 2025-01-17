@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/model/staff/driver_model.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 
 class DriverDialog {
   // This is the public method to open the bottom sheet
@@ -110,41 +111,38 @@ class DriverDialog {
                       },
                     ),
                   ),
+                  SizedBox(
+                    height: 20,
+                  ),
                   Container(
                     height: 40,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 40,
-                          child: TextButton(
-                            onPressed: () {
-                              Get.back();
-                            },
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                            child: Text(
-                              "Close",
-                              style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6.0),
+                      color: TColors.primaryStaff,
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        Get.back();
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
                         ),
-                        SizedBox(
-                          width: 10,
+                      ),
+                      child: Text(
+                        "DONE",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                   SizedBox(
-                    height: 20,
+                    height: 40,
                   )
                 ],
               ),
@@ -264,35 +262,29 @@ class DriverDialog {
                   ),
                   Container(
                     height: 40,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          height: 40,
-                          child: TextButton(
-                            onPressed: () {
-                              Get.back();
-                            },
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                            child: Text(
-                              "Close",
-                              style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6.0),
+                      color: TColors.primaryStaff,
+                    ),
+                    child: TextButton(
+                      onPressed: () {
+                        Get.back();
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
                         ),
-                        SizedBox(
-                          width: 10,
+                      ),
+                      child: Text(
+                        "Done",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                   SizedBox(
