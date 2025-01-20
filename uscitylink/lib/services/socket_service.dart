@@ -179,7 +179,11 @@ class SocketService extends GetxController {
         Get.find<MessageController>().updateTypingStatus(data);
       }
     });
-
+    socket.on("typingUser", (data) {
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().updateTypingStatus(data);
+      }
+    });
     socket.on("update_group_staff_message_count", (data) {
       if (Get.isRegistered<StaffgroupController>()) {
         Get.find<StaffgroupController>().updateGroupCount(data);

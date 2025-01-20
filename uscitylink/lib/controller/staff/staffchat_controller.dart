@@ -101,6 +101,7 @@ class StaffchatController {
   }
 
   void updateTypingStatus(dynamic data) {
+    print(data);
     typing.value = data['isTyping'];
     typingMessage.value = data['message'];
   }

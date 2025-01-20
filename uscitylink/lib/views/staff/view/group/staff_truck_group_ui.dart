@@ -88,14 +88,15 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
 
   // Function to send a new message
   void _sendMessage() {
-    String userProfileIds = groupController.truckGroup?.value?.members
-            ?.map(
-                (member) => member.userProfileId ?? '') // Extract userProfileId
-            .where((id) => id.isNotEmpty)
-            .where(
-                (status) => status == "active") // Filter out any empty values
+    String userProfileIds = groupController.group?.value?.groupMembers
+            ?.where((member) {
+              return member.userProfileId!.isNotEmpty &&
+                  member.status == "active";
+            }) // Force non-null assertion for userProfileId
+            .map((member) => member.userProfileId)
             .join(',') ??
         ''; // Join and provide default empty string if null
+
     if (userProfileIds.isEmpty) {
       showAlert(context);
     } else {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
+import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 import 'package:uscitylink/views/staff/widgets/group_tab.dart';
@@ -31,6 +32,9 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
 
     // Listen to tab changes if needed
     _tabController.addListener(() {
+      _staffGroupController.groups.value.data?.clear();
+      _staffGroupController.groups.refresh();
+      _staffGroupController.update();
       if (_tabController.index == 1 && !_tabController.indexIsChanging) {
         _staffGroupController.type.value = "group";
         _staffGroupController.getGroups(_staffGroupController.currentPage.value,

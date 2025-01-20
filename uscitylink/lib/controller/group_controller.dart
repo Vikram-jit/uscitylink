@@ -221,12 +221,18 @@ class GroupController extends GetxController {
       // Check if the response is valid
       if (response.status) {
         var index =
-            group.value.groupMembers?.indexWhere((item) => item.id == id);
+            truckGroup.value.members?.indexWhere((item) => item.id == id);
+
         if (index != null) {
+          print(group.value.groupMembers?[index].status);
           group.value.groupMembers?[index].status =
               value ? "active" : "inactive";
+          print(group.value.groupMembers?[index].status);
         }
 
+        print(value ? "active" : "inactive");
+        group.refresh();
+        update();
         refresh();
         Utils.toastMessage(response.message);
         Get.back();
