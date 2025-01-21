@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+
 import 'package:get/get.dart';
-import 'package:uscitylink/controller/loading_controller.dart';
+
 import 'package:uscitylink/controller/login_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
+
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/utils/constant/image_strings.dart';
+
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
+
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
@@ -112,18 +112,18 @@ class _PasswordViewState extends State<PasswordView>
                 SizedBox(
                   height: TDeviceUtils.getScreenHeight() * 0.01,
                 ),
-                _buildDividerWithText("or"),
-                SizedBox(
-                  height: TDeviceUtils.getScreenHeight() * 0.01,
-                ),
-                CustomButton(
-                  label: "Send OTP",
-                  onPressed: () {
-                    Get.to(() => const OtpView(email: 'user@example.com'));
-                  },
-                  backgroundColor: TColors.white,
-                  textColor: TColors.primary,
-                ),
+                // _buildDividerWithText("or"),
+                // SizedBox(
+                //   height: TDeviceUtils.getScreenHeight() * 0.01,
+                // ),
+                // CustomButton(
+                //   label: "Send OTP",
+                //   onPressed: () {
+                //     Get.to(() => const OtpView(email: 'user@example.com'));
+                //   },
+                //   backgroundColor: TColors.white,
+                //   textColor: TColors.primary,
+                // ),
                 // Obx(() {
                 //   return loadingController.isLoading.value
                 //       ? Center(child: CircularProgressIndicator())

@@ -3,6 +3,7 @@ import 'package:uscitylink/navigation_menu.dart';
 import 'package:uscitylink/views/auth/login_view.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
+import 'package:uscitylink/views/auth/select_option.dart';
 import 'package:uscitylink/views/driver/views/group/group_info.dart';
 import 'package:uscitylink/views/driver/views/group/group_media.dart';
 import 'package:uscitylink/views/driver/views/group/group_message_ui.dart';
@@ -18,8 +19,7 @@ import 'package:uscitylink/views/staff/view/group/staff_group_chat_ui.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_detail.dart';
 import 'package:uscitylink/views/staff/view/group/staff_truck_group_ui.dart';
 import 'package:uscitylink/views/staff/view/staff_channel_members_view.dart';
-import 'package:uscitylink/views/staff/view/staff_chat_view.dart';
-import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
+
 import 'package:uscitylink/views/staff/view/staff_driver_view.dart';
 import 'package:uscitylink/views/staff/view/staff_message_view.dart';
 import 'package:uscitylink/views/staff/view/staff_templates_view.dart';
@@ -29,6 +29,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String passwordView = '/password';
   static const String otpView = '/otp';
+  static const String selectOptionView = '/select_option_view';
   static const String navigationMenu = '/navigationMenu';
 
   static const String driverDashboard = '/driver/settings/driver_dashboard';
@@ -67,9 +68,36 @@ class AppRoutes {
         transition: Transition.leftToRightWithFade),
     GetPage(name: navigationMenu, page: () => const NavigationMenu()),
     GetPage(
+        name: selectOptionView,
+        page: () {
+          final args = Get.arguments as Map;
+          final email = args['email'];
+          final name = args['name'];
+          final role = args['role'];
+          final phone_number = args['phone_number'];
+
+          return SelectOption(
+              email: email, phone_number: phone_number, name: name, role: role);
+        }),
+    GetPage(
         name: passwordView,
         page: () => PasswordView(email: Get.arguments, role: Get.arguments)),
-    GetPage(name: otpView, page: () => OtpView(email: Get.arguments)),
+
+    GetPage(
+        name: otpView,
+        page: () {
+          final args = Get.arguments as Map;
+          final email = args['email'];
+          final phone_number = args['phone_number'];
+          final isEmail = args['isEmail'];
+          final isPhoneNumber = args['isPhoneNumber'];
+          return OtpView(
+            email: email,
+            phone_number: phone_number,
+            isEmail: isEmail,
+            isPhoneNumber: isPhoneNumber,
+          );
+        }),
 
     //Driver Routes
 

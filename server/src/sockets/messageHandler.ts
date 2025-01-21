@@ -339,7 +339,7 @@ export async function messageToChannelToUser(
                 });
 
                 io.to(isSocket?.id).emit(
-                  "notification_new_message @@@",
+                  "notification_new_message",
                   `New Message received `
                 );
               }
@@ -351,7 +351,7 @@ export async function messageToChannelToUser(
                 const channel = await Channel.findByPk(message?.channelId);
                 if (isSocket) {
                   io.to(isSocket?.id).emit(
-                    "notification_new_message ###",
+                    "notification_new_message",
                     `New Message received on ${channel?.name} channel`
                   );
                 }
@@ -577,7 +577,6 @@ export async function messageToDriverByTruckGroup(
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
   let userIds:String[] = [];
-  console.log(userId.length,"length")
   if(userId.length == 0){
     const users = await GroupUser.findAll({
       where:{
@@ -591,7 +590,6 @@ export async function messageToDriverByTruckGroup(
   }else{
     userIds =  userId.split(",")
   }
-  console.log(userIds);
 
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(

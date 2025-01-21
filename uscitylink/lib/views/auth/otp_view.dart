@@ -3,15 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:uscitylink/views/widgets/custom_button.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart'; // For navigation (if using GetX)
 
 class OtpView extends StatefulWidget {
   final String email;
+  final String phone_number;
+  final bool isEmail;
+  final bool isPhoneNumber;
 
-  const OtpView({super.key, required this.email});
+  const OtpView(
+      {super.key,
+      required this.email,
+      required this.phone_number,
+      required this.isEmail,
+      required this.isPhoneNumber});
   @override
   _OtpViewState createState() => _OtpViewState();
 }
@@ -20,7 +26,7 @@ class _OtpViewState extends State<OtpView> {
   final loginController = Get.put(LoginController());
 
   late Timer _timer;
-  int _remainingTime = 30; // 10 minutes = 600 seconds
+  int _remainingTime = 60; // 10 minutes = 600 seconds
 
   @override
   void initState() {
@@ -44,11 +50,12 @@ class _OtpViewState extends State<OtpView> {
   }
 
   void _resendOtp() {
-    loginController.resendOtp(context, widget.email);
+    loginController.resendOtp(context, widget.email, widget.phone_number,
+        widget.isEmail, widget.isPhoneNumber);
 
     if (mounted) {
       setState(() {
-        _remainingTime = 30;
+        _remainingTime = 60;
       });
     }
 

@@ -33,7 +33,7 @@ export const SocketProvider = ({
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [audioContext, setAudioContext] = useState<any>(null)
-
+  const [newMessage,setNewMessage] = useState<boolean>(false)
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
   useEffect(() => {
@@ -83,6 +83,7 @@ export const SocketProvider = ({
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
+      document.title = "New Message";
       dispatch(apiSlice.util.invalidateTags(['channelUsers','dashboard', 'channels', 'members', 'messages']));
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
 
@@ -170,5 +171,5 @@ export const SocketProvider = ({
     };
   }, [isConnected, socket]);
 
-  return <SocketContext.Provider value={{ socket, isConnected }}>{children}</SocketContext.Provider>;
+  return <SocketContext.Provider value={{ socket, isConnected }}> {children}</SocketContext.Provider>;
 };

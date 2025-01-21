@@ -6,7 +6,7 @@ import Role from "../models/Role";
 import { secondarySequelize } from "../sequelize";
 import { QueryTypes, where } from "sequelize";
 import { UserProfile } from "../models/UserProfile";
-import { generateOTP, sendOTPEmail } from "../utils/sendEmail";
+import { generateOTP, sendOTPEmail, sendOTPPhoneNumber } from "../utils/sendEmail";
 import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
@@ -245,14 +245,23 @@ export async function loginWithPassword(
 //Send OTP
 export async function sendOtp(req: Request, res: Response): Promise<any> {
   try {
+    console.log(req.body)
     const expiresAt = moment().add(10, "minutes").toDate();
     const otp = generateOTP(6);
     await Otp.create({
       user_email: req.body.email,
+      phone_number:req.body.phone_number,
       otp: otp,
       expires_at: expiresAt,
     });
-    const response = await sendOTPEmail(req.body.email, otp);
+    if(req.body.isEmail){
+      const response = await sendOTPEmail(req.body.email, otp);
+    }
+
+    if(req.body.isPhoneNumber){
+      await sendOTPPhoneNumber(req.body.phone_number, otp);
+    }
+    
 
     return res.status(200).json({
       status: true,
@@ -272,10 +281,18 @@ export async function resendOtp(req: Request, res: Response): Promise<any> {
     const otp = generateOTP(6);
     await Otp.create({
       user_email: req.body.email,
+      phone_number:req.body.phone_number,
       otp: otp,
       expires_at: expiresAt,
     });
-    const response = await sendOTPEmail(req.body.email, otp);
+    if(req.body.isEmail){
+      const response = await sendOTPEmail(req.body.email, otp);
+    }
+
+    if(req.body.isPhoneNumber){
+      await sendOTPPhoneNumber(req.body.phone_number, otp);
+    }
+  //  const response = await sendOTPEmail(req.body.email, otp);
 
     return res.status(200).json({
       status: true,

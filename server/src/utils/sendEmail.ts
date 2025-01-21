@@ -1,19 +1,17 @@
-
-import sgMail from '@sendgrid/mail';
-import dotConfig from'dotenv';
+import sgMail from "@sendgrid/mail";
+import dotConfig from "dotenv";
+import { postMethod } from "./axios";
 dotConfig.config();
 
-
 export const generateOTP = (length: number): string => {
-    const characters = '0123456789';
-    let otp = '';
-    for (let i = 0; i < length; i++) {
-      otp += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return otp;
-  };
+  const characters = "0123456789";
+  let otp = "";
+  for (let i = 0; i < length; i++) {
+    otp += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return otp;
+};
 
-  
 sgMail.setApiKey(process.env.SEND_GRID as string);
 
 // Define the function to send an email
@@ -23,38 +21,38 @@ const sendEmail = async (
   text: string,
   html?: string
 ): Promise<void> => {
- 
   const msg = {
-    to: toEmail, 
-    from: process.env.SEND_EMAIL as string, 
-    subject: subject, 
-    text: text, 
-    html: html, 
+    to: toEmail,
+    from: process.env.SEND_EMAIL as string,
+    subject: subject,
+    text: text,
+    html: html,
   };
 
   try {
     // Send the email using SendGrid
     const response = await sgMail.send(msg);
-    console.log('Email sent successfully!', response);
-  } catch (error:any) {
-    console.error('Error sending email:', error);
+    console.log("Email sent successfully!", response);
+  } catch (error: any) {
+    console.error("Error sending email:", error);
     if (error.response) {
-      console.error('SendGrid Error Response: ', error.response.body);
+      console.error("SendGrid Error Response: ", error.response.body);
     }
   }
 };
 
 // Example usage: Send an email with both text and HTML content
 
-
-
-export const sendOTPEmail = async (toEmail: string, otp: string): Promise<any> => {
-    const msg = {
-      to: toEmail,
-      from: process.env.SEND_EMAIL as string,  // Your verified SendGrid sender email
-      subject: 'Your OTP Code',
-      text: `Hello,\n\nPlease use the following OTP (One-Time Password) to complete your action:\n\nOTP: ${otp}\n\nThe OTP is valid for 10 minutes. Please use it soon. If you did not request this OTP, please ignore this email.\n\nThank you for using our service!`,
-      html: `
+export const sendOTPEmail = async (
+  toEmail: string,
+  otp: string
+): Promise<any> => {
+  const msg = {
+    to: toEmail,
+    from: process.env.SEND_EMAIL as string, // Your verified SendGrid sender email
+    subject: "Your OTP Code",
+    text: `Hello,\n\nPlease use the following OTP (One-Time Password) to complete your action:\n\nOTP: ${otp}\n\nThe OTP is valid for 10 minutes. Please use it soon. If you did not request this OTP, please ignore this email.\n\nThank you for using our service!`,
+    html: `
         <html>
           <body>
             <h2>Your OTP Code</h2>
@@ -67,22 +65,41 @@ export const sendOTPEmail = async (toEmail: string, otp: string): Promise<any> =
           </body>
         </html>
       `,
-    };
-  
-    
-     const res =  await sgMail.send(msg);
-     return res
-   
   };
-  
 
-  export const sendNewPasswordEmail = async (toEmail: string, newPassword: string): Promise<any> => {
-    const msg = {
-      to: toEmail,
-      from: process.env.SEND_EMAIL as string,  // Your verified SendGrid sender email
-      subject: 'Your New Password for ChatBox USCityLink',
-      text: `Hello,\n\nWe have successfully generated a new password for your account with  ChatBox USCityLink. Your new password is: ${newPassword}\n\nFor security reasons, we recommend changing your password as soon as you log in.\n\nIf you did not request this password change, please contact our support team immediately.\n\nThank you for using our service!`,
-      html: `
+  const res = await sgMail.send(msg);
+  return res;
+};
+
+export const sendOTPPhoneNumber = async (
+  toPhoneNumber: string,
+  otp: string
+): Promise<any> => {
+  const data = {
+    from: "661-735-1750",
+    to: toPhoneNumber,
+    body: `ChatBox USCityLink OTP: Your one-time password is ${otp}.
+It is valid for 10 minutes. If you didn’t request this, please disregard this message.`,
+    sender_name: "",
+    mms_media: [],
+    authvia_conversation_id: "",
+    geolocation_requested: false,
+  };
+
+  const res = await postMethod("messages", data);
+  return res;
+};
+
+export const sendNewPasswordEmail = async (
+  toEmail: string,
+  newPassword: string
+): Promise<any> => {
+  const msg = {
+    to: toEmail,
+    from: process.env.SEND_EMAIL as string, // Your verified SendGrid sender email
+    subject: "Your New Password for ChatBox USCityLink",
+    text: `Hello,\n\nWe have successfully generated a new password for your account with  ChatBox USCityLink. Your new password is: ${newPassword}\n\nFor security reasons, we recommend changing your password as soon as you log in.\n\nIf you did not request this password change, please contact our support team immediately.\n\nThank you for using our service!`,
+    html: `
         <html>
           <body>
             <h2>Your New Password</h2>
@@ -96,10 +113,10 @@ export const sendOTPEmail = async (toEmail: string, otp: string): Promise<any> =
           </body>
         </html>
       `,
-    };
-  
-    // Sending email using SendGrid
-    const res = await sgMail.send(msg);
-    console.log(res,toEmail)
-    return res;
   };
+
+  // Sending email using SendGrid
+  const res = await sgMail.send(msg);
+  console.log(res, toEmail);
+  return res;
+};

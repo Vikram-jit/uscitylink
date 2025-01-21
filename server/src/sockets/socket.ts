@@ -540,6 +540,14 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online", null);
             }
           });
+        }else{
+          await isUser.update({
+            isOnline: false,
+            channelId: null,
+            last_login: moment.utc(),
+            device_token: null,
+            platform: null
+          });
         }
       }
     });

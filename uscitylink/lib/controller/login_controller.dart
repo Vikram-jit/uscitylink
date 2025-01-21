@@ -13,6 +13,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
+import 'package:uscitylink/views/auth/select_option.dart';
 
 class LoginController extends GetxController {
   final __authService = AuthService();
@@ -30,6 +31,9 @@ class LoginController extends GetxController {
 
   var userProfile = Profiles().obs; // A reactive Set of Profiles
   var currentIndex = 0.obs;
+
+  var checkedEmailOtp = false.obs;
+  var checkedPhoneNumberOtp = false.obs;
 
   @override
   void onInit() {
@@ -77,8 +81,12 @@ class LoginController extends GetxController {
                           ),
                           onPressed: (_) {
                             Get.back();
-
-                            sendOtp(context, emailController.value.text);
+                            Get.to((_) => SelectOption(
+                                name: value.data?.profiles?[0].username ?? "",
+                                role: value.data.profiles?[0].role?.name ?? "",
+                                email: emailController.value.text,
+                                phone_number: value.data.phoneNumber ?? ""));
+                            // sendOtp(context, emailController.value.text);
                           },
                         ),
                         BottomSheetAction(
@@ -124,7 +132,12 @@ class LoginController extends GetxController {
                           onPressed: (_) {
                             Get.back();
 
-                            sendOtp(context, emailController.value.text);
+                            Get.to((_) => SelectOption(
+                                name: value.data?.profiles?[1].username ?? "",
+                                role: value.data.profiles?[1].role?.name ?? "",
+                                email: emailController.value.text,
+                                phone_number: value.data.phoneNumber ?? ""));
+                            //sendOtp(context, emailController.value.text);
                           },
                         ),
                         BottomSheetAction(
@@ -162,7 +175,14 @@ class LoginController extends GetxController {
                       color: Colors.blue, fontWeight: FontWeight.w600),
                 ),
                 onPressed: (_) {
-                  sendOtp(context, emailController.value.text);
+                  Get.back();
+
+                  Get.to(() => SelectOption(
+                      name: value.data?.profiles?[0].username ?? "",
+                      role: value.data.profiles?[0].role?.name ?? "",
+                      email: emailController.value.text,
+                      phone_number: value.data.phoneNumber ?? ""));
+                  // sendOtp(context, emailController.value.text);
                 },
               ),
               BottomSheetAction(
@@ -251,25 +271,38 @@ class LoginController extends GetxController {
     });
   }
 
-  void sendOtp(BuildContext context, String email) {
+  void sendOtp(BuildContext context, String email, String phone_number,
+      bool isEmail, bool isPhoneNumber) {
     OTP OTPData = OTP(
+      isEmail: isEmail,
+      isPhoneNumber: isPhoneNumber,
       email: email,
+      phone_number: phone_number,
     );
 
     __authService.getOtp(OTPData).then((value) {
       if (value.status == true) {
         Utils.toastMessage("Otp Send Successfully");
-        Navigator.of(context).pop();
-        Get.to(() => OtpView(email: emailController.value.text));
+
+        Get.to(() => OtpView(
+              email: email,
+              phone_number: phone_number,
+              isEmail: isEmail,
+              isPhoneNumber: isPhoneNumber,
+            ));
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());
     });
   }
 
-  void resendOtp(BuildContext context, String email) {
+  void resendOtp(BuildContext context, String email, String phone_number,
+      bool isEmail, bool isPhoneNumber) {
     OTP OTPData = OTP(
+      isEmail: isEmail,
+      isPhoneNumber: isPhoneNumber,
       email: email,
+      phone_number: phone_number,
     );
 
     __authService.resendOtp(OTPData).then((value) {

@@ -183,13 +183,19 @@ class LoginWithPasswordModel {
 
 class OTP {
   String? email;
+  String? phone_number;
+  bool? isEmail;
+  bool? isPhoneNumber;
 
-  OTP({this.email});
+  OTP({this.email, this.phone_number, this.isEmail, this.isPhoneNumber});
 
   // Factory constructor to create a Role from JSON
   factory OTP.fromJson(Map<String, dynamic> json) {
     return OTP(
       email: json['email'],
+      isEmail: json['isEmail'],
+      isPhoneNumber: json['isPhoneNumber'],
+      phone_number: json['phone_number'],
     );
   }
 
@@ -197,6 +203,9 @@ class OTP {
   Map<String, dynamic> toJson() {
     return {
       'email': email,
+      'isEmail': isEmail,
+      'isPhoneNumber': isPhoneNumber,
+      'phone_number': phone_number,
     };
   }
 }
