@@ -345,7 +345,15 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                   },
                 ]
               : []),
-  
+              ...(source === "staff"
+                ? [
+                    {
+                      channelId: req.activeChannel,
+                      upload_source: "chat",
+                    },
+                  ]
+                : []),
+    
          
           ],
   
@@ -401,7 +409,15 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                 },
               ]
             : []),
-
+            ...(source === "channel"
+              ? [
+                  {
+                    channelId: channelId,
+                    upload_source: "chat",
+                    user_profile_id: userId,
+                  },
+                ]
+              : []),
           ...(source === "channel"
             ? [
                 {
