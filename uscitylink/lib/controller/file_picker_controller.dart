@@ -67,7 +67,7 @@ class FilePickerController extends GetxController {
 
   // Optional: Function to allow file selection based on specific extensions
   Future<void> pickFileWithExtension(String channelId, String location,
-      String? groupId, String? source) async {
+      String? groupId, String? source, String? userId) async {
     // Open the file picker dialog and allow only specific file types (e.g., PDFs)
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -82,19 +82,20 @@ class FilePickerController extends GetxController {
           channelId: channelId,
           type: "doc",
           location: location,
-          groupId: groupId));
+          groupId: groupId,
+          userId: userId));
     } else {
       filePath.value = 'No file selected';
     }
   }
 
   void uploadFile(String channelId, String type, String location,
-      String? groupId, String? source) async {
+      String? groupId, String? source, String? userId) async {
     try {
       var file = File(filePath.value);
       var res = await _apiService.fileUpload(
           file,
-          "${Constant.url}/message/fileUpload?groupId=$groupId&source=$location",
+          "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId&source=$location",
           channelId,
           type);
       if (res.status) {
@@ -102,6 +103,9 @@ class FilePickerController extends GetxController {
           if (location == "group") {
             socketService.sendGroupMessage(
                 groupId!, channelId, caption.value, res.data.key!);
+          } else if (location == "truck") {
+            socketService.sendMessageToTruck(
+                "", groupId!, caption.value, res.data.key!);
           } else {
             socketService.updateStaffActiveUserChat(channelId);
             socketService.sendMessageToUser(

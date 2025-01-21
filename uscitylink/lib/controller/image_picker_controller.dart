@@ -76,8 +76,6 @@ class ImagePickerController extends GetxController {
           type);
 
       if (res.status) {
-        print(source);
-        print(location);
         if (source == "staff") {
           if (location == "group") {
             socketService.sendGroupMessage(

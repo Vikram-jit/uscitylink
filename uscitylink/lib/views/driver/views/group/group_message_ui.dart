@@ -500,7 +500,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   filePickerController.pickFileWithExtension(
-                      channelId, "group", groupId, "driver_chat");
+                      channelId, "group", groupId, "driver_chat", "");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
