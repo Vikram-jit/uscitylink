@@ -109,7 +109,7 @@ class FilePickerController extends GetxController {
           } else {
             socketService.updateStaffActiveUserChat(channelId);
             socketService.sendMessageToUser(
-                channelId, caption.value, res.data.key!);
+                userId!, caption.value, res.data.key!);
           }
         } else {
           if (location == "group") {

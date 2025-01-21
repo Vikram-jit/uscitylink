@@ -336,7 +336,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                   },
                 ]
               : []),
-  
+            
             ...(source === "staff"
               ? [
                   {
