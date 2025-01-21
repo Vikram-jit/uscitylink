@@ -78,12 +78,14 @@ class FilePickerController extends GetxController {
       filePath.value = result.files.single.path ?? 'No file selected';
       fileType.value = result.files.single.extension ?? 'Unknown';
       fileName.value = result.files.single.name ?? "Unknown";
+
       Get.to(() => FilePickerPreview(
           channelId: channelId,
           type: "doc",
           location: location,
           groupId: groupId,
-          userId: userId));
+          userId: userId,
+          source: source));
     } else {
       filePath.value = 'No file selected';
     }
@@ -99,6 +101,7 @@ class FilePickerController extends GetxController {
           channelId,
           type);
       if (res.status) {
+        print("$source,$userId");
         if (source == "staff") {
           if (location == "group") {
             socketService.sendGroupMessage(

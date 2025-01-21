@@ -501,8 +501,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromGallery(
-                      channelId, "chat", "", "staff", userId);
+                  imagePickerController.pickImageFromGallery(channelId, "chat",
+                      "", "staff", _staffchatController.userId.value);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -520,8 +520,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromCamera(
-                      channelId, "chat", "", "staff", userId);
+                  imagePickerController.pickImageFromCamera(channelId, "chat",
+                      "", "staff", _staffchatController.userId.value);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -539,8 +539,8 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  filePickerController.pickFileWithExtension(
-                      channelId, "chat", "", "staff", userId);
+                  filePickerController.pickFileWithExtension(channelId, "chat",
+                      "", "staff", _staffchatController.userId.value);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
