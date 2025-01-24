@@ -251,8 +251,65 @@ class NetworkApiService extends BaseApiServices {
       throw RequestTimeout(); // Handle timeout errors
     } catch (e) {
       Utils.hideLoader();
-      throw Exception(
-          "An unexpected error occurred: $e"); // Handle any other exceptions
+      throw Exception("An unexpected error occurred: $e");
+    }
+  }
+
+  Future<ApiResponse<VideoUpload>> videoUpload(
+      File data, String url, String channelId, String type) async {
+    try {
+      Utils.showLoader();
+
+      // Prepare headers
+      final headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+
+      String? token = await userPreferenceController.getToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Initialize MultipartRequest
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..headers.addAll(headers);
+      request.fields['channelId'] = channelId;
+      request.fields['type'] = type;
+
+      var file = await http.MultipartFile.fromPath(
+        'file',
+        data.path,
+      );
+
+      request.files.add(file);
+
+      final response = await request.send().timeout(const Duration(hours: 1));
+
+      final responseString = await response.stream.bytesToString();
+
+      if (response.statusCode == 201) {
+        Map<String, dynamic> responseJson = jsonDecode(responseString);
+        VideoUpload fileModel = VideoUpload.fromJson(responseJson['data']);
+        Utils.hideLoader();
+        return ApiResponse<VideoUpload>(
+          data: fileModel,
+          message: responseJson['message'] ?? 'File Uploaded successful',
+          status: responseJson['status'] ?? true,
+        );
+      }
+
+      Utils.hideLoader();
+
+      throw Exception("Unable to upload file");
+    } on SocketException {
+      Utils.hideLoader();
+      throw InternetException();
+    } on TimeoutException {
+      Utils.hideLoader();
+      throw RequestTimeout();
+    } catch (e) {
+      Utils.hideLoader();
+      throw Exception("An unexpected error occurred: $e");
     }
   }
 }
@@ -273,5 +330,38 @@ dynamic returnResponse(http.Response response) {
     default:
       Utils.hideLoader();
       throw Exception(responseJson['message']);
+  }
+}
+
+class VideoUpload {
+  String? serverSideEncryption;
+  String? location;
+  String? bucket;
+  String? key;
+  String? eTag;
+
+  VideoUpload(
+      {this.serverSideEncryption,
+      this.location,
+      this.bucket,
+      this.key,
+      this.eTag});
+
+  VideoUpload.fromJson(Map<String, dynamic> json) {
+    serverSideEncryption = json['ServerSideEncryption'];
+    location = json['Location'];
+    bucket = json['Bucket'];
+    key = json['Key'];
+    eTag = json['ETag'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['ServerSideEncryption'] = this.serverSideEncryption;
+    data['Location'] = this.location;
+    data['Bucket'] = this.bucket;
+    data['Key'] = this.key;
+    data['ETag'] = this.eTag;
+    return data;
   }
 }

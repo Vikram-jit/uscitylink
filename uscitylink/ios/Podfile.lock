@@ -139,6 +139,9 @@ PODS:
   - gal (1.0.0):
     - Flutter
     - FlutterMacOS
+  - get_thumbnail_video (0.0.1):
+    - Flutter
+    - libwebp
   - GoogleAppMeasurement (11.4.0):
     - GoogleAppMeasurement/AdIdSupport (= 11.4.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.0)
@@ -204,12 +207,26 @@ PODS:
     - GoogleUtilities/Privacy
   - image_picker_ios (0.0.1):
     - Flutter
+  - libwebp (1.3.2):
+    - libwebp/demux (= 1.3.2)
+    - libwebp/mux (= 1.3.2)
+    - libwebp/sharpyuv (= 1.3.2)
+    - libwebp/webp (= 1.3.2)
+  - libwebp/demux (1.3.2):
+    - libwebp/webp
+  - libwebp/mux (1.3.2):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.3.2)
+  - libwebp/webp (1.3.2):
+    - libwebp/sharpyuv
   - nanopb (3.30910.0):
     - nanopb/decode (= 3.30910.0)
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - open_file_ios (0.0.1):
+    - Flutter
+  - package_info_plus (0.4.5):
     - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
@@ -240,6 +257,11 @@ PODS:
   - Toast (4.1.1)
   - url_launcher_ios (0.0.1):
     - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - wakelock_plus (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
@@ -263,11 +285,13 @@ DEPENDENCIES:
   - flutter_pdfview (from `.symlinks/plugins/flutter_pdfview/ios`)
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - gal (from `.symlinks/plugins/gal/darwin`)
+  - get_thumbnail_video (from `.symlinks/plugins/get_thumbnail_video/ios`)
   - GoogleDataTransport
   - GoogleUtilities
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - nanopb
   - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - pdf_render (from `.symlinks/plugins/pdf_render/ios`)
   - pdfx (from `.symlinks/plugins/pdfx/ios`)
@@ -278,6 +302,8 @@ DEPENDENCIES:
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
   - syncfusion_flutter_pdfviewer (from `.symlinks/plugins/syncfusion_flutter_pdfviewer/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
+  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
 
 SPEC REPOS:
   trunk:
@@ -296,6 +322,7 @@ SPEC REPOS:
     - GoogleAppMeasurement
     - GoogleDataTransport
     - GoogleUtilities
+    - libwebp
     - nanopb
     - PromisesObjC
     - PromisesSwift
@@ -332,10 +359,14 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/fluttertoast/ios"
   gal:
     :path: ".symlinks/plugins/gal/darwin"
+  get_thumbnail_video:
+    :path: ".symlinks/plugins/get_thumbnail_video/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   open_file_ios:
     :path: ".symlinks/plugins/open_file_ios/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   pdf_render:
@@ -354,6 +385,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/syncfusion_flutter_pdfviewer/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
+  wakelock_plus:
+    :path: ".symlinks/plugins/wakelock_plus/ios"
 
 SPEC CHECKSUMS:
   device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
@@ -382,12 +417,15 @@ SPEC CHECKSUMS:
   flutter_pdfview: 54e283d5851b0b247b3cc57877d35f1a05a204de
   fluttertoast: 76fea30fcf04176325f6864c87306927bd7d2038
   gal: baecd024ebfd13c441269ca7404792a7152fde89
+  get_thumbnail_video: 1a754d46b860dffefcc57b7290a43089cd5d7e58
   GoogleAppMeasurement: 987769c4ca6b968f2479fbcc9fe3ce34af454b8e
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 26a3abef001b6533cf678d3eb38fd3f614b7872d
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  libwebp: 1786c9f4ff8a279e4dac1e8f385004d5fc253009
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   open_file_ios: 5ff7526df64e4394b4fe207636b67a95e83078bb
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   pdf_render: 5f9586e5fd49519bf59ea14a6da4851616e91c81
   pdfx: 77f4dddc48361fbb01486fa2bdee4532cbb97ef3
@@ -402,6 +440,8 @@ SPEC CHECKSUMS:
   syncfusion_flutter_pdfviewer: dfb514751af5b6b71e504c9c04a2e4ddbc1dd895
   Toast: 1f5ea13423a1e6674c4abdac5be53587ae481c4e
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
+  video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
+  wakelock_plus: 04623e3f525556020ebd4034310f20fe7fda8b49
 
 PODFILE CHECKSUM: b5dc04432d0b5e0193eff815a9e4a16ac7258888
 

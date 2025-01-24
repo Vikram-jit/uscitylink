@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
@@ -11,16 +12,62 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:video_player/video_player.dart';
 
-class DocumentDownload extends StatelessWidget {
+class DocumentDownload extends StatefulWidget {
   final String file; // URL of the file
   DocumentDownload({super.key, required this.file});
+
+  @override
+  State<DocumentDownload> createState() => _DocumentDownloadState();
+}
+
+class _DocumentDownloadState extends State<DocumentDownload> {
   final DocumentController _documentController = Get.put(DocumentController());
+  late VideoPlayerController videoPlayerController;
+  late Future<void> _initializeVideoPlayerFuture;
+
   final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
+  List<String> videoExtensions = [
+    'mp4',
+    'mkv',
+    'avi',
+    'mov',
+    'flv',
+    'webm',
+    'mpeg',
+    'mpg',
+    'wmv'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    String extension = widget.file.split('.').last.toLowerCase();
+    if (videoExtensions.contains(extension)) {
+      videoPlayerController =
+          new VideoPlayerController.networkUrl(Uri.parse(widget.file));
+
+      _initializeVideoPlayerFuture =
+          videoPlayerController.initialize().then((_) {
+        setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    String extension = widget.file.split('.').last.toLowerCase();
+    if (videoExtensions.contains(extension)) {
+      videoPlayerController.dispose();
+    }
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    String extension = file.split('.').last.toLowerCase();
+    String extension = widget.file.split('.').last.toLowerCase();
 
     return SafeArea(
       child: Scaffold(
@@ -40,9 +87,11 @@ class DocumentDownload extends StatelessWidget {
               onPressed: () {
                 // Implement download logic
                 if (['png', 'jpg', 'jpeg'].contains(extension)) {
-                  _documentController.saveImageToGallery(file);
+                  _documentController.saveImageToGallery(widget.file);
+                } else if (videoExtensions.contains(extension)) {
+                  _documentController.saveImageToGallery(widget.file);
                 } else if (extension == 'pdf') {
-                  _documentController.downloadFile(file);
+                  _documentController.downloadFile(widget.file);
                 } else {
                   Get.snackbar("Error", "Unsupported file type");
                 }
@@ -55,7 +104,7 @@ class DocumentDownload extends StatelessWidget {
             const SizedBox(width: 16),
             IconButton(
               onPressed: () {
-                _shareFile(file);
+                _shareFile(widget.file);
               },
               icon: const Icon(
                 Icons.share,
@@ -70,9 +119,54 @@ class DocumentDownload extends StatelessWidget {
           child: Stack(
             children: [
               if (['png', 'jpg', 'jpeg'].contains(extension))
-                _buildImagePreview(file)
+                _buildImagePreview(widget.file)
               else if (extension == 'pdf')
-                _buildPdfPreview(file)
+                _buildPdfPreview(widget.file)
+              else if (videoExtensions.contains(extension))
+                FutureBuilder(
+                  future: _initializeVideoPlayerFuture,
+                  builder: (context, snapshot) {
+                    return (snapshot.connectionState == ConnectionState.done)
+                        ? Stack(
+                            children: [
+                              Positioned.fill(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                //height: TDeviceUtils.getScreenHeight() - 100,
+                                child: Chewie(
+                                  // key: new PageStorageKey(widget.url),
+                                  controller: ChewieController(
+                                    videoPlayerController:
+                                        videoPlayerController,
+                                    autoInitialize: true,
+                                    looping: true,
+                                    showOptions: false,
+                                    allowFullScreen: false,
+                                    errorBuilder: (context, errorMessage) {
+                                      return Center(
+                                        child: Text(
+                                          errorMessage,
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : SizedBox(
+                            height: 200,
+                            child: Center(
+                              child: (snapshot.connectionState !=
+                                      ConnectionState.none)
+                                  ? CircularProgressIndicator()
+                                  : SizedBox(),
+                            ),
+                          );
+                  },
+                )
               else
                 const Center(
                     child: Text("Unsupported File Type",
@@ -107,7 +201,7 @@ class DocumentDownload extends StatelessWidget {
   // Function to download the file
   void _downloadFile() async {
     try {
-      var fileInfo = await DefaultCacheManager().getSingleFile(file);
+      var fileInfo = await DefaultCacheManager().getSingleFile(widget.file);
       print('File downloaded: ${fileInfo.path}');
       ScaffoldMessenger.of(Get.context!).showSnackBar(
           const SnackBar(content: Text("File downloaded successfully!")));

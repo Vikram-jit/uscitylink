@@ -35,13 +35,18 @@
 	<key>NSAllowsArbitraryLoads</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to your camera to allow you to take photos for your profile picture or to send images in chat conversations.</string>
+<string>This app requires access to your camera to allow you to take photos or record videos to send in your chat conversations.</string>
+
+<key>NSMicrophoneUsageDescription</key>
+<string>This app requires access to your microphone to allow you to record audio or videos to send in your chat conversations.</string>
+
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need access to your photo library to save your images and videos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library so you can select photos for your profile or to share in chat conversations.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

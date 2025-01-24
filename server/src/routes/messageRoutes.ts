@@ -2,6 +2,7 @@ import { getMessagesByUserId, uploadMiddleware, fileUpload, getMedia, fileUpload
 import { Router } from 'express';
 import { createMessage, getMessages } from '../controllers/messageController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { fileUploadAWS, uploadAwsMiddleware } from '../controllers/fileController';
 
 
 
@@ -9,6 +10,7 @@ const router = Router();
 
 router.post('/', createMessage);
 router.post('/fileUpload',authMiddleware, uploadMiddleware, fileUpload)
+router.post('/fileAwsUpload',authMiddleware, uploadAwsMiddleware, fileUploadAWS)
 router.post('/fileUploadWeb',authMiddleware, uploadMiddleware, fileUploadWeb)
 router.get('/media/:channelId',authMiddleware,  getMedia)
 router.get('/byUserId/:id',authMiddleware, getMessagesByUserId);

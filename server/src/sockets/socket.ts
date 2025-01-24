@@ -543,7 +543,6 @@ export const initSocket = (httpServer: any) => {
         }else{
           await isUser.update({
             isOnline: false,
-            channelId: null,
             last_login: moment.utc(),
             device_token: null,
             platform: null

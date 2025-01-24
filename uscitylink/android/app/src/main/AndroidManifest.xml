@@ -12,6 +12,14 @@
     <uses-permission android:name="android.permission.CAMERA"/>
 
       <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+        <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+        <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+        <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+
+        <!-- For broader access (if necessary) -->
+        <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+     
 
     <application
     android:allowBackup="false"

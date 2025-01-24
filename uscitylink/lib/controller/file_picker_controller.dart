@@ -96,10 +96,55 @@ class FilePickerController extends GetxController {
     try {
       var file = File(filePath.value);
       var res = await _apiService.fileUpload(
-          file,
-          "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId&source=$location",
-          channelId,
-          type);
+        file,
+        "${Constant.url}/message/fileUpload?groupId=$groupId&userId=$userId&source=$location",
+        channelId,
+        type,
+      );
+      if (res.status) {
+        print("$source,$userId");
+        if (source == "staff") {
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else if (location == "truck") {
+            socketService.sendMessageToTruck(
+                "", groupId!, caption.value, res.data.key!);
+          } else {
+            socketService.updateStaffActiveUserChat(channelId);
+            socketService.sendMessageToUser(
+                userId!, caption.value, res.data.key!);
+          }
+        } else {
+          if (location == "group") {
+            socketService.sendGroupMessage(
+                groupId!, channelId, caption.value, res.data.key!);
+          } else {
+            socketService.updateActiveChannel(channelId);
+            socketService.sendMessage(caption.value, res.data.key!, channelId);
+          }
+        }
+
+        Get.back();
+        while (Get.isBottomSheetOpen == true) {
+          Get.back();
+        }
+      }
+    } catch (e) {
+      Utils.snackBar("File Upload Error", e.toString());
+    }
+  }
+
+  void uploadVideo(String channelId, String type, String location,
+      String? groupId, String? source, String? userId) async {
+    try {
+      var file = File(filePath.value);
+      var res = await _apiService.fileUpload(
+        file,
+        "${Constant.url}/message/fileAwsUpload?groupId=$groupId&userId=$userId&source=$location",
+        channelId,
+        type,
+      );
       if (res.status) {
         print("$source,$userId");
         if (source == "staff") {

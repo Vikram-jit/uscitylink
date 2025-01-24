@@ -1,5 +1,7 @@
+import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
@@ -583,6 +585,65 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
+                  showAdaptiveActionSheet(
+                    context: context,
+                    actions: <BottomSheetAction>[
+                      BottomSheetAction(
+                        title: const Text(
+                          'Camera',
+                          style: TextStyle(
+                              color: Colors.blue, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: (_) {
+                          Get.back();
+                          imagePickerController.recordVedioFromCamera(
+                              ImageSource.camera,
+                              channelId,
+                              "group",
+                              groupId,
+                              "driver_chat",
+                              "");
+                          // sendOtp(context, emailController.value.text);
+                        },
+                      ),
+                      BottomSheetAction(
+                        title: const Text(
+                          'Gallery',
+                          style: TextStyle(
+                              color: Colors.blue, fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: (_) {
+                          Get.back();
+
+                          imagePickerController.recordVedioFromCamera(
+                              ImageSource.gallery,
+                              channelId,
+                              "group",
+                              groupId,
+                              "driver_chat",
+                              "");
+                          //Navigator.of(context).pop();
+                          // Pass email to Password view
+                        },
+                      ),
+                    ],
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.video_camera_back,
+                      color: Colors.black87,
+                      size: 34,
+                    ),
+                    Text("Video", style: Theme.of(context).textTheme.titleSmall)
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () {
                   filePickerController.pickFileWithExtension(
                       channelId, "group", groupId, "driver_chat", "");
                 },
@@ -600,7 +661,7 @@ class AttachmentBottomSheet extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

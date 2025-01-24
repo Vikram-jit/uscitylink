@@ -16,6 +16,17 @@ class DocumentController extends GetxController {
   var isDownloading = false.obs; // To indicate if the image is being downloaded
   var saveSuccess = false.obs;
   var errorMessage = ''.obs;
+  List<String> videoExtensions = [
+    'mp4',
+    'mkv',
+    'avi',
+    'mov',
+    'flv',
+    'webm',
+    'mpeg',
+    'mpg',
+    'wmv'
+  ];
 
   // Function to save image to gallery
   Future<void> saveImageToGallery(String imageUrl) async {
@@ -26,21 +37,68 @@ class DocumentController extends GetxController {
 
     // Request storage permission (for Android)
     PermissionStatus status = await Permission.storage.request();
-    if (!status.isGranted) {
+    var statusImages = await Permission.photos.request();
+    var statusVideos = await Permission.videos.request();
+
+    if (statusImages.isDenied || statusVideos.isDenied) {
+      // Request permission again or show explanation
+      print("Permission denied. Please grant storage permissions.");
       errorMessage.value = "Permission Denied!";
       showErrorSnackBar("Permission Denied!"); // Show snack bar
       isSaving.value = false;
       isDownloading.value = false;
+      openAppSettings();
       return;
     }
+    if (statusImages.isPermanentlyDenied || statusVideos.isPermanentlyDenied) {
+      errorMessage.value = "Permission Denied!";
+      showErrorSnackBar("Permission Denied!"); // Show snack bar
+      isSaving.value = false;
+      isDownloading.value = false;
+      // If permission is permanently denied, open settings to allow manual permission change
+      openAppSettings();
+      return;
+    }
+    // if (!status.isGranted) {
+    //   errorMessage.value = "Permission Denied!";
+    //   showErrorSnackBar("Permission Denied!"); // Show snack bar
+    //   isSaving.value = false;
+    //   isDownloading.value = false;
+    //   openAppSettings();
+    //   return;
+    // }
 
     try {
-      // Fetch the image from the URL as bytes
-      final ByteData data =
-          await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
-      final Uint8List bytes = data.buffer.asUint8List();
+      String extension = imageUrl.split('.').last.toLowerCase();
+      if (videoExtensions.contains(extension)) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFilePath = '${tempDir.path}/done.mp4';
 
-      await Gal.putImageBytes(bytes);
+        print('Downloading video...');
+
+        final response = await http.get(Uri.parse(imageUrl));
+        if (response.statusCode == 200) {
+          // Step 3: Save the video to the local temporary file
+          final file = File(tempFilePath);
+          await file.writeAsBytes(response.bodyBytes);
+          print('Video downloaded to $tempFilePath');
+
+          // Step 4: Save the video to gallery using Gal
+          await Gal.putVideo(tempFilePath);
+          // print('Video saved to gallery in album: $album');
+        } else {
+          print(
+              "Failed to download video. Status code: ${response.statusCode}");
+        }
+      } else {
+        // Fetch the image from the URL as bytes
+        final ByteData data =
+            await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
+        final Uint8List bytes = data.buffer.asUint8List();
+
+        await Gal.putImageBytes(bytes);
+      }
+
       // if (result['isSuccess']) {
       //   Utils.hideLoader();
       //   saveSuccess.value = true;

@@ -41,6 +41,7 @@ const upload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB file size limit (adjust as needed)
   },
+  
 });
 
 export const createMessage = async (
