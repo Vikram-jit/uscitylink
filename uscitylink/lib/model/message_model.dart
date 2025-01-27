@@ -20,6 +20,7 @@ class MessageModel {
   Sender? sender;
   Group? group;
   String? type;
+  String? thumbnail;
   MessageModel(
       {this.id,
       this.channelId,
@@ -37,7 +38,8 @@ class MessageModel {
       this.url,
       this.sender,
       this.group,
-      this.type});
+      this.type,
+      this.thumbnail});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -55,6 +57,7 @@ class MessageModel {
     updatedAt = json['updatedAt'];
     url = json['url'];
     type = json['type'];
+    thumbnail = json['thumbnail'];
     sender = json['sender'] != null ? Sender.fromJson(json['sender']) : null;
     group = json['group'] != null ? Group.fromJson(json['group']) : null;
   }
@@ -75,6 +78,7 @@ class MessageModel {
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
     data['url'] = url;
+    data['thumbnail'] = thumbnail;
     data['type'] = type;
     if (sender != null) {
       data['last_message'] = sender?.toJson();

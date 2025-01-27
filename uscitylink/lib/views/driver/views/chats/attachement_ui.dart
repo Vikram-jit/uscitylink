@@ -1,18 +1,13 @@
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
-import 'package:get_thumbnail_video/index.dart';
-import 'package:get_thumbnail_video/video_thumbnail.dart';
 import 'package:pdf_render/pdf_render_widgets.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
-import 'package:path_provider/path_provider.dart';
 
 class AttachementUi extends StatefulWidget {
   final String fileUrl;
-  AttachementUi({super.key, required this.fileUrl});
+  final String thumbnail;
+  AttachementUi({super.key, required this.fileUrl, this.thumbnail = ""});
 
   @override
   State<AttachementUi> createState() => _AttachementUiState();
@@ -21,27 +16,6 @@ class AttachementUi extends StatefulWidget {
 class _AttachementUiState extends State<AttachementUi> {
   // URL of the file to preview
   final controller = PdfViewerController();
-
-  XFile? _thumbnail;
-
-  Future<void> _generateThumbnailFromUrl(String videoUrl) async {
-    // Fetch the thumbnail
-    final thumbnail = await VideoThumbnail.thumbnailFile(
-      video: videoUrl,
-      thumbnailPath: (await getTemporaryDirectory()).path,
-      imageFormat: ImageFormat.WEBP,
-      maxHeight:
-          64, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
-      quality: 75,
-    );
-    print("$mounted,${widget.fileUrl}");
-    // Update the state with the thumbnail
-    if (mounted) {
-      setState(() {
-        _thumbnail = thumbnail;
-      });
-    }
-  }
 
   List<String> videoExtensions = [
     'mp4',
@@ -54,16 +28,6 @@ class _AttachementUiState extends State<AttachementUi> {
     'mpg',
     'wmv'
   ];
-  @override
-  void initState() {
-    super.initState();
-
-    String extension = widget.fileUrl.split('.').last.toLowerCase();
-
-    if (videoExtensions.contains(extension)) {
-      _generateThumbnailFromUrl(widget.fileUrl);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,56 +42,67 @@ class _AttachementUiState extends State<AttachementUi> {
       // PDF file
       return _buildPdfPreview(widget.fileUrl);
     } else if (videoExtensions.contains(extension)) {
-      return _buildVideoPreview(widget.fileUrl);
+      return _buildVideoPreview(widget.fileUrl, widget.thumbnail);
     } else {
       // Unknown or unsupported file type
       return _buildUnsupportedFile();
     }
   }
 
-  Widget _buildVideoPreview(String imageUrl) {
-    if (_thumbnail != null) {
-      var path = _thumbnail!.path;
-      var file = File(path);
-      return InkWell(
-        onTap: () {
-          // Navigate to full-screen image view (if necessary)
-          Get.to(() => DocumentDownload(
-                file: imageUrl,
-              ));
-        },
-        child: SizedBox(
-          width: double.infinity,
-          height: 200.0,
-          child: Stack(
-            children: [
-              Image.file(
-                file,
-                width: double.infinity,
-                height: 200.0,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // Handle error when loading the image
-                  return const Icon(
-                    Icons.error,
-                    size: 40,
-                    color: Colors.red,
+  Widget _buildVideoPreview(String imageUrl, String thumbnail) {
+    return InkWell(
+      onTap: () {
+        // Navigate to full-screen image view (if necessary)
+        Get.to(() => DocumentDownload(
+              file: imageUrl,
+            ));
+      },
+      child: SizedBox(
+        width: double.infinity,
+        height: 200.0,
+        child: Stack(
+          children: [
+            Image.network(
+              thumbnail,
+              width: double.infinity,
+              height: 200.0,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  return child; // Image loaded
+                } else {
+                  return SizedBox(
+                    width: double.infinity,
+                    height: 200.0,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                (loadingProgress.expectedTotalBytes ?? 1)
+                            : null,
+                      ),
+                    ),
                   );
-                },
-              ),
-              Center(
-                  child: Icon(
-                Icons.play_circle,
-                color: Colors.white,
-                size: 42,
-              ))
-            ],
-          ),
+                }
+              },
+              errorBuilder: (context, error, stackTrace) {
+                // Handle error when loading the image
+                return const Icon(
+                  Icons.error,
+                  size: 40,
+                  color: Colors.red,
+                );
+              },
+            ),
+            Center(
+                child: Icon(
+              Icons.play_circle,
+              color: Colors.white,
+              size: 42,
+            ))
+          ],
         ),
-      );
-    }
-    return Center(
-      child: CircularProgressIndicator(),
+      ),
     );
   }
 

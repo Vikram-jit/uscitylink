@@ -191,8 +191,10 @@ export async function messageToChannelToUser(
   socket: CustomSocket,
   body: string,
   url: string | null,
-  channelId: string
+  channelId: string,
+  thumbnail: string | null,
 ) {
+  
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -208,6 +210,7 @@ export async function messageToChannelToUser(
       isRead: false,
       status: "sent",
       url: url,
+      thumbnail:thumbnail || null
     });
     const message = await Message.findOne({
       where: {
@@ -395,7 +398,8 @@ export async function messageToDriver(
   userId: string,
   body: string,
   direction: string,
-  url: string | null
+  url: string | null,
+  thumbnail:string|null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -414,6 +418,7 @@ export async function messageToDriver(
     isRead: false,
     status: "sent",
     url: url || null,
+    thumbnail:thumbnail || null
   });
   const message = await Message.findOne({
     where: {
@@ -572,7 +577,8 @@ export async function messageToDriverByTruckGroup(
   groupId: string,
   body: string,
   direction: string,
-  url: string | null
+  url: string | null,
+  thumbnail:string|null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
@@ -608,6 +614,7 @@ export async function messageToDriverByTruckGroup(
       status: "sent",
       url: url || null,
       type: "truck_group",
+      thumbnail:thumbnail ||null
     });
 
     const message = await Message.findOne({
@@ -746,6 +753,7 @@ export async function messageToDriverByTruckGroup(
     deliveryStatus: "sent",
     messageTimestampUtc: utcTime,
     url: url || null,
+    thumbnail:thumbnail || null
   });
 
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
@@ -753,7 +761,7 @@ export async function messageToDriverByTruckGroup(
       e.channelId === findStaffActiveChannel?.channelId &&
       groupId == e.groupId
     ) {
-      const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+      const isSocket = global.userSockets[staffId];
 
       if (isSocket) {
         io.to(isSocket.id).emit(
@@ -875,7 +883,8 @@ export async function messageToGroup(
   channelId: string,
   body: string,
   direction: string,
-  url: string | null
+  url: string | null,
+  thumbnail:string|null
 ) {
 
   const group = await Group.findByPk(groupId);
@@ -897,6 +906,7 @@ export async function messageToGroup(
     status: "sent",
     url: url || null,
     type: "group",
+    thumbnail:thumbnail || null
   });
 
 

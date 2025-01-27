@@ -242,17 +242,23 @@ class SocketService extends GetxController {
   }
 
   // Method to send a message to the server
-  void sendMessage(String body, String? url, String? channelId) {
+  void sendMessage(String body, String? url, String? channelId,
+      [String? thumbnail]) {
     if (isConnected.value) {
-      socket.emit("send_message_to_channel",
-          {"body": body, "url": url, "channelId": channelId});
+      socket.emit("send_message_to_channel", {
+        "body": body,
+        "url": url,
+        "channelId": channelId,
+        "thumbnail": thumbnail
+      });
     } else {
       print("Not connected to socket.");
     }
   }
 
   void sendGroupMessage(
-      String groupId, String channelId, String body, String? url) {
+      String groupId, String channelId, String body, String? url,
+      [String? thumbnail]) {
     if (isConnected.value) {
       socket.emit("send_group_message", {
         "groupId": groupId,
@@ -260,6 +266,7 @@ class SocketService extends GetxController {
         "body": body,
         "direction": "S",
         "url": url,
+        "thumbnail": thumbnail
       });
     } else {
       print("Not connected to socket.");
@@ -331,24 +338,32 @@ class SocketService extends GetxController {
     socket.emit("update_group_staff_message_count", groupId);
   }
 
-  void sendMessageToUser(String userId, String body, String? url) {
+  void sendMessageToUser(String userId, String body, String? url,
+      [String? thumbnail]) {
     if (isConnected.value) {
-      socket.emit("send_message_to_user",
-          {"userId": userId, "body": body, "direction": "S", "url": url});
+      socket.emit("send_message_to_user", {
+        "userId": userId,
+        "body": body,
+        "direction": "S",
+        "url": url,
+        "thumbnail": thumbnail
+      });
     } else {
       print("Not connected to socket.");
     }
   }
 
   void sendMessageToTruck(
-      String userId, String groupId, String body, String? url) {
+      String userId, String groupId, String body, String? url,
+      [String? thumbnail]) {
     if (isConnected.value) {
       socket.emit("send_message_to_user_by_group", {
         "userId": userId,
         "groupId": groupId,
         "body": body,
         "direction": "S",
-        "url": url
+        "url": url,
+        "thumbnail": thumbnail
       });
     } else {
       print("Not connected to socket.");

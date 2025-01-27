@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
@@ -39,6 +41,18 @@ class CustomWidget {
 
   // Build a GridView for Media tab
   static Widget buildMediaGrid(MediaController mediaController) {
+    List<String> videoExtensions = [
+      'mp4',
+      'mkv',
+      'avi',
+      'mov',
+      'flv',
+      'webm',
+      'mpeg',
+      'mpg',
+      'wmv'
+    ];
+
     if (mediaController.mediaList.isEmpty) {
       return const Center(
         child: Text("No Media"),
@@ -65,37 +79,77 @@ class CustomWidget {
         }
 
         final mediaItem = mediaController.mediaList[index];
+        String extension = mediaItem.key!.split('.').last.toLowerCase();
 
         return GestureDetector(
           onTap: () {
             final file = '${Constant.aws}/${mediaItem.key}';
             Get.to(() => DocumentDownload(file: file));
           },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              '${Constant.aws}/${mediaItem.key}',
-              fit: BoxFit.cover, // Ensure image fits within the space
-              height: double.infinity,
-              width: double.infinity,
-              loadingBuilder: (BuildContext context, Widget child,
-                  ImageChunkEvent? loadingProgress) {
-                if (loadingProgress == null) {
-                  return child; // If image has loaded, return the image
-                } else {
-                  // Display loading progress
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              (loadingProgress.expectedTotalBytes ?? 1)
-                          : null,
+          child: videoExtensions.contains(extension)
+              ? Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        '${Constant.aws}/${mediaItem.thumbnail}',
+                        fit: BoxFit.cover, // Ensure image fits within the space
+                        height: double.infinity,
+                        width: double.infinity,
+                        loadingBuilder: (BuildContext context, Widget child,
+                            ImageChunkEvent? loadingProgress) {
+                          if (loadingProgress == null) {
+                            return child; // If image has loaded, return the image
+                          } else {
+                            // Display loading progress
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        (loadingProgress.expectedTotalBytes ??
+                                            1)
+                                    : null,
+                              ),
+                            );
+                          }
+                        },
+                      ),
                     ),
-                  );
-                }
-              },
-            ),
-          ),
+                    Center(
+                      child: Icon(
+                        Icons.play_circle,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    )
+                  ],
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    '${Constant.aws}/${mediaItem.key}',
+                    fit: BoxFit.cover, // Ensure image fits within the space
+                    height: double.infinity,
+                    width: double.infinity,
+                    loadingBuilder: (BuildContext context, Widget child,
+                        ImageChunkEvent? loadingProgress) {
+                      if (loadingProgress == null) {
+                        return child; // If image has loaded, return the image
+                      } else {
+                        // Display loading progress
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    (loadingProgress.expectedTotalBytes ?? 1)
+                                : null,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
         );
       },
       controller: mediaController.scrollController

@@ -89,6 +89,7 @@ class Media {
   String? key;
   String? createdAt;
   String? updatedAt;
+  String? thumbnail;
 
   Media(
       {this.id,
@@ -101,7 +102,8 @@ class Media {
       this.mimeType,
       this.key,
       this.createdAt,
-      this.updatedAt});
+      this.updatedAt,
+      this.thumbnail});
 
   Media.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -115,6 +117,7 @@ class Media {
     key = json['key'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    thumbnail = json['thumbnail'];
   }
 
   Map<String, dynamic> toJson() {
@@ -130,6 +133,7 @@ class Media {
     data['key'] = key;
     data['createdAt'] = createdAt;
     data['updatedAt'] = updatedAt;
+    data['thumbnail'] = thumbnail;
     return data;
   }
 }

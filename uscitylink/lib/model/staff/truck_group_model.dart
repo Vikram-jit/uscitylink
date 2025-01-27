@@ -285,6 +285,7 @@ class Messages {
   String? deliveryStatus;
   String? messageTimestampUtc;
   String? url;
+  String? thumbnail;
   String? createdAt;
   String? updatedAt;
   Sender? sender;
@@ -299,7 +300,8 @@ class Messages {
       this.url,
       this.createdAt,
       this.updatedAt,
-      this.sender});
+      this.sender,
+      this.thumbnail});
 
   Messages.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -311,6 +313,7 @@ class Messages {
     url = json['url'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    thumbnail = json['thumbnail'];
     sender =
         json['sender'] != null ? new Sender.fromJson(json['sender']) : null;
   }
@@ -325,6 +328,7 @@ class Messages {
     data['messageTimestampUtc'] = this.messageTimestampUtc;
     data['url'] = this.url;
     data['createdAt'] = this.createdAt;
+    data['thumbnail'] = thumbnail;
     data['updatedAt'] = this.updatedAt;
     if (this.sender != null) {
       data['sender'] = this.sender?.toJson();

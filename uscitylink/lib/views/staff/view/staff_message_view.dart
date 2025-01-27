@@ -60,7 +60,6 @@ class _StaffMessageViewState extends State<StaffMessageView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    print(state);
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       // App is in the background
@@ -419,7 +418,10 @@ class _StaffMessageViewState extends State<StaffMessageView>
                     : CrossAxisAlignment.start,
                 children: [
                   if (hasImageUrl)
-                    AttachementUi(fileUrl: "${Constant.aws}/${message.url}"),
+                    AttachementUi(
+                      fileUrl: "${Constant.aws}/${message.url}",
+                      thumbnail: "${Constant.aws}/${message.thumbnail}",
+                    ),
                   const SizedBox(height: 5),
                   Text(
                     message.body!,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
@@ -363,7 +364,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
-                    AttachementUi(fileUrl: "${Constant.aws}/${message.url}"),
+                    AttachementUi(
+                      fileUrl: "${Constant.aws}/${message.url}",
+                      thumbnail: "${Constant.aws}/${message.thumbnail}",
+                    ),
                   const SizedBox(height: 5),
                   Text(
                     message.body!,

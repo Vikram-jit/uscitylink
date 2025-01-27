@@ -20,7 +20,7 @@ export class Message extends Model {
   public status!: string;
   public url?:string
   public type?:string
-
+  public thumbnail?:string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -67,6 +67,10 @@ Message.init(
       allowNull: false,
     },
     url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    thumbnail: {
       type: DataTypes.STRING,
       allowNull: true,
     },

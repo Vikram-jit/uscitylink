@@ -258,8 +258,6 @@ class NetworkApiService extends BaseApiServices {
   Future<ApiResponse<VideoUpload>> videoUpload(
       File data, String url, String channelId, String type) async {
     try {
-      Utils.showLoader();
-
       // Prepare headers
       final headers = {
         'Content-Type': 'multipart/form-data',
@@ -290,7 +288,7 @@ class NetworkApiService extends BaseApiServices {
       if (response.statusCode == 201) {
         Map<String, dynamic> responseJson = jsonDecode(responseString);
         VideoUpload fileModel = VideoUpload.fromJson(responseJson['data']);
-        Utils.hideLoader();
+
         return ApiResponse<VideoUpload>(
           data: fileModel,
           message: responseJson['message'] ?? 'File Uploaded successful',
@@ -298,17 +296,12 @@ class NetworkApiService extends BaseApiServices {
         );
       }
 
-      Utils.hideLoader();
-
       throw Exception("Unable to upload file");
     } on SocketException {
-      Utils.hideLoader();
       throw InternetException();
     } on TimeoutException {
-      Utils.hideLoader();
       throw RequestTimeout();
     } catch (e) {
-      Utils.hideLoader();
       throw Exception("An unexpected error occurred: $e");
     }
   }
@@ -339,13 +332,14 @@ class VideoUpload {
   String? bucket;
   String? key;
   String? eTag;
-
+  String? thumbnail;
   VideoUpload(
       {this.serverSideEncryption,
       this.location,
       this.bucket,
       this.key,
-      this.eTag});
+      this.eTag,
+      this.thumbnail});
 
   VideoUpload.fromJson(Map<String, dynamic> json) {
     serverSideEncryption = json['ServerSideEncryption'];
@@ -353,6 +347,7 @@ class VideoUpload {
     bucket = json['Bucket'];
     key = json['Key'];
     eTag = json['ETag'];
+    thumbnail = json['thumbnail'];
   }
 
   Map<String, dynamic> toJson() {
@@ -361,7 +356,8 @@ class VideoUpload {
     data['Location'] = this.location;
     data['Bucket'] = this.bucket;
     data['Key'] = this.key;
-    data['ETag'] = this.eTag;
+    data['ETag'] = eTag;
+    data['thumbnail'] = thumbnail;
     return data;
   }
 }

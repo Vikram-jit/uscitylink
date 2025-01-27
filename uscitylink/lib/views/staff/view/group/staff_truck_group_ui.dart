@@ -430,7 +430,10 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
 
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
-                    AttachementUi(fileUrl: "${Constant.aws}/${message.url}"),
+                    AttachementUi(
+                      fileUrl: "${Constant.aws}/${message.url}",
+                      thumbnail: "${Constant.aws}/${message.thumbnail}",
+                    ),
                   const SizedBox(height: 5),
                   Text(
                     message.body!,

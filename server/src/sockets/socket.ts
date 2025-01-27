@@ -376,13 +376,13 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction, url }) =>
-        await messageToDriver(io, socket, userId, body, direction, url)
+      async ({ userId, body, direction, url,thumbnail }) =>
+        await messageToDriver(io, socket, userId, body, direction, url,thumbnail)
     );
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER_BY_GROUP,
-      async ({ userId, groupId, body, direction, url }) =>
+      async ({ userId, groupId, body, direction, url,thumbnail }) =>
         await messageToDriverByTruckGroup(
           io,
           socket,
@@ -390,7 +390,7 @@ export const initSocket = (httpServer: any) => {
           groupId,
           body,
           direction,
-          url
+          url,thumbnail
         )
     );
 
@@ -401,7 +401,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       "send_group_message",
-      async ({ groupId, channelId, body, direction, url }) =>
+      async ({ groupId, channelId, body, direction, url ,thumbnail}) =>
         await messageToGroup(
           io,
           socket,
@@ -409,14 +409,14 @@ export const initSocket = (httpServer: any) => {
           channelId,
           body,
           direction,
-          url
+          url,thumbnail
         )
     );
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null,channelId }) =>
-        await messageToChannelToUser(io, socket, body, url,channelId)
+      async ({ body, url = null,channelId,thumbnail }) =>
+        await messageToChannelToUser(io, socket, body, url,channelId,thumbnail)
     );
 
     //Typing Staff Event

@@ -9,7 +9,7 @@ class GroupMessage extends Model {
   public body!: string;
   public deliveryStatus!: string;
   public messageTimestampUtc!: Date;
-
+   public thumbnail?:string
   static associate(models: any) {
     GroupMessage.belongsTo(models.Group, { foreignKey: "groupId" });
     GroupMessage.belongsTo(models.UserProfile, { foreignKey: "senderId" });
@@ -45,7 +45,10 @@ GroupMessage.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
-
+    thumbnail:{
+          type: DataTypes.STRING,
+          allowNull:true
+    },
     deliveryStatus: {
       type: DataTypes.STRING,
       allowNull: false,

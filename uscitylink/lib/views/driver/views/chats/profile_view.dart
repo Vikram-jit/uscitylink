@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
-import 'package:pdf_render/pdf_render_widgets.dart';
-import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/media_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:uscitylink/views/widgets/document_download.dart';
 import 'package:uscitylink/widegts/CustomWidget.dart';
 
 class ProfileView extends StatelessWidget {

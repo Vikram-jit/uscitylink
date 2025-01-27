@@ -323,6 +323,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit + "") || 10;
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
+    console.log(req.query.type,req.query.source)
     if(source == "staff" ){
       const userProfile = await UserProfile.findByPk(req.params.channelId);
       const media = await Media.findAndCountAll({

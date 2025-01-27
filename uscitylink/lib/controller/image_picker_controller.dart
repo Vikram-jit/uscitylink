@@ -8,6 +8,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/widgets/photo_preview.dart';
 import 'package:uscitylink/views/widgets/video_preview_screen.dart';
+import 'package:video_compress/video_compress.dart';
 
 class ImagePickerController extends GetxController {
   final _apiService = NetworkApiService();
@@ -138,39 +139,48 @@ class ImagePickerController extends GetxController {
   void uploadFileVideo(String channelId, String type, String location,
       String? groupId, String? source, String? userId) async {
     try {
+      Utils.showLoader();
+      MediaInfo? mediaInfo = await VideoCompress.compressVideo(
+        selectedVideo.value!.path,
+        quality: VideoQuality.MediumQuality,
+        deleteOrigin: false, // It's false by default
+      );
       var res = await _apiService.videoUpload(
-          selectedVideo.value!,
+          File(mediaInfo!.path!),
           "${Constant.url}/message/fileAwsUpload?groupId=$groupId&userId=$userId&source=$location",
           channelId,
           type);
 
       if (res.status) {
+        print("xxxxxxxxxx,${res.data.thumbnail}");
         if (source == "staff") {
           if (location == "group") {
-            socketService.sendGroupMessage(
-                groupId!, channelId, caption.value, res.data.key!);
+            socketService.sendGroupMessage(groupId!, channelId, caption.value,
+                res.data.key!, res.data.thumbnail);
           } else if (location == "truck") {
             socketService.sendMessageToTruck(
-                "", groupId!, caption.value, res.data.key!);
+                "", groupId!, caption.value, res.data.key!, res.data.thumbnail);
           } else {
             socketService.sendMessageToUser(
-                userId!, caption.value, res.data.key!);
+                userId!, caption.value, res.data.key!, res.data.thumbnail);
           }
         } else {
           if (location == "group") {
-            socketService.sendGroupMessage(
-                groupId!, channelId, caption.value, res.data.key!);
+            socketService.sendGroupMessage(groupId!, channelId, caption.value,
+                res.data.key!, res.data.thumbnail);
           } else {
-            socketService.sendMessage(caption.value, res.data.key!, channelId);
+            socketService.sendMessage(
+                caption.value, res.data.key!, channelId, res.data.thumbnail);
           }
         }
-
+        Utils.hideLoader();
         Get.back();
         while (Get.isBottomSheetOpen == true) {
           Get.back();
         }
       }
     } catch (e) {
+      Utils.hideLoader();
       Utils.snackBar("File Upload Error", e.toString());
     }
   }
