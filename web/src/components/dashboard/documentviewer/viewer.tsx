@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download } from '@mui/icons-material';
 import { Box, Button, Grid, IconButton, Paper, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -9,14 +9,16 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
+import ReactPlayer from 'react-player';
 
 const options = {
   cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
 };
- interface Viewer{
-  documentKey:string
- }
-export default function Viewer({documentKey}:Viewer) {
+interface Viewer {
+  documentKey: string;
+}
+export default function Viewer({ documentKey }: Viewer) {
+  console.log(documentKey);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
@@ -26,8 +28,8 @@ export default function Viewer({documentKey}:Viewer) {
   const handleLoadingComplete = () => {
     setIsLoading(false); // Set loading to false once the image is loaded
   };
- // const { key }: { key: string } = useParams();
-  const  key = documentKey
+  // const { key }: { key: string } = useParams();
+  const key = documentKey;
 
   // Handle document load success
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
@@ -95,6 +97,43 @@ export default function Viewer({documentKey}:Viewer) {
       iframeWindow.print(); // Trigger print
     }
   };
+  const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+  if (videoExtensions.includes(key.split('.')?.[key.split('.').length - 1])) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
+        {isLoading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10, // Make sure the loader is on top
+            }}
+          >
+            <div className="spinner"></div> {/* Custom Spinner */}
+          </div>
+        )}
+
+        <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
+            <ReactPlayer
+              controls={true}
+              url={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`}
+              width={'100%'}
+            />
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
 
   if (key.split('.')?.[key.split('.').length - 1] != 'pdf') {
     return (
@@ -104,22 +143,21 @@ export default function Viewer({documentKey}:Viewer) {
           flexDirection: 'column',
           alignItems: 'center',
           width: '100%',
-
         }}
       >
-         {isLoading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10, // Make sure the loader is on top
-          }}
-        >
-          <div className="spinner"></div> {/* Custom Spinner */}
-        </div>
-      )}
+        {isLoading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10, // Make sure the loader is on top
+            }}
+          >
+            <div className="spinner"></div> {/* Custom Spinner */}
+          </div>
+        )}
 
         <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
@@ -130,7 +168,7 @@ export default function Viewer({documentKey}:Viewer) {
               height={500}
               objectFit="contain"
               style={{
-                objectFit:"contain"
+                objectFit: 'contain',
               }}
               onLoadingComplete={handleLoadingComplete}
             />
@@ -147,7 +185,6 @@ export default function Viewer({documentKey}:Viewer) {
         flexDirection: 'column',
         alignItems: 'center',
         width: '100%',
-
       }}
     >
       <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
@@ -197,7 +234,6 @@ export default function Viewer({documentKey}:Viewer) {
         {isClient && (
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <Document
-
               ref={pdfRef}
               options={options}
               file={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}

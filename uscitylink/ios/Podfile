@@ -5,6 +5,7 @@ project 'Runner', {
   'Profile' => :release,
   'Release' => :release,
 }
+use_frameworks!
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
@@ -36,7 +37,6 @@ target 'Runner' do
   pod 'nanopb', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
   pod 'GoogleDataTransport', :modular_headers => true
-
 end
 
 post_install do |installer|

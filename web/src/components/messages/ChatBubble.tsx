@@ -22,7 +22,7 @@ type ChatBubbleProps = MessageModel & {
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url,deliveryStatus } = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url,deliveryStatus ,thumbnail} = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
@@ -52,7 +52,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
 
           }}
         >
-            <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`} name={url ? url : ' '}/>
+            <MediaComponent thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${thumbnail }`} url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`} name={url ? url : ' '}/>
             {body &&  <Typography  sx={{fontSize:16}}>{body}</Typography>}
 
         </Paper>

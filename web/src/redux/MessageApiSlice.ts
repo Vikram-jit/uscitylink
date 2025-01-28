@@ -64,6 +64,29 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
 
       invalidatesTags: ['media','messages'],
     }),
+
+    videoUpload: builder.mutation<
+    {
+      status: boolean;
+      message: string;
+      data: any;
+    },
+    {formData:FormData,groupId?:string|null,userId?:string}
+  >({
+    query: (formData) => ({
+      url: `message/fileAwsUpload?groupId=${formData.groupId}&userId=${formData.userId}`,
+      method: 'POST',
+      body: formData.formData,
+      formData: true,
+      // headers: {
+
+      //   'Content-Type': 'multipart/form-data',
+      // },
+    }),
+
+    invalidatesTags: ['media','messages'],
+  }),
+
     quickMessage: builder.mutation<
     {status:string,message:string},
     {
@@ -81,4 +104,4 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useQuickMessageMutation, useGetMessagesByUserIdQuery, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;
+export const { useQuickMessageMutation, useGetMessagesByUserIdQuery, useVideoUploadMutation, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { apiSlice } from '@/redux/apiSlice';
 import { useGetGroupByIdQuery, useGetGroupMessagesQuery, useGetGroupsQuery } from '@/redux/GroupApiSlice';
-import { useFileUploadMutation } from '@/redux/MessageApiSlice';
+import { useFileUploadMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
 import { GroupModel } from '@/redux/models/GroupModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
@@ -38,19 +39,19 @@ import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import ReactPlayer from 'react-player';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import useDebounce from '@/hooks/useDebounce';
 import MediaComponent from '@/components/messages/MediaComment';
+import MediaPane from '@/components/messages/MediaPane';
 import { formatDate } from '@/components/messages/utils';
 
 import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
-import MediaPane from '@/components/messages/MediaPane';
-import { apiSlice } from '@/redux/apiSlice';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -143,8 +144,9 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [fileUpload] = useFileUploadMutation();
+  const [videoUpload] = useVideoUploadMutation();
   const dispatch = useDispatch();
-  const [viewMedia,setViewMedia] = useState<boolean>(false)
+  const [viewMedia, setViewMedia] = useState<boolean>(false);
   const [file, setFile] = React.useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [caption, setCaption] = React.useState('');
@@ -157,7 +159,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
 
   const { data: group, isFetching } = useGetGroupByIdQuery(
-    { id: selectedGroup,page:pageMessage},
+    { id: selectedGroup, page: pageMessage },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -165,28 +167,28 @@ const ChatInterface = ({ type }: { type: string }) => {
   );
 
   const { data: groupMessage } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup,page:pageMessage },
+    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
     }
   );
 
-  useEffect(()=>{
-      if(trackChannelState > 0){
-        setHasMore(false)
-        setHasMoreMessage(false)
-        setMessages([])
-        setGroups([])
-      }
-  },[trackChannelState])
-
-  useEffect(()=>{
-    if(search.length > 0){
-      setPage(1)
-      setHasMore(true)
+  useEffect(() => {
+    if (trackChannelState > 0) {
+      setHasMore(false);
+      setHasMoreMessage(false);
+      setMessages([]);
+      setGroups([]);
     }
-  },[search])
+  }, [trackChannelState]);
+
+  useEffect(() => {
+    if (search.length > 0) {
+      setPage(1);
+      setHasMore(true);
+    }
+  }, [search]);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -206,6 +208,10 @@ const ChatInterface = ({ type }: { type: string }) => {
   };
 
   const renderFilePreview = () => {
+    const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+
+    const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+
     if (file && file.type.startsWith('image/')) {
       // Display image preview for images
       return (
@@ -218,14 +224,15 @@ const ChatInterface = ({ type }: { type: string }) => {
     } else if (file && file.type === 'application/pdf') {
       // Display placeholder for PDF files
       return <div>PDF Preview (placeholder)</div>;
+    } else if (videoExtensions.includes(extension)) {
+      return <ReactPlayer height={200} width={500} url={URL.createObjectURL(file)} controls={true} />;
     } else {
       return <div>File Preview Not Available</div>;
     }
   };
 
   const handleReceiveMessage = useCallback(
-    (message: any,groupId:string) => {
-   
+    (message: any, groupId: string) => {
       if (message.groupId !== selectedGroup) {
         return; // Ignore the message if the groupId does not match selectedId
       }
@@ -243,29 +250,25 @@ const ChatInterface = ({ type }: { type: string }) => {
     [setMessages, scrollToBottom]
   );
 
-
   useEffect(() => {
     if (groupList?.status && groupList?.data) {
       const newChannelId = groupList?.data?.channel.id;
 
       // Check if the channel ID has changed
       if (newChannelId !== currentChannelId) {
-        setSelectedGroup("")
-        setMessages([])
+        setSelectedGroup('');
+        setMessages([]);
         // If channel ID has changed, reset the groups and update the current channel ID
         setGroups(groupList?.data?.data);
-        
+
         setCurrentChannelId(newChannelId);
 
         setHasMoreMessage(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
         setHasMore(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
       } else {
-       
         setGroups((prevGroups) => {
           const existingGroupIds = new Set(prevGroups.map((group) => group.id));
-          const newGroups = groupList?.data?.data.filter(
-            (newGroup) => !existingGroupIds.has(newGroup.id)
-          );
+          const newGroups = groupList?.data?.data.filter((newGroup) => !existingGroupIds.has(newGroup.id));
           return [...prevGroups, ...newGroups];
         });
 
@@ -273,18 +276,15 @@ const ChatInterface = ({ type }: { type: string }) => {
         setHasMore(groupList?.data?.pagination.currentPage < groupList?.data?.pagination.totalPages);
       }
     }
-
   }, [groupList, currentChannelId]);
-
-
 
   useEffect(() => {
     if (type === 'truck') {
       if (group?.status && group?.data?.messages) {
         setMessages((prevMessages: any) => {
           // Filter out duplicate messages using a unique identifier (e.g., `id`)
-          const newMessages = group.data.messages.filter((message: any) =>
-            !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
+          const newMessages = group.data.messages.filter(
+            (message: any) => !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
           );
           return [...prevMessages, ...newMessages];
         });
@@ -295,30 +295,30 @@ const ChatInterface = ({ type }: { type: string }) => {
       if (groupMessage?.data?.messages) {
         setMessages((prevMessages: any) => {
           // Filter out duplicate messages
-          const newMessages = groupMessage.data.messages.filter((message: any) =>
-            !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
+          const newMessages = groupMessage.data.messages.filter(
+            (message: any) => !prevMessages.some((prevMessage: any) => prevMessage.id === message.id)
           );
           return [...prevMessages, ...newMessages];
         });
-          if(groupMessage?.data?.messages.length == 0){
-            setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
-          }else{
-            setHasMoreMessage(false);
-          }
-        
+        if (groupMessage?.data?.messages.length == 0) {
+          setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
+        } else {
+          setHasMoreMessage(false);
+        }
+
         setSenderId(groupMessage?.data?.senderId);
       }
     }
- 
   }, [group, groupMessage, type]);
 
   useEffect(() => {
     if (socket) {
       if (type == 'group') {
-        
-        socket.on('new_group_message_received', (message:MessageModel)=>handleReceiveMessage(message,selectedGroup));
+        socket.on('new_group_message_received', (message: MessageModel) =>
+          handleReceiveMessage(message, selectedGroup)
+        );
       } else {
-        socket.on('receive_message_group', (message:MessageModel)=>handleReceiveMessage(message,selectedGroup));
+        socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
       }
 
       // Cleanup the event listener when the component unmounts or socket changes
@@ -330,7 +330,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         }
       };
     }
-  }, [socket,selectedGroup]);
+  }, [socket, selectedGroup]);
 
   useEffect(() => {
     scrollToBottom();
@@ -415,7 +415,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-  console.log(selectedGroup)
+   
     try {
       // userId,groupId,body,direction,url
 
@@ -470,6 +470,9 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   async function sendMessage() {
     try {
+      const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+
+      const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
       dispatch(showLoader());
       if (group?.data) {
         const userIds = group.data.members
@@ -486,7 +489,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         formData.append('source', type);
         formData.append('groupId', group.data.group.id);
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
-        const res = await fileUpload(formData).unwrap();
+        const res = videoExtensions.includes(extension) ? await videoUpload({formData,userId:'',groupId:group.data.group.id}).unwrap() : await fileUpload(formData).unwrap();
         if (res.status) {
           if (type == 'group') {
             socket?.emit('send_group_message', {
@@ -495,6 +498,7 @@ const ChatInterface = ({ type }: { type: string }) => {
               body: newMessage,
               direction: 'S',
               url: res?.data?.key,
+              thumbnail:res?.data?.thumbnail
             });
           } else {
             socket?.emit('send_message_to_user_by_group', {
@@ -503,6 +507,7 @@ const ChatInterface = ({ type }: { type: string }) => {
               body: caption,
               url: res?.data?.key,
               direction: 'S',
+              thumbnail:res?.data?.thumbnail
             });
           }
 
@@ -551,105 +556,104 @@ const ChatInterface = ({ type }: { type: string }) => {
           </Box>
           <List id="scrollable-channel-container" sx={{ maxHeight: '650px', overflowY: 'auto' }}>
             {
-                <InfiniteScroll
-              dataLength={groups.length}
-              next={loadMoreMessages}
-              hasMore={hasMore}
-              loader={<h4>Loading...</h4>}
-              scrollThreshold={0.95}
-              scrollableTarget="scrollable-channel-container"
-            >
-              {groups &&
-                groups?.map((group, index) => (
-                  <>
-                    <ListItem key={index} sx={{ padding: 0 }}>
-                      <ListItemButton
-                        selected={selectedGroup == group.id}
-                        sx={{
-                          alignItems: 'initial',
-                          gap: 1,
-                          '&.Mui-selected': {
-                            backgroundColor: 'primary.main',
-                            color: 'white',
-                          },
-                          '&:hover': {
-                            backgroundColor: 'primary.light',
-                            color: 'black',
-                          },
-                        }}
-                        onClick={() => {
-                          if (type == 'group') {
-                            socket.emit('group_user_add', {
-                              channel_id: group.group_channel.channelId,
-                              group_id: group.id,
-                            });
-                            socket.emit('update_group_staff_message_count', group.id);
-                          } else {
-                            socket?.emit('staff_open_truck_group', group.id);
-                          }
-                              dispatch(apiSlice.util.invalidateTags(['channels']));
-   
-                          setSelectedGroup(group.id);
-                          setSelectedChannel(group.group_channel.channelId);
-                          setTimeout(() => {
-                            scrollToBottom();
-                          }, 100);
-                          setMessages([])
-                          setPageMessage(1)
-                          setHasMoreMessage(true)
-                        }}
-                      >
-                        <Badge
-                          overlap="circular"
-                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                          variant="dot"
-                          // color={contact.status === "online" ? "success" : "default"}
+              <InfiniteScroll
+                dataLength={groups.length}
+                next={loadMoreMessages}
+                hasMore={hasMore}
+                loader={<h4>Loading...</h4>}
+                scrollThreshold={0.95}
+                scrollableTarget="scrollable-channel-container"
+              >
+                {groups &&
+                  groups?.map((group, index) => (
+                    <>
+                      <ListItem key={index} sx={{ padding: 0 }}>
+                        <ListItemButton
+                          selected={selectedGroup == group.id}
+                          sx={{
+                            alignItems: 'initial',
+                            gap: 1,
+                            '&.Mui-selected': {
+                              backgroundColor: 'primary.main',
+                              color: 'white',
+                            },
+                            '&:hover': {
+                              backgroundColor: 'primary.light',
+                              color: 'black',
+                            },
+                          }}
+                          onClick={() => {
+                            if (type == 'group') {
+                              socket.emit('group_user_add', {
+                                channel_id: group.group_channel.channelId,
+                                group_id: group.id,
+                              });
+                              socket.emit('update_group_staff_message_count', group.id);
+                            } else {
+                              socket?.emit('staff_open_truck_group', group.id);
+                            }
+                            dispatch(apiSlice.util.invalidateTags(['channels']));
+
+                            setSelectedGroup(group.id);
+                            setSelectedChannel(group.group_channel.channelId);
+                            setTimeout(() => {
+                              scrollToBottom();
+                            }, 100);
+                            setMessages([]);
+                            setPageMessage(1);
+                            setHasMoreMessage(true);
+                          }}
                         >
-                          <Avatar>{group.name.split('')?.[0]}</Avatar>
-                          {/* <Avatar alt=""} /> */}
-                        </Badge>
-                        <ListItemText
-                          primary={
-                            <Box display={'flex'} justifyContent={'space-between'}>
-                              <Box display={'flex'} flexDirection={'column'}>
-                                <Typography>{group.name}</Typography>
-                                <Typography
-                                  sx={{
-                                    color: 'grey',
-                                    '&:hover': {
+                          <Badge
+                            overlap="circular"
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                            variant="dot"
+                            // color={contact.status === "online" ? "success" : "default"}
+                          >
+                            <Avatar>{group.name.split('')?.[0]}</Avatar>
+                            {/* <Avatar alt=""} /> */}
+                          </Badge>
+                          <ListItemText
+                            primary={
+                              <Box display={'flex'} justifyContent={'space-between'}>
+                                <Box display={'flex'} flexDirection={'column'}>
+                                  <Typography>{group.name}</Typography>
+                                  <Typography
+                                    sx={{
                                       color: 'grey',
-                                    },
-                                  }}
-                                >
-                                  {group.last_message?.body ?? 'No Message Yet'}
-                                </Typography>
+                                      '&:hover': {
+                                        color: 'grey',
+                                      },
+                                    }}
+                                  >
+                                    {group.last_message?.body ?? 'No Message Yet'}
+                                  </Typography>
+                                </Box>
+                                <Box display={'flex'} flexDirection={'column'}>
+                                  {group?.message_count > 0 && (
+                                    <Chip
+                                      variant="filled"
+                                      color="primary"
+                                      size="small"
+                                      label={group?.message_count}
+                                      sx={{ ml: 1 }}
+                                    />
+                                  )}
+                                  <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
+                                    {formatDate(group?.last_message?.messageTimestampUtc)}
+                                  </Typography>
+                                </Box>
                               </Box>
-                              <Box display={'flex'} flexDirection={'column'}>
-                                {group?.message_count > 0 && (
-                                  <Chip
-                                    variant="filled"
-                                    color="primary"
-                                    size="small"
-                                    label={group?.message_count}
-                                    sx={{ ml: 1 }}
-                                  />
-                                )}
-                                <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
-                                  {formatDate(group?.last_message?.messageTimestampUtc)}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          }
-                          sx={{ ml: 2 }}
-                        />
-                      </ListItemButton>
-                    </ListItem>
-                    <Divider />
-                  </>
-                ))}
-            </InfiniteScroll> 
+                            }
+                            sx={{ ml: 2 }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                      <Divider />
+                    </>
+                  ))}
+              </InfiniteScroll>
             }
-           
           </List>
         </SidebarContainer>
       </Grid>
@@ -658,7 +662,13 @@ const ChatInterface = ({ type }: { type: string }) => {
 
       {viewDetailGroup ? (
         <Grid item xs={12} md={9}>
-          <GroupHeader isBack={true} setViewDetailGroup={setViewDetailGroup} group={group} setViewMedia={setViewMedia}  viewMedia={viewMedia}/>
+          <GroupHeader
+            isBack={true}
+            setViewDetailGroup={setViewDetailGroup}
+            group={group}
+            setViewMedia={setViewMedia}
+            viewMedia={viewMedia}
+          />
 
           <Divider />
 
@@ -677,155 +687,164 @@ const ChatInterface = ({ type }: { type: string }) => {
           {selectedGroup ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
-                <GroupHeader isBack={false} setViewDetailGroup={setViewDetailGroup} group={group} setViewMedia={setViewMedia} viewMedia={viewMedia}/>
+                <GroupHeader
+                  isBack={false}
+                  setViewDetailGroup={setViewDetailGroup}
+                  group={group}
+                  setViewMedia={setViewMedia}
+                  viewMedia={viewMedia}
+                />
                 <Divider />
-                {
-                  viewMedia ? <MediaPane userId={selectedGroup} source='group' channelId={selectedGroup}/> :
-                
-                <MessagesContainer id="scrollable-messages-group-container">
-                  {/* <div ref={messagesEndRef} /> */}
-                  <InfiniteScroll
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column-reverse',
-                      gap: '10px',
-                      padding: '20px',
-
-                    }}
-                    // onScroll={handleScroll}
-                    dataLength={messages.length}
-                    next={loadMoreGroupMessages}
-                    hasMore={hasMoreMessage}
-                    loader={<h4>Loading...</h4>} // Loader will be shown at the top when scrolling up
-                    scrollThreshold={0.95}
-                    scrollableTarget="scrollable-messages-group-container"
-                    inverse={true} // Load older messages on scroll up
-                  >
-                    {messages.map((msg: any) => (
-                      <>
-                        {msg.senderId != senderId && msg.sender && (
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                            <Typography variant="caption">{msg?.sender?.username}</Typography>
-                            <Badge
-                              color={msg?.sender.isOnline ? 'success' : 'default'}
-                              variant={msg?.sender.isOnline ? 'dot' : 'standard'}
-                              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                              overlap="circular"
-                            />
-                          </Box>
-                        )}
-                        <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
-                          {msg.url && (
-                            <Paper
-                              variant="outlined"
-                              sx={{
-                                px: 1.75,
-                                py: 1.25,
-                              }}
-                            >
-                              <MediaComponent
-                                url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                                name={msg.url ? msg.url : ' '}
+                {viewMedia ? (
+                  <MediaPane userId={selectedGroup} source="group" channelId={selectedGroup} />
+                ) : (
+                  <MessagesContainer id="scrollable-messages-group-container">
+                    {/* <div ref={messagesEndRef} /> */}
+                    <InfiniteScroll
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column-reverse',
+                        gap: '10px',
+                        padding: '20px',
+                      }}
+                      // onScroll={handleScroll}
+                      dataLength={messages.length}
+                      next={loadMoreGroupMessages}
+                      hasMore={hasMoreMessage}
+                      loader={<h4>Loading...</h4>} // Loader will be shown at the top when scrolling up
+                      scrollThreshold={0.95}
+                      scrollableTarget="scrollable-messages-group-container"
+                      inverse={true} // Load older messages on scroll up
+                    >
+                      {messages.map((msg: any) => (
+                        <>
+                          {msg.senderId != senderId && msg.sender && (
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                              <Typography variant="caption">{msg?.sender?.username}</Typography>
+                              <Badge
+                                color={msg?.sender.isOnline ? 'success' : 'default'}
+                                variant={msg?.sender.isOnline ? 'dot' : 'standard'}
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                overlap="circular"
                               />
-                            </Paper>
+                            </Box>
                           )}
-                          {msg.body}
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
-                            {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                          </Box>
-                        </MessageBubble>
-                      </>
-                    ))}
-                  </InfiniteScroll>
-                </MessagesContainer> } 
+                          <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
+                            {msg.url && (
+                              <Paper
+                                variant="outlined"
+                                sx={{
+                                  px: 1.75,
+                                  py: 1.25,
+                                }}
+                              >
+                                <MediaComponent
+                                  url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                                  name={msg.url ? msg.url : ' '}
+                                  thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
+                                />
+                              </Paper>
+                            )}
+                            {msg.body}
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
+                              {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                            </Box>
+                          </MessageBubble>
+                        </>
+                      ))}
+                    </InfiniteScroll>
+                  </MessagesContainer>
+                )}
 
                 {/* Input Container */}
 
-              {!viewMedia && <InputContainer>
-                  <IconButton
-                    onClick={handleClick}
-                    size="small"
-                    sx={{ ml: 2 }}
-                    aria-controls={open ? 'account-menu' : undefined}
-                    aria-haspopup="true"
-                    aria-expanded={open ? 'true' : undefined}
-                  >
-                    <Add />
-                  </IconButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    id="account-menu"
-                    open={openTemplate}
-                    onClose={handleClose}
-                    onClick={handleClose}
-                    slotProps={{
-                      paper: {
-                        elevation: 0,
-                        sx: {
-                          overflow: 'visible',
-                          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                          mt: 1.5,
-                          '& .MuiAvatar-root': {
-                            width: 32,
-                            height: 32,
-                            ml: -0.5,
-                            mr: 1,
-                          },
-                          '&::before': {
-                            content: '""',
-                            display: 'block',
-                            position: 'absolute',
-                            top: 0,
-                            right: 14,
-                            width: 10,
-                            height: 10,
-                            bgcolor: 'background.paper',
-                            transform: 'translateY(-50%) rotate(45deg)',
-                            zIndex: 0,
+                {!viewMedia && (
+                  <InputContainer>
+                    <IconButton
+                      onClick={handleClick}
+                      size="small"
+                      sx={{ ml: 2 }}
+                      aria-controls={open ? 'account-menu' : undefined}
+                      aria-haspopup="true"
+                      aria-expanded={open ? 'true' : undefined}
+                    >
+                      <Add />
+                    </IconButton>
+                    <Menu
+                      anchorEl={anchorEl}
+                      id="account-menu"
+                      open={openTemplate}
+                      onClose={handleClose}
+                      onClick={handleClose}
+                      slotProps={{
+                        paper: {
+                          elevation: 0,
+                          sx: {
+                            overflow: 'visible',
+                            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                            mt: 1.5,
+                            '& .MuiAvatar-root': {
+                              width: 32,
+                              height: 32,
+                              ml: -0.5,
+                              mr: 1,
+                            },
+                            '&::before': {
+                              content: '""',
+                              display: 'block',
+                              position: 'absolute',
+                              top: 0,
+                              right: 14,
+                              width: 10,
+                              height: 10,
+                              bgcolor: 'background.paper',
+                              transform: 'translateY(-50%) rotate(45deg)',
+                              zIndex: 0,
+                            },
                           },
                         },
-                      },
-                    }}
-                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                  >
-                    <MenuItem onClick={() => setTemplateDialog(true)}>
-                      <ListItemIcon>
-                        <PaperPlane fontSize="small" />
-                      </ListItemIcon>
-                      Templates
-                    </MenuItem>
-                  </Menu>
-                  {templateDialog && (
-                    <TemplateDialog
-                      open={templateDialog}
-                      setOpen={setTemplateDialog}
-                      setSelectedTemplate={setSelectedTemplate}
+                      }}
+                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                    >
+                      <MenuItem onClick={() => setTemplateDialog(true)}>
+                        <ListItemIcon>
+                          <PaperPlane fontSize="small" />
+                        </ListItemIcon>
+                        Templates
+                      </MenuItem>
+                    </Menu>
+                    {templateDialog && (
+                      <TemplateDialog
+                        open={templateDialog}
+                        setOpen={setTemplateDialog}
+                        setSelectedTemplate={setSelectedTemplate}
+                      />
+                    )}
+                    <input
+                      id="file-input"
+                      type="file"
+                      style={{ display: 'none' }} // Hide the input element
+                      onChange={handleFileChange} // Handle file selection
                     />
-                  )}
-                  <input
-                    id="file-input"
-                    type="file"
-                    style={{ display: 'none' }} // Hide the input element
-                    onChange={handleFileChange} // Handle file selection
-                  />
-                  <IconButton onClick={handleIconClick}>
-                    <AttachFile />
-                  </IconButton>
-                  <TextField
-                    fullWidth
-                    placeholder="Type a message"
-                    variant="outlined"
-                    size="small"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  />
-                  <IconButton onClick={handleSendMessage} disabled={isLoading}>
-                    {isLoading ? <CircularProgress size={24} /> : <FiSend />}
-                  </IconButton>
-                </InputContainer>}
+                    <IconButton onClick={handleIconClick}>
+                      <AttachFile />
+                    </IconButton>
+                    <TextField
+                      fullWidth
+                      placeholder="Type a message"
+                      variant="outlined"
+                      size="small"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <IconButton onClick={handleSendMessage} disabled={isLoading}>
+                      {isLoading ? <CircularProgress size={24} /> : <FiSend />}
+                    </IconButton>
+                  </InputContainer>
+                )}
                 {selectedTemplate.url && (
                   <Box sx={{}}>
                     <MediaComponent

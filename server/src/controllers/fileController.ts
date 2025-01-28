@@ -86,6 +86,9 @@ export const fileUploadAWS = async (
     const groupId = req.query.groupId || null;
     const userId = req.query.userId || req.user?.id;
 
+
+  
+
     if (fileSize < 5 * 1024 * 1024) {
       const params = {
         Bucket: "ciity-sms",
@@ -119,7 +122,7 @@ export const fileUploadAWS = async (
         mime_type: req.file.mimetype,
         key: result?.key,
         file_type: req.body.type,
-        groupId: groupId,
+        groupId: groupId == "null" ? null : groupId,
         upload_source: req.query.source || "message",
         thumbnail: thumbnail_data?.Key,
       });

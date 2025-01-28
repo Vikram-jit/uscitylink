@@ -24,6 +24,7 @@ export interface MessageModel {
   createdAt: Date;
   updatedAt: Date;
   url:string | null
+  thumbnail:string | null
 
   sender: SenderModel;
 }

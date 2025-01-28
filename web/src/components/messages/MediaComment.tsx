@@ -8,24 +8,51 @@ import 'react-medium-image-zoom/dist/styles.css';
 
 import { DocumentScanner } from '@mui/icons-material';
 import { Box } from '@mui/system';
-import { FilePdf } from '@phosphor-icons/react';
+import { FilePdf ,PlayCircle} from '@phosphor-icons/react';
 
 import DocumentDialog from '../DocumentDialog';
+
 
 interface MediaComponent {
   url: string;
   file_name?: string;
   width?: number;
   height?: number;
+  thumbnail?: string;
   name: string;
 }
 
-export default function MediaComponent({ url, width, height, file_name, name }: MediaComponent) {
+export default function MediaComponent({ url, width, height, file_name, name ,thumbnail}: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
   const file = name?.split('/');
+  
+  const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm', '.mpeg', '.mpg', '.wmv'];
 
   switch (getFileExtension(url)) {
+    case '.mp4':
+    case '.mkv':
+    case '.avi':
+    case '.mov':
+    case '.flv':
+    case '.webm':
+    case '.mpeg':
+    case '.mpg':
+    case '.wmv':
+      return <>
+      <IconButton onClick={() => setOpenDocument(true)} style={{position:"relative"}}>
+        <Image
+          height={height || 60}
+          src={thumbnail || ""}
+          alt=""
+          width={181}
+          style={{ height: 200, width: 181, objectFit: 'contain' }}
+          objectFit="contain"
+        />
+        <PlayCircle size={50} style={{position:"absolute",color:"white"}}/>
+      </IconButton >
+      {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
+    </>;
     case '.3gpp':
       return (
         <>
@@ -65,7 +92,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
       return (
         <>
           <IconButton onClick={() => setOpenDocument(true)}>
-            <img height={height || 60} src={url} alt="" style={{objectFit:"contain"}}/>
+            <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
           </IconButton>
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
@@ -94,7 +121,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
           return (
             <>
               <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt=""  style={{objectFit:"contain"}}/>
+                <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
               </IconButton>
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>
@@ -103,7 +130,7 @@ export default function MediaComponent({ url, width, height, file_name, name }: 
           return (
             <>
               <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt="" style={{objectFit:"contain"}} />
+                <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
               </IconButton>
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>
