@@ -23,5 +23,5 @@ export function isNavItemActive({
     return false;
   }
 
-  return pathname === href;
+  return pathname.includes(href);
 }

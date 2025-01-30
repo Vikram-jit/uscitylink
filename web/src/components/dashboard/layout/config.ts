@@ -12,6 +12,7 @@ export const navItems = [
   { key: 'driver', title: 'Drivers', href: `${paths.dashboard.users}/driver`, icon: 'user' ,badge:false, items:[{badge:false, key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,}]},
   { key: 'channels', title: 'Channels', href: paths.dashboard.channels, icon: 'channels',badge:false },
   { key: 'channel Members', title: 'Channel Members', href: paths.channel.members, icon: 'users-four',badge:false },
+  { key: 'training', title: 'Training Section', href: paths.dashboard.trainings, icon: 'users-four',badge:false },
 
 
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },

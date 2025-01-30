@@ -25,5 +25,5 @@ export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery,
   endpoints: () => ({ }),
-  tagTypes:['dashboard', 'users','profile','channels','groups','channel','channelUsers','messages','members','media','group','trucks','templates']
+  tagTypes:['dashboard','trainings', 'users','profile','channels','groups','channel','channelUsers','messages','members','media','group','trucks','templates']
 });

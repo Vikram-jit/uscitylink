@@ -15,6 +15,7 @@ import channelRoutes from "./routes/channelRoutes";
 import channelStaffRoutes from "./routes/staff/channelRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import yardRoutes from "./routes/yardRoutes";
+import trainingRoutes from "./routes/trainingRoutes";
 import templateRoutes from "./routes/templateRoutes";
 import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
@@ -28,16 +29,17 @@ import Group from "./models/Group";
 
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
-
+import path from "path"
 
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.static("public"));
 
-
-
+app.set("view engine", "ejs");
+app.set("views", "./views"); 
 
 initSocket(server);
 
@@ -61,6 +63,7 @@ app.use("/api/v1/channel/member", channelMemberRoutes);
 app.use("/api/v1/message", messageRoutes);
 app.use("/api/v1/media", mediaRoutes);
 app.use("/api/v1/yard", yardRoutes);
+app.use("/api/v1/trainings", trainingRoutes);
 app.use("/api/v1/template", templateRoutes);
 app.use("/api/v1/staff/channel", channelStaffRoutes);
 app.use("/api/v1/staff/chat", chatRoutes);

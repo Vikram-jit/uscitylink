@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= details.text_number %></title>
+    <!-- Import Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 0;
+        position: relative;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+      img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+      }
+      .invoice-header {
+        position: absolute;
+        top: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        font-size: 32px;
+        font-weight: 700;
+        font-family: "Montserrat", sans-serif;
+        color: #2c3e50;
+      }
+      .company-info {
+        position: absolute;
+        top: 23%;
+        right: 10%;
+        text-align: right;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        font-weight: 500;
+      }
+      .invoice-to {
+        position: absolute;
+        top: 35%;
+        left: 10%;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        font-weight: 500;
+        max-width: 400px; /* Optional: Set a maximum width if needed */
+        word-wrap: break-word; /* Ensures long words break to the next line */
+        overflow-wrap: break-word; /* For newer browsers, ensures proper text wrapping */
+        white-space: normal; /* Makes sure text breaks and doesn't overflow horizontally */
+      }
+      .invoice-details {
+        position: absolute;
+        top: 35%;
+        right: 10%;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        font-weight: 500;
+      }
+      .invoice-details strong {
+        color: #2c3e50;
+      }
+      .test-result-box {
+        width: 250px;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-top: 10px;
+        background-color: #fafafa;
+        text-align: start;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .test-result-box strong {
+        
+        font-weight: 600;
+      }
+      .test-result-message {
+        position: absolute;
+        top: 55%;
+        left: 10%;
+        width: 78%;
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: #fafafa;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .congratulations-message {
+        position: absolute;
+        top: 60%;
+        left: 10%;
+        width: 78%;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        font-weight: 500;
+        text-align: justify;
+      }
+      .congratulations-message strong {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+      .congratulations-message span {
+        color: #27ae60;
+        font-weight: 600;
+      }
+      .note-message {
+        position: absolute;
+        top: 74%;
+        left: 10%;
+        width: 78%;
+        font-size: 14px;
+        color: #555;
+        line-height: 1.6;
+        font-weight: 500;
+        text-align: justify;
+      }
+      .total-section {
+        padding: 10px;
+        background-color: #fafafa;
+        text-align: start;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: absolute;
+        bottom: 11%;
+        right: 10%;
+        text-align: right;
+        font-size: 14px;
+        color: #555;
+        font-weight: 500;
+        width: 30%;
+      }
+      .total-section p {
+        margin: 5px 0;
+      }
+      .total-section strong {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+      .icon {
+        margin-right: 8px;
+        color: #27ae60;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="http://localhost:4300/invoice.png" alt="Logo" />
+    <div class="invoice-header">
+      <h1>Invoice</h1>
+    </div>
+    <div class="company-info">
+      <span>U S Citylink Corp</span><br />
+      <span>1601 S Union Ave</span><br />
+      <span>Bakersfield, CA 93307</span><br />
+      <i class="fa-solid fa-phone icon"></i><span>661-735-1750</span><br />
+      <i class="fa-solid fa-envelope icon"></i><span>uscitylink@yahoo.com</span
+      ><br />
+    </div>
+    <div class="invoice-to">
+      <strong><i class="fas fa-user icon"></i>INVOICE TO:</strong><br /><br />
+      <%= address.company_name %><br />
+      <%= address.address %><br />
+      <%= address.city %>, <%= address.state %> <%= address.zip_code %><br />
+      <i class="fas fa-phone icon"></i><%= address.phone_number %><br />
+      <i class="fa-solid fa-envelope icon"></i><%= address.email %><br />
+    </div>
+    <div class="invoice-details">
+      <strong><i class="fas fa-file-invoice icon"></i> INVOICE NO: </strong><%=
+      details.text_number %><br />
+      <strong><i class="fas fa-hashtag icon"></i> Vin Number: </strong><%=
+      invoice.vin_number %><br />
+      <strong><i class="fas fa-calendar-alt icon"></i> Date: </strong><%= date
+      %><br />
+      <div class="test-result-box">
+        Test Result
+        <% if (details.result === 'Pass') { %>
+          <strong style="color:#27ae60;"><span> Passed</span></strong>
+        <% } else if (details.result === 'Not Ready') { %>
+          <strong style="color:#ff9966"><span> Not Ready </span></strong>
+        <% } else { %>
+          <strong style="color:#cc3300;"><span>Failed</span></strong>
+        <% } %>
+       
+      </div>
+    </div>
+    <div class="test-result-message">TEST RESULT MESSAGE</div>
+    <div class="congratulations-message">
+      <% if (details.result === 'Pass') { %>
+        <div style="margin-top: 50px;"></div>
+      <strong>Congratulations!</strong> Your vehicle
+      <span><%= details.result %>ed</span> the OBD test. Thank you for keeping
+      your vehicle well maintained and helping achieve clean air quality for all
+      Californians.  <% } else if (details.result === 'Not Ready') { %>
+        <div style="margin-top: 20px;"></div>
+        This vehicle's On-Board Diagnostics system has not had enough time to complete its 
+        tests. The vehicle either have exceeded the number of allowable incomplete monitors 
+        or does not meet the minimum number of Operation Since codes Cleared (OSC).
+        <br/>
+      
+        &nbsp  &nbsp  &nbsp  &nbsp<i style="font-size: 8px;" class="fa-solid fa-circle"></i> <%= details.warm_up_cycles %> warm-up cycles
+        <br/>
+        
+        have occurred since the last code clear.
+  <% } else { %> Your vehicle failed the OBD test. Please
+      obtain any needed repairs and retest the vehicle. Repairing your vehicle
+      will help California reduce emissions from mobile sources and achieve
+      clean air quality for all Californians.
+      <br />
+      <br/>
+      <strong> Fault Codes:</strong><br />
+      <%= details.fault_codes %> <% } %>
+    </div>
+    <div class="note-message">
+      <i class="fas fa-exclamation-circle icon"></i>Note that these tests can
+      be erased by disconnecting the battery from the vehicle. These test
+      results cannot be accepted until additional vehicle operation has
+      occurred, allowing the OBD system adequate time to assess whether the
+      vehicle's emissions controls are working properly.
+    </div>
+    <div class="total-section">
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <p style="text-align: center">Sale Tax</p>
+        <p style="text-align: end"><i class="fas fa-dollar-sign"></i>0</p>
+      </div>
+      <hr />
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <p style="text-align: center">Total</p>
+        <p style="color: #27ae60;"><i class="fas fa-dollar-sign"></i><%= payment.rate %></p>
+      </div>
+    </div>
+  </body>
+</html>

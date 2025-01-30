@@ -1,11 +1,11 @@
-import express, { Request, Response } from "express";
-import multer, { FileFilterCallback } from "multer";
+import  { Request, Response } from "express";
+import multer from "multer";
 import AWS from "aws-sdk";
 import fs from "fs";
 import dotenv from "dotenv";
-import { Media } from "../models/Media";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
+import { Training } from "../models/Training";
 dotenv.config();
 
 
@@ -64,7 +64,7 @@ const completeMultipartUpload = async (
   return response;
 };
 
-export const fileUploadAWS = async (
+export const createTraining = async (
   req: Request,
   res: Response
 ): Promise<any> => {
@@ -72,22 +72,17 @@ export const fileUploadAWS = async (
     if (!req.file) {
       throw new Error("No file uploaded");
     }
-
+   let training:any
     let thumbnail_data:any ;
     const file = req.file;
-    const fileName = `uscitylink/video/${Date.now().toString()}-${
+    const fileName = `uscitylink/trainings/${Date.now().toString()}-${
       file.originalname
     }`;
     const fileSize = file.size;
     const chunkSize = 5 * 1024 * 1024; // 5MB chunks
     const totalChunks = Math.ceil(fileSize / chunkSize);
 
-    const channelId = req.body.channelId || req.activeChannel;
-    const groupId = req.query.groupId || null;
-    const userId = req.query.userId || req.user?.id;
 
-
-  
 
     if (fileSize < 5 * 1024 * 1024) {
       const params = {
@@ -106,7 +101,7 @@ export const fileUploadAWS = async (
 
       const generatedThumbnailPath:any = await generateThumbnail(result?.Location, thumbnailPath, nameT);
 
-    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/thumbnails/${Date.now()}_thumbnail.png`);
+    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/trainings/${Date.now()}_thumbnail.png`);
     
     
      thumbnail_data = uploadResult;
@@ -114,16 +109,14 @@ export const fileUploadAWS = async (
     
     fs.unlinkSync(generatedThumbnailPath);
 
-      await Media.create({
-        user_profile_id: userId,
-        channelId: channelId,
+    training =  await Training.create({
+        title:req.body.title,
+        description:req.body.title,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         key: result?.key,
         file_type: req.body.type,
-        groupId: groupId == "null" ? null : groupId,
-        upload_source: req.query.source || "message",
         thumbnail: thumbnail_data?.Key,
       });
     
@@ -131,7 +124,7 @@ export const fileUploadAWS = async (
       return res.status(201).json({
         status: true,
         message: "File uploaded successfully",
-        data: {...result, thumbnail: thumbnail_data?.Key},
+        data: {...result, thumbnail: thumbnail_data?.Key,...training.dataValues},
       });
     }
 
@@ -191,7 +184,7 @@ export const fileUploadAWS = async (
 
       const generatedThumbnailPath:any = await generateThumbnail(result?.Location, thumbnailPath, nameT);
 
-    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/thumbnails/${Date.now()}_thumbnail.png`);
+    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/trainings/${Date.now()}_thumbnail.png`);
     
     
      thumbnail_data = uploadResult;
@@ -199,23 +192,23 @@ export const fileUploadAWS = async (
     
     fs.unlinkSync(generatedThumbnailPath);
 
-      await Media.create({
-        user_profile_id: userId,
-        channelId: channelId,
+    
+   training =  await Training.create({
+        title:req.body.title,
+        description:req.body.title,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         key: result?.key,
         file_type: req.body.type,
-        groupId: groupId,
-        upload_source: req.query.source || "message",
         thumbnail: thumbnail_data?.Key,
       });
+    
     }
     return res.status(201).json({
       status: true,
       message: "File uploaded successfully",
-      data: {...result, thumbnail: thumbnail_data?.Key,},
+      data: {...result, thumbnail: thumbnail_data?.Key,...training.dataValues},
     });
   } catch (err: any) {
     return res
@@ -267,4 +260,22 @@ function uploadToS3(filePath:string, bucketName:string, s3Key:string) {
       }
     });
   });
+}
+
+export async function getTrainingById(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const user = await Training.findByPk(req.params.id);
+    return res.status(200).json({
+      status: true,
+      message: `Get Training Successfully.`,
+      data: user,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
 }

@@ -2,7 +2,7 @@ export const paths = {
   home: '/',
   auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
   dashboard: {
-    overview: '/dashboard',
+    overview: '/dashboard/overview',
     account: '/dashboard/account',
     customers: '/dashboard/customers',
     integrations: '/dashboard/integrations',
@@ -14,6 +14,7 @@ export const paths = {
     messages: '/dashboard/messages',
     truck_group: '/dashboard/truckgroup',
     templates: '/dashboard/templates',
+    trainings: '/dashboard/trainings',
   },
   user:{
     "add":'/dashboard/users/add'
