@@ -91,7 +91,7 @@ export default async function pdfGernate(
       path.join(__dirname, "../../views", "yard", "clean.ejs"),
       { date: formattedDate ,details,invoice,payment,address}
     );
-    const outputPdfPath = path.join(__dirname, "dlfile.pdf");
+    const outputPdfPath = path.join(__dirname,'../../', "dlfile.pdf");
     await generatePdf(
       html,
       { landscape: false, printBackground: true, format: "A4" },
