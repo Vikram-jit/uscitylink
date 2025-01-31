@@ -40,7 +40,7 @@
       }
       .company-info {
         position: absolute;
-        top: 23%;
+        top: 20%;
         right: 10%;
         text-align: right;
         font-size: 14px;
@@ -162,7 +162,7 @@
   <body>
     <img src="http://localhost:4300/invoice.png" alt="Logo" />
     <div class="invoice-header">
-      <h1>Invoice</h1>
+      <!-- <h1>Invoice</h1> -->
     </div>
     <div class="company-info">
       <span>U S Citylink Corp</span><br />
@@ -219,14 +219,14 @@
         <br/>
         
         have occurred since the last code clear.
-  <% } else { %> Your vehicle failed the OBD test. Please
+  <% } else { %> Your vehicle <span style="color: #cc3300;">failed</span> the OBD test. Please
       obtain any needed repairs and retest the vehicle. Repairing your vehicle
       will help California reduce emissions from mobile sources and achieve
       clean air quality for all Californians.
       <br />
       <br/>
       <strong> Fault Codes:</strong><br />
-      <%= details.fault_codes %> <% } %>
+     <span style="color: #cc3300;"> <%= details.fault_codes %> </span><% } %>
     </div>
     <div class="note-message">
       <i class="fas fa-exclamation-circle icon"></i>Note that these tests can
