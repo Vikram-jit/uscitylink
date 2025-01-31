@@ -1,6 +1,9 @@
 import sgMail from "@sendgrid/mail";
 import dotConfig from "dotenv";
 import { postMethod } from "./axios";
+import path from 'path'
+import  fs  from "fs";
+
 dotConfig.config();
 
 export const generateOTP = (length: number): string => {
@@ -13,6 +16,53 @@ export const generateOTP = (length: number): string => {
 };
 
 sgMail.setApiKey(process.env.SEND_GRID as string);
+
+
+export const sendEmailWithAttachment = async (
+  toEmail: string,
+  subject: string,
+  text: string,
+  html?: string,
+  attachmentPath?: string
+): Promise<void> => {
+  const msg: any = {
+    to: toEmail,
+    from: {
+      email: process.env.SEND_EMAIL, // Sender's email address
+      name: 'City Registration Service', // Sender's name
+    },
+    
+    subject: subject,
+    text: text,
+    html: html,
+    
+  };
+
+  // Add an attachment if provided
+  if (attachmentPath) {
+    const fileName = path.basename(attachmentPath);
+    const fileContent = fs.readFileSync(attachmentPath).toString('base64'); // Read file and encode as base64
+    msg.attachments = [
+      {
+        content: fileContent,
+        filename: fileName,
+        type: 'application/pdf', // or the appropriate MIME type for your file
+        disposition: 'attachment',
+      },
+    ];
+  }
+
+  try {
+    // Send the email using SendGrid
+    const response = await sgMail.send(msg);
+    console.log("Email sent successfully!", response);
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    if (error.response) {
+      console.error("SendGrid Error Response: ", error.response.body);
+    }
+  }
+};
 
 // Define the function to send an email
 const sendEmail = async (
