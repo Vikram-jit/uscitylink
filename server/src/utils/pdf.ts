@@ -4,7 +4,8 @@ import { promises as fs } from "fs";
 import * as fss from "fs";
 import moment from "moment";
 import axios from "axios";
-
+import dotenv from 'dotenv'
+dotenv.config()
 
 
 
