@@ -72,7 +72,7 @@ export default async function pdfGernate(
     .then((invoiceDetails: any[]) => {
       if (Array.isArray(invoiceDetails) && invoiceDetails.length > 0) {
         const details = invoiceDetails[0];
-        
+         
         // Chain the next queries based on the results
         return getInvoice(details.vin_numbers_id)
           .then((invoices: any[]) => {
@@ -85,7 +85,7 @@ export default async function pdfGernate(
                     const address = addresss[0];
 
                     return getPayment(details.id)
-                      .then((payments: any[]) => {
+                      .then(async (payments: any[]) => {
                         let payment = null;
                         if (Array.isArray(payments) && payments.length > 0) {
                           payment = payments[0];
@@ -97,27 +97,48 @@ export default async function pdfGernate(
                         const day = date.getDate();
                         const year = date.getFullYear();
                         const formattedDate = `${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}/${year}`;
-
-                        const html: any = renderTemplate(
+                       
+                        const html: any = await renderTemplate(
                           path.join(__dirname, "../../views", "yard", "clean.ejs"),
                           { date: formattedDate, details, invoice, payment, address }
                         );
-                        
+                      
+                     
                         const outputPdfPath = path.join(__dirname, "../../", "dlfile.pdf");
-                        return generatePdf(
+                        await generatePdf(
                           html,
                           { landscape: false, printBackground: true, format: "A4" },
                           outputPdfPath
-                        ).then(() => {
-                          res.setHeader("Content-Disposition", "attachment; filename=dlfile.pdf");
-                          res.setHeader("Content-Type", "application/pdf");
-                          return fs.readFile(outputPdfPath);
-                        })
-                        .then((pdfBuffer) => {
-                          res.send(pdfBuffer).end(() => {
-                            fs.unlink(outputPdfPath);
-                          });
+                        );
+                    
+                        // Step 10: Set response headers and send the PDF as a download
+                        res.setHeader("Content-Disposition", "attachment; filename=dlfile.pdf");
+                        res.setHeader("Content-Type", "application/pdf");
+                    
+                        const pdfBuffer = await fs.readFile(outputPdfPath);
+                         return res.send(pdfBuffer).end(async () => {
+                          // Step 11: Cleanup the generated PDF file after sending the response
+                          try {
+                            await fs.unlink(outputPdfPath); // Remove the file from the server
+                          } catch (err) {
+                            console.error("Error deleting the file:", err);
+                          }
                         });
+
+                        // return generatePdf(
+                        //   html,
+                        //   { landscape: false, printBackground: true, format: "A4" },
+                        //   outputPdfPath
+                        // ).then(() => {
+                        //   res.setHeader("Content-Disposition", "attachment; filename=dlfile.pdf");
+                        //   res.setHeader("Content-Type", "application/pdf");
+                        //   return fs.readFile(outputPdfPath);
+                        // })
+                        // .then((pdfBuffer) => {
+                        //   res.send(pdfBuffer).end(() => {
+                        //     fs.unlink(outputPdfPath);
+                        //   });
+                        // });
                       });
                   } else {
                     throw new Error("Address not found.");
