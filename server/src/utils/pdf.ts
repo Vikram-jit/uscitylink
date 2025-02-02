@@ -16,9 +16,17 @@ const generatePdf = async (
 ): Promise<void> => {
   try {
     const browser = await puppeteer.launch({
-      ...(process.env.DB_SERVER == "local"
-        ? { headless: true }
-        : { executablePath: "/usr/bin/chromium-browser" }),
+      headless: true, // Run headless
+  args: [
+    '--no-sandbox',        // Disable sandbox (necessary in some environments like Docker)
+    '--disable-setuid-sandbox', // Disable setuid sandbox (for non-root users)
+    '--disable-gpu',       // Disable GPU acceleration (optional but helpful in some environments)
+ 
+  ],
+      // ...(process.env.DB_SERVER == "local"
+      
+      //   ? { headless: true }
+      //   : { executablePath: "/usr/bin/chromium-browser" }),
       // headless: true,
 
       ignoreDefaultArgs: ["--disable-extensions"],
