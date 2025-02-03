@@ -104,7 +104,7 @@ export const createTraining = async (
           thumbnailPath,
           nameT
         );
-        const duration: any = await getVideoDuration(result?.Location);
+       // const duration: any = await getVideoDuration(result?.Location);
         const uploadResult = await uploadToS3(
           generatedThumbnailPath,
           "ciity-sms",
@@ -124,7 +124,7 @@ export const createTraining = async (
           key: result?.key,
           file_type: req.body.type,
           thumbnail: thumbnail_data?.Key,
-          duration: duration?.toString(),
+          duration: 0,
         });
       }
       return res.status(201).json({
@@ -196,7 +196,7 @@ export const createTraining = async (
         thumbnailPath,
         nameT
       );
-      const duration: any = await getVideoDuration(result?.Location);
+     // const duration: any = await getVideoDuration(result?.Location);
 
       const uploadResult = await uploadToS3(
         generatedThumbnailPath,
@@ -217,7 +217,7 @@ export const createTraining = async (
         key: result?.key,
         file_type: req.body.type,
         thumbnail: thumbnail_data?.Key,
-        duration: duration?.toString(),
+        duration: 0,
       });
     }
     return res.status(201).json({
