@@ -24,7 +24,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
         Questions ({questions.length})
       </Typography>
       <List>
-        {questions.map((question) => (
+        {questions?.filter((item) => !item.isDeleted)?.map((question) => (
           <ListItem
             key={question.id}
             sx={{
@@ -54,9 +54,9 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
                 }
               />
               <Box>
-                <IconButton onClick={() => onEdit(question)} color="primary">
+                {/* <IconButton onClick={() => onEdit(question)} color="primary">
                   <EditIcon />
-                </IconButton>
+                </IconButton> */}
                 <IconButton onClick={() => onDelete(question.id)} color="error">
                   <DeleteIcon />
                 </IconButton>

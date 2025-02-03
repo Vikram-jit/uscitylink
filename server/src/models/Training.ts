@@ -1,6 +1,7 @@
 import { Model, DataTypes, BelongsToGetAssociationMixin } from "sequelize";
 import { primarySequelize } from "../sequelize";
 import { UserProfile } from "./UserProfile";
+import { Question } from "./Question";
 
 export class Training extends Model {
   public id!: string; // Primary key
@@ -13,13 +14,18 @@ export class Training extends Model {
   public file_size?: string;
   public thumbnail?: string;
   public upload_source?: string;
+  public duration?: string;
 
   public key?: string;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
-
-  public getSender!: BelongsToGetAssociationMixin<UserProfile>;
+  static associate(models: any) {
+    
+    // A Training can have many Questions
+  
+  }
+ 
 }
 
 Training.init(
@@ -48,6 +54,9 @@ Training.init(
       type: DataTypes.TEXT,
     },
     mime_type: {
+      type: DataTypes.TEXT,
+    },
+    duration: {
       type: DataTypes.TEXT,
     },
     key: {

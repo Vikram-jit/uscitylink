@@ -14,6 +14,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
 import Viewer from './dashboard/documentviewer/viewer';
+import { DialogContent } from '@mui/material';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & {
@@ -39,10 +40,12 @@ export default function DocumentDialog({open,setOpen,documentKey}:DocumentDialog
     <React.Fragment>
 
       <Dialog
-        fullScreen
+         maxWidth="md"
+         fullScreen
         open={open}
         onClose={handleClose}
         TransitionComponent={Transition}
+        
       >
         <AppBar sx={{ position: 'sticky' }}>
           <Toolbar>
@@ -60,7 +63,9 @@ export default function DocumentDialog({open,setOpen,documentKey}:DocumentDialog
 
           </Toolbar>
         </AppBar>
+        <DialogContent>
           <Viewer documentKey={documentKey}/>
+          </DialogContent>
       </Dialog>
     </React.Fragment>
   );

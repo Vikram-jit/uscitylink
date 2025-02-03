@@ -159,13 +159,13 @@ export default function Viewer({ documentKey }: Viewer) {
           </div>
         )}
 
-        <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
+        <Paper sx={{ width: '100%', padding: 3, boxShadow: 3,background: "rgba(0, 0, 0, 0.5)" }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <Image
               src={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
               alt=""
-              width={500}
-              height={500}
+              width={1020}
+              height={600}
               objectFit="contain"
               style={{
                 objectFit: 'contain',

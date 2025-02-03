@@ -27,7 +27,7 @@ export default function Page(): React.JSX.Element {
           <Button LinkComponent={"a"} href={`${paths.dashboard.trainings}/add`} variant="contained">Add Training Video</Button>
           </div>
         </Stack>
-       
+            <Training/>
       </Stack>
     </Container>
   );

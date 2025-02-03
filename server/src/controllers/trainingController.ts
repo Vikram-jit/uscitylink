@@ -1,4 +1,4 @@
-import  { Request, Response } from "express";
+import { Request, Response } from "express";
 import multer from "multer";
 import AWS from "aws-sdk";
 import fs from "fs";
@@ -7,7 +7,9 @@ import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import { Training } from "../models/Training";
 dotenv.config();
-
+import { getVideoDurationInSeconds } from "get-video-duration";
+import { Question } from "../models/Question";
+import { QuestionOption } from "../models/QuestionOption";
 
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
@@ -72,8 +74,8 @@ export const createTraining = async (
     if (!req.file) {
       throw new Error("No file uploaded");
     }
-   let training:any
-    let thumbnail_data:any ;
+    let training: any;
+    let thumbnail_data: any;
     const file = req.file;
     const fileName = `uscitylink/trainings/${Date.now().toString()}-${
       file.originalname
@@ -81,8 +83,6 @@ export const createTraining = async (
     const fileSize = file.size;
     const chunkSize = 5 * 1024 * 1024; // 5MB chunks
     const totalChunks = Math.ceil(fileSize / chunkSize);
-
-
 
     if (fileSize < 5 * 1024 * 1024) {
       const params = {
@@ -97,34 +97,44 @@ export const createTraining = async (
 
       if (result) {
         const nameT = `${Date.now()}_thumbnail.png`;
-      const thumbnailPath = path.join(__dirname,'../../', "uploads", nameT);
+        const thumbnailPath = path.join(__dirname, "../../", "uploads", nameT);
 
-      const generatedThumbnailPath:any = await generateThumbnail(result?.Location, thumbnailPath, nameT);
+        const generatedThumbnailPath: any = await generateThumbnail(
+          result?.Location,
+          thumbnailPath,
+          nameT
+        );
+        const duration: any = await getVideoDuration(result?.Location);
+        const uploadResult = await uploadToS3(
+          generatedThumbnailPath,
+          "ciity-sms",
+          `uscitylink/trainings/${Date.now()}_thumbnail.png`
+        );
 
-    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/trainings/${Date.now()}_thumbnail.png`);
-    
-    
-     thumbnail_data = uploadResult;
+        thumbnail_data = uploadResult;
 
-    
-    fs.unlinkSync(generatedThumbnailPath);
+        fs.unlinkSync(generatedThumbnailPath);
 
-    training =  await Training.create({
-        title:req.body.title,
-        description:req.body.title,
-        file_name: req.file?.originalname,
-        file_size: req.file.size,
-        mime_type: req.file.mimetype,
-        key: result?.key,
-        file_type: req.body.type,
-        thumbnail: thumbnail_data?.Key,
-      });
-    
+        training = await Training.create({
+          title: req.body.title,
+          description: req.body.title,
+          file_name: req.file?.originalname,
+          file_size: req.file.size,
+          mime_type: req.file.mimetype,
+          key: result?.key,
+          file_type: req.body.type,
+          thumbnail: thumbnail_data?.Key,
+          duration: duration?.toString(),
+        });
       }
       return res.status(201).json({
         status: true,
         message: "File uploaded successfully",
-        data: {...result, thumbnail: thumbnail_data?.Key,...training.dataValues},
+        data: {
+          ...result,
+          thumbnail: thumbnail_data?.Key,
+          ...training.dataValues,
+        },
       });
     }
 
@@ -178,37 +188,46 @@ export const createTraining = async (
       fileName
     );
     if (result) {
-
       const nameT = `${Date.now()}_thumbnail.png`;
-      const thumbnailPath = path.join(__dirname,'../../', "uploads", nameT);
+      const thumbnailPath = path.join(__dirname, "../../", "uploads", nameT);
 
-      const generatedThumbnailPath:any = await generateThumbnail(result?.Location, thumbnailPath, nameT);
+      const generatedThumbnailPath: any = await generateThumbnail(
+        result?.Location,
+        thumbnailPath,
+        nameT
+      );
+      const duration: any = await getVideoDuration(result?.Location);
 
-    const uploadResult = await uploadToS3(generatedThumbnailPath, 'ciity-sms', `uscitylink/trainings/${Date.now()}_thumbnail.png`);
-    
-    
-     thumbnail_data = uploadResult;
+      const uploadResult = await uploadToS3(
+        generatedThumbnailPath,
+        "ciity-sms",
+        `uscitylink/trainings/${Date.now()}_thumbnail.png`
+      );
 
-    
-    fs.unlinkSync(generatedThumbnailPath);
+      thumbnail_data = uploadResult;
 
-    
-   training =  await Training.create({
-        title:req.body.title,
-        description:req.body.title,
+      fs.unlinkSync(generatedThumbnailPath);
+
+      training = await Training.create({
+        title: req.body.title,
+        description: req.body.title,
         file_name: req.file?.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         key: result?.key,
         file_type: req.body.type,
         thumbnail: thumbnail_data?.Key,
+        duration: duration?.toString(),
       });
-    
     }
     return res.status(201).json({
       status: true,
       message: "File uploaded successfully",
-      data: {...result, thumbnail: thumbnail_data?.Key,...training.dataValues},
+      data: {
+        ...result,
+        thumbnail: thumbnail_data?.Key,
+        ...training.dataValues,
+      },
     });
   } catch (err: any) {
     return res
@@ -219,47 +238,108 @@ export const createTraining = async (
 
 export const uploadAwsMiddleware = upload.single("file");
 
-
-function generateThumbnail(videoUrl:string, thumbnailPath:string, nameT:string) {
+function generateThumbnail(
+  videoUrl: string,
+  thumbnailPath: string,
+  nameT: string
+) {
   return new Promise((resolve, reject) => {
     ffmpeg(videoUrl)
       .screenshots({
-        timestamps: [1], 
+        timestamps: [1],
         filename: nameT,
-        folder: path.dirname(thumbnailPath), 
-        size: '320x240', 
+        folder: path.dirname(thumbnailPath),
+        size: "320x240",
       })
-      .on('end', () => {
-        console.log('Thumbnail generated successfully.');
-        resolve(thumbnailPath); 
+      .on("end", () => {
+        console.log("Thumbnail generated successfully.");
+        resolve(thumbnailPath);
       })
-      .on('error', (err) => {
-        console.error('Error generating thumbnail:', err);
-        reject(new Error('Error generating thumbnail.'));
+      .on("error", (err) => {
+        console.error("Error generating thumbnail:", err);
+        reject(new Error("Error generating thumbnail."));
       });
   });
 }
 
-function uploadToS3(filePath:string, bucketName:string, s3Key:string) {
+function getVideoDuration(videoUrl: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    getVideoDurationInSeconds(videoUrl)
+      .then((v) => {
+        resolve(v);
+      })
+      .catch(() => {
+        reject(new Error("Error getting video metadata."));
+      });
+  });
+}
+
+function uploadToS3(filePath: string, bucketName: string, s3Key: string) {
   return new Promise((resolve, reject) => {
     const fileContent = fs.readFileSync(filePath);
     const params = {
       Bucket: bucketName,
       Key: s3Key,
       Body: fileContent,
-      ContentType: 'image/png', // Assuming PNG thumbnail
+      ContentType: "image/png", // Assuming PNG thumbnail
     };
 
-    s3.upload(params, (uploadError:any, uploadResult:any) => {
+    s3.upload(params, (uploadError: any, uploadResult: any) => {
       if (uploadError) {
-        console.error('Error uploading thumbnail to S3:', uploadError);
-        reject(new Error('Error uploading thumbnail to S3.'));
+        console.error("Error uploading thumbnail to S3:", uploadError);
+        reject(new Error("Error uploading thumbnail to S3."));
       } else {
-        console.log('Thumbnail uploaded to S3:', uploadResult.Location);
+        console.log("Thumbnail uploaded to S3:", uploadResult.Location);
         resolve(uploadResult); // Resolve with the S3 upload result
       }
     });
   });
+}
+
+export async function getAllTrainings(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const search = (req.query.search as string) || "";
+
+    const offset = (page - 1) * pageSize;
+
+    const trainings = await Training.findAndCountAll({
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [{ model: QuestionOption, as: "options" }],
+        },
+      ],
+      limit: pageSize,
+      offset: offset,
+    });
+    const total = trainings.count;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Training Successfully.`,
+      data: {
+        data: trainings.rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total,
+          totalPages,
+        },
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
 }
 
 export async function getTrainingById(
@@ -267,11 +347,72 @@ export async function getTrainingById(
   res: Response
 ): Promise<any> {
   try {
-    const user = await Training.findByPk(req.params.id);
+    const user = await Training.findByPk(req.params.id, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [{ model: QuestionOption, as: "options" }],
+        },
+      ],
+    });
     return res.status(200).json({
       status: true,
       message: `Get Training Successfully.`,
       data: user,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function addQutionsTrainingVideo(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const training = await Training.findByPk(req.params.id);
+    if (training) {
+      await Promise.all(
+        req.body.questions.map(async (item: any) => {
+          if (item?.isDeleted) {
+            await QuestionOption.destroy({
+              where: {
+                questionId: item.id,
+              },
+            });
+            await Question.destroy({
+              where: {
+                id: item.id,
+              },
+            });
+          } else {
+            const question = await Question.create({
+              tainingId: training.id,
+              question: item.text,
+            });
+            if (question) {
+              await Promise.all(
+                item.options.map(async (el: any) => {
+                  await QuestionOption.create({
+                    questionId: question.id,
+                    option: el.text,
+                    isCorrect: el.isCorrect,
+                  });
+                })
+              );
+            }
+          }
+        })
+      );
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Add questions Successfully.`,
+      data: training,
     });
   } catch (err: any) {
     return res
