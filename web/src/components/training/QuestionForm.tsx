@@ -30,6 +30,7 @@ export default function QuestionForm({ onSubmit, initialQuestion, isEditing = fa
     onSubmit({
       text: questionText,
       options: options,
+      isDeleted:false
     });
     if (!isEditing) {
       setQuestionText('');
