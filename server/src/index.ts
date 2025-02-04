@@ -29,7 +29,6 @@ import Group from "./models/Group";
 
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
-import path from "path"
 
 
 dotenv.config();
@@ -46,6 +45,7 @@ initSocket(server);
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Basic route
 app.get("/:id", async (req, res) => {

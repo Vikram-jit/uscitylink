@@ -10,6 +10,9 @@ dotenv.config();
 import { getVideoDurationInSeconds } from "get-video-duration";
 import { Question } from "../models/Question";
 import { QuestionOption } from "../models/QuestionOption";
+import { TrainingDriver } from "../models/TrainingDriver";
+import { UserProfile } from "../models/UserProfile";
+import User from "../models/User";
 
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
@@ -104,7 +107,7 @@ export const createTraining = async (
           thumbnailPath,
           nameT
         );
-       // const duration: any = await getVideoDuration(result?.Location);
+        // const duration: any = await getVideoDuration(result?.Location);
         const uploadResult = await uploadToS3(
           generatedThumbnailPath,
           "ciity-sms",
@@ -196,7 +199,7 @@ export const createTraining = async (
         thumbnailPath,
         nameT
       );
-     // const duration: any = await getVideoDuration(result?.Location);
+      // const duration: any = await getVideoDuration(result?.Location);
 
       const uploadResult = await uploadToS3(
         generatedThumbnailPath,
@@ -353,7 +356,9 @@ export async function getTrainingById(
           model: Question,
           as: "questions",
           include: [{ model: QuestionOption, as: "options" }],
+        
         },
+        {model:TrainingDriver,as:"assgin_drivers"}
       ],
     });
     return res.status(200).json({
@@ -389,21 +394,52 @@ export async function addQutionsTrainingVideo(
               },
             });
           } else {
-            const question = await Question.create({
-              tainingId: training.id,
-              question: item.text,
-            });
-            if (question) {
-              await Promise.all(
-                item.options.map(async (el: any) => {
-                  await QuestionOption.create({
-                    questionId: question.id,
-                    option: el.text,
-                    isCorrect: el.isCorrect,
-                  });
-                })
-              );
+            const isCheck = await Question.findByPk(item.id);
+            if (!isCheck) {
+              const question = await Question.create({
+                tainingId: training.id,
+                question: item.text,
+              });
+              if (question) {
+                await Promise.all(
+                  item.options.map(async (el: any) => {
+                    await QuestionOption.create({
+                      questionId: question.id,
+                      option: el.text,
+                      isCorrect: el.isCorrect,
+                    });
+                  })
+                );
+              }
             }
+          }
+        })
+      );
+
+      await Promise.all(
+        req.body.removedDrivers.map(async (el: string) => {
+          await TrainingDriver.destroy({
+            where: {
+              tainingId: training.id,
+              driverId: el,
+            },
+          });
+        })
+      );
+
+      await Promise.all(
+        req.body.drivers.map(async (el: string) => {
+          const isCheck = await TrainingDriver.findOne({
+            where: {
+              tainingId: training.id,
+              driverId: el,
+            },
+          });
+          if (!isCheck) {
+            await TrainingDriver.create({
+              tainingId: training.id,
+              driverId: el,
+            });
           }
         })
       );
@@ -413,6 +449,66 @@ export async function addQutionsTrainingVideo(
       status: true,
       message: `Add questions Successfully.`,
       data: training,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+
+export async function getAssginDrivers(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const id = req.params.id
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const search = (req.query.search as string) || "";
+
+    const offset = (page - 1) * pageSize;
+
+    const training = await Training.findByPk(id)
+
+    const trainingDriver = await TrainingDriver.findAndCountAll({
+      where:{
+        tainingId:id
+      },
+      include: [
+       {
+        model:UserProfile,
+        as:"user_profiles",
+        include:[
+          {
+            model:User,
+            as:"user"
+          }
+        ]
+       },
+       
+      ],
+      limit: pageSize,
+      offset: offset,
+    });
+    const total = trainingDriver.count;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Assgin Drivers Successfully.`,
+      data: {
+        data: {training,drivers:trainingDriver.rows} ,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total,
+          totalPages,
+        },
+      },
     });
   } catch (err: any) {
     return res

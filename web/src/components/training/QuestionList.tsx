@@ -21,7 +21,7 @@ export default function QuestionList({ questions, onEdit, onDelete }: QuestionLi
   return (
     <Paper elevation={3} sx={{ mt: 3, p: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Questions ({questions.length})
+        Questions ({questions.filter((e)=>!e.isDeleted).length})
       </Typography>
       <List>
         {questions?.filter((item) => !item.isDeleted)?.map((question) => (

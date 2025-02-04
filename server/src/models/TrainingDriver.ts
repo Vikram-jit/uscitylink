@@ -1,6 +1,7 @@
 import { Model, DataTypes, BelongsToGetAssociationMixin } from "sequelize";
 import { primarySequelize } from "../sequelize";
 import { UserProfile } from "./UserProfile";
+import { Training } from "./Training";
 
 export class TrainingDriver extends Model {
   public id!: string; // Primary key
@@ -10,7 +11,7 @@ export class TrainingDriver extends Model {
   public isCompleteWatch?: boolean;
   public questionId?: string;
   public selectedOptionId?: string;
-  
+
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -47,22 +48,6 @@ TrainingDriver.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    questionId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "questions",
-        key: "id",
-      },
-    },
-    selectedOptionId: {
-        type: DataTypes.UUID,
-        allowNull: true,
-        references: {
-          model: "question_options",
-          key: "id",
-        },
-      },
   },
   {
     sequelize: primarySequelize,
@@ -71,3 +56,14 @@ TrainingDriver.init(
     timestamps: true,
   }
 );
+Training.hasMany(TrainingDriver, {
+  foreignKey: "tainingId", // This is the key in the Question model
+  as: "assgin_drivers", // Alias to refer to the association
+});
+
+TrainingDriver.belongsTo(UserProfile, {
+  foreignKey: "driverId", // This is the key in the Question model
+  as: "user_profiles", // Alias to refer to the association
+});
+
+

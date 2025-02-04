@@ -19,17 +19,17 @@ import { pagination } from '@/redux/models/ChannelModel';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { useDeleteTemplateMutation } from '@/redux/TemplateApiSlice';
 import MediaComponent from '@/components/messages/MediaComment';
-import { Training } from '@/redux/TrainingApiSlice';
+import { assgin_drivers, Training } from '@/redux/TrainingApiSlice';
 
-interface TrainingTable {
+interface AssginDriverTable {
   count?: number;
   page?: number;
-  rows?:Training[];
+  rows?:assgin_drivers[];
   setPage:React.Dispatch<React.SetStateAction<number>>
   pagination:pagination|undefined
 }
 
-export function TrainingTable({ count = 0, rows = [], page = 0,setPage,pagination }: TrainingTable): React.JSX.Element {
+export function AssginDriverTable({ count = 0, rows = [], page = 0,setPage,pagination }: AssginDriverTable): React.JSX.Element {
 
   const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
   const [currentItem, setCurrentItem] = React.useState<string>("");
@@ -40,8 +40,8 @@ export function TrainingTable({ count = 0, rows = [], page = 0,setPage,paginatio
         <Table sx={{ minWidth: '800px' }}>
           <TableHead>
             <TableRow>
-              <TableCell>Thumnail</TableCell>
-              <TableCell>Title</TableCell>
+              <TableCell>Driver Name</TableCell>
+              <TableCell>Driver number</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
@@ -49,35 +49,30 @@ export function TrainingTable({ count = 0, rows = [], page = 0,setPage,paginatio
             {rows.map((row) => {
               return (
                 <TableRow hover key={row.id}>
-                    <TableCell>{row?.thumbnail ?
-              <Box >
-
-              <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${row.thumbnail}`} name={row?.thumbnail ??''} width={100} height={100}/>
-              </Box> : '-'
-              }</TableCell>
-
+                
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
 
-                      <Typography variant="subtitle2">{row.title}</Typography>
+                      <Typography variant="subtitle2">{row.user_profiles?.username}</Typography>
                     </Stack>
                   </TableCell>
                 
+                  <TableCell>
+                   
+
+                      <Typography variant="subtitle2">{row.user_profiles?.user.driver_number}</Typography>
+                   
+                  </TableCell>
                 
 
                   <TableCell>
-                    <Tooltip title="Edit">
+                    {/* <Tooltip title="Edit">
                       <Button variant="contained" color="success" LinkComponent={"a"} href={`/dashboard/trainings/edit/${row.id}`}>
                        Edit
                       </Button>
 
-                    </Tooltip>
-                    <Tooltip title="Assgin Drivers">
-                      <Button variant="contained" color="secondary" sx={{marginLeft:1}} LinkComponent={"a"} href={`/dashboard/trainings/assgin-drivers/${row.id}`}>
-                        Assgin Drivers
-                      </Button>
-
-                    </Tooltip>
+                    </Tooltip> */}
+                   
                     {/* <Tooltip title="Delete">
                       <IconButton onClick={()=>{
                         setCurrentItem(row.id)
