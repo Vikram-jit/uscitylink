@@ -116,11 +116,11 @@ export const UserApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: UserModel[];
       },
-      Partial<void>
+      {type?:string}
     >({
       providesTags: ['channelUsers'],
-      query: () => ({
-        url: 'user/drivers',
+      query: (payload) => ({
+        url:  `user/drivers?type=${payload.type}`,
         method: 'GET',
       }),
     }),

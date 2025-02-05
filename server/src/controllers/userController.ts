@@ -201,6 +201,10 @@ export async function getUserWithoutChannel(
   res: Response
 ): Promise<any> {
   try {
+
+   console.log(req.query.type)
+      const type = req.query.type || ""
+
     const isDriverRole = await Role.findOne({
       where: {
         name: "driver",
@@ -229,18 +233,19 @@ export async function getUserWithoutChannel(
           required: false,
           where: {
             channelId: req.activeChannel,
+            
           },
         },
       ],
       order: [["id", "DESC"]],
     });
-
+ 
     const filteredUsers = users?.filter((user: any) => {
       return (
         !user.userChannels ||
         user.userChannels.length === 0 ||
-        !user.userChannels.some(
-          (channel: any) => channel.channelId === req.activeChannel
+        user.userChannels.some(
+          (channel: any) => channel.channelId === req.activeChannel && channel.status == "inactive"
         )
       );
     });
@@ -248,7 +253,7 @@ export async function getUserWithoutChannel(
     return res.status(200).json({
       status: true,
       message: `Get Driver Users Successfully.`,
-      data: filteredUsers,
+      data:  type == "training" ? users : filteredUsers,
     });
   } catch (err: any) {
     return res

@@ -79,7 +79,6 @@ export default function EditTraining({ id }: { id: string }) {
 
     const added = newValue.filter((option:any) => !selectedUsers.includes(option));
     const removed = selectedUsers.filter((option) => !newValue.includes(option));
-    console.log(removed)
     if (removed.length > 0) {
       setRemovedUsers((prevRemovedUsers) => {
         // Remove the user from removedUsers if it already exists
@@ -105,7 +104,7 @@ export default function EditTraining({ id }: { id: string }) {
     
   };
 
-  const { data: userData, isFetching } = useGetUserWithoutChannelQuery();
+  const { data: userData, isFetching } = useGetUserWithoutChannelQuery({type:"training"});
 
   useEffect(()=>{
      if(userData?.status && data?.status){

@@ -66,4 +66,8 @@ TrainingDriver.belongsTo(UserProfile, {
   as: "user_profiles", // Alias to refer to the association
 });
 
+TrainingDriver.belongsTo(Training, {
+    foreignKey: "tainingId", 
+    as: "trainings", 
+  });
 

@@ -9,6 +9,7 @@ import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
 import 'package:badges/badges.dart' as badges;
+import 'package:uscitylink/views/driver/views/training_view.dart';
 
 class DashboardView extends StatefulWidget {
   int? currentStep = 0;
@@ -38,6 +39,7 @@ class _DashboardViewState extends State<DashboardView>
     const DriverDashboard(),
     const ChatView(),
     DocumentView(),
+    TrainingView(),
     const SettingView(),
   ];
 
@@ -104,6 +106,8 @@ class _DashboardViewState extends State<DashboardView>
           SalomonBottomBarItem(
               icon: const Icon(Icons.edit_document),
               title: const Text("vehicles")),
+          SalomonBottomBarItem(
+              icon: const Icon(Icons.class_), title: const Text("Training")),
           SalomonBottomBarItem(
               icon: const Icon(Icons.settings), title: const Text("Settings")),
         ],

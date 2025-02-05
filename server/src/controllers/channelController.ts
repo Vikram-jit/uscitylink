@@ -66,10 +66,12 @@ export async function userAddToChannel(
       throw new Error("No user IDs provided.");
     }
 
+    // Find existing UserChannel entries with status "active" for the given channel and user IDs
     const existingUserChannels = await UserChannel.findAll({
       where: {
         channelId: req.activeChannel,
         userProfileId: ids,
+        status: "active",
       },
     });
 
@@ -77,22 +79,40 @@ export async function userAddToChannel(
       (channel) => channel.userProfileId
     );
 
+    // Find UserChannel entries that have status "inactive"
+    const inactiveUserChannels = await UserChannel.findAll({
+      where: {
+        channelId: req.activeChannel,
+        userProfileId: ids,
+        status: "inactive",
+      },
+    });
+
+    // Update status to 'active' for inactive users
+    const updatePromises = inactiveUserChannels.map((channel) => {
+      return channel.update({ status: "active" });
+    });
+
+    await Promise.all(updatePromises);
+
+    // Determine which users need new UserChannel entries (those who are not already active or inactive)
     const newUserIds = ids.filter(
-      (user_id) => !existingUserIds.includes(user_id)
+      (user_id) => !existingUserIds.includes(user_id) && !inactiveUserChannels.some((channel) => channel.userProfileId === user_id)
     );
 
-    // Create UserChannel entries for the new user IDs
+    // Create UserChannel entries for the new users who are not already present
     const createPromises = newUserIds.map((user_id) => {
       return UserChannel.create({
         channelId: req.activeChannel,
         userProfileId: user_id,
+        status: "active", // Make sure the new user status is 'active'
       });
     });
 
     await Promise.all(createPromises);
 
     // After users have been added to the channel, check if they are online
-    for (const user_id of newUserIds) {
+    for (const user_id of [...newUserIds, ...inactiveUserChannels.map((channel) => channel.userProfileId)]) {
       const userSocket = global.userSockets[user_id];
 
       // Get UserChannel details for the user
@@ -130,6 +150,7 @@ export async function userAddToChannel(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
 
 export async function getById(req: Request, res: Response): Promise<any> {
   try {

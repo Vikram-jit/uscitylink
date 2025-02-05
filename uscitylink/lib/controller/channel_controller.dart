@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
+import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
@@ -17,6 +18,7 @@ class ChannelController extends GetxController {
   var loading = false.obs;
   final __channelService = ChannelService();
   final _truckController = TruckController();
+  final _trainingController = TrainingController();
   var currentIndex = 0.obs;
   var totalUnReadMessage = 0.obs;
   var channelCount = 0.obs;
@@ -39,6 +41,10 @@ class ChannelController extends GetxController {
       }
       if (index == 2) {
         _truckController.fetchTrucks();
+        getCount();
+      }
+      if (index == 3) {
+        _trainingController.fetchTrainingVideos(page: 1);
         getCount();
       }
     });

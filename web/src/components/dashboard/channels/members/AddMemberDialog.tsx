@@ -32,7 +32,7 @@ export default function AddChanelMemberDialog() {
   };
   const [addMemberToChannel, { isLoading }] = useAddMemberToChannelMutation();
 
-  const {data,isFetching} = useGetUserWithoutChannelQuery()
+  const {data,isFetching} = useGetUserWithoutChannelQuery({})
 
   return (
     <>

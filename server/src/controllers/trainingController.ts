@@ -13,6 +13,7 @@ import { QuestionOption } from "../models/QuestionOption";
 import { TrainingDriver } from "../models/TrainingDriver";
 import { UserProfile } from "../models/UserProfile";
 import User from "../models/User";
+import { where } from "sequelize";
 
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
@@ -356,9 +357,8 @@ export async function getTrainingById(
           model: Question,
           as: "questions",
           include: [{ model: QuestionOption, as: "options" }],
-        
         },
-        {model:TrainingDriver,as:"assgin_drivers"}
+        { model: TrainingDriver, as: "assgin_drivers" },
       ],
     });
     return res.status(200).json({
@@ -457,14 +457,12 @@ export async function addQutionsTrainingVideo(
   }
 }
 
-
-
-export async function getAssginDrivers(
+export async function getAssginVideos(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
-    const id = req.params.id
+    const id = req.user?.id;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
@@ -472,24 +470,15 @@ export async function getAssginDrivers(
 
     const offset = (page - 1) * pageSize;
 
-    const training = await Training.findByPk(id)
-
     const trainingDriver = await TrainingDriver.findAndCountAll({
-      where:{
-        tainingId:id
+      where: {
+        driverId: id,
       },
       include: [
-       {
-        model:UserProfile,
-        as:"user_profiles",
-        include:[
-          {
-            model:User,
-            as:"user"
-          }
-        ]
-       },
-       
+        {
+          model: Training,
+          as: "trainings",
+        },
       ],
       limit: pageSize,
       offset: offset,
@@ -501,7 +490,7 @@ export async function getAssginDrivers(
       status: true,
       message: `Get Assgin Drivers Successfully.`,
       data: {
-        data: {training,drivers:trainingDriver.rows} ,
+        data: trainingDriver.rows,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
@@ -509,6 +498,159 @@ export async function getAssginDrivers(
           totalPages,
         },
       },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getAssginDrivers(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const id = req.params.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const search = (req.query.search as string) || "";
+
+    const offset = (page - 1) * pageSize;
+
+    const training = await Training.findByPk(id);
+
+    const trainingDriver = await TrainingDriver.findAndCountAll({
+      where: {
+        tainingId: id,
+      },
+      include: [
+        {
+          model: UserProfile,
+          as: "user_profiles",
+          include: [
+            {
+              model: User,
+              as: "user",
+            },
+          ],
+        },
+      ],
+      limit: pageSize,
+      offset: offset,
+    });
+    const total = trainingDriver.count;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Assgin Drivers Successfully.`,
+      data: {
+        data: { training, drivers: trainingDriver.rows },
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total,
+          totalPages,
+        },
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function updateVideoStatusWithDuration(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+   
+    await TrainingDriver.update(
+      {
+        view_duration: req.body.view_duration,
+        isCompleteWatch: req.body.isCompleteWatch,
+      },
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: `Updated Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+export async function getTrainingQuestions(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+   
+   const training = await Training.findByPk(req.params.id,{
+    include:[
+      {
+        model:Question,
+        as:"questions",
+        include:[{
+          model:QuestionOption,
+          as:"options"
+        }]
+      }
+    ]
+   })
+
+    return res.status(200).json({
+      status: true,
+      message: `Get Question Successfully.`,
+      data:training
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function quizAnswerSubmit(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    const data ={
+      '38116853-89ea-470a-bc44-819b018f296c': [ 'a9945a34-4475-40cf-a7e7-a9639099bec0' ],
+      '29e5a008-23ed-4715-9181-de3d86fab39b': [
+        'afb0dbd0-22eb-45d3-9820-06b93b74a222',
+        'd27a8da5-a066-4382-917e-76a63ddef9a6'
+      ]
+    }
+     
+    for (const [questionId, optionId] of Object.entries(data)) {
+      // // For each answer for the given user
+    
+
+      console.log(`Answers for user ${optionId?.[0]} inserted successfully`);
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Submitted Successfully.`,
+      
     });
   } catch (err: any) {
     return res

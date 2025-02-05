@@ -16,5 +16,4 @@ router.get('/:id',authMiddleware, getTrainingById)
 
 
 
-
 export default router;
