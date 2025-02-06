@@ -251,9 +251,10 @@ export default function EditTraining({ id }: { id: string }) {
           {data && data.status && (
             <Grid item xs={12}>
               <ReactPlayer
+              width={"100%"}
                 controls
-                url={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${data?.data?.key}`}
-                height={300}
+                url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${data?.data?.key}`}
+                height={400}
               />
             </Grid>
           )}

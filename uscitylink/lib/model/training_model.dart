@@ -37,6 +37,7 @@ class Training {
   String? createdAt;
   String? updatedAt;
   Trainings? trainings;
+  String? quiz_status;
 
   Training(
       {this.id,
@@ -46,7 +47,8 @@ class Training {
       this.isCompleteWatch,
       this.createdAt,
       this.updatedAt,
-      this.trainings});
+      this.trainings,
+      this.quiz_status});
 
   Training.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -54,6 +56,7 @@ class Training {
     driverId = json['driverId'];
     viewDuration = json['view_duration'];
     isCompleteWatch = json['isCompleteWatch'];
+    quiz_status = json['quiz_status'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     trainings = json['trainings'] != null
@@ -68,6 +71,7 @@ class Training {
     data['driverId'] = this.driverId;
     data['view_duration'] = this.viewDuration;
     data['isCompleteWatch'] = this.isCompleteWatch;
+    data['quiz_status'] = this.quiz_status;
     data['createdAt'] = this.createdAt;
     data['updatedAt'] = this.updatedAt;
     if (this.trainings != null) {

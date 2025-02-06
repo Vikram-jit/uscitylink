@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/model/question_model.dart';
 import 'package:uscitylink/model/training_model.dart';
 import 'package:uscitylink/services/training_service.dart';
+import 'package:uscitylink/views/driver/views/trainings/result_view.dart';
 
 class TrainingController extends GetxController {
   var isLoading = false.obs;
@@ -15,8 +16,7 @@ class TrainingController extends GetxController {
 
   final _trainingService = TrainingService();
 
-  Future<void> fetchTrainingVideos(
-      {int page = 1, String type = "trucks", String search = ""}) async {
+  Future<void> fetchTrainingVideos({int page = 1}) async {
     if (isLoading.value) return;
     isLoading.value = true;
 
@@ -28,6 +28,7 @@ class TrainingController extends GetxController {
         if (page > 1) {
           trainings.addAll(response.data.data ?? []);
         } else {
+          trainings.value.clear();
           // Reset the message list if it's the first page
           trainings.value = response.data.data ?? [];
         }
@@ -73,7 +74,6 @@ class TrainingController extends GetxController {
           id: id,
           view_duration: view_duration,
           isCompleteWatch: isCompleteWatch);
-      print(response);
     } catch (e) {
       print("Error fetching trucks: $e");
     } finally {
@@ -90,8 +90,11 @@ class TrainingController extends GetxController {
     try {
       var response = await _trainingService
           .submitQuiz(id: id, data: {"data": convertedData});
+
       if (response.status) {
         isLoading.value = false;
+
+        Get.to(() => ResultView(result: response.data));
       }
     } catch (e) {
       print("Error fetching trucks: $e");

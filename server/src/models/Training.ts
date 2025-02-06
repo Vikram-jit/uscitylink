@@ -12,6 +12,9 @@ export class Training extends Model {
   public file_type?: string;
   public mime_type?: string;
   public file_size?: string;
+  public title?:string;
+  public description?:string;
+
   public thumbnail?: string;
   public upload_source?: string;
   public duration?: string;

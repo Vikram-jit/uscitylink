@@ -42,6 +42,7 @@ export function TrainingTable({ count = 0, rows = [], page = 0,setPage,paginatio
             <TableRow>
               <TableCell>Thumnail</TableCell>
               <TableCell>Title</TableCell>
+              <TableCell>Description</TableCell>
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
@@ -63,7 +64,11 @@ export function TrainingTable({ count = 0, rows = [], page = 0,setPage,paginatio
                     </Stack>
                   </TableCell>
                 
-                
+                  <TableCell>
+                   
+
+                      <Typography variant="subtitle2">{row.description}</Typography>
+                  </TableCell>
 
                   <TableCell>
                     <Tooltip title="Edit">
@@ -74,7 +79,7 @@ export function TrainingTable({ count = 0, rows = [], page = 0,setPage,paginatio
                     </Tooltip>
                     <Tooltip title="Assgin Drivers">
                       <Button variant="contained" color="secondary" sx={{marginLeft:1}} LinkComponent={"a"} href={`/dashboard/trainings/assgin-drivers/${row.id}`}>
-                        Assgin Drivers
+                        Assgined Drivers
                       </Button>
 
                     </Tooltip>

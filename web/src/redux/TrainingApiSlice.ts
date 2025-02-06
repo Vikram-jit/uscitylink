@@ -42,6 +42,7 @@ export interface assgin_drivers {
   driverId: string;
   view_duration: any;
   isCompleteWatch: boolean;
+  quiz_status?:string
   createdAt: string;
   updatedAt: string;
   user_profiles?: UserProfile;

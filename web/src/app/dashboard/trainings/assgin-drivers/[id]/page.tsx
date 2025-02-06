@@ -4,10 +4,11 @@ import type { Metadata } from 'next';
 import { config } from '@/config';
 
 import Training from '@/components/training/training';
-import { Button, Container, Typography } from '@mui/material';
+import { Button, Container, IconButton, Typography } from '@mui/material';
 import { Stack } from '@mui/system';
 import { paths } from '@/paths';
 import AssginDriver from '@/components/training/assginDriver';
+import { ArrowBack } from '@mui/icons-material';
 
 export const metadata = { title: `Trainings | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -25,7 +26,10 @@ export default function Page({ params }: { params: { id: string } }): React.JSX.
               display: 'flex',
             }}
           >
-          {/* <Button LinkComponent={"a"} href={`${paths.dashboard.trainings}/add`} variant="contained">Add Training Video</Button> */}
+ <IconButton LinkComponent="a" href={`${paths.dashboard.trainings}`}>
+            <ArrowBack />
+            <Typography variant="h6"> Training</Typography>
+          </IconButton>
           </div>
         </Stack>
             <AssginDriver  id={params.id}/>

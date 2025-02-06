@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
+import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
@@ -26,11 +27,14 @@ class _DashboardViewState extends State<DashboardView>
 
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
-
+  TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 3) {
+      _trainingController.fetchTrainingVideos(page: 1);
+    }
     channelController.setTabIndex(index);
     loginController.setTabIndex(index);
   }

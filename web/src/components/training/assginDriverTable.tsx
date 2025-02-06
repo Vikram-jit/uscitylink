@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
-
+import { pagination } from '@/redux/models/ChannelModel';
+import { useDeleteTemplateMutation } from '@/redux/TemplateApiSlice';
+import { assgin_drivers, Training } from '@/redux/TrainingApiSlice';
 import { Delete, Edit } from '@mui/icons-material';
-import { Button, IconButton, TablePagination, Tooltip } from '@mui/material';
+import { Button, Chip, IconButton, TablePagination, Tooltip } from '@mui/material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Divider from '@mui/material/Divider';
@@ -15,25 +17,28 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { Circle } from '@phosphor-icons/react';
-import { pagination } from '@/redux/models/ChannelModel';
+
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
-import { useDeleteTemplateMutation } from '@/redux/TemplateApiSlice';
 import MediaComponent from '@/components/messages/MediaComment';
-import { assgin_drivers, Training } from '@/redux/TrainingApiSlice';
 
 interface AssginDriverTable {
   count?: number;
   page?: number;
-  rows?:assgin_drivers[];
-  setPage:React.Dispatch<React.SetStateAction<number>>
-  pagination:pagination|undefined
+  rows?: assgin_drivers[];
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  pagination: pagination | undefined;
 }
 
-export function AssginDriverTable({ count = 0, rows = [], page = 0,setPage,pagination }: AssginDriverTable): React.JSX.Element {
-
+export function AssginDriverTable({
+  count = 0,
+  rows = [],
+  page = 0,
+  setPage,
+  pagination,
+}: AssginDriverTable): React.JSX.Element {
   const [dialogOpen, setDialogOpen] = React.useState<boolean>(false);
-  const [currentItem, setCurrentItem] = React.useState<string>("");
-  const [deleteTemplate,{isLoading}] = useDeleteTemplateMutation()
+  const [currentItem, setCurrentItem] = React.useState<string>('');
+  const [deleteTemplate, { isLoading }] = useDeleteTemplateMutation();
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
@@ -42,48 +47,34 @@ export function AssginDriverTable({ count = 0, rows = [], page = 0,setPage,pagin
             <TableRow>
               <TableCell>Driver Name</TableCell>
               <TableCell>Driver number</TableCell>
-              <TableCell>Action</TableCell>
+              <TableCell>View Durations</TableCell>
+              <TableCell>View Status</TableCell>
+              <TableCell>Quiz Status</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => {
               return (
                 <TableRow hover key={row.id}>
-                
                   <TableCell>
                     <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
-
                       <Typography variant="subtitle2">{row.user_profiles?.username}</Typography>
                     </Stack>
                   </TableCell>
-                
-                  <TableCell>
-                   
-
-                      <Typography variant="subtitle2">{row.user_profiles?.user.driver_number}</Typography>
-                   
-                  </TableCell>
-                
 
                   <TableCell>
-                    {/* <Tooltip title="Edit">
-                      <Button variant="contained" color="success" LinkComponent={"a"} href={`/dashboard/trainings/edit/${row.id}`}>
-                       Edit
-                      </Button>
-
-                    </Tooltip> */}
-                   
-                    {/* <Tooltip title="Delete">
-                      <IconButton onClick={()=>{
-                        setCurrentItem(row.id)
-                        setDialogOpen(true)
-                      }}>
-                        <Delete />
-                      </IconButton>
-
-                    </Tooltip> */}
+                    <Typography variant="subtitle2">{row.user_profiles?.user.driver_number}</Typography>
                   </TableCell>
-
+                  <TableCell>
+                    <Typography variant="subtitle2">{row.view_duration || "0.00.00.00"}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="subtitle2"><Chip color={row.view_duration != null ? row.isCompleteWatch ? "success" : "warning" : "default"} label={row.view_duration != null ? row.isCompleteWatch ? "completed" : "partially viewed" : "Not View Yet"}></Chip></Typography>
+                  </TableCell>
+                  <TableCell>
+                  { row.quiz_status  ? <Typography variant="subtitle2"><Chip color={row.quiz_status == "passed" ? "success" : row.quiz_status == "failed" ? "error" :"default" } label={row.quiz_status == "passed" ? "certified" : row.quiz_status }/></Typography> : "-"}
+                  </TableCell>
+                 
                 </TableRow>
               );
             })}
@@ -91,27 +82,31 @@ export function AssginDriverTable({ count = 0, rows = [], page = 0,setPage,pagin
         </Table>
       </Box>
       <Divider />
-      {pagination &&  <TablePagination
-        component="div"
-        count={pagination.total}
-        onPageChange={(e,page)=>{
-          setPage(page+1)
-        }}
-
-        page={page-1}
-        rowsPerPage={pagination.pageSize}
-
-      />}
-      {
-        dialogOpen && <DeleteConfirmationDialog  onClose={()=>{
-          setDialogOpen(false)
-          setCurrentItem("")
-        }} onConfirm={async()=>{
-          await deleteTemplate({id:currentItem})
-          setDialogOpen(false)
-          setCurrentItem("")
-        }} open={dialogOpen}/>
-      }
+      {pagination && (
+        <TablePagination
+          component="div"
+          count={pagination.total}
+          onPageChange={(e, page) => {
+            setPage(page + 1);
+          }}
+          page={page - 1}
+          rowsPerPage={pagination.pageSize}
+        />
+      )}
+      {dialogOpen && (
+        <DeleteConfirmationDialog
+          onClose={() => {
+            setDialogOpen(false);
+            setCurrentItem('');
+          }}
+          onConfirm={async () => {
+            await deleteTemplate({ id: currentItem });
+            setDialogOpen(false);
+            setCurrentItem('');
+          }}
+          open={dialogOpen}
+        />
+      )}
     </Card>
   );
 }

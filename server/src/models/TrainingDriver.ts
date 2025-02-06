@@ -11,7 +11,7 @@ export class TrainingDriver extends Model {
   public isCompleteWatch?: boolean;
   public questionId?: string;
   public selectedOptionId?: string;
-
+  public quiz_status? :string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -41,6 +41,10 @@ TrainingDriver.init(
     },
 
     view_duration: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    quiz_status: {
       type: DataTypes.STRING,
       allowNull: true,
     },

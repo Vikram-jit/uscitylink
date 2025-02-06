@@ -118,6 +118,7 @@ class _QuizViewState extends State<QuizView> {
                                       selectedAnswers[question!.id!] =
                                           Set<String>();
                                     }
+                                    selectedAnswers[question?.id]?.clear();
                                     selectedAnswers[question?.id]?.add(
                                         optionId!); // Ensure optionId is not null
                                   } else {

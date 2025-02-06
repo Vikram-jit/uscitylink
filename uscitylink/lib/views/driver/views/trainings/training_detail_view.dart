@@ -174,33 +174,36 @@ class _TrainingDetailViewState extends State<TrainingDetailView> {
             SizedBox(
               height: TDeviceUtils.getScreenHeight() * 0.05,
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(
-                      isComplete
-                          ? TColors.primary
-                          : TColors.primary
-                              .withOpacity(0.7), // Dim the color when disabled
-                    ),
-                    shadowColor: MaterialStateProperty.all(
-                        Colors.transparent), // Remove shadow when disabled
-                  ),
-                  onPressed: () {
-                    Get.to(
-                      () => QuizView(
-                        trainingId: widget.training.tainingId!,
-                        title: widget.training.trainings?.title ?? "",
+            if (widget.training.quiz_status != "passed")
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(
+                        isComplete
+                            ? TColors.primary
+                            : TColors.primary.withOpacity(
+                                0.7), // Dim the color when disabled
                       ),
-                    );
-                  },
-                  child: Text("Start Quiz"),
+                      shadowColor: MaterialStateProperty.all(
+                          Colors.transparent), // Remove shadow when disabled
+                    ),
+                    onPressed: () {
+                      isComplete
+                          ? Get.to(
+                              () => QuizView(
+                                trainingId: widget.training.tainingId!,
+                                title: widget.training.trainings?.title ?? "",
+                              ),
+                            )
+                          : null;
+                    },
+                    child: Text("Start Quiz"),
+                  ),
                 ),
-              ),
-            )
+              )
           ],
         ),
       ),

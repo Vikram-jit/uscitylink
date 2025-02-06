@@ -41,10 +41,10 @@ class TrainingService {
         "view_duration": view_duration,
         "isCompleteWatch": isCompleteWatch
       };
-
+      print("hello");
       dynamic response = await _apiService.putApi(
           data, '${Constant.url}/driver/trainings/update-duration/$id');
-
+      print(response);
       if (response != null) {
         return ApiResponse<dynamic>(
           data: {},
@@ -67,7 +67,7 @@ class TrainingService {
 
       if (response != null) {
         return ApiResponse<dynamic>(
-          data: {},
+          data: response['data'],
           message: response['message'] ?? 'Submitted  Successfully.',
           status: response['status'] ?? true,
         );

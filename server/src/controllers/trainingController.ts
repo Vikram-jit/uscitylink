@@ -13,12 +13,62 @@ import { QuestionOption } from "../models/QuestionOption";
 import { TrainingDriver } from "../models/TrainingDriver";
 import { UserProfile } from "../models/UserProfile";
 import User from "../models/User";
-import { where } from "sequelize";
+import { Op, where } from "sequelize";
+import { TrainingDriverQuestions } from "../models/TrainingDriverQuestion";
+import Queue from "bull";
+import { sendNotificationToDevice } from "../utils/fcmService";
 
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   region: "us-west-1",
+});
+
+const trainingNotificationQueue = new Queue("trainingNotificationQueue", {
+  redis: {
+    host: "127.0.0.1", // Redis host
+    port: 6379, // Custom Redis port
+  },
+});
+
+trainingNotificationQueue.process(async (job: any) => {
+  const { title, userId, id ,training} = job.data;
+console.log("hello Queue");
+  const users = await UserProfile.findAll({
+    where: {
+      id: userId,
+      device_token: {
+        [Op.ne]: null,
+      },
+    },
+  });
+  
+  await Promise.all(
+    users.map(async (user) => {
+      if (user) {
+        const deviceToken = user.device_token;
+        if (deviceToken) {
+       
+          // await sendNotificationToDevice(deviceToken, {
+          //   title: `Add New Training Video`,
+          //   badge: 0,
+          //   body: title,
+          //   data: {
+          //     type: "TRAINING_VIDEO",
+          //     title: "Add New Training Video",
+          //     // id: id,
+          //     // training: training,
+          //   },
+          // });
+        }
+      }
+    })
+  );
+});
+
+// Optional: Handle failed jobs
+trainingNotificationQueue.on("failed", (job, err) => {
+  console.log(`Job failed: ${job.id}, Error: ${err}`);
 });
 
 const s3 = new AWS.S3();
@@ -378,7 +428,16 @@ export async function addQutionsTrainingVideo(
   res: Response
 ): Promise<any> {
   try {
-    const training = await Training.findByPk(req.params.id);
+    const training = await Training.findByPk(req.params.id, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [{ model: QuestionOption, as: "options" }],
+        },
+        { model: TrainingDriver, as: "assgin_drivers" },
+      ],
+    });
     if (training) {
       await Promise.all(
         req.body.questions.map(async (item: any) => {
@@ -435,10 +494,28 @@ export async function addQutionsTrainingVideo(
               driverId: el,
             },
           });
+          console.log(isCheck)
           if (!isCheck) {
-            await TrainingDriver.create({
+            const td = await TrainingDriver.create({
               tainingId: training.id,
               driverId: el,
+            });
+            const trainingDriver = await TrainingDriver.findByPk(td.id, {
+              include: [
+                {
+                  model: Training,
+                  as: "trainings",
+                },
+              ],
+            });
+           
+            console.log({ id: td.id,
+              training: JSON.stringify(trainingDriver?.dataValues),})
+           await trainingNotificationQueue.add({
+              title: training.dataValues.title,
+              userId: el,
+              id: td.id,
+              training: JSON.stringify(trainingDriver?.dataValues),
             });
           }
         })
@@ -568,8 +645,6 @@ export async function updateVideoStatusWithDuration(
   res: Response
 ): Promise<any> {
   try {
-
-   
     await TrainingDriver.update(
       {
         view_duration: req.body.view_duration,
@@ -581,6 +656,18 @@ export async function updateVideoStatusWithDuration(
         },
       }
     );
+    if (req.body.isCompleteWatch) {
+      await TrainingDriver.update(
+        {
+          quiz_status: "pending",
+        },
+        {
+          where: {
+            id: req.params.id,
+          },
+        }
+      );
+    }
 
     return res.status(200).json({
       status: true,
@@ -593,31 +680,30 @@ export async function updateVideoStatusWithDuration(
   }
 }
 
-
 export async function getTrainingQuestions(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
-
-   
-   const training = await Training.findByPk(req.params.id,{
-    include:[
-      {
-        model:Question,
-        as:"questions",
-        include:[{
-          model:QuestionOption,
-          as:"options"
-        }]
-      }
-    ]
-   })
+    const training = await Training.findByPk(req.params.id, {
+      include: [
+        {
+          model: Question,
+          as: "questions",
+          include: [
+            {
+              model: QuestionOption,
+              as: "options",
+            },
+          ],
+        },
+      ],
+    });
 
     return res.status(200).json({
       status: true,
       message: `Get Question Successfully.`,
-      data:training
+      data: training,
     });
   } catch (err: any) {
     return res
@@ -631,26 +717,124 @@ export async function quizAnswerSubmit(
   res: Response
 ): Promise<any> {
   try {
+    const data: Record<string, string[]> = req.body.data;
 
-    const data ={
-      '38116853-89ea-470a-bc44-819b018f296c': [ 'a9945a34-4475-40cf-a7e7-a9639099bec0' ],
-      '29e5a008-23ed-4715-9181-de3d86fab39b': [
-        'afb0dbd0-22eb-45d3-9820-06b93b74a222',
-        'd27a8da5-a066-4382-917e-76a63ddef9a6'
-      ]
-    }
-     
+    const totalQuestion = await Question.count({
+      where: {
+        tainingId: req.params.id,
+      },
+    });
+
+    let givenAnswerCount: number = 0;
+    let correctAnswerCount: number = 0;
+    let quiz_status: string = "";
     for (const [questionId, optionId] of Object.entries(data)) {
-      // // For each answer for the given user
-    
+      if (optionId.length > 0) {
+        const isOldAnswer = await TrainingDriverQuestions.findOne({
+          where: {
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+            questionId: questionId,
+          },
+        });
+        if (isOldAnswer) {
+          await TrainingDriverQuestions.update(
+            {
+              selectedOptionId: optionId?.[0],
+            },
+            {
+              where: {
+                tainingId: req.params.id,
+                driverId: req.user?.id,
+                questionId: questionId,
+              },
+            }
+          );
+        } else {
+          await TrainingDriverQuestions.create({
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+            questionId: questionId,
+            selectedOptionId: optionId?.[0],
+          });
+        }
 
-      console.log(`Answers for user ${optionId?.[0]} inserted successfully`);
+        const isOption = await QuestionOption.findByPk(optionId?.[0]);
+
+        if (isOption) {
+          if (isOption.isCorrect) {
+            correctAnswerCount = correctAnswerCount + 1;
+          }
+        }
+
+        givenAnswerCount = givenAnswerCount + 1;
+      }
+    }
+
+    if (givenAnswerCount == totalQuestion) {
+      await TrainingDriver.update(
+        {
+          quiz_status: "passed",
+        },
+        {
+          where: {
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+          },
+        }
+      );
+      quiz_status = "passed";
+    } else {
+      await TrainingDriver.update(
+        {
+          quiz_status: "failed",
+          view_duration: null,
+          isCompleteWatch: false,
+        },
+        {
+          where: {
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+          },
+        }
+      );
+      quiz_status = "failed";
+    }
+
+    if (givenAnswerCount == correctAnswerCount) {
+      await TrainingDriver.update(
+        {
+          quiz_status: "passed",
+        },
+        {
+          where: {
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+          },
+        }
+      );
+      quiz_status = "passed";
+    } else {
+      await TrainingDriver.update(
+        {
+          quiz_status: "failed",
+          view_duration: null,
+          isCompleteWatch: false,
+        },
+        {
+          where: {
+            tainingId: req.params.id,
+            driverId: req.user?.id,
+          },
+        }
+      );
+      quiz_status = "failed";
     }
 
     return res.status(200).json({
       status: true,
       message: `Submitted Successfully.`,
-      
+      data: quiz_status,
     });
   } catch (err: any) {
     return res

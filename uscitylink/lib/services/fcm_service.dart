@@ -10,12 +10,14 @@ import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/model/training_model.dart';
 import 'dart:io' show Platform;
 
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/views/trainings/training_detail_view.dart';
 
 class FCMService extends GetxController {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -168,6 +170,13 @@ class FCMService extends GetxController {
                 );
               }
             }
+          } else if (decodedPayload['type'] == "TRAINING_VIDEO") {
+            Training dashboard = Training.fromJson(decodedPayload['training']);
+            Get.to(() => TrainingDetailView(
+                tiitle: decodedPayload['title'],
+                id: decodedPayload['id'],
+                trainings: dashboard.trainings!,
+                training: dashboard));
           } else {
             if (AppRoutes.driverMessage.isNotEmpty) {
               socketService.updateActiveChannel(decodedPayload['channelId']);
@@ -339,6 +348,13 @@ class FCMService extends GetxController {
             );
           }
         }
+      } else if (decodedPayload['type'] == "TRAINING_VIDEO") {
+        Training dashboard = Training.fromJson(decodedPayload['training']);
+        Get.to(() => TrainingDetailView(
+            tiitle: decodedPayload['title'],
+            id: decodedPayload['id'],
+            trainings: dashboard.trainings!,
+            training: dashboard));
       } else {
         if (AppRoutes.driverMessage.isNotEmpty) {
           socketService.updateActiveChannel(decodedPayload['channelId']);
