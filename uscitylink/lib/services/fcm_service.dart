@@ -171,7 +171,8 @@ class FCMService extends GetxController {
               }
             }
           } else if (decodedPayload['type'] == "TRAINING_VIDEO") {
-            Training dashboard = Training.fromJson(decodedPayload['training']);
+            Training dashboard =
+                Training.fromJson(jsonDecode(decodedPayload['training']));
             Get.to(() => TrainingDetailView(
                 tiitle: decodedPayload['title'],
                 id: decodedPayload['id'],
@@ -349,7 +350,8 @@ class FCMService extends GetxController {
           }
         }
       } else if (decodedPayload['type'] == "TRAINING_VIDEO") {
-        Training dashboard = Training.fromJson(decodedPayload['training']);
+        Training dashboard =
+            Training.fromJson(jsonDecode(decodedPayload['training']));
         Get.to(() => TrainingDetailView(
             tiitle: decodedPayload['title'],
             id: decodedPayload['id'],
@@ -445,6 +447,18 @@ class FCMService extends GetxController {
                 'userId': data['userId']
               },
             );
+            Utils.hideLoader();
+          });
+        } else if (data['type'] == "TRAINING_VIDEO") {
+          Utils.showLoader();
+          Timer(const Duration(seconds: 3), () {
+            Training dashboard =
+                Training.fromJson(jsonDecode(data['training']));
+            Get.to(() => TrainingDetailView(
+                tiitle: data['title'],
+                id: data['id'],
+                trainings: dashboard.trainings!,
+                training: dashboard));
             Utils.hideLoader();
           });
         } else {

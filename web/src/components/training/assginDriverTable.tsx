@@ -49,7 +49,9 @@ export function AssginDriverTable({
               <TableCell>Driver number</TableCell>
               <TableCell>View Durations</TableCell>
               <TableCell>View Status</TableCell>
+              <TableCell>Quiz Result</TableCell>
               <TableCell>Quiz Status</TableCell>
+
             </TableRow>
           </TableHead>
           <TableBody>
@@ -71,6 +73,7 @@ export function AssginDriverTable({
                   <TableCell>
                     <Typography variant="subtitle2"><Chip color={row.view_duration != null ? row.isCompleteWatch ? "success" : "warning" : "default"} label={row.view_duration != null ? row.isCompleteWatch ? "completed" : "partially viewed" : "Not View Yet"}></Chip></Typography>
                   </TableCell>
+                  <TableCell>{row.quiz_result}%</TableCell>
                   <TableCell>
                   { row.quiz_status  ? <Typography variant="subtitle2"><Chip color={row.quiz_status == "passed" ? "success" : row.quiz_status == "failed" ? "error" :"default" } label={row.quiz_status == "passed" ? "certified" : row.quiz_status }/></Typography> : "-"}
                   </TableCell>

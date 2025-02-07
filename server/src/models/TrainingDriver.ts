@@ -12,6 +12,7 @@ export class TrainingDriver extends Model {
   public questionId?: string;
   public selectedOptionId?: string;
   public quiz_status? :string
+  public quiz_result?:string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -45,6 +46,9 @@ TrainingDriver.init(
       allowNull: true,
     },
     quiz_status: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },quiz_result: {
       type: DataTypes.STRING,
       allowNull: true,
     },

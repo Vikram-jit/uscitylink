@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
+import 'package:uscitylink/views/staff/view/staff_trainings_view.dart';
 
 class CustomDrawer extends StatefulWidget {
   CustomDrawer({super.key});
@@ -86,6 +87,8 @@ class _CustomDrawerState extends State<CustomDrawer>
                 () => _navigateToDrivers(context)),
             _buildDrawerItem(context, Icons.camera_roll, 'Templates',
                 () => _navigateToTemplates(context)),
+            _buildDrawerItem(context, Icons.class_, 'Trainings',
+                () => _navigateToTainings(context)),
             _buildDrawerItem(context, Icons.settings, 'Settings', () => {}),
 
             Divider(color: Colors.grey),
@@ -134,6 +137,12 @@ class _CustomDrawerState extends State<CustomDrawer>
   void _navigateToTemplates(BuildContext context) {
     customDrawerController.closeDrawer();
     Get.toNamed(AppRoutes.staff_templates);
+    // Add navigation to Settings screen
+  }
+
+  void _navigateToTainings(BuildContext context) {
+    customDrawerController.closeDrawer();
+    Get.to(() => StaffTrainingsView());
     // Add navigation to Settings screen
   }
 

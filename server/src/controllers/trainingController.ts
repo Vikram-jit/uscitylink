@@ -34,7 +34,7 @@ const trainingNotificationQueue = new Queue("trainingNotificationQueue", {
 trainingNotificationQueue.process(async (job: any) => {
   const { title, userId, id ,training} = job.data;
 console.log("hello Queue");
-  const users = await UserProfile.findAll({
+  const user = await UserProfile.findOne({
     where: {
       id: userId,
       device_token: {
@@ -43,27 +43,26 @@ console.log("hello Queue");
     },
   });
   
-  await Promise.all(
-    users.map(async (user) => {
+  
       if (user) {
         const deviceToken = user.device_token;
         if (deviceToken) {
        
-          // await sendNotificationToDevice(deviceToken, {
-          //   title: `Add New Training Video`,
-          //   badge: 0,
-          //   body: title,
-          //   data: {
-          //     type: "TRAINING_VIDEO",
-          //     title: "Add New Training Video",
-          //     // id: id,
-          //     // training: training,
-          //   },
-          // });
+          await sendNotificationToDevice(deviceToken, {
+            title: `Add New Training Video`,
+            badge: 0,
+            body: title,
+            data: {
+              type: "TRAINING_VIDEO",
+              title: "Add New Training Video",
+               id: id,
+               training: training,
+            },
+          });
         }
       }
-    })
-  );
+    
+  
 });
 
 // Optional: Handle failed jobs
@@ -362,7 +361,9 @@ export async function getAllTrainings(
 
     const offset = (page - 1) * pageSize;
 
-    const trainings = await Training.findAndCountAll({
+    const trainingCount = await Training.count();
+
+    const trainings = await Training.findAll({
       include: [
         {
           model: Question,
@@ -373,14 +374,15 @@ export async function getAllTrainings(
       limit: pageSize,
       offset: offset,
     });
-    const total = trainings.count;
-    const totalPages = Math.ceil(total / pageSize);
+
+    const total = trainingCount;
+    const totalPages = Math.ceil(trainingCount / pageSize);
 
     return res.status(200).json({
       status: true,
-      message: `Get Training Successfully.`,
+      message: `Get Training Successfullys.`,
       data: {
-        data: trainings.rows,
+        data: trainings,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
@@ -509,8 +511,7 @@ export async function addQutionsTrainingVideo(
               ],
             });
            
-            console.log({ id: td.id,
-              training: JSON.stringify(trainingDriver?.dataValues),})
+           
            await trainingNotificationQueue.add({
               title: training.dataValues.title,
               userId: el,
@@ -771,10 +772,11 @@ export async function quizAnswerSubmit(
       }
     }
 
-    if (givenAnswerCount == totalQuestion) {
+    if (calculateAverage(totalQuestion,correctAnswerCount)  >= 80) {
       await TrainingDriver.update(
         {
           quiz_status: "passed",
+          quiz_result:calculateAverage(totalQuestion,correctAnswerCount)
         },
         {
           where: {
@@ -790,6 +792,7 @@ export async function quizAnswerSubmit(
           quiz_status: "failed",
           view_duration: null,
           isCompleteWatch: false,
+          quiz_result:calculateAverage(totalQuestion,correctAnswerCount)
         },
         {
           where: {
@@ -801,35 +804,35 @@ export async function quizAnswerSubmit(
       quiz_status = "failed";
     }
 
-    if (givenAnswerCount == correctAnswerCount) {
-      await TrainingDriver.update(
-        {
-          quiz_status: "passed",
-        },
-        {
-          where: {
-            tainingId: req.params.id,
-            driverId: req.user?.id,
-          },
-        }
-      );
-      quiz_status = "passed";
-    } else {
-      await TrainingDriver.update(
-        {
-          quiz_status: "failed",
-          view_duration: null,
-          isCompleteWatch: false,
-        },
-        {
-          where: {
-            tainingId: req.params.id,
-            driverId: req.user?.id,
-          },
-        }
-      );
-      quiz_status = "failed";
-    }
+    // if (  givenAnswerCount == correctAnswerCount) {
+    //   await TrainingDriver.update(
+    //     {
+    //       quiz_status: "passed",
+    //     },
+    //     {
+    //       where: {
+    //         tainingId: req.params.id,
+    //         driverId: req.user?.id,
+    //       },
+    //     }
+    //   );
+    //   quiz_status = "passed";
+    // } else {
+    //   await TrainingDriver.update(
+    //     {
+    //       quiz_status: "failed",
+    //       view_duration: null,
+    //       isCompleteWatch: false,
+    //     },
+    //     {
+    //       where: {
+    //         tainingId: req.params.id,
+    //         driverId: req.user?.id,
+    //       },
+    //     }
+    //   );
+    //   quiz_status = "failed";
+    // }
 
     return res.status(200).json({
       status: true,
@@ -841,4 +844,11 @@ export async function quizAnswerSubmit(
       .status(400)
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
+}
+
+
+function calculateAverage(totalQuestions:number, correctAnswers:number):number {
+  // Calculate the average score as a percentage
+  const average = (correctAnswers / totalQuestions) * 100;
+  return average;
 }

@@ -57,6 +57,23 @@ class _TrainingViewState extends State<TrainingView> {
           return RefreshIndicator(
             onRefresh: () => _trainingController.fetchTrainingVideos(page: 1),
             child: ListView.builder(
+              controller: ScrollController()
+                ..addListener(() {
+                  // Don't load more if data is already loading
+                  if (_trainingController.isLoading.value) return;
+
+                  // Check if there are more pages and trigger data fetch if necessary
+                  if (_trainingController.currentPage.value <
+                      _trainingController.totalPages.value) {
+                    if (_trainingController.trainings.isNotEmpty &&
+                        _trainingController.trainings.last ==
+                            _trainingController.trainings[
+                                _trainingController.trainings.length - 1]) {
+                      _trainingController.fetchTrainingVideos(
+                          page: _trainingController.currentPage.value + 1);
+                    }
+                  }
+                }),
               itemCount: _trainingController.trainings.length,
               itemBuilder: (context, index) {
                 var training = _trainingController.trainings[index];
