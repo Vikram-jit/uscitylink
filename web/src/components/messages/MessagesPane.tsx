@@ -250,7 +250,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                         <React.Fragment key={message.id}>
                           <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
                             {message.messageDirection !== 'S' && <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />}
-                            <ChatBubble variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender} />
+                            <ChatBubble truckNumbers={data?.data?.truckNumbers} variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender} />
                           </Stack>
                           {isDifferentDay && <Divider>{isToday ? 'Today' : previousDate}</Divider>}
                         </React.Fragment>

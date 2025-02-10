@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import { Training } from "../models/Training";
+import { promises as fsPromise } from "fs";
+
 dotenv.config();
 import { getVideoDurationInSeconds } from "get-video-duration";
 import { Question } from "../models/Question";
@@ -17,7 +19,9 @@ import { Op, where } from "sequelize";
 import { TrainingDriverQuestions } from "../models/TrainingDriverQuestion";
 import Queue from "bull";
 import { sendNotificationToDevice } from "../utils/fcmService";
+import ejs from "ejs"; // Import EJS
 
+import { generatePdf } from "../utils/pdf";
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
@@ -851,4 +855,77 @@ function calculateAverage(totalQuestions:number, correctAnswers:number):number {
   // Calculate the average score as a percentage
   const average = (correctAnswers / totalQuestions) * 100;
   return average;
+}
+
+
+
+
+const renderTemplate = (templatePath: string, data: any) => {
+  return new Promise((resolve, reject) => {
+    ejs.renderFile(templatePath, data, (err: any, html: any) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(html);
+      }
+    });
+  });
+};
+
+
+
+export default async function certificateGenate(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    const id = req.params.id;
+   
+    // Now that all data is fetched, generate the PDF
+    const date = new Date();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const formattedDate = `${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}/${year}`;
+   
+    const html: any = await renderTemplate(
+      path.join(__dirname, "../../views", "training", "certificate.ejs"),
+      { date: formattedDate}
+    );
+  
+ 
+    const outputPdfPath = path.join(__dirname, "../../", "certificate.pdf");
+    await generatePdf(
+      html,
+      { landscape: true, printBackground: true, format: "A4" },
+      outputPdfPath
+    );
+
+    // Step 10: Set response headers and send the PDF as a download
+    res.setHeader("Content-Disposition", "attachment; filename=certificate.pdf");
+    res.setHeader("Content-Type", "application/pdf");
+
+    const pdfBuffer = await fsPromise.readFile(outputPdfPath);
+     return res.send(pdfBuffer).end(async () => {
+     
+      try {
+        await fsPromise.unlink(outputPdfPath); // Remove the file from the server
+      } catch (err) {
+        console.error("Error deleting the file:", err);
+      }
+    });
+
+   
+ 
+    
+  } catch (err:any) {
+    return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
+
+   
+  }
+ 
+
+  
+    
 }

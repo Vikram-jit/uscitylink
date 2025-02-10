@@ -18,7 +18,8 @@ import { Done, DoneAll } from '@mui/icons-material';
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
   attachment:false
-  sender:SenderModel
+  sender:SenderModel,
+  truckNumbers?:string
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
@@ -39,6 +40,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
           {messageDirection === 'S' ? sender?.username ? `${sender?.username}(staff)` : '(staff)' : `${sender?.username}(driver)` }
         </Typography>
         <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm')}</Typography>
+        
       </Stack>
       {url ? (
         <Paper
@@ -74,7 +76,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
           >
             <Typography sx={{fontSize:16}}>{body}</Typography>
           </Paper>
-          {(isHovered || isLiked || isCelebrated) && (
+          {/* {(isHovered || isLiked || isCelebrated) && (
             <Stack
               direction="row"
               spacing={0.5}
@@ -98,9 +100,10 @@ export default function ChatBubble(props: ChatBubbleProps) {
                 {isCelebrated ? '🎉' : <CelebrationOutlinedIcon />}
               </IconButton>
             </Stack>
-          )}
+          )} */}
         </Box>
       )}
+     {props.truckNumbers && messageDirection === "R" &&  <Typography variant="caption"> Assigned trucks:- <strong>{props.truckNumbers}</strong></Typography>}
       {messageDirection === 'S' && <Stack
         direction="row"
         spacing={2}

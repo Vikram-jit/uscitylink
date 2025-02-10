@@ -5,6 +5,8 @@ import UserChannel from "../../models/UserChannel";
 import { Op } from "sequelize";
 import User from "../../models/User";
 import { Message } from "../../models/Message";
+import GroupUser from "../../models/GroupUser";
+import Group from "../../models/Group";
 
 export async function getChatMessageUser(
   req: Request,
@@ -59,9 +61,12 @@ export async function getChatMessageUser(
       limit: pageSize,
       offset: offset,
     });
+
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);
+    
 
+   
     const newData = {
       ...data?.dataValues,
       user_channels: userChannels.rows,
@@ -116,12 +121,27 @@ export const getMessagesByUserId = async (
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
 
+    const groupUser = await GroupUser.findAll({
+      where:{
+        userProfileId:id
+      },
+      include:[{
+        model:Group,
+       where:{
+        type:"truck"
+       }
+      }]
+    })
+    const truckNumbers = await Promise.all(groupUser.map((e)=>e.dataValues.Group.name));
+
+
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
       data: {
         userProfile,
         messages: messages.rows,
+        truckNumbers : truckNumbers ? truckNumbers?.join(","):null,
         pagination: {
           currentPage: page,
           pageSize: pageSize,

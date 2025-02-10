@@ -5,8 +5,9 @@ class UserMessageModel {
   UserProfile? userProfile;
   List<MessageModel>? messages;
   Pagination? pagination;
-
-  UserMessageModel({this.userProfile, this.messages, this.pagination});
+  String? truckNumbers;
+  UserMessageModel(
+      {this.userProfile, this.messages, this.pagination, this.truckNumbers});
 
   UserMessageModel.fromJson(Map<String, dynamic> json) {
     userProfile = json['userProfile'] != null
@@ -21,6 +22,7 @@ class UserMessageModel {
     pagination = json['pagination'] != null
         ? new Pagination.fromJson(json['pagination'])
         : null;
+    truckNumbers = json['truckNumbers'] != null ? json['truckNumbers'] : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -33,6 +35,9 @@ class UserMessageModel {
     }
     if (this.pagination != null) {
       data['pagination'] = this.pagination?.toJson();
+    }
+    if (this.truckNumbers != null) {
+      data['truckNumbers'] = this.truckNumbers;
     }
     return data;
   }

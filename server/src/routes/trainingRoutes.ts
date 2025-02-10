@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/authMiddleware';
 import {  uploadAwsMiddleware } from '../controllers/fileController';
-import { addQutionsTrainingVideo, createTraining, getAllTrainings, getAssginDrivers, getTrainingById } from '../controllers/trainingController';
+import certificateGenate, { addQutionsTrainingVideo, createTraining, getAllTrainings, getAssginDrivers, getTrainingById } from '../controllers/trainingController';
 
 
 
@@ -12,6 +12,7 @@ router.post('/',authMiddleware, uploadAwsMiddleware, createTraining)
 router.post('/add-questions/:id',authMiddleware, addQutionsTrainingVideo)
 router.get('/',authMiddleware, getAllTrainings)
 router.get('/assgin-drivers/:id',authMiddleware, getAssginDrivers)
+
 router.get('/:id',authMiddleware, getTrainingById)
 
 

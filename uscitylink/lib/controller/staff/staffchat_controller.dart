@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/user_message_model.dart';
-import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
@@ -25,7 +22,7 @@ class StaffchatController {
   var userName = "".obs;
   var currentPage = 1.obs;
   var totalPages = 1.obs;
-
+  var truckNumbers = "".obs;
   Timer? typingTimer;
   late DateTime typingStartTime;
 
@@ -41,6 +38,8 @@ class StaffchatController {
 
       // Check if the response is valid
       if (response.data != null) {
+        print(response.data);
+        truckNumbers.value = response.data.truckNumbers ?? "";
         // Append new messages if it's not the first page
         if (page > 1) {
           message.value.messages?.addAll(response.data.messages ?? []);

@@ -228,13 +228,28 @@
       <strong> Fault Codes:</strong><br />
      <span style="color: #cc3300;"> <%= details.fault_codes %> </span><% } %>
     </div>
-    <div class="note-message">
-      <i class="fas fa-exclamation-circle icon"></i>Note that these tests can
-      be erased by disconnecting the battery from the vehicle. These test
-      results cannot be accepted until additional vehicle operation has
-      occurred, allowing the OBD system adequate time to assess whether the
-      vehicle's emissions controls are working properly.
-    </div>
+    <% if (details.result === 'Pass') { %>
+      <div class="note-message">
+      
+      </div>
+    <% } else if (details.result === 'Not Ready') { %>
+      <div class="note-message">
+        <i class="fas fa-exclamation-circle icon"></i>Note that these tests can
+        be erased by disconnecting the battery from the vehicle. These test
+        results cannot be accepted until additional vehicle operation has
+        occurred, allowing the OBD system adequate time to assess whether the
+        vehicle's emissions controls are working properly.
+      </div>
+    <% } else { %>
+      <div class="note-message">
+        <i class="fas fa-exclamation-circle icon"></i>Note that these tests can
+        be erased by disconnecting the battery from the vehicle. These test
+        results cannot be accepted until additional vehicle operation has
+        occurred, allowing the OBD system adequate time to assess whether the
+        vehicle's emissions controls are working properly.
+      </div>
+    <% } %>
+  
     <div class="total-section">
       <div
         style="

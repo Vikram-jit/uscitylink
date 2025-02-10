@@ -223,8 +223,24 @@ export const getMessagesByUserId = async (
       offset: offset,
     });
 
+    const groupUser = await GroupUser.findAll({
+      where:{
+        userProfileId:id
+      },
+      include:[{
+        model:Group,
+       where:{
+        type:"truck"
+       }
+      }]
+    })
+
+    const truckNumbers = await Promise.all(groupUser.map((e)=>e.dataValues.Group.name));
+
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
+
+
 
     return res.status(200).json({
       status: true,
@@ -232,6 +248,7 @@ export const getMessagesByUserId = async (
       data: {
         userProfile,
         messages: messages.rows,
+        truckNumbers : truckNumbers ? truckNumbers?.join(","):null  ,
         pagination: {
           currentPage: page,
           pageSize: pageSize,

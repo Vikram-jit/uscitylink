@@ -260,7 +260,8 @@ class _StaffMessageViewState extends State<StaffMessageView>
                       itemBuilder: (context, index) {
                         MessageModel message =
                             _staffchatController.message.value.messages![index];
-                        return _buildChatMessage(message, context);
+                        return _buildChatMessage(message, context,
+                            _staffchatController.truckNumbers.value);
                       },
                     );
                   }),
@@ -389,7 +390,8 @@ class _StaffMessageViewState extends State<StaffMessageView>
     );
   }
 
-  Widget _buildChatMessage(MessageModel message, BuildContext context) {
+  Widget _buildChatMessage(
+      MessageModel message, BuildContext context, String trucknumbers) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
@@ -440,6 +442,13 @@ class _StaffMessageViewState extends State<StaffMessageView>
                   if (message.messageDirection == "S" &&
                       message.type == "truck_group")
                     Text("From Truck Group: ${message?.group?.name}",
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w500)),
+                  if (message.messageDirection == "R" &&
+                      trucknumbers.isNotEmpty)
+                    Text("Assigned trucks:- ${trucknumbers}",
                         style: const TextStyle(
                             fontSize: 10,
                             color: Colors.black54,

@@ -15,7 +15,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
           pageSize: number,
           totalMessages:number,
           totalPages:number,
-        } };
+        },truckNumbers?:string };
       },
       { id: string,page: number; pageSize: number }
     >({
