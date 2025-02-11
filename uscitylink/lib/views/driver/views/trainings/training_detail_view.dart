@@ -7,6 +7,7 @@ import 'package:uscitylink/model/training_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/driver/views/trainings/quiz_view.dart';
+import 'package:uscitylink/views/widgets/document_download.dart';
 import 'package:video_player/video_player.dart';
 
 class TrainingDetailView extends StatefulWidget {
@@ -194,13 +195,41 @@ class _TrainingDetailViewState extends State<TrainingDetailView> {
                       isComplete
                           ? Get.to(
                               () => QuizView(
-                                trainingId: widget.training.tainingId!,
-                                title: widget.training.trainings?.title ?? "",
-                              ),
+                                  trainingId: widget.training.tainingId!,
+                                  title: widget.training.trainings?.title ?? "",
+                                  training: widget.training),
                             )
                           : null;
                     },
                     child: Text("Start Quiz"),
+                  ),
+                ),
+              ),
+            if (widget.training.quiz_status == "passed")
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: InkWell(
+                  onTap: () {
+                    print(
+                        "${Constant.url}/driver/trainings/training-certificate/${widget.trainings.id}");
+                    Get.to(() => DocumentDownload(
+                        file:
+                            "${Constant.url}/driver/trainings/training-certificate/${widget.trainings.id}?driverId=${widget.training.driverId}"));
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 60,
+                    decoration: BoxDecoration(
+                        color: Colors.amber,
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Center(
+                        child: Text(
+                      "View Certificate",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold),
+                    )),
                   ),
                 ),
               )

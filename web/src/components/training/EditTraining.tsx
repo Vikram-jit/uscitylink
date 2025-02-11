@@ -2,12 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserModel } from '@/redux/models/UserModel';
+import { useDispatch } from 'react-redux';
+import { Controller, useForm } from 'react-hook-form';
+import { toast } from 'react-toastify';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
-import { useAddQuestionsMutation, useCreateTrainingMutation, useGetTrainingByIdQuery } from '@/redux/TrainingApiSlice';
+import { useAddQuestionsMutation, useGetTrainingByIdQuery } from '@/redux/TrainingApiSlice';
 import { useGetUserWithoutChannelQuery } from '@/redux/UserApiSlice';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import ReactPlayer from 'react-player';
+import QuestionForm from './QuestionForm';
+import QuestionList from './QuestionList';
 import {
   Autocomplete,
   Button,
@@ -20,25 +23,18 @@ import {
   Grid,
   OutlinedInput,
   Paper,
+  Step,
+  StepLabel,
+  Stepper,
   TextareaAutosize,
   TextField,
   Typography,
 } from '@mui/material';
-import { Container } from '@mui/system';
-import { Controller, useForm } from 'react-hook-form';
-import ReactPlayer from 'react-player';
-import { useDispatch } from 'react-redux';
-import { toast } from 'react-toastify';
-
-import { paths } from '@/paths';
+import { UserModel } from '@/redux/models/UserModel';
 import useErrorHandler from '@/hooks/use-error-handler';
+import { paths } from '@/paths';
 
-import QuestionForm from './QuestionForm';
-import QuestionList from './QuestionList';
-
-const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
-const checkedIcon = <CheckBoxIcon fontSize="small" />;
-
+const steps = ['Training Details', 'Manage Questions', 'Assign Drivers', 'Review & Submit'];
 export interface Option {
   id: string;
   text: string;
@@ -52,27 +48,25 @@ export interface Question {
   options: Option[];
   isDeleted: boolean;
 }
-type Values = {
-  title: string;
-  description: string;
-};
 
-export default function EditTraining({ id }: { id: string }) {
-  const defaultValues = {
-    title: '',
-    description: '',
-  } satisfies Values;
-
+export default function EditTraining({ id }:any) {
   const { data } = useGetTrainingByIdQuery({ id });
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [addQuestions, { isLoading: submitLoader }] = useAddQuestionsMutation();
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState<UserModel[]>([]);
+  const [removedUsers, setRemovedUsers] = useState<UserModel[]>([]);
+  const [activeStep, setActiveStep] = useState(0);
+  const [addQuestions, { isLoading }] = useAddQuestionsMutation();
+  const { data: userData } = useGetUserWithoutChannelQuery({ type: 'training' });
   const dispatch = useDispatch();
+  const router = useRouter();
   const [message, setApiResponse] = useErrorHandler();
 
-  const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
-  const [removedUsers, setRemovedUsers] = React.useState<UserModel[]>([]);
+  const { control, handleSubmit, setValue, formState: { errors } } = useForm({
+    defaultValues: { title: '', description: '' },
+  });
+
+
 
   const handleChange = (event: any, newValue: any) => {
     
@@ -104,85 +98,38 @@ export default function EditTraining({ id }: { id: string }) {
     
   };
 
-  const { data: userData, isFetching } = useGetUserWithoutChannelQuery({type:"training"});
 
   useEffect(()=>{
-     if(userData?.status && data?.status){
+    if(userData?.status && data?.status){
+     
+        const filterUser = userData.data.filter((user)=> data?.data?.assgin_drivers.some((r) => r.driverId === user.id))
       
-         const filterUser = userData.data.filter((user)=> data?.data?.assgin_drivers.some((r) => r.driverId === user.id))
-       
-        if(filterUser.length > 0){
-          setSelectedUsers(filterUser)
-        }
-     }
-  },[userData,data])
+       if(filterUser.length > 0){
+         setSelectedUsers(filterUser)
+       }
+    }
+ },[userData,data])
 
-
-  const handleAddQuestion = (questionData: Omit<Question, 'id'>) => {
-    const newQuestion: Question = {
-      id: generateId(),
-      ...questionData,
-      options: questionData.options.map((option) => ({
-        ...option,
-        id: generateId(),
-      })),
-    };
-    setQuestions([...questions, newQuestion]);
-  };
-
-  const handleEditQuestion = (question: Question) => {
-    setEditingQuestion(question);
-  };
-
-  const handleUpdateQuestion = (questionData: Omit<Question, 'id'>) => {
-    if (!editingQuestion) return;
-
-    const updatedQuestion: Question = {
-      ...editingQuestion,
-      ...questionData,
-      options: questionData.options.map((option) => ({
-        ...option,
-        id: generateId(),
-      })),
-    };
-
-    setQuestions(questions.map((q) => (q.id === editingQuestion.id ? updatedQuestion : q)));
-    setEditingQuestion(null);
-  };
-
-  const handleDeleteQuestion = (id: string) => {
-    setQuestions(questions.map((q) => (q.id == id ? { ...q, isDeleted: true } : q)));
-  };
-
-  const [createTraining, { isLoading }] = useCreateTrainingMutation();
-  const router = useRouter();
-  const {
-    control,
-    handleSubmit,
-    setError,
-    setValue,
-    formState: { errors },
-  } = useForm<Values>({ defaultValues });
 
   useEffect(() => {
     if (data?.status) {
       setValue('title', data?.data?.title);
       setValue('description', data?.data?.description);
       if (data?.data?.questions?.length > 0) {
-        const questions: Question[] = [];
-        data?.data?.questions?.forEach((el) => {
-          const q: Question = { id: el.id, text: el.question, options: [], isDeleted: false };
-          el.options.forEach((o) => {
-            q.options.push({ id: o.id, text: o.option, isCorrect: o.isCorrect, isDeleted: false });
-          });
-
-          questions.push(q);
-        });
-        setQuestions(questions);
+        const loadedQuestions:any = data?.data?.questions.map(el => ({
+          id: el.id,
+          text: el.question,
+          options: el.options.map(o => ({ id: o.id, text: o.option, isCorrect: o.isCorrect, isDeleted: false })),
+          isDeleted: false,
+        }));
+        setQuestions(loadedQuestions);
       }
     }
   }, [data]);
 
+  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
+  
   async function updateTraining() {
    
     let drivers:any = [];
@@ -221,100 +168,86 @@ export default function EditTraining({ id }: { id: string }) {
   return (
     <Card sx={{ borderRadius: '6px', marginTop: 5 }}>
       <CardContent>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Controller
-              control={control}
-              name="title"
-              render={({ field }) => (
-                <FormControl fullWidth error={!!errors.title}>
-                  <OutlinedInput {...field} name="title" title="Title" placeholder="Enter title" type="text" readOnly />
-                </FormControl>
+        <Stepper activeStep={activeStep} alternativeLabel>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+        <Grid container spacing={3} sx={{ marginTop: 3 }}>
+          {activeStep === 0 && (
+            <>
+              <Grid item xs={12}>
+                <Controller control={control} name="title" render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.title}>
+                    <OutlinedInput {...field} placeholder="Enter title" readOnly />
+                  </FormControl>
+                )} />
+              </Grid>
+              <Grid item xs={12}>
+                <Controller control={control} name="description" render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.description}>
+                    <TextareaAutosize {...field} minRows={5} placeholder="Enter Description" readOnly />
+                  </FormControl>
+                )} />
+              </Grid>
+              {data?.status && (
+                <Grid item xs={12}>
+                  <ReactPlayer width="100%" controls url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${data?.data?.key}`} height={400} />
+                </Grid>
               )}
-            />
-          </Grid>
-
-          {/* Description Input */}
-          <Grid item xs={12}>
-            <Controller
-              control={control}
-              name="description"
-              render={({ field }) => (
-                <FormControl fullWidth error={!!errors.description}>
-                  <TextareaAutosize {...field} minRows={5} placeholder="Enter Description" readOnly />
-                </FormControl>
-              )}
-            />
-          </Grid>
-
-          {/* Display selected file name */}
-          {data && data.status && (
-            <Grid item xs={12}>
-              <ReactPlayer
-              width={"100%"}
-                controls
-                url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${data?.data?.key}`}
-                height={400}
-              />
-            </Grid>
+            </>
           )}
-
-          <Grid item xs={12} marginTop={3}>
-            <Typography variant="h6">Add Quiz Question</Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <Divider />
-          </Grid>
-          <Grid item xs={12}>
-            {editingQuestion ? (
-              <QuestionForm onSubmit={handleUpdateQuestion} initialQuestion={editingQuestion} isEditing={true} />
-            ) : (
-              <QuestionForm onSubmit={handleAddQuestion} />
-            )}
-            <QuestionList questions={questions} onEdit={handleEditQuestion} onDelete={handleDeleteQuestion} />
-          </Grid>
-          <Grid item xs={12}>
+          {activeStep === 1 && (
+            <>
+             <Grid item xs={6}>
+             <QuestionForm onSubmit={(q) => setQuestions([...questions, { ...q, id: Math.random().toString(36) }])} />
+             </Grid>
+             <Grid item xs={6}>
+              <QuestionList questions={questions} onDelete={(id) => setQuestions(questions.map((q:any) => q.id === id ? { ...q, isDeleted: true } : q))} />
+                </Grid>
+            </>
+          )}
+          {activeStep === 2 && (
+             <Grid item xs={12}>
             <Paper elevation={2} sx={{ mt: 3, p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Assgin To Driver
-              </Typography>
-
+            
+             
               <Autocomplete
                 value={selectedUsers}
-                sx={{ marginTop: 2 }}
                 multiple
-                id="checkboxes-tags-demo"
                 options={options}
-                disableCloseOnSelect
+                getOptionLabel={(option) => `${option.username}(${option.user.driver_number})`}
                 onChange={handleChange}
-                getOptionLabel={(option) => {
-                  return `${option.username}(${option.user.driver_number})`;
-                }}
-                renderOption={(props: any, option, { selected }) => {
-                  const { key, ...optionProps } = props;
-                  return (
-                    <li key={key} {...optionProps}>
-                      <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                      {`${option.username}(${option.user.driver_number})`}
-                    </li>
-                  );
-                }}
-                fullWidth
-                renderInput={(params) => <TextField {...params}  placeholder="Select Drivers" />}
+                renderInput={(params) => <TextField {...params} placeholder="Select Drivers" />}
               />
+            
             </Paper>
-          </Grid>
-          {/* Submit Button */}
-          <Grid item xs={12}>
-            <Button
-              onClick={updateTraining}
-              disabled={isLoading}
-              sx={{ float: 'right', marginTop: 5, marginBottom: 5 }}
-              variant="contained"
-            >
-              update
-            </Button>
-            {isLoading && <CircularProgress style={{ float: 'right' }} />}
+            </Grid>
+          )}
+          {activeStep === 3 && (
+           <Grid item xs={12}>
+              <Typography variant="h6">Review & Update</Typography>
+              <ul>
+                <li>Title: {data?.data?.title}</li>
+                <li>Description: {data?.data?.description}</li>
+             
+              
+              
+                <li>Assigned Drivers: {selectedUsers.map((user)=>user.username)?.join(",")}</li>
+              </ul>
+              <QuestionList questions={questions} onDelete={(id) => setQuestions(questions.map((q:any) => q.id === id ? { ...q, isDeleted: true } : q))} />
+              
+            </Grid>
+          )}
+          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+            <Button disabled={activeStep === 0} onClick={handleBack}>Back</Button>
+            {activeStep === steps.length - 1 ? (
+              <Button variant="contained" onClick={updateTraining} disabled={isLoading}>Update</Button>
+            ) : (
+              <Button variant="contained" onClick={handleNext}>Next</Button>
+            )}
           </Grid>
         </Grid>
       </CardContent>

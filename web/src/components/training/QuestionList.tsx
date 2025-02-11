@@ -11,15 +11,17 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { Question } from './EditTraining';
 
+
+
 interface QuestionListProps {
   questions: Question[];
-  onEdit: (question: Question) => void;
+  // onEdit: (question: Question) => void;
   onDelete: (id: string) => void;
 }
 
-export default function QuestionList({ questions, onEdit, onDelete }: QuestionListProps) {
+export default function QuestionList({ questions, onDelete }: QuestionListProps) {
   return (
-    <Paper elevation={3} sx={{ mt: 3, p: 2 }}>
+    <Paper elevation={3} sx={{  p: 2 }}>
       <Typography variant="h6" gutterBottom>
         Questions ({questions.filter((e)=>!e.isDeleted).length})
       </Typography>

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -93,7 +94,8 @@ class _DocumentDownloadState extends State<DocumentDownload> {
                 } else if (extension == 'pdf') {
                   _documentController.downloadFile(widget.file);
                 } else {
-                  Get.snackbar("Error", "Unsupported file type");
+                  _documentController.downloadFile(widget.file);
+                  // Get.snackbar("Error", "Unsupported file type");
                 }
               },
               icon: const Icon(
@@ -168,9 +170,10 @@ class _DocumentDownloadState extends State<DocumentDownload> {
                   },
                 )
               else
-                const Center(
-                    child: Text("Unsupported File Type",
-                        style: TextStyle(fontSize: 18, color: Colors.red))),
+                _buildPdfPreview(widget.file)
+              // const Center(
+              //     child: Text("Unsupported File Type",
+              //         style: TextStyle(fontSize: 18, color: Colors.red))),
             ],
           ),
         ),
@@ -275,6 +278,7 @@ class _DocumentDownloadState extends State<DocumentDownload> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
+          print(snapshot.error);
           return const Center(child: Text('Error loading PDF'));
         } else if (snapshot.hasData) {
           // You can now use PDFView from the flutter_pdfview package

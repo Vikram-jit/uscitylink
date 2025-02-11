@@ -2,12 +2,16 @@ import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/training_controller.dart';
+import 'package:uscitylink/model/training_model.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/views/widgets/document_download.dart';
 
 class ResultView extends StatefulWidget {
   final String result;
-  const ResultView({super.key, required this.result});
+  final Training training;
+  const ResultView({super.key, required this.result, required this.training});
 
   @override
   State<ResultView> createState() => _ResultViewState();
@@ -113,6 +117,38 @@ class _ResultViewState extends State<ResultView> {
           Positioned(
             top: TDeviceUtils.getScreenHeight() *
                 0.55, // Keeps the vertical position
+            left:
+                0, // Ensures it is aligned to the left side (needed to center it horizontally)
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: InkWell(
+                onTap: () {
+                  Get.to(() => DocumentDownload(
+                      file:
+                          "${Constant.url}/driver/trainings/training-certificate/${widget.training.tainingId}?driverId=${widget.training.driverId}"));
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 60,
+                  decoration: BoxDecoration(
+                      color: Colors.amber,
+                      borderRadius: BorderRadius.circular(6)),
+                  child: Center(
+                      child: Text(
+                    "Download Certificate",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600),
+                  )),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: TDeviceUtils.getScreenHeight() *
+                0.68, // Keeps the vertical position
             left:
                 0, // Ensures it is aligned to the left side (needed to center it horizontally)
             right:

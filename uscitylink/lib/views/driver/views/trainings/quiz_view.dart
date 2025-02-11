@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/training_controller.dart';
+import 'package:uscitylink/model/training_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class QuizView extends StatefulWidget {
   final String trainingId;
   final String title;
-  const QuizView({super.key, required this.trainingId, required this.title});
+  final Training training;
+  const QuizView(
+      {super.key,
+      required this.trainingId,
+      required this.title,
+      required this.training});
 
   @override
   State<QuizView> createState() => _QuizViewState();
@@ -157,7 +163,7 @@ class _QuizViewState extends State<QuizView> {
                     ),
                     onPressed: () {
                       _trainingController.submitQuiz(
-                          widget.trainingId, selectedAnswers);
+                          widget.trainingId, selectedAnswers, widget.training);
                     },
                     child: Text("Submit"),
                   ),

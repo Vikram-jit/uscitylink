@@ -144,7 +144,7 @@ class TrainingController extends GetxController {
     }
   }
 
-  Future<void> submitQuiz(String id, dynamic data) async {
+  Future<void> submitQuiz(String id, dynamic data, Training training) async {
     if (isLoading.value) return;
     isLoading.value = true;
     final convertedData = data.map((key, value) {
@@ -157,7 +157,10 @@ class TrainingController extends GetxController {
       if (response.status) {
         isLoading.value = false;
 
-        Get.to(() => ResultView(result: response.data));
+        Get.to(() => ResultView(
+              result: response.data,
+              training: training,
+            ));
       }
     } catch (e) {
       print("Error fetching trucks: $e");

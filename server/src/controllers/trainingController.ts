@@ -22,6 +22,8 @@ import { sendNotificationToDevice } from "../utils/fcmService";
 import ejs from "ejs"; // Import EJS
 
 import { generatePdf } from "../utils/pdf";
+import moment from "moment";
+import { getSocketInstance } from "../sockets/socket";
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
@@ -36,8 +38,7 @@ const trainingNotificationQueue = new Queue("trainingNotificationQueue", {
 });
 
 trainingNotificationQueue.process(async (job: any) => {
-  const { title, userId, id ,training} = job.data;
-console.log("hello Queue");
+  const { title, userId, id, training } = job.data;
   const user = await UserProfile.findOne({
     where: {
       id: userId,
@@ -46,27 +47,23 @@ console.log("hello Queue");
       },
     },
   });
-  
-  
-      if (user) {
-        const deviceToken = user.device_token;
-        if (deviceToken) {
-       
-          await sendNotificationToDevice(deviceToken, {
-            title: `Add New Training Video`,
-            badge: 0,
-            body: title,
-            data: {
-              type: "TRAINING_VIDEO",
-              title: "Add New Training Video",
-               id: id,
-               training: training,
-            },
-          });
-        }
-      }
-    
-  
+
+  if (user) {
+    const deviceToken = user.device_token;
+    if (deviceToken) {
+      await sendNotificationToDevice(deviceToken, {
+        title: `Add New Training Video`,
+        badge: 0,
+        body: title,
+        data: {
+          type: "TRAINING_VIDEO",
+          title: "Add New Training Video",
+          id: id,
+          training: training,
+        },
+      });
+    }
+  }
 });
 
 // Optional: Handle failed jobs
@@ -207,6 +204,12 @@ export const createTraining = async (
 
       if (progressPercentage > 100) progressPercentage = 100;
 
+       const userSocket = global.userSockets[req.user?.id]
+
+      getSocketInstance().to(userSocket?.id).emit(
+       "UPLOAD_PROGRESS",
+       progress
+      );
       console.log(`Upload progress: ${progressPercentage}%`);
     };
 
@@ -377,6 +380,7 @@ export async function getAllTrainings(
       ],
       limit: pageSize,
       offset: offset,
+      order:[['createdAt',"DESC"]]
     });
 
     const total = trainingCount;
@@ -500,7 +504,7 @@ export async function addQutionsTrainingVideo(
               driverId: el,
             },
           });
-          console.log(isCheck)
+          console.log(isCheck);
           if (!isCheck) {
             const td = await TrainingDriver.create({
               tainingId: training.id,
@@ -514,9 +518,8 @@ export async function addQutionsTrainingVideo(
                 },
               ],
             });
-           
-           
-           await trainingNotificationQueue.add({
+
+            await trainingNotificationQueue.add({
               title: training.dataValues.title,
               userId: el,
               id: td.id,
@@ -776,11 +779,11 @@ export async function quizAnswerSubmit(
       }
     }
 
-    if (calculateAverage(totalQuestion,correctAnswerCount)  >= 80) {
+    if (calculateAverage(totalQuestion, correctAnswerCount) >= 80) {
       await TrainingDriver.update(
         {
           quiz_status: "passed",
-          quiz_result:calculateAverage(totalQuestion,correctAnswerCount)
+          quiz_result: calculateAverage(totalQuestion, correctAnswerCount),
         },
         {
           where: {
@@ -796,7 +799,7 @@ export async function quizAnswerSubmit(
           quiz_status: "failed",
           view_duration: null,
           isCompleteWatch: false,
-          quiz_result:calculateAverage(totalQuestion,correctAnswerCount)
+          quiz_result: calculateAverage(totalQuestion, correctAnswerCount),
         },
         {
           where: {
@@ -850,15 +853,14 @@ export async function quizAnswerSubmit(
   }
 }
 
-
-function calculateAverage(totalQuestions:number, correctAnswers:number):number {
+function calculateAverage(
+  totalQuestions: number,
+  correctAnswers: number
+): number {
   // Calculate the average score as a percentage
   const average = (correctAnswers / totalQuestions) * 100;
   return average;
 }
-
-
-
 
 const renderTemplate = (templatePath: string, data: any) => {
   return new Promise((resolve, reject) => {
@@ -872,29 +874,35 @@ const renderTemplate = (templatePath: string, data: any) => {
   });
 };
 
-
-
 export default async function certificateGenate(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
-
     const id = req.params.id;
-   
-    // Now that all data is fetched, generate the PDF
-    const date = new Date();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-    const formattedDate = `${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}/${year}`;
-   
+    const driverId = req.query.driverId as string;
+    const training = await Training.findByPk(id);
+
+    const userProfile = await UserProfile.findByPk(driverId);
+
+    const trainingDriver = await TrainingDriver.findOne({
+      where: {
+        tainingId: training?.id,
+        driverId: driverId,
+      },
+    });
+
+    const date = moment(trainingDriver?.updatedAt);
+
     const html: any = await renderTemplate(
       path.join(__dirname, "../../views", "training", "certificate.ejs"),
-      { date: formattedDate}
+      {
+        date: date.format("MMMM D, YYYY"),
+        title: training?.title,
+        name: userProfile?.username,
+      }
     );
-  
- 
+
     const outputPdfPath = path.join(__dirname, "../../", "certificate.pdf");
     await generatePdf(
       html,
@@ -903,29 +911,23 @@ export default async function certificateGenate(
     );
 
     // Step 10: Set response headers and send the PDF as a download
-    res.setHeader("Content-Disposition", "attachment; filename=certificate.pdf");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=certificate.pdf"
+    );
     res.setHeader("Content-Type", "application/pdf");
 
     const pdfBuffer = await fsPromise.readFile(outputPdfPath);
-     return res.send(pdfBuffer).end(async () => {
-     
+    return res.send(pdfBuffer).end(async () => {
       try {
         await fsPromise.unlink(outputPdfPath); // Remove the file from the server
       } catch (err) {
         console.error("Error deleting the file:", err);
       }
     });
-
-   
- 
-    
-  } catch (err:any) {
-    return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
-
-   
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
   }
- 
-
-  
-    
 }
