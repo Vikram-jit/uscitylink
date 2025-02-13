@@ -95,11 +95,13 @@ class _TrainingViewState extends State<TrainingView> {
                     ),
                     margin: EdgeInsets.symmetric(vertical: 5.0),
                     child: ListTile(
-                      leading: Image.network(
-                          width: 70,
-                          height: 70,
-                          fit: BoxFit.contain,
-                          "${Constant.aws}/${training.trainings?.thumbnail}"),
+                      leading: training.trainings?.thumbnail != null
+                          ? Image.network(
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.contain,
+                              "${Constant.aws}/${training.trainings?.thumbnail}")
+                          : null,
                       title: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

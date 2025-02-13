@@ -84,7 +84,7 @@ class LoginController extends GetxController {
                             Get.to((_) => SelectOption(
                                 name: value.data?.profiles?[0].username ?? "",
                                 role: value.data.profiles?[0].role?.name ?? "",
-                                email: emailController.value.text,
+                                email: value.data.email ?? "",
                                 phone_number: value.data.phoneNumber ?? ""));
                             // sendOtp(context, emailController.value.text);
                           },
@@ -135,7 +135,7 @@ class LoginController extends GetxController {
                             Get.to((_) => SelectOption(
                                 name: value.data?.profiles?[1].username ?? "",
                                 role: value.data.profiles?[1].role?.name ?? "",
-                                email: emailController.value.text,
+                                email: value.data.email ?? "",
                                 phone_number: value.data.phoneNumber ?? ""));
                             //sendOtp(context, emailController.value.text);
                           },
@@ -180,7 +180,7 @@ class LoginController extends GetxController {
                   Get.to(() => SelectOption(
                       name: value.data?.profiles?[0].username ?? "",
                       role: value.data.profiles?[0].role?.name ?? "",
-                      email: emailController.value.text,
+                      email: value.data.email ?? "",
                       phone_number: value.data.phoneNumber ?? ""));
                   // sendOtp(context, emailController.value.text);
                 },

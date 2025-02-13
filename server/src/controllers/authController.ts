@@ -69,10 +69,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 export const login = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email } = req.body;
-
+   
     const isEmailValid = isValidEmail(email);
     const queryValue = isEmailValid ? email : email;
-
+ 
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
@@ -94,7 +94,6 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         },
       ],
     });
-
     if (isUser) {
       return res.status(200).json({
         status: true,
