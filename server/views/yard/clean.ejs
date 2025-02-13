@@ -157,6 +157,12 @@
         margin-right: 8px;
         color: #27ae60;
       }
+      .fail-message{
+        top: 50%;
+      }
+      .fail-message1{
+        top: 55%;
+      }
     </style>
   </head>
   <body>
@@ -201,8 +207,10 @@
        
       </div>
     </div>
-    <div class="test-result-message">TEST RESULT MESSAGE</div>
-    <div class="congratulations-message">
+    <div class="test-result-message <% if (details.result === 'Fail') { %> fail-message <% } %>">
+      TEST RESULT MESSAGE
+    </div>
+    <div class="congratulations-message <% if (details.result === 'Fail') { %> fail-message1 <% } %>">
       <% if (details.result === 'Pass') { %>
         <div style="margin-top: 50px;"></div>
       <strong>Congratulations!</strong> Your vehicle
