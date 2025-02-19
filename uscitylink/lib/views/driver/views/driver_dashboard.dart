@@ -3,11 +3,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
+import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
 class DriverDashboard extends StatefulWidget {
@@ -21,6 +23,9 @@ class _DriverDashboardState extends State<DriverDashboard>
     with WidgetsBindingObserver {
   SocketService socketService = Get.find<SocketService>();
   DashboardController _dashboardController = Get.put(DashboardController());
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
@@ -52,11 +57,22 @@ class _DriverDashboardState extends State<DriverDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
+              leading: IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  // Open the drawer using the scaffold key
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
               backgroundColor:
                   TColors.primary, // Uncomment to use your custom primary color
               title: Text(
@@ -406,6 +422,7 @@ class _DriverDashboardState extends State<DriverDashboard>
               );
             })),
       ),
+      drawer: DriverCustomDrawer(),
     );
   }
 }

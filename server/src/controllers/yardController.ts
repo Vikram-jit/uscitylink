@@ -8,6 +8,8 @@ import { generatePdf } from "../utils/pdf";
 import { secondarySequelize } from "../sequelize";
 import { QueryTypes } from "sequelize";
 import { sendEmailWithAttachment } from "../utils/sendEmail";
+import { UserProfile } from "../models/UserProfile";
+import User from "../models/User";
 
 const renderTemplate = (templatePath: string, data: any) => {
   return new Promise((resolve, reject) => {
@@ -258,5 +260,76 @@ export  async function sendInvoiceEmail(
     return res
       .status(400)
       .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+export async function getPays(req: Request, res: Response): Promise<any> {
+  try {
+console.log(req.user?.id)
+     const userProfile = await UserProfile.findByPk(req.user?.id)
+     const user = await User.findByPk(userProfile?.userId);
+    // Get pagination parameters from the request query, with defaults if not provided
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const type = "driver_pays";
+    const searchQuery = req.query.search || ""; // New parameter for search
+
+    // Calculate OFFSET
+    const offset = (page - 1) * pageSize;
+
+    // Construct the search condition
+    let searchCondition = '';
+    let replacements: any = { limit: pageSize, offset };
+
+   
+     if (searchQuery) {
+      // Use LIKE if searchQuery is provided
+      searchCondition = `WHERE number = :searchQuery`;  // Modify `number` based on your table schema
+      replacements.searchQuery = `${searchQuery}`; // Add the searchQuery parameter
+    }
+
+    // Fetch the total number of records for pagination
+    const totalTrucks = await secondarySequelize.query<any>(
+      `SELECT COUNT(*) AS total FROM ${type} WHERE driver_id = :driverId ${searchCondition}`,
+      {
+        replacements: {
+          driverId: user?.yard_id,
+          ...replacements, // Spread other replacements if necessary
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    // Fetch the paginated data with the appropriate search condition
+    const pays = await secondarySequelize.query<any>(
+      `SELECT * FROM ${type} WHERE driver_id = :driverId ${searchCondition} ORDER BY id DESC LIMIT :limit OFFSET :offset`,
+      {
+        replacements: {
+          driverId:  user?.yard_id,
+          ...replacements, // Spread other replacements if necessary
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    // Calculate total pages (for pagination metadata)
+    const totalCount = totalTrucks[0].total;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    return res.status(200).json({
+      status: true,
+      message: `Get pays Successfully.`,
+      data: {
+        data: pays,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          totalPages: totalPages,
+          totalItems: totalCount,
+        },
+      },
+    });
+  } catch (err: any) {
+    return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
   }
 }

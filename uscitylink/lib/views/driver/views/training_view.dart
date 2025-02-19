@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/trainings/training_detail_view.dart';
 
 class TrainingView extends StatefulWidget {
@@ -14,6 +15,7 @@ class TrainingView extends StatefulWidget {
 
 class _TrainingViewState extends State<TrainingView> {
   TrainingController _trainingController = Get.find<TrainingController>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -25,12 +27,23 @@ class _TrainingViewState extends State<TrainingView> {
   Widget build(BuildContext context) {
     _trainingController.fetchTrainingVideos(page: 1);
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: TColors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
+              leading: IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  // Open the drawer using the scaffold key
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
               backgroundColor: TColors.primary,
               title: Text(
                 "Training Section",
@@ -138,6 +151,7 @@ class _TrainingViewState extends State<TrainingView> {
           );
         },
       ),
+      drawer: DriverCustomDrawer(),
     );
   }
 }

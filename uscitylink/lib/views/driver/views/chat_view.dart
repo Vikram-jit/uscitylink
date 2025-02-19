@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
+import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
 import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
 import 'package:badges/badges.dart' as badges;
@@ -23,6 +25,8 @@ class _ChatViewState extends State<ChatView>
   SocketService socketService = Get.find<SocketService>();
   ChannelController channelController = Get.find<ChannelController>();
   GroupController groupController = Get.put(GroupController());
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -77,8 +81,19 @@ class _ChatViewState extends State<ChatView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         backgroundColor: TColors.primary,
+        leading: IconButton(
+          icon: Icon(
+            Icons.menu,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            // Open the drawer using the scaffold key
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
         title: Text("Chats",
             style: Theme.of(context)
                 .textTheme
@@ -139,6 +154,7 @@ class _ChatViewState extends State<ChatView>
           GroupTab(groupController: groupController),
         ],
       ),
+      drawer: DriverCustomDrawer(),
     );
   }
 }

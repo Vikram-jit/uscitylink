@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 
 class DocumentView extends StatefulWidget {
   DocumentView({super.key});
@@ -19,6 +20,7 @@ class _DocumentViewState extends State<DocumentView>
   final TruckController _controller = Get.put(TruckController());
   int tabIndex = 0;
   late Timer _debounce;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -79,6 +81,7 @@ class _DocumentViewState extends State<DocumentView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: TColors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(
@@ -86,6 +89,16 @@ class _DocumentViewState extends State<DocumentView>
         child: Column(
           children: [
             AppBar(
+              leading: IconButton(
+                icon: Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  // Open the drawer using the scaffold key
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
               backgroundColor: TColors.primary,
               title: Text(
                 "Vehicles",
@@ -168,6 +181,7 @@ class _DocumentViewState extends State<DocumentView>
           ),
         ],
       ),
+      drawer: DriverCustomDrawer(),
     );
   }
 }

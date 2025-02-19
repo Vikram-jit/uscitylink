@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/services/fcm_service.dart';
@@ -27,6 +28,8 @@ class _DashboardViewState extends State<DashboardView>
 
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
+  final CustomDrawerController _customDrawerController =
+      Get.put(CustomDrawerController());
   TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
