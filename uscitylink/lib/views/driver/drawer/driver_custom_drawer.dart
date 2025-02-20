@@ -9,7 +9,9 @@ import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/staff/view/staff_trainings_view.dart';
 
 class DriverCustomDrawer extends StatefulWidget {
-  DriverCustomDrawer({super.key});
+  final GlobalKey<ScaffoldState> globalKey;
+
+  DriverCustomDrawer({super.key, required this.globalKey});
 
   @override
   State<DriverCustomDrawer> createState() => _CustomDrawerState();
@@ -81,8 +83,9 @@ class _CustomDrawerState extends State<DriverCustomDrawer>
             ),
 
             // List of Drawer Items
-            _buildDrawerItem(context, Icons.payment, 'Pays',
-                () => _navigateToHome(context, customDrawerController)),
+            _buildDrawerItem(context, Icons.payment, 'Pays', () {
+              _navigateToHome(context, widget.globalKey);
+            }),
 
             Divider(color: Colors.grey),
             ListTile(
@@ -110,8 +113,8 @@ class _CustomDrawerState extends State<DriverCustomDrawer>
 
   // Navigation methods
   void _navigateToHome(
-      BuildContext context, CustomDrawerController customDrawerController) {
-    customDrawerController.closeDrawer();
+      BuildContext context, GlobalKey<ScaffoldState> globalKey) {
+    globalKey.currentState?.closeDrawer();
     Get.to(() => DriverPayView());
     // Add navigation to Home screen
   }

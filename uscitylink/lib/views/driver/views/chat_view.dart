@@ -154,7 +154,9 @@ class _ChatViewState extends State<ChatView>
           GroupTab(groupController: groupController),
         ],
       ),
-      drawer: DriverCustomDrawer(),
+      drawer: DriverCustomDrawer(
+        globalKey: _scaffoldKey,
+      ),
     );
   }
 }

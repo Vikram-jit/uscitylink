@@ -422,7 +422,7 @@ class _DriverDashboardState extends State<DriverDashboard>
               );
             })),
       ),
-      drawer: DriverCustomDrawer(),
+      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }

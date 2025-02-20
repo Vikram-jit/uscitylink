@@ -36,7 +36,7 @@ class PayModel {
 
 class Pay {
   int? id;
-  int? driverId;
+  String? driverId;
   String? tripId;
   String? startDate;
   String? endDate;
@@ -132,13 +132,13 @@ class DocumentService {
     }
   }
 
-  Future<ApiResponse<PayModel>> getPays({
-    int page = 1, // Default to page 1
-    int pageSize = 15,
-  }) async {
+  Future<ApiResponse<PayModel>> getPays(
+      {int page = 1, // Default to page 1
+      int pageSize = 15,
+      String search = ""}) async {
     try {
-      dynamic response = await _apiService
-          .getApi('${Constant.url}/yard/pays?page=$page&pageSize=$pageSize');
+      dynamic response = await _apiService.getApi(
+          '${Constant.url}/yard/pays?page=$page&pageSize=$pageSize&search=${search}');
 
       if (response != null && response is Map<String, dynamic>) {
         PayModel details = PayModel.fromJson(response['data']);

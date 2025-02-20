@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,17 @@ class PayController extends GetxController {
   var totalPages = 1.obs;
 
   TextEditingController searchController = TextEditingController();
+  Timer? _debounce;
+
+  void onSearchChanged(String query) {
+    // If the previous timer is active, cancel it
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+
+    // Start a new timer for debounce (500ms delay)
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      fetchTrucks(page: 1, search: query);
+    });
+  }
 
   Future<void> fetchTrucks(
       {int page = 1, String type = "trucks", String search = ""}) async {
@@ -23,7 +35,8 @@ class PayController extends GetxController {
     isLoading.value = true;
 
     try {
-      var response = await DocumentService().getPays(page: page);
+      var response =
+          await DocumentService().getPays(page: page, search: search);
 
       // Check if the response is valid
       if (response.status == true) {

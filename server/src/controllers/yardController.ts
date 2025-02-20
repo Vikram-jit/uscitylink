@@ -266,7 +266,6 @@ export  async function sendInvoiceEmail(
 
 export async function getPays(req: Request, res: Response): Promise<any> {
   try {
-console.log(req.user?.id)
      const userProfile = await UserProfile.findByPk(req.user?.id)
      const user = await User.findByPk(userProfile?.userId);
     // Get pagination parameters from the request query, with defaults if not provided
@@ -285,7 +284,7 @@ console.log(req.user?.id)
    
      if (searchQuery) {
       // Use LIKE if searchQuery is provided
-      searchCondition = `WHERE number = :searchQuery`;  // Modify `number` based on your table schema
+      searchCondition = `AND tripId = :searchQuery`;  // Modify `number` based on your table schema
       replacements.searchQuery = `${searchQuery}`; // Add the searchQuery parameter
     }
 

@@ -171,7 +171,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
           ),
         ],
       ),
-      drawer: DriverCustomDrawer(),
+      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }

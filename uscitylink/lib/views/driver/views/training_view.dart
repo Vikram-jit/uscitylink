@@ -151,7 +151,7 @@ class _TrainingViewState extends State<TrainingView> {
           );
         },
       ),
-      drawer: DriverCustomDrawer(),
+      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }

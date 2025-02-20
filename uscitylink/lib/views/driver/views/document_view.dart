@@ -181,7 +181,7 @@ class _DocumentViewState extends State<DocumentView>
           ),
         ],
       ),
-      drawer: DriverCustomDrawer(),
+      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }
