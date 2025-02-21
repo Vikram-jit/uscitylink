@@ -284,8 +284,9 @@ export async function getPays(req: Request, res: Response): Promise<any> {
    
      if (searchQuery) {
       // Use LIKE if searchQuery is provided
-      searchCondition = `AND tripId = :searchQuery`;  // Modify `number` based on your table schema
-      replacements.searchQuery = `${searchQuery}`; // Add the searchQuery parameter
+    searchCondition = `AND tripId LIKE :searchQuery`;
+ // Modify `number` based on your table schema
+ replacements.searchQuery = `%${searchQuery}%`; // Add the searchQuery parameter
     }
 
     // Fetch the total number of records for pagination
@@ -300,6 +301,19 @@ export async function getPays(req: Request, res: Response): Promise<any> {
       }
     );
 
+    const totalAmount = await secondarySequelize.query<any>(
+      `SELECT SUM(amount) AS totalAmount
+       FROM driver_pays 
+       WHERE driver_id = :driverId 
+       ${searchCondition}`,
+      {
+        replacements: {
+          driverId: user?.yard_id,
+          ...replacements, // Spread other replacements if necessary (e.g., search term, dates)
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
     // Fetch the paginated data with the appropriate search condition
     const pays = await secondarySequelize.query<any>(
       `SELECT * FROM ${type} WHERE driver_id = :driverId ${searchCondition} ORDER BY id DESC LIMIT :limit OFFSET :offset`,
@@ -320,6 +334,7 @@ export async function getPays(req: Request, res: Response): Promise<any> {
       message: `Get pays Successfully.`,
       data: {
         data: pays,
+        totalAmount:totalAmount?.[0]?.totalAmount || 0,
         pagination: {
           currentPage: page,
           pageSize: pageSize,

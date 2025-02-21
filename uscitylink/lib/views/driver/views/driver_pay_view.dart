@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/pay_controller.dart';
-import 'package:uscitylink/controller/staff/staffdriver_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/views/driver/views/document_view.dart';
+import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 
 class DriverPayView extends StatelessWidget {
@@ -81,143 +79,231 @@ class DriverPayView extends StatelessWidget {
         }
         return RefreshIndicator(
           onRefresh: () => _payController.fetchTrucks(page: 1),
-          child: ListView.builder(
-            controller: ScrollController()
-              ..addListener(() {
-                // Don't load more if data is already loading
-                if (_payController.isLoading.value) return;
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: ScrollController()
+                    ..addListener(() {
+                      // Don't load more if data is already loading
+                      if (_payController.isLoading.value) return;
 
-                // Check if there are more pages and trigger data fetch if necessary
-                if (_payController.currentPage.value <
-                    _payController.totalPages.value) {
-                  if (_payController.pays.isNotEmpty &&
-                      _payController.pays.last ==
-                          _payController.pays[_payController.pays.length - 1]) {
-                    _payController.fetchTrucks(
-                        page: _payController.currentPage.value + 1);
-                  }
-                }
-              }),
-            itemCount: _payController.pays?.length,
-            itemBuilder: (context, index) {
-              var pay = _payController.pays[index];
-              return Column(
-                children: [
-                  ExpansionTile(
-                    collapsedShape: Border.all(
-                        color: Colors.transparent, style: BorderStyle.none),
-                    title: Text("${pay.tripId}"),
+                      // Check if there are more pages and trigger data fetch if necessary
+                      if (_payController.currentPage.value <
+                          _payController.totalPages.value) {
+                        if (_payController.pays.isNotEmpty &&
+                            _payController.pays.last ==
+                                _payController
+                                    .pays[_payController.pays.length - 1]) {
+                          _payController.fetchTrucks(
+                              page: _payController.currentPage.value + 1);
+                        }
+                      }
+                    }),
+                  itemCount: _payController.pays?.length,
+                  itemBuilder: (context, index) {
+                    var pay = _payController.pays[index];
+                    return Column(
+                      children: [
+                        ExpansionTile(
+                          collapsedShape: Border.all(
+                              color: Colors.transparent,
+                              style: BorderStyle.none),
+                          title: Text("${pay.tripId}"),
 
-                    /// subtitle: Divider(),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                        child: Column(
+                          /// subtitle: Divider(),
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_month,
-                                      size: 14,
-                                    ),
-                                    Text(
-                                      "Start Date",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                Text("${pay.startDate}")
-                              ],
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 16.0, right: 16.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_month,
+                                                size: 14,
+                                              ),
+                                              Text(
+                                                "Start Date",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          Text("${pay.startDate}",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700))
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_month,
+                                                size: 14,
+                                              ),
+                                              Text(
+                                                "End Date",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          Text("${pay.endDate}",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700))
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.money,
+                                                size: 16,
+                                              ),
+                                              Text(
+                                                "Amount",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(fontSize: 16),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            "${pay.amount}",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w700),
+                                          )
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_month,
-                                      size: 14,
+                            if (pay.document != null)
+                              Padding(
+                                padding: EdgeInsets.only(top: 10, right: 10),
+                                child: InkWell(
+                                  onTap: () {
+                                    Get.to(() => DocumentDownload(
+                                          file:
+                                              "https://msyard.s3.us-west-1.amazonaws.com/images/${pay.document}",
+                                        ));
+                                  },
+                                  child: Container(
+                                    width:
+                                        TDeviceUtils.getScreenWidth(context) *
+                                            0.9,
+                                    margin: EdgeInsets.only(left: 10),
+                                    padding: EdgeInsets.all(6),
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                        color: TColors.primaryStaff,
+                                        borderRadius: BorderRadius.circular(6)),
+                                    child: Center(
+                                      child: Text(
+                                        "View Document",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                                     ),
-                                    Text(
-                                      "End Date",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                Text("${pay.endDate}")
-                              ],
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.money,
-                                      size: 14,
-                                    ),
-                                    Text(
-                                      "Amount",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                Text("${pay.amount}")
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (pay.document != null)
-                        Padding(
-                          padding: EdgeInsets.only(top: 10, right: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  Get.to(() => DocumentDownload(
-                                        file:
-                                            "https://msyard.s3.us-west-1.amazonaws.com/images/${pay.document}",
-                                      ));
-                                },
-                                child: Container(
-                                  margin: EdgeInsets.only(left: 10),
-                                  padding: EdgeInsets.all(6),
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                      color: TColors.primaryStaff,
-                                      borderRadius: BorderRadius.circular(6)),
-                                  child: Text(
-                                    "View Document",
-                                    style: TextStyle(color: Colors.white),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            SizedBox(
+                              height: 10,
+                            ),
+                          ],
                         ),
-                      SizedBox(
-                        height: 10,
+                        Divider()
+                      ],
+                    );
+                  },
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1), // Shadow color
+                      spreadRadius: 1, // How much the shadow spreads
+                      blurRadius: 5, // Softness of the shadow
+                      offset: Offset(
+                          0, -3), // Moves shadow upwards (negative Y-axis)
+                    ),
+                  ],
+                  color: Colors.white, // Ensure background color is set
+                ),
+                height: 80,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Total Trips:",
+                            style: Theme.of(context)
+                                ?.textTheme
+                                ?.labelSmall
+                                ?.copyWith(fontSize: 14),
+                          ),
+                          SizedBox(
+                            width: 6,
+                          ),
+                          Text(
+                            "${_payController.totalItems}",
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          )
+                        ],
                       ),
+                      Row(
+                        children: [
+                          Text(
+                            "Total Pay:",
+                            style: Theme.of(context)
+                                ?.textTheme
+                                ?.labelSmall
+                                ?.copyWith(fontSize: 14),
+                          ),
+                          SizedBox(
+                            width: 6,
+                          ),
+                          Text(
+                            "\$${_payController.totalAmount}",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: TColors.primary),
+                          )
+                        ],
+                      )
                     ],
                   ),
-                  Divider()
-                ],
-              );
-            },
+                ),
+              )
+            ],
           ),
         );
       }),

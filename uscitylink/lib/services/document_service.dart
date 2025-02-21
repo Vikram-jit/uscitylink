@@ -7,8 +7,8 @@ import 'package:uscitylink/model/vehicle_model.dart';
 class PayModel {
   List<Pay>? data;
   Pagination? pagination;
-
-  PayModel({this.data, this.pagination});
+  int? totalAmount;
+  PayModel({this.data, this.pagination, this.totalAmount});
 
   PayModel.fromJson(Map<String, dynamic> json) {
     if (json['data'] != null) {
@@ -17,9 +17,11 @@ class PayModel {
         data?.add(Pay.fromJson(v));
       });
     }
+
     pagination = json['pagination'] != null
         ? Pagination.fromJson(json['pagination'])
         : null;
+    totalAmount = json['totalAmount'];
   }
 
   Map<String, dynamic> toJson() {
@@ -30,6 +32,7 @@ class PayModel {
     if (this.pagination != null) {
       data['pagination'] = this.pagination?.toJson();
     }
+    data['totalAmount'] = this.totalAmount;
     return data;
   }
 }
