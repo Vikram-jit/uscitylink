@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,7 +8,6 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/template_controller.dart';
-import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/truck_group_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -168,7 +165,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                       String userNames = groupController
                               .truckGroup?.value?.members
                               ?.map((member) =>
-                                  member.userProfile?.username ??
+                                  "${member.userProfile?.username} (${member.userProfile?.user?.driverNumber})" ??
                                   '') // Extract userProfileId
                               .where((id) =>
                                   id.isNotEmpty) // Filter out any empty values

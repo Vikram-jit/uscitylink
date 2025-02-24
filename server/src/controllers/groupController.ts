@@ -163,7 +163,8 @@ export async function get(req: Request, res: Response): Promise<any> {
         },
       ],
 
-      order: type == "group" ? [["message_count", "DESC"]] : [["id", "DESC"]],
+      //order: type == "group" ? [["message_count", "DESC"]] : [["id", "DESC"]],
+      order: type == "group" ? [["message_count", "DESC"]] : [["updatedAt", "DESC"]],
       limit: pageSize,
       offset: offset,
     });
@@ -208,7 +209,12 @@ export async function getById(req: Request, res: Response): Promise<any> {
         
       },
       include:[
-        {model:UserProfile}
+        {model:UserProfile,include:[
+          {
+            model:User,
+            as:"user"
+          }
+        ]}
       ]
     });
 
@@ -232,16 +238,23 @@ export async function groupAddMember(
     const group = await Group.findByPk(req.params.id);
 
     const { members } = req.body;
-
+   
     //check member active count
-    if (group?.type != "group") {
+    if (group?.type != "group" && group?.name?.trim() != "Mechanic") {
+
+
       const isCheckCount = await GroupUser.findAndCountAll({
         where: {
           groupId: group?.id,
           status: "active",
         },
       });
-
+      if(members?.split(",")?.length > 2 &&  group?.name?.trim() != "Mechanic"){
+        throw new Error(
+          "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+        );
+      }
+     
       if (isCheckCount.count == 2)
         throw new Error(
           "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."

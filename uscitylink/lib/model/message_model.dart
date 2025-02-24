@@ -1,6 +1,7 @@
 import 'dart:ffi';
 
 import 'package:uscitylink/model/group_model.dart';
+import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 
 class MessageModel {
   String? id;
@@ -94,17 +95,14 @@ class Sender {
   String? id;
   String? username;
   bool? isOnline;
-
-  Sender({
-    this.id,
-    this.username,
-    this.isOnline,
-  });
+  User? user;
+  Sender({this.id, this.username, this.isOnline, this.user});
 
   Sender.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     username = json['username'];
     isOnline = json['isOnline'];
+    user = json['user'] != null ? new User.fromJson(json['user']) : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -112,7 +110,9 @@ class Sender {
     data['id'] = id;
     data['username'] = username;
     data['isOnline'] = isOnline;
-
+    if (this.user != null) {
+      data['user'] = this.user?.toJson();
+    }
     return data;
   }
 }

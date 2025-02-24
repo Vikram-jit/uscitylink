@@ -318,8 +318,26 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                             title: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                    "${groupController.group.value.groupMembers?[index].userProfile?.username}"),
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text:
+                                              "${groupController.group.value.groupMembers?[index].userProfile?.username} ",
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                              "(${groupController.group.value.groupMembers?[index].userProfile?.user?.driverNumber})",
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                                 Row(
                                   children: [
                                     Switch(

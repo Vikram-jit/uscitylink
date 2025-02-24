@@ -621,6 +621,10 @@ const ChatInterface = ({ type }: { type: string }) => {
                                   <Typography
                                     sx={{
                                       color: 'grey',
+                                      overflow: 'hidden',
+                                      display: '-webkit-box',
+                                      WebkitBoxOrient: 'vertical',
+                                      WebkitLineClamp: 2, // Limits text to 2 lines
                                       '&:hover': {
                                         color: 'grey',
                                       },
@@ -838,7 +842,8 @@ const ChatInterface = ({ type }: { type: string }) => {
                       size="small"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      multiline
+                      maxRows={10}
                     />
                     <IconButton onClick={handleSendMessage} disabled={isLoading}>
                       {isLoading ? <CircularProgress size={24} /> : <FiSend />}

@@ -596,7 +596,7 @@ export async function messageToDriverByTruckGroup(
   }else{
     userIds =  userId.split(",")
   }
-
+  let idsf:any = "";
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId
@@ -616,7 +616,7 @@ export async function messageToDriverByTruckGroup(
       type: "truck_group",
       thumbnail:thumbnail ||null
     });
-
+    idsf = messageSave.id
     const message = await Message.findOne({
       where: {
         id: messageSave.id,
@@ -745,7 +745,17 @@ export async function messageToDriverByTruckGroup(
       }
     );
   }
-
+  await Group.update(
+    {
+      message_count: Sequelize.literal("message_count + 1"),
+      last_message_id: idsf,
+    },
+    {
+      where: {
+        id: groupId,
+      },
+    }
+  );
   const group_message = await GroupMessage.create({
     groupId: groupId,
     body: body,

@@ -238,7 +238,12 @@ export async function addOrRemoveDriverFromGrop(req: Request, res: Response): Pr
           userProfileId:req.body.id,
         },
         include:[
-          {model:UserProfile}
+          {model:UserProfile,include:[
+            {
+              model:User,
+              as:"user"
+            }
+          ]}
         ]
       });
     }
