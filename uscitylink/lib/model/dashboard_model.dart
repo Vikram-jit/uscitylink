@@ -1,4 +1,6 @@
 class DashboardModel {
+  Channel? channel;
+  String? trucks;
   int? channelCount;
   int? messageCount;
   int? groupCount;
@@ -7,20 +9,26 @@ class DashboardModel {
   List<LatestMessage>? latestMessage;
   List<LatestGroupMessage>? latestGroupMessage;
 
-  DashboardModel(
-      {this.channelCount,
-      this.messageCount,
-      this.groupCount,
-      this.truckCount,
-      this.trailerCount,
-      this.latestMessage,
-      this.latestGroupMessage});
+  DashboardModel({
+    this.trucks,
+    this.channelCount,
+    this.messageCount,
+    this.groupCount,
+    this.truckCount,
+    this.trailerCount,
+    this.latestMessage,
+    this.latestGroupMessage,
+    this.channel,
+  });
 
   DashboardModel.fromJson(Map<String, dynamic> json) {
     channelCount = json['channelCount'];
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
     truckCount = json['truckCount'];
+    trucks = json['trucks'];
+    channel =
+        json['channel'] != null ? new Channel.fromJson(json['channel']) : null;
     trailerCount = json['trailerCount'];
     if (json['latestMessage'] != null) {
       latestMessage = <LatestMessage>[];
@@ -38,7 +46,11 @@ class DashboardModel {
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
+    if (this.channel != null) {
+      data['channel'] = this.channel!.toJson();
+    }
     data['channelCount'] = this.channelCount;
+    data['trucks'] = trucks;
     data['messageCount'] = this.messageCount;
     data['groupCount'] = this.groupCount;
     data['truckCount'] = this.truckCount;

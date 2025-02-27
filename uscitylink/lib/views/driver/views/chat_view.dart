@@ -73,7 +73,7 @@ class _ChatViewState extends State<ChatView>
     //   channelController.dispose();
     // }
 
-    groupController.dispose();
+    // groupController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

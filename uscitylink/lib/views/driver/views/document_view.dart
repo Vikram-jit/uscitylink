@@ -8,6 +8,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 
 class DocumentView extends StatefulWidget {
+  int tabIndexDefault = 0;
   DocumentView({super.key});
 
   @override
@@ -16,9 +17,9 @@ class DocumentView extends StatefulWidget {
 
 class _DocumentViewState extends State<DocumentView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late TabController _tabController;
+  // late TabController _tabController;
   final TruckController _controller = Get.put(TruckController());
-  int tabIndex = 0;
+
   late Timer _debounce;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -28,26 +29,28 @@ class _DocumentViewState extends State<DocumentView>
     _debounce = Timer(Duration(seconds: 0), () {});
     super.initState();
 
-    _tabController = TabController(length: 2, vsync: this);
+    // _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
 
     // Listen for tab changes to refetch channels when the Channels tab is selected
-    _tabController.addListener(() {
-      if (_tabController.index == 0 && !_tabController.indexIsChanging) {
+    _controller.tabController.addListener(() {
+      if (_controller.tabController.index == 0 &&
+          !_controller.tabController.indexIsChanging) {
         _controller.currentPage.value = 1;
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trucks");
         setState(() {
-          tabIndex = 0;
+          _controller.initialIndex.value = 0;
         });
       }
-      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+      if (_controller.tabController.index == 1 &&
+          !_controller.tabController.indexIsChanging) {
         _controller.currentPage.value = 1;
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trailers");
         setState(() {
-          tabIndex = 1;
+          _controller.initialIndex.value = 1;
         });
       }
     });
@@ -66,7 +69,7 @@ class _DocumentViewState extends State<DocumentView>
       // Call API with the new search query
       _controller.fetchTrucks(
           page: 1,
-          type: _tabController.index == 0 ? "trucks" : "trailers",
+          type: _controller.tabController.index == 0 ? "trucks" : "trailers",
           search: query);
     });
   }
@@ -129,7 +132,7 @@ class _DocumentViewState extends State<DocumentView>
                       onChanged: _onSearchChanged,
                       decoration: InputDecoration(
                         hintText:
-                            "Search ${tabIndex == 0 ? "trucks" : "trailers"}...",
+                            "Search ${_controller.initialIndex.value == 0 ? "trucks" : "trailers"}...",
                         hintStyle: TextStyle(color: Colors.grey),
                         prefixIcon: Icon(Icons.search, color: Colors.grey),
                         filled: true,
@@ -161,7 +164,7 @@ class _DocumentViewState extends State<DocumentView>
                     color: TColors.primary,
                     borderRadius: BorderRadius.circular(10)),
                 indicatorWeight: 4.0,
-                controller: _tabController,
+                controller: _controller.tabController,
                 tabs: const [
                   Tab(text: "Trucks"),
                   Tab(text: "Trailers"),
@@ -172,7 +175,7 @@ class _DocumentViewState extends State<DocumentView>
         ),
       ),
       body: TabBarView(
-        controller: _tabController,
+        controller: _controller.tabController,
         children: [
           VehicleList(controller: _controller, type: "truck"),
           VehicleList(
@@ -204,7 +207,10 @@ class VehicleList extends StatelessWidget {
         return Center(child: CircularProgressIndicator());
       }
       if (_controller.trucks.isEmpty) {
-        return Center(child: Text("No any record found."));
+        return Center(
+            child: type == "trucks"
+                ? Text("No any record found.")
+                : Text("Search with Trailer number"));
       }
       return ListView.builder(
         controller: ScrollController()

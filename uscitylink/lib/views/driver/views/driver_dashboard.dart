@@ -2,14 +2,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
+import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
+import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
 class DriverDashboard extends StatefulWidget {
@@ -23,7 +26,8 @@ class _DriverDashboardState extends State<DriverDashboard>
     with WidgetsBindingObserver {
   SocketService socketService = Get.find<SocketService>();
   DashboardController _dashboardController = Get.put(DashboardController());
-
+  ChannelController channelController = Get.find<ChannelController>();
+  TruckController truckController = Get.put(TruckController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -126,10 +130,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                       children: [
                         Expanded(
                           child: StatCard(
-                            title: "TOTAL CHANNEL",
-                            value: _dashboardController
-                                    .dashboard.value.channelCount ??
-                                0,
+                            title: "U S CITYLINK INC",
+                            value: 0,
                             icon: Icons.wifi_channel,
                             gradientColors: const [
                               Color(
@@ -138,20 +140,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                             ], // Gradient colors
                           ),
                         ),
-                        Expanded(
-                          child: StatCard(
-                            title: "TOTAL MESSAGE",
-                            icon: Icons.message,
-                            value: _dashboardController
-                                    .dashboard.value.messageCount ??
-                                0,
-                            gradientColors: [
-                              Color(
-                                  0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                              Color(0xFFe5e5e5),
-                            ], // Gradient colors
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -163,25 +151,65 @@ class _DriverDashboardState extends State<DriverDashboard>
                     child: Row(
                       children: [
                         Expanded(
-                          child: StatCard(
-                            icon: Icons.fire_truck,
-                            title: "TRUCKS",
-                            value: _dashboardController
-                                    .dashboard.value.truckCount ??
-                                0,
-                            gradientColors: [
-                              Color(
-                                  0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                              Color(0xFFe5e5e5),
-                            ], // Gradient colors
+                          child: InkWell(
+                            onTap: () {
+                              Get.toNamed(
+                                AppRoutes.driverMessage,
+                                arguments: {
+                                  'channelId': _dashboardController
+                                      ?.dashboard.value.channel?.id,
+                                  'name': _dashboardController
+                                      ?.dashboard.value.channel?.name,
+                                },
+                              );
+                            },
+                            child: StatCard(
+                              title: "TOTAL MESSAGE",
+                              icon: Icons.message,
+                              value: _dashboardController
+                                      .dashboard.value.messageCount ??
+                                  0,
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
                           ),
                         ),
                         Expanded(
+                            child: InkWell(
+                          onTap: () {
+                            Get.to(() => DriverProfileView());
+                          },
+                          child: StatCard(
+                            icon: Icons.person,
+                            title: "My Information",
+                            value: 0,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.1,
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 1.2,
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            channelController.setTabIndex(2);
+                            truckController.changeTab(1);
+                          },
                           child: StatCard(
                             title: "TRAILERS",
-                            value: _dashboardController
-                                    .dashboard.value.trailerCount ??
-                                0,
+                            value: 0,
                             icon: Icons.car_crash,
                             gradientColors: [
                               Color(
@@ -190,27 +218,24 @@ class _DriverDashboardState extends State<DriverDashboard>
                             ], // Gradient colors
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.1,
-                  ),
-                  SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 1.2,
-                    child: Row(
-                      children: [
                         Expanded(
-                          child: StatCard(
-                            icon: Icons.group,
-                            title: "GROUPS",
-                            value: _dashboardController
-                                    .dashboard.value.groupCount ??
-                                0,
-                            gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
-                            ],
+                          child: InkWell(
+                            onTap: () {
+                              channelController.setTabIndex(2);
+                              truckController.changeTab(0);
+                            },
+                            child: StatCard(
+                              icon: Icons.fire_truck,
+                              title: "TRUCK",
+                              value:
+                                  _dashboardController.dashboard.value.trucks ??
+                                      "",
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
                           ),
                         ),
                       ],

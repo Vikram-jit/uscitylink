@@ -15,6 +15,7 @@ import 'package:flutter_app_badge_control/flutter_app_badge_control.dart';
 class ChannelController extends GetxController {
   var channels = <UserChannelModel>[].obs;
   var innerTabIndex = 0.obs;
+  var doucumentInnerTabIndex = 0.obs;
   var loading = false.obs;
   final __channelService = ChannelService();
   final _truckController = TruckController();
@@ -23,6 +24,7 @@ class ChannelController extends GetxController {
   var totalUnReadMessage = 0.obs;
   var channelCount = 0.obs;
   var groupCount = 0.obs;
+
   RxBool isSupportBadge = false.obs;
 
   GroupController groupController = Get.put(GroupController());
@@ -81,8 +83,7 @@ class ChannelController extends GetxController {
       FlutterAppBadgeControl.isAppBadgeSupported().then((res) async {
         await FlutterAppBadgeControl.updateBadgeCount(response.data.total ?? 0);
       });
-      // await FlutterDynamicIcon.setApplicationIconBadgeNumber(
-      //     response.data.total ?? 0);
+
       totalUnReadMessage.value = response.data.total ?? 0;
       channelCount.value = response.data.channel ?? 0;
       groupCount.value = response.data.group ?? 0;
@@ -96,6 +97,10 @@ class ChannelController extends GetxController {
   // Set the current index
   void setTabIndex(int index) {
     currentIndex.value = index;
+  }
+
+  void setDopcuemntTabIndex(int index) {
+    doucumentInnerTabIndex.value = index;
   }
 
   void setInnerTabIndex(int index) {

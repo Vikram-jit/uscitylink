@@ -16,7 +16,7 @@ class PayController extends GetxController {
   var currentPage = 1.obs;
   var totalPages = 1.obs;
   var totalItems = 1.obs;
-  var totalAmount = 0.obs;
+  var totalAmount = 0.0.obs;
   TextEditingController searchController = TextEditingController();
   Timer? _debounce;
 
@@ -50,7 +50,7 @@ class PayController extends GetxController {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
         totalItems.value = response.data.pagination!.totalItems!;
-        totalAmount.value = response.data!.totalAmount!;
+        totalAmount.value = response.data!.totalAmount?.toDouble() ?? 0.0;
       }
     } catch (e) {
       print("Error fetching trucks: $e");

@@ -12,7 +12,7 @@ class DashboardController extends GetxController {
   final dashboard = DashboardModel().obs;
   final dashboardStaff = StaffDashboardModel().obs;
   var loading = false.obs;
-
+  final channel = Channel().obs;
   @override
   void onInit() {
     super.onInit();

@@ -7,7 +7,7 @@ import 'package:uscitylink/model/vehicle_model.dart';
 class PayModel {
   List<Pay>? data;
   Pagination? pagination;
-  int? totalAmount;
+  double? totalAmount;
   PayModel({this.data, this.pagination, this.totalAmount});
 
   PayModel.fromJson(Map<String, dynamic> json) {
@@ -21,7 +21,8 @@ class PayModel {
     pagination = json['pagination'] != null
         ? Pagination.fromJson(json['pagination'])
         : null;
-    totalAmount = json['totalAmount'];
+    totalAmount = (json['totalAmount'] as num?)?.toDouble();
+    ;
   }
 
   Map<String, dynamic> toJson() {
@@ -32,7 +33,8 @@ class PayModel {
     if (this.pagination != null) {
       data['pagination'] = this.pagination?.toJson();
     }
-    data['totalAmount'] = this.totalAmount;
+    data['totalAmount'] =
+        (this.totalAmount is num) ? this.totalAmount?.toDouble() : 0.0;
     return data;
   }
 }
@@ -43,7 +45,7 @@ class Pay {
   String? tripId;
   String? startDate;
   String? endDate;
-  int? amount;
+  double? amount;
   String? document;
   String? createdAt;
   String? updatedAt;
@@ -65,7 +67,7 @@ class Pay {
     tripId = json['tripId'];
     startDate = json['start_date'];
     endDate = json['end_date'];
-    amount = json['amount'];
+    amount = (json['amount'] as num?)?.toDouble();
     document = json['document'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
@@ -78,7 +80,7 @@ class Pay {
     data['tripId'] = this.tripId;
     data['start_date'] = this.startDate;
     data['end_date'] = this.endDate;
-    data['amount'] = this.amount;
+    data['amount'] = (amount as num?)?.toDouble();
     data['document'] = this.document;
     data['created_at'] = this.createdAt;
     data['updated_at'] = this.updatedAt;

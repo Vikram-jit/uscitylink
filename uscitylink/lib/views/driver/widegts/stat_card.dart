@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
-  final int value;
+  final dynamic value;
   final IconData icon;
   final List<Color> gradientColors; // List of colors for gradient
 
@@ -50,14 +50,27 @@ class StatCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: title != "U S CITYLINK INC"
+                            ? title == "TRAILERS" || title == "My Information"
+                                ? 12
+                                : 10
+                            : 22,
+                        fontWeight: FontWeight.bold),
                   ),
-                  Text(
-                    '$value',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  if (title == "TRUCK")
+                    SizedBox(
+                      height: 6,
+                    ),
+                  if (value != 0)
+                    Expanded(
+                      child: Text(
+                        '$value',
+                        style: TextStyle(
+                            fontSize: title == "TRUCK" ? 12 : 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
                 ],
               ),
             ],

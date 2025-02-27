@@ -2,13 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Download } from '@mui/icons-material';
-import { Box, Button, Grid, IconButton, Paper, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Grid, IconButton, Paper, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
 import ReactPlayer from 'react-player';
 
 const options = {
@@ -18,13 +17,11 @@ interface Viewer {
   documentKey: string;
 }
 export default function Viewer({ documentKey }: Viewer) {
-  console.log(documentKey);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
   const [isClient, setIsClient] = useState(false); // To track if we're on the client-side
   const [isLoading, setIsLoading] = useState(true); // Track loading state
-
   const handleLoadingComplete = () => {
     setIsLoading(false); // Set loading to false once the image is loaded
   };
@@ -118,7 +115,7 @@ export default function Viewer({ documentKey }: Viewer) {
               zIndex: 10, // Make sure the loader is on top
             }}
           >
-            <div className="spinner"></div> {/* Custom Spinner */}
+            <CircularProgress/>
           </div>
         )}
 
@@ -155,7 +152,7 @@ export default function Viewer({ documentKey }: Viewer) {
               zIndex: 10, // Make sure the loader is on top
             }}
           >
-            <div className="spinner"></div> {/* Custom Spinner */}
+          <CircularProgress/>
           </div>
         )}
 

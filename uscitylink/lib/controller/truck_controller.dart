@@ -1,16 +1,15 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:uscitylink/data/response/api_response.dart';
 import 'package:uscitylink/model/truck_model.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
 import 'package:uscitylink/services/document_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
-class TruckController extends GetxController {
+class TruckController extends GetxController
+    with GetSingleTickerProviderStateMixin {
   var innerTabIndex = 0.obs;
-
+  var initialIndex = 1.obs; // Reactive variable for the initial index
+  late TabController tabController;
   // Rx variables to track loading state, list of trucks, and pagination
   var isLoading = false.obs;
   var detailLoader = false.obs;
@@ -23,6 +22,24 @@ class TruckController extends GetxController {
   TextEditingController searchController = TextEditingController();
   void setInnerTabIndex(int index) {
     innerTabIndex.value = index;
+  }
+
+  void changeTab(int index) {
+    initialIndex.value = index;
+    tabController.animateTo(index); // Update the tab selection dynamically
+    if (index == 1) {
+      currentPage.value = 1;
+      totalPages.value = 1;
+      trucks.value = [];
+      fetchTrucks(page: 1, type: "trailers");
+    }
+
+    if (index == 0) {
+      currentPage.value = 1;
+      totalPages.value = 1;
+      trucks.value = [];
+      fetchTrucks(page: 1, type: "trucks");
+    }
   }
 
   Future<void> fetchTrucks(
@@ -72,6 +89,14 @@ class TruckController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    tabController =
+        TabController(length: 2, vsync: this, initialIndex: initialIndex.value);
     fetchTrucks(page: currentPage.value);
+  }
+
+  @override
+  void onClose() {
+    tabController.dispose();
+    super.onClose();
   }
 }

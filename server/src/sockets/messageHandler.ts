@@ -747,7 +747,7 @@ export async function messageToDriverByTruckGroup(
   }
   await Group.update(
     {
-      message_count: Sequelize.literal("message_count + 1"),
+     
       last_message_id: idsf,
     },
     {

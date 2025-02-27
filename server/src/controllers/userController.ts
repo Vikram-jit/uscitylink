@@ -558,6 +558,24 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       },
     });
 
+    const groupUsers = await GroupUser.findAll({
+      where: {
+        userProfileId: req.user?.id
+      },
+      include: [
+        {
+          model: Group,
+          where: {
+            type: "truck"
+          },
+          attributes: ['name']
+        }
+      ]
+    })
+    const truckIds = groupUsers.map((e: any,index) => {
+     return e?.Group?.name
+    
+    })
     const truckCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS truckCount FROM trucks`,
       {
@@ -606,6 +624,8 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       limit: 2,
     });
 
+    // const assginedTruck = await 
+
     const distinctGroupIds = await GroupUser.findAll({
       where: {
         userProfileId: req?.user?.id,
@@ -650,11 +670,14 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         })
       );
     }
+    const channel = await Channel.findOne();
 
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
+        trucks: truckIds ? truckIds?.join(",") : "",
+        channel:channel,
         channelCount: userChannelCount,
         messageCount: userTotalMessage,
         groupCount: userTotalGroups,
@@ -810,6 +833,28 @@ export async function gernateNewPassword(
       status: true,
       message: `Update profile  successfully.`,
     });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getProfile(req: Request, res: Response): Promise<any>{
+  try {
+
+    const userProfile = await UserProfile.findOne(req.user?.id)
+
+    const user = await User.findOne(userProfile.dataValues.userId)
+
+
+
+    return res.status(200).json({
+      status: true,
+      message: `Get profile from yard successfully.`,
+      data:user
+    });
+    
   } catch (err: any) {
     return res
       .status(400)

@@ -33,7 +33,7 @@ class _DashboardViewState extends State<DashboardView>
   TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
-      _currentIndex = index;
+      channelController.currentIndex.value = index;
     });
     if (index == 3) {
       _trainingController.fetchTrainingVideos(page: 1);
@@ -80,14 +80,15 @@ class _DashboardViewState extends State<DashboardView>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
+    return Scaffold(body: Obx(() {
+      return IndexedStack(
+        index: channelController.currentIndex.value,
         children: _screens,
-      ),
-      bottomNavigationBar: SalomonBottomBar(
+      );
+    }), bottomNavigationBar: Obx(() {
+      return SalomonBottomBar(
         backgroundColor: Colors.white,
-        currentIndex: _currentIndex,
+        currentIndex: channelController.currentIndex.value,
         onTap: _onItemTapped,
         items: [
           SalomonBottomBarItem(
@@ -118,7 +119,7 @@ class _DashboardViewState extends State<DashboardView>
           SalomonBottomBarItem(
               icon: const Icon(Icons.settings), title: const Text("Settings")),
         ],
-      ),
-    );
+      );
+    }));
   }
 }
