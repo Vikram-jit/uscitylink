@@ -515,7 +515,7 @@ class DriverProfileView extends StatelessWidget {
                       ),
                       if (_controller.driverProfile.value.countryStatus
                               ?.country_status ==
-                          "workpermit")
+                          "Work Permit")
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
