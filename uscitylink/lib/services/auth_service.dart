@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
+import 'package:uscitylink/model/driver_model.dart';
 import 'package:uscitylink/model/login_model.dart';
 
 class AuthService {
@@ -125,6 +126,23 @@ class AuthService {
       );
     } else {
       throw Exception('Failed to log in: No valid data received.');
+    }
+  }
+
+  Future<ApiResponse<DriverModel>> getDriverProfile() async {
+    dynamic response =
+        await _apiService.getApi('${Constant.url}/user/driver-profile');
+
+    if (response != null && response['data'] != null) {
+      DriverModel userProfile = DriverModel.fromJson(response['data']);
+
+      return ApiResponse<DriverModel>(
+        data: userProfile,
+        message: response['message'] ?? 'Driver Profile successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to fetch driver profile.');
     }
   }
 

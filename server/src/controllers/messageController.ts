@@ -369,6 +369,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                     {
                       channelId: req.activeChannel,
                       upload_source: "chat",
+                      user_profile_id: req.params.channelId,
                     },
                   ]
                 : []),

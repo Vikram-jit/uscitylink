@@ -843,16 +843,49 @@ export async function gernateNewPassword(
 export async function getProfile(req: Request, res: Response): Promise<any>{
   try {
 
-    const userProfile = await UserProfile.findOne(req.user?.id)
+    const userProfile = await UserProfile.findByPk(req.user?.id)
 
-    const user = await User.findOne(userProfile.dataValues.userId)
+    const user = await User.findByPk(userProfile?.userId || "")
 
-
-
+    const driver = await secondarySequelize.query<any>(
+      `SELECT * FROM drivers WHERE id = :id`,
+      {
+        replacements: {
+          id:  user?.yard_id,
+          
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const driverDocuments = await secondarySequelize.query<any>(
+      `SELECT * FROM documents  WHERE  type = 'driver' AND item_id = :id`,
+      {
+        replacements: {
+          id:  user?.yard_id,
+          
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const driverCountryStatus = await secondarySequelize.query<any>(
+      `SELECT * FROM driver_country_statuses  WHERE driver_id = :id`,
+      {
+        replacements: {
+          id:  user?.yard_id,
+          
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
-      data:user
+      data:{
+        driver :driver.length > 0 ? driver?.[0] : null,
+        countryStatus : driverCountryStatus?.length >0 ? driverCountryStatus?.[0] : null,
+        document:driverDocuments
+
+      }
     });
     
   } catch (err: any) {

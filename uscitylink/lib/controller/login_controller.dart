@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/model/driver_model.dart';
 import 'package:uscitylink/model/login_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
@@ -34,6 +33,8 @@ class LoginController extends GetxController {
 
   var checkedEmailOtp = false.obs;
   var checkedPhoneNumberOtp = false.obs;
+
+  var driverProfile = DriverModel().obs;
 
   @override
   void onInit() {
@@ -346,6 +347,16 @@ class LoginController extends GetxController {
     __authService.getProfile().then((value) async {
       if (value.status == true) {
         userProfile.value = value.data;
+      }
+    }).onError((error, stackTrace) {
+      Utils.snackBar('Error', error.toString());
+    });
+  }
+
+  void getDriverProfile() {
+    __authService.getDriverProfile().then((value) async {
+      if (value.status == true) {
+        driverProfile.value = value.data;
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());

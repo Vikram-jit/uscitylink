@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { changePassword, dashboard, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
+import { changePassword, dashboard, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getProfile,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 
 router.get('/', getUsers);
+router.get('/driver-profile',authMiddleware,getProfile)
 router.get('/profile/:id',authMiddleware, getUserProfileById);
 router.post('/genrate-password/:id',authMiddleware, gernateNewPassword);
 router.put('/update-profile/:id/:role', updateProfile);
