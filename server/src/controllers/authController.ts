@@ -211,6 +211,14 @@ export async function updateAppVersion(
       },
     });
 
+    if(appLiveVersion == null){
+      return res.status(200).json({
+        status: true,
+        data: "Deprecate",
+        message: `App Update Version Successfully.`,
+      });
+    }
+
     const userProfile = await UserProfile.findByPk(req.user?.id);
 
     if (userProfile?.buildNumber == null && userProfile?.version == null) {
