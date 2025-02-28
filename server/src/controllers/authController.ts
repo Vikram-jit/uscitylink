@@ -6,7 +6,11 @@ import Role from "../models/Role";
 import { secondarySequelize } from "../sequelize";
 import { QueryTypes, where } from "sequelize";
 import { UserProfile } from "../models/UserProfile";
-import { generateOTP, sendOTPEmail, sendOTPPhoneNumber } from "../utils/sendEmail";
+import {
+  generateOTP,
+  sendOTPEmail,
+  sendOTPPhoneNumber,
+} from "../utils/sendEmail";
 import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
@@ -18,7 +22,15 @@ function isValidEmail(email: string) {
 
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password, role, username, phone_number,yard_id,driver_number } = req.body;
+    const {
+      email,
+      password,
+      role,
+      username,
+      phone_number,
+      yard_id,
+      driver_number,
+    } = req.body;
 
     const foundRole = await Role.findOne({ where: { name: role } });
     if (!foundRole) {
@@ -28,23 +40,22 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     }
 
     const emailExists = await User.findOne({ where: { email: email } });
-    const phoneNumberExists = await User.findOne({ where: { phone_number: phone_number } });
+    const phoneNumberExists = await User.findOne({
+      where: { phone_number: phone_number },
+    });
 
     if (emailExists || phoneNumberExists) {
-
-
       throw new Error("User already exists.");
-
     }
     const pass = password || "123456";
     const hashedPassword = await hashPassword(pass);
 
     const newUser = await User.create({
-      "email": email,
-      "phone_number": phone_number,
-      user_type:role,
-      yard_id:yard_id,
-      driver_number: driver_number || null
+      email: email,
+      phone_number: phone_number,
+      user_type: role,
+      yard_id: yard_id,
+      driver_number: driver_number || null,
     });
 
     await UserProfile.create({
@@ -69,10 +80,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 export const login = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email } = req.body;
-   
+
     const isEmailValid = isValidEmail(email);
     const queryValue = isEmailValid ? email : email;
- 
+
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
@@ -104,7 +115,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     // Fetch dispatchers based on email or phone
     const dispatchers = await secondarySequelize.query<any>(
-      `SELECT * FROM dispatches WHERE ${isEmailValid ? "email" : "phone"
+      `SELECT * FROM dispatches WHERE ${
+        isEmailValid ? "email" : "phone"
       } = :value`,
       {
         replacements: { value: queryValue },
@@ -114,7 +126,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     // Fetch drivers based on email or phone_number
     const drivers = await secondarySequelize.query<any>(
-      `SELECT * FROM drivers WHERE ${isEmailValid ? "email" : "phone_number"
+      `SELECT * FROM drivers WHERE ${
+        isEmailValid ? "email" : "phone_number"
       } = :value`,
       {
         replacements: { value: queryValue },
@@ -183,6 +196,40 @@ export const login = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
+export async function updateAppVersion(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    const { version, buildNumber } = req.body;
+
+    const userProfile = await UserProfile.findByPk(req.user?.id);
+    if (userProfile?.appUpdate == "0") {
+      await UserProfile.update(
+        {
+          version: version,
+          buildNumber: buildNumber,
+          appUpdate: "1",
+        },
+        {
+          where: {
+            id: req.user?.id,
+          },
+        }
+      );
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `App Update Version Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
 //login With Password
 export async function loginWithPassword(
   req: Request,
@@ -244,23 +291,22 @@ export async function loginWithPassword(
 //Send OTP
 export async function sendOtp(req: Request, res: Response): Promise<any> {
   try {
-    console.log(req.body)
+    console.log(req.body);
     const expiresAt = moment().add(10, "minutes").toDate();
     const otp = generateOTP(6);
     await Otp.create({
       user_email: req.body.email,
-      phone_number:req.body.phone_number,
+      phone_number: req.body.phone_number,
       otp: otp,
       expires_at: expiresAt,
     });
-    if(req.body.isEmail){
+    if (req.body.isEmail) {
       const response = await sendOTPEmail(req.body.email, otp);
     }
 
-    if(req.body.isPhoneNumber){
+    if (req.body.isPhoneNumber) {
       await sendOTPPhoneNumber(req.body.phone_number, otp);
     }
-    
 
     return res.status(200).json({
       status: true,
@@ -280,18 +326,18 @@ export async function resendOtp(req: Request, res: Response): Promise<any> {
     const otp = generateOTP(6);
     await Otp.create({
       user_email: req.body.email,
-      phone_number:req.body.phone_number,
+      phone_number: req.body.phone_number,
       otp: otp,
       expires_at: expiresAt,
     });
-    if(req.body.isEmail){
+    if (req.body.isEmail) {
       const response = await sendOTPEmail(req.body.email, otp);
     }
 
-    if(req.body.isPhoneNumber){
+    if (req.body.isPhoneNumber) {
       await sendOTPPhoneNumber(req.body.phone_number, otp);
     }
-  //  const response = await sendOTPEmail(req.body.email, otp);
+    //  const response = await sendOTPEmail(req.body.email, otp);
 
     return res.status(200).json({
       status: true,
@@ -302,7 +348,6 @@ export async function resendOtp(req: Request, res: Response): Promise<any> {
       .status(500)
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
-
 }
 
 //Validate OTP AND Login
@@ -312,7 +357,6 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
 
     if (!email || !otp) {
       throw new Error("Email and OTP are required");
-
     }
 
     const isVerified = await verifyOTP(email, otp);
@@ -369,31 +413,32 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
       },
-      include:[{
-        model:UserProfile,
-        as:"profiles",
-        include:[
-          {
-            model:Role,
-            as:"role"
-          }
-        ]
-      }]
+      include: [
+        {
+          model: UserProfile,
+          as: "profiles",
+          include: [
+            {
+              model: Role,
+              as: "role",
+            },
+          ],
+        },
+      ],
     });
-    let userStaffId:string|null = null;
-    let isProfile:any = null
-    isUser.forEach(async(item)=>{
-      item.profiles?.forEach((el)=>{
-        if(el.role?.name == "staff"){
+    let userStaffId: string | null = null;
+    let isProfile: any = null;
+    isUser.forEach(async (item) => {
+      item.profiles?.forEach((el) => {
+        if (el.role?.name == "staff") {
           userStaffId = item.id;
-          isProfile = el
+          isProfile = el;
         }
-      })
-    })
+      });
+    });
 
     if (!isProfile) throw new Error("Invalid credentials");
 
-    
     const isMatch = await comparePasswords(password, isProfile?.password!);
 
     if (!isMatch) throw new Error("Invalid credentials");
@@ -415,14 +460,12 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
   }
 }
 
-
 export async function logout(req: Request, res: Response): Promise<any> {
   try {
-
     await UserProfile.update(
       {
         device_token: null,
-        platform: null
+        platform: null,
       },
       {
         where: {
@@ -435,7 +478,6 @@ export async function logout(req: Request, res: Response): Promise<any> {
     return res.status(200).json({
       status: true,
       message: `Logout Successfully.`,
-
     });
   } catch (err: any) {
     return res
@@ -444,25 +486,22 @@ export async function logout(req: Request, res: Response): Promise<any> {
   }
 }
 
-
 export async function loginWithToken(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
-
-
-    const key = 'base64:ZZ5rmCRJD8S9awqHtgwN1z3WRa+UlXAoITHSrFUBZIU'
+    const key = "base64:ZZ5rmCRJD8S9awqHtgwN1z3WRa+UlXAoITHSrFUBZIU";
 
     const decodedInput = atob(req.params.token);
-    
+
     // XOR Decrypt the input
     const decrypted = xorDecrypt(decodedInput, key);
 
     // Assuming the decrypted string format is "email_timestamp"
-    const [email, timestamp] = decrypted.split('_'); // Split by the delimiter '_'
+    const [email, timestamp] = decrypted.split("_"); // Split by the delimiter '_'
     // Check if the timestamp is valid (within the last 2 hours)
-    if (!isTimestampValid(timestamp)) throw new Error("Invaild Login")
+    if (!isTimestampValid(timestamp)) throw new Error("Invaild Login");
 
     const isRole = await Role.findOne({
       where: {
@@ -472,33 +511,33 @@ export async function loginWithToken(
 
     const isUser = await User.findAll({
       where: {
-       email:email,
+        email: email,
       },
-      include:[{
-        model:UserProfile,
-        as:"profiles",
-        include:[
-          {
-            model:Role,
-            as:"role"
-          }
-        ]
-      }]
+      include: [
+        {
+          model: UserProfile,
+          as: "profiles",
+          include: [
+            {
+              model: Role,
+              as: "role",
+            },
+          ],
+        },
+      ],
     });
-    let userStaffId:string|null = null;
-    let isProfile:any = null
-    isUser.forEach(async(item)=>{
-      item.profiles?.forEach((el)=>{
-        if(el.role?.name == "staff"){
+    let userStaffId: string | null = null;
+    let isProfile: any = null;
+    isUser.forEach(async (item) => {
+      item.profiles?.forEach((el) => {
+        if (el.role?.name == "staff") {
           userStaffId = item.id;
-          isProfile = el
+          isProfile = el;
         }
-      })
-    })
-    
-  
+      });
+    });
 
-    if(!isProfile) throw new Error("Inavild Login")
+    if (!isProfile) throw new Error("Inavild Login");
 
     const token = await generateToken(isProfile?.id!);
 
@@ -517,16 +556,18 @@ export async function loginWithToken(
   }
 }
 
-function xorDecrypt(input:string, key:string) {
-  let decrypted = '';
+function xorDecrypt(input: string, key: string) {
+  let decrypted = "";
   for (let i = 0; i < input.length; i++) {
-    decrypted += String.fromCharCode(input.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    decrypted += String.fromCharCode(
+      input.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+    );
   }
   return decrypted;
 }
 
 // Check if the timestamp is within the last 2 hours
-function isTimestampValid(timestamp:any) {
+function isTimestampValid(timestamp: any) {
   const currentTime = Date.now();
   const messageTime = new Date(timestamp * 1000).getTime(); // assuming the timestamp is in seconds
   const timeDifference = currentTime - messageTime;

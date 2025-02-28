@@ -64,6 +64,9 @@ class Profiles {
   String? lastLogin;
   String? createdAt;
   String? updatedAt;
+  String? version;
+  String? buildNumber;
+  String? appUpdate;
   Role? role;
   User? user;
 
@@ -83,7 +86,10 @@ class Profiles {
       this.createdAt,
       this.updatedAt,
       this.role,
-      this.user});
+      this.user,
+      this.appUpdate,
+      this.buildNumber,
+      this.version});
 
   // Factory constructor to create a Profiles from JSON
   factory Profiles.fromJson(Map<String, dynamic> json) {
@@ -102,6 +108,9 @@ class Profiles {
       lastLogin: json['last_login'],
       createdAt: json['createdAt'],
       updatedAt: json['updatedAt'],
+      buildNumber: json['buildNumber'],
+      version: json['version'],
+      appUpdate: json['appUpdate'],
       role: json['role'] != null ? Role.fromJson(json['role']) : null,
       user: json['user'] != null ? User.fromJson(json['user']) : null,
     );
@@ -124,6 +133,9 @@ class Profiles {
       'last_login': lastLogin,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'buildNumber': buildNumber,
+      'appUpdate': appUpdate,
+      'version': version,
       'role': role?.toJson(),
       'user': user?.toJson(),
     };

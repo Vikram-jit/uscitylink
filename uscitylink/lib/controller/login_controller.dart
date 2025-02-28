@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/model/driver_model.dart';
 import 'package:uscitylink/model/login_model.dart';
@@ -216,6 +217,11 @@ class LoginController extends GetxController {
     });
   }
 
+  Future<PackageInfo> getAppVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo;
+  }
+
   void loginWithPassword(BuildContext context, String email, String role) {
     LoginWithPassword loginData = LoginWithPassword(
       email: email,
@@ -318,6 +324,23 @@ class LoginController extends GetxController {
   void checkRole() {
     __authService.getProfile().then((value) async {
       if (value.status == true) {
+        var buildInfo = await getAppVersion();
+
+        if (buildInfo != null) {
+          AppUpdateInfo appData = AppUpdateInfo(
+              buildNumber: buildInfo.buildNumber, version: buildInfo.version);
+          if (value.data.buildNumber == null && value.data.version == null) {
+            await __authService.updateAppVersion(appData);
+          }
+          if (value.data.buildNumber != buildInfo.buildNumber) {
+            await __authService.updateAppVersion(appData);
+          }
+          if (value.data.version != buildInfo.version) {
+            await __authService.updateAppVersion(appData);
+          }
+        }
+        // print(buildInfo.buildNumber);
+        // print(buildInfo.version);
         if (value?.data?.role?.name == "staff") {
           final fcmService = Get.put(FCMService());
           String? token = fcmService.fcmToken.value;

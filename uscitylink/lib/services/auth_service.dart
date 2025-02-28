@@ -161,6 +161,21 @@ class AuthService {
     }
   }
 
+  Future<ApiResponse<dynamic>> updateAppVersion(AppUpdateInfo data) async {
+    dynamic response = await _apiService.putApi(
+        data.toJson(), '${Constant.url}/auth/updateAppVersion');
+
+    if (response != null && response['status']) {
+      return ApiResponse<dynamic>(
+        data: {},
+        message: response['message'] ?? 'Device Info Updated successful',
+        status: response['status'] ?? true,
+      );
+    } else {
+      throw Exception('Failed to log in: No valid data received.');
+    }
+  }
+
   Future<ApiResponse<dynamic>> changePassword(var data) async {
     dynamic response =
         await _apiService.postApi(data, '${Constant.url}/user/change-password');
@@ -221,6 +236,23 @@ class DeviceTokenUpdate {
     return {
       'device_token': token,
       'platform': platform,
+    };
+  }
+}
+
+class AppUpdateInfo {
+  final String buildNumber;
+  final String version;
+
+  AppUpdateInfo({
+    required this.buildNumber,
+    required this.version,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'buildNumber': buildNumber,
+      'version': version,
     };
   }
 }

@@ -19,7 +19,10 @@ interface UserProfileAttributes {
   device_token?: string;
   platform?: string;
   last_login?: Date;
+  version?:string | null;
   channelId?:string | null;
+  buildNumber?:string | null;
+  appUpdate?:string | null;
   role?:Role
 }
 
@@ -45,6 +48,9 @@ export class UserProfile
   public platform?: string;
   public last_login?: Date;
   public channelId?: string | null;
+  public version?: string | null;
+  public buildNumber?: string | null;
+  public appUpdate?: string | null;
   public role?: Role | undefined;
 
   public readonly createdAt!: Date;
@@ -90,6 +96,19 @@ UserProfile.init(
     status: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    buildNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    appUpdate: {
+      type: DataTypes.ENUM('0','1'),
+     
+      defaultValue:'0'
     },
     role_id: {
       type: DataTypes.UUID,
