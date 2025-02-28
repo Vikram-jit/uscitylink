@@ -14,6 +14,7 @@ import {
 import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
+import { AppVersions } from "../models/AppVersions";
 
 function isValidEmail(email: string) {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -201,10 +202,18 @@ export async function updateAppVersion(
   res: Response
 ): Promise<any> {
   try {
-    const { version, buildNumber } = req.body;
+    const { version, buildNumber, platform } = req.body;
+
+    const appLiveVersion = await AppVersions.findOne({
+      where: {
+        status: "active",
+        platform: platform,
+      },
+    });
 
     const userProfile = await UserProfile.findByPk(req.user?.id);
-    if (userProfile?.appUpdate == "0") {
+
+    if (userProfile?.buildNumber == null && userProfile?.version == null) {
       await UserProfile.update(
         {
           version: version,
@@ -217,12 +226,62 @@ export async function updateAppVersion(
           },
         }
       );
+      return res.status(200).json({
+        status: true,
+        data: "Update",
+        message: `App Update Version Successfully.`,
+      });
     }
 
-    return res.status(200).json({
-      status: true,
-      message: `App Update Version Successfully.`,
-    });
+    if (
+      buildNumber == appLiveVersion?.buildNumber &&
+      version == appLiveVersion?.version
+    ) {
+      if (userProfile?.appUpdate == "0") {
+        await UserProfile.update(
+          {
+            version: version,
+            buildNumber: buildNumber,
+            appUpdate: "1",
+          },
+          {
+            where: {
+              id: req.user?.id,
+            },
+          }
+        );
+      }
+      return res.status(200).json({
+        status: true,
+        data: "UpToDate",
+        message: `App Update Version Successfully.`,
+      });
+    }
+
+    if (
+      buildNumber != appLiveVersion?.buildNumber &&
+      version != appLiveVersion?.version
+    ) {
+      return res.status(200).json({
+        status: true,
+        data: "NewVersion",
+        message: `App Update Version Successfully.`,
+      });
+    }
+    if (version != appLiveVersion?.version) {
+      return res.status(200).json({
+        status: true,
+        data: "NewVersion",
+        message: `App Update Version Successfully.`,
+      });
+    }
+    if (buildNumber != appLiveVersion?.buildNumber) {
+      return res.status(200).json({
+        status: true,
+        data: "NewVersion",
+        message: `App Update Version Successfully.`,
+      });
+    }
   } catch (err: any) {
     return res
       .status(400)

@@ -161,13 +161,13 @@ class AuthService {
     }
   }
 
-  Future<ApiResponse<dynamic>> updateAppVersion(AppUpdateInfo data) async {
+  Future<ApiResponse<String>> updateAppVersion(AppUpdateInfo data) async {
     dynamic response = await _apiService.putApi(
         data.toJson(), '${Constant.url}/auth/updateAppVersion');
 
     if (response != null && response['status']) {
-      return ApiResponse<dynamic>(
-        data: {},
+      return ApiResponse<String>(
+        data: response['data'],
         message: response['message'] ?? 'Device Info Updated successful',
         status: response['status'] ?? true,
       );
@@ -243,16 +243,18 @@ class DeviceTokenUpdate {
 class AppUpdateInfo {
   final String buildNumber;
   final String version;
+  final String platform;
 
-  AppUpdateInfo({
-    required this.buildNumber,
-    required this.version,
-  });
+  AppUpdateInfo(
+      {required this.buildNumber,
+      required this.version,
+      required this.platform});
 
   Map<String, dynamic> toJson() {
     return {
       'buildNumber': buildNumber,
       'version': version,
+      'platform': platform
     };
   }
 }

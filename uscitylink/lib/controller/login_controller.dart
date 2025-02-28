@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,6 +15,7 @@ import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/auth/select_option.dart';
+import 'package:uscitylink/views/update_view.dart';
 
 class LoginController extends GetxController {
   final __authService = AuthService();
@@ -328,39 +330,59 @@ class LoginController extends GetxController {
 
         if (buildInfo != null) {
           AppUpdateInfo appData = AppUpdateInfo(
-              buildNumber: buildInfo.buildNumber, version: buildInfo.version);
-          if (value.data.buildNumber == null && value.data.version == null) {
-            await __authService.updateAppVersion(appData);
-          }
-          if (value.data.buildNumber != buildInfo.buildNumber) {
-            await __authService.updateAppVersion(appData);
-          }
-          if (value.data.version != buildInfo.version) {
-            await __authService.updateAppVersion(appData);
-          }
-        }
-        // print(buildInfo.buildNumber);
-        // print(buildInfo.version);
-        if (value?.data?.role?.name == "staff") {
-          final fcmService = Get.put(FCMService());
-          String? token = fcmService.fcmToken.value;
-          if (token != null && token.isNotEmpty) {
-            await fcmService.updateDeviceToken(token);
-          }
+              buildNumber: buildInfo.buildNumber,
+              version: buildInfo.version,
+              platform: Platform.operatingSystem);
 
-          Timer(const Duration(seconds: 1),
-              () => Get.offAllNamed(AppRoutes.staff_dashboard));
+          var result = await __authService.updateAppVersion(appData);
+
+          if (result.data == "NewVersion") {
+            Get.offAll(() => UpdateView());
+          } else {
+            if (value?.data?.role?.name == "staff") {
+              final fcmService = Get.put(FCMService());
+              String? token = fcmService.fcmToken.value;
+              if (token != null && token.isNotEmpty) {
+                await fcmService.updateDeviceToken(token);
+              }
+
+              Timer(const Duration(seconds: 1),
+                  () => Get.offAllNamed(AppRoutes.staff_dashboard));
+            } else {
+              final fcmService = Get.put(FCMService());
+              String? token = fcmService.fcmToken.value;
+              if (token != null && token.isNotEmpty) {
+                await fcmService.updateDeviceToken(token);
+              }
+
+              Timer(const Duration(seconds: 1),
+                  () => Get.offAllNamed(AppRoutes.driverDashboard));
+            }
+          }
         } else {
-          final fcmService = Get.put(FCMService());
-          String? token = fcmService.fcmToken.value;
-          if (token != null && token.isNotEmpty) {
-            await fcmService.updateDeviceToken(token);
-          }
+          if (value?.data?.role?.name == "staff") {
+            final fcmService = Get.put(FCMService());
+            String? token = fcmService.fcmToken.value;
+            if (token != null && token.isNotEmpty) {
+              await fcmService.updateDeviceToken(token);
+            }
 
-          Timer(const Duration(seconds: 1),
-              () => Get.offAllNamed(AppRoutes.driverDashboard));
+            Timer(const Duration(seconds: 1),
+                () => Get.offAllNamed(AppRoutes.staff_dashboard));
+          } else {
+            final fcmService = Get.put(FCMService());
+            String? token = fcmService.fcmToken.value;
+            if (token != null && token.isNotEmpty) {
+              await fcmService.updateDeviceToken(token);
+            }
+
+            Timer(const Duration(seconds: 1),
+                () => Get.offAllNamed(AppRoutes.driverDashboard));
+          }
         }
       }
+      // print(buildInfo.buildNumber);
+      // print(buildInfo.version);
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());
     });

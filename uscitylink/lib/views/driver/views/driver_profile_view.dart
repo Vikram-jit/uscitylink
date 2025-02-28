@@ -170,135 +170,313 @@ class DriverProfileView extends StatelessWidget {
               SizedBox(
                 height: 10,
               ),
-              Text(
-                "Documents",
-                style: Theme.of(context).textTheme.headlineMedium,
+              Container(
+                width: double.infinity,
+                child: Card(
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Basic Details",
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "Address:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "License Number:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "city:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "Issue Date:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "state:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                              flex: 1,
+                            ),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "Expiry Date:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                              flex: 1,
+                            )
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "zip code:",
+                                  style: TextStyle(fontWeight: FontWeight.w800),
+                                  children: [
+                                    TextSpan(
+                                        text: "N/A",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w400))
+                                  ],
+                                ),
+                              ),
+                            )
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                ),
               ),
               SizedBox(
                 height: 10,
               ),
-              Obx(() {
-                final documents =
-                    _controller.driverProfile.value.document ?? [];
-
-                return Column(
-                  children: documents.map((doc) {
-                    return ExpansionTile(
-                      collapsedShape: Border.all(
-                          color: Colors.transparent, style: BorderStyle.none),
-                      title: Text(doc.title ?? "Unknown Document"),
+              Container(
+                width: double.infinity,
+                child: Card(
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding:
-                              const EdgeInsets.only(left: 16.0, right: 16.0),
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.calendar_month, size: 14),
-                                          Text(
-                                            "Issue Date",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(fontSize: 16),
-                                          ),
-                                        ],
-                                      ),
-                                      Text(doc.issueDate ?? "N/A",
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w700))
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.calendar_month, size: 14),
-                                          Text(
-                                            "Expire Date",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(fontSize: 16),
-                                          ),
-                                        ],
-                                      ),
-                                      Text(doc.expireDate ?? "N/A",
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w700))
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.document_scanner,
-                                              size: 16),
-                                          Text(
-                                            "Document",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleSmall
-                                                ?.copyWith(fontSize: 16),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 6),
-                                      if (doc.file != null)
-                                        InkWell(
-                                          onTap: () {
-                                            Get.to(() => DocumentDownload(
-                                                  file:
-                                                      "https://msyard.s3.us-west-1.amazonaws.com/images/${doc.file}",
-                                                ));
-                                          },
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8),
-                                            decoration: BoxDecoration(
-                                                color: Colors.amber,
-                                                borderRadius:
-                                                    BorderRadius.circular(5)),
-                                            child: Center(
-                                              child: Text(
-                                                "view",
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        Text(
+                          "Documents",
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Obx(() {
+                          final documents =
+                              _controller.driverProfile.value.document ?? [];
+                          if (documents.length == 0) {
+                            return Center(child: Text("No Document Found"));
+                          }
+                          return Column(
+                            children: documents.map((doc) {
+                              return ExpansionTile(
+                                collapsedShape: Border.all(
+                                    color: Colors.transparent,
+                                    style: BorderStyle.none),
+                                title: Text(doc.title ?? "Unknown Document"),
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        left: 16.0, right: 16.0),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.calendar_month,
+                                                        size: 14),
+                                                    Text(
+                                                      "Issue Date",
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleSmall
+                                                          ?.copyWith(
+                                                              fontSize: 16),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(doc.issueDate ?? "N/A",
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700))
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.calendar_month,
+                                                        size: 14),
+                                                    Text(
+                                                      "Expire Date",
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleSmall
+                                                          ?.copyWith(
+                                                              fontSize: 16),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(doc.expireDate ?? "N/A",
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700))
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(Icons.document_scanner,
+                                                        size: 16),
+                                                    Text(
+                                                      "Document",
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleSmall
+                                                          ?.copyWith(
+                                                              fontSize: 16),
+                                                    ),
+                                                  ],
+                                                ),
+                                                SizedBox(height: 6),
+                                                if (doc.file != null)
+                                                  InkWell(
+                                                    onTap: () {
+                                                      Get.to(() =>
+                                                          DocumentDownload(
+                                                            file:
+                                                                "https://msyard.s3.us-west-1.amazonaws.com/images/${doc.file}",
+                                                          ));
+                                                    },
+                                                    child: Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 8),
+                                                      decoration: BoxDecoration(
+                                                          color: Colors.amber,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(5)),
+                                                      child: Center(
+                                                        child: Text(
+                                                          "view",
+                                                          style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color:
+                                                                  Colors.white),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                ],
+                              );
+                            }).toList(), // ✅ Convert map() to a list
+                          );
+                        }),
                       ],
-                    );
-                  }).toList(), // ✅ Convert map() to a list
-                );
-              }),
+                    ),
+                  ),
+                ),
+              ),
               SizedBox(
                 height: 10,
               ),
@@ -323,7 +501,7 @@ class DriverProfileView extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(6)),
                               child: Obx(() {
                                 return Text(
-                                  "${_controller.driverProfile.value.countryStatus?.country_status}",
+                                  "${_controller.driverProfile.value.countryStatus?.country_status != null ? _controller.driverProfile.value.countryStatus?.country_status : "pending"}",
                                   style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -335,241 +513,111 @@ class DriverProfileView extends StatelessWidget {
                       SizedBox(
                         height: 10,
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.calendar_month, size: 14),
-                                  Text(
-                                    "Issue Date",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                  _controller.driverProfile.value.countryStatus
-                                          ?.issue_date ??
-                                      "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w700))
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.calendar_month, size: 14),
-                                  Text(
-                                    "Expire Date",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                  _controller.driverProfile.value.countryStatus
-                                          ?.expiry_date ??
-                                      "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w700))
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.document_scanner, size: 16),
-                                  Text(
-                                    "Document",
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 6),
-                              if (_controller.driverProfile.value.countryStatus
-                                      ?.document !=
-                                  null)
-                                InkWell(
-                                  onTap: () {
-                                    Get.to(() => DocumentDownload(
-                                          file:
-                                              "https://msyard.s3.us-west-1.amazonaws.com/images/${_controller.driverProfile.value.countryStatus?.document}",
-                                        ));
-                                  },
-                                  child: Container(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                        color: Colors.amber,
-                                        borderRadius: BorderRadius.circular(5)),
-                                    child: Center(
-                                      child: Text(
-                                        "view",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white),
+                      if (_controller.driverProfile.value.countryStatus
+                              ?.country_status ==
+                          "workpermit")
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_month, size: 14),
+                                    Text(
+                                      "Issue Date",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                    _controller.driverProfile.value
+                                            .countryStatus?.issue_date ??
+                                        "N/A",
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700))
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_month, size: 14),
+                                    Text(
+                                      "Expire Date",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                    _controller.driverProfile.value
+                                            .countryStatus?.expiry_date ??
+                                        "N/A",
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700))
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.document_scanner, size: 16),
+                                    Text(
+                                      "Document",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 6),
+                                if (_controller.driverProfile.value
+                                        .countryStatus?.document !=
+                                    null)
+                                  InkWell(
+                                    onTap: () {
+                                      Get.to(() => DocumentDownload(
+                                            file:
+                                                "https://msyard.s3.us-west-1.amazonaws.com/images/${_controller.driverProfile.value.countryStatus?.document}",
+                                          ));
+                                    },
+                                    child: Container(
+                                      padding:
+                                          EdgeInsets.symmetric(horizontal: 8),
+                                      decoration: BoxDecoration(
+                                          color: Colors.amber,
+                                          borderRadius:
+                                              BorderRadius.circular(5)),
+                                      child: Center(
+                                        child: Text(
+                                          "view",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                )
-                            ],
-                          ),
-                        ],
-                      ),
+                                  )
+                              ],
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
               ),
-              SizedBox(
-                height: 10,
-              ),
-              Container(
-                width: double.infinity,
-                child: Card(
-                  color: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Basic Details",
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        SizedBox(
-                          height: 10,
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Address:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "city:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "state:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "zip code:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              Container(
-                width: double.infinity,
-                child: Card(
-                  color: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Licence Details",
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        SizedBox(
-                          height: 10,
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Number:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Issue Date:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Expiry Date:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Issue State:",
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                            children: [
-                              TextSpan(
-                                  text: "N/A",
-                                  style: TextStyle(fontWeight: FontWeight.w400))
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              )
             ],
           ),
         ),
