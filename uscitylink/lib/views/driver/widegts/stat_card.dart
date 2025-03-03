@@ -52,9 +52,11 @@ class StatCard extends StatelessWidget {
                     title,
                     style: TextStyle(
                         fontSize: title != "U S CITYLINK INC"
-                            ? title == "TRAILERS" || title == "My Information"
+                            ? (title == "TRAILERS" || title == "My Information")
                                 ? 12
-                                : 10
+                                : title == "Pay Summary"
+                                    ? 14
+                                    : 10
                             : 22,
                         fontWeight: FontWeight.bold),
                   ),
@@ -63,6 +65,24 @@ class StatCard extends StatelessWidget {
                       height: 6,
                     ),
                   if (value != 0)
+                    Expanded(
+                      child: Text(
+                        '$value',
+                        style: TextStyle(
+                            fontSize: title == "TRUCK" ? 12 : 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  if (value == 0 && title == "TOTAL TEMPLATES")
+                    Expanded(
+                      child: Text(
+                        '$value',
+                        style: TextStyle(
+                            fontSize: title == "TRUCK" ? 12 : 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  if (value == 0 && title == "TOTAL TRUCK GROUPS")
                     Expanded(
                       child: Text(
                         '$value',

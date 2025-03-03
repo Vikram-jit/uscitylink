@@ -12,6 +12,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
+import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
@@ -230,6 +231,35 @@ class _DriverDashboardState extends State<DriverDashboard>
                               value:
                                   _dashboardController.dashboard.value.trucks ??
                                       "",
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.1,
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 1.2,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 300,
+                          child: InkWell(
+                            onTap: () {
+                              Get.to(() => DriverPayView());
+                            },
+                            child: StatCard(
+                              title: "Pay Summary",
+                              value: 0,
+                              icon: Icons.money,
                               gradientColors: [
                                 Color(
                                     0xFFe5e5e5), // Hex color for a shade of green (Active User)

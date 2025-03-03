@@ -3,10 +3,14 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
+import 'package:uscitylink/controller/staff/staffview_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
+import 'package:uscitylink/views/staff/view/staff_channel_members_view.dart';
+import 'package:uscitylink/views/staff/view/staff_templates_view.dart';
+import 'package:uscitylink/views/staff/view/staff_trainings_view.dart';
 
 class StaffDashboard extends StatefulWidget {
   const StaffDashboard({super.key});
@@ -20,7 +24,7 @@ class _StaffDashboardState extends State<StaffDashboard>
   final CustomDrawerController _customDrawerController =
       Get.put(CustomDrawerController());
   DashboardController _dashboardController = Get.find<DashboardController>();
-
+  StaffviewController _staffviewController = Get.find<StaffviewController>();
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
@@ -119,26 +123,10 @@ class _StaffDashboardState extends State<StaffDashboard>
                         children: [
                           Expanded(
                             child: StatCard(
-                              title: "TOTAL CHANNEL",
-                              value: _dashboardController
-                                      .dashboardStaff.value.channelCount ??
-                                  0,
+                              title: "U S CITYLINK INC",
+                              value: 0,
                               icon: Icons.wifi_channel,
                               gradientColors: const [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
-                            ),
-                          ),
-                          Expanded(
-                            child: StatCard(
-                              title: "TOTAL MESSAGE",
-                              icon: Icons.message,
-                              value: _dashboardController
-                                      .dashboardStaff.value.messageCount ??
-                                  0,
-                              gradientColors: [
                                 Color(
                                     0xFFe5e5e5), // Hex color for a shade of green (Active User)
                                 Color(0xFFe5e5e5),
@@ -155,30 +143,42 @@ class _StaffDashboardState extends State<StaffDashboard>
                       height: TDeviceUtils.getAppBarHeight() * 1.2,
                       child: Row(
                         children: [
-                          StatCard(
-                            icon: Icons.message,
-                            title: "UNREAD MESSAGES",
-                            value: _dashboardController
-                                    .dashboardStaff.value.userUnMessage ??
-                                0,
-                            gradientColors: [
-                              Color(
-                                  0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                              Color(0xFFe5e5e5),
-                            ], // Gradient colors
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                _staffviewController.currentIndex.value = 1;
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "TOTAL MESSAGES",
+                                value: _dashboardController
+                                        .dashboardStaff.value.messageCount ??
+                                    0,
+                                gradientColors: [
+                                  Color(
+                                      0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                  Color(0xFFe5e5e5),
+                                ], // Gradient colors
+                              ),
+                            ),
                           ),
                           Expanded(
                             flex: 1,
-                            child: StatCard(
-                              icon: Icons.group,
-                              title: "GROUPS",
-                              value: _dashboardController
-                                      .dashboardStaff.value.groupCount ??
-                                  0,
-                              gradientColors: [
-                                Color(0xFFe5e5e5),
-                                Color(0xFFe5e5e5),
-                              ],
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffChannelMembersView());
+                              },
+                              child: StatCard(
+                                icon: Icons.group,
+                                title: "TOTAL DRIVERS",
+                                value: _dashboardController
+                                        .dashboardStaff.value.driverCount ??
+                                    0,
+                                gradientColors: [
+                                  Color(0xFFe5e5e5),
+                                  Color(0xFFe5e5e5),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -186,6 +186,80 @@ class _StaffDashboardState extends State<StaffDashboard>
                     ),
                     SizedBox(
                       height: TDeviceUtils.getAppBarHeight() * 0.1,
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 1.2,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffTemplatesView());
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "TOTAL TEMPLATES",
+                                value: _dashboardController
+                                        .dashboardStaff.value.templateCount ??
+                                    0,
+                                gradientColors: [
+                                  Color(
+                                      0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                  Color(0xFFe5e5e5),
+                                ], // Gradient colors
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffTrainingsView());
+                              },
+                              child: StatCard(
+                                icon: Icons.group,
+                                title: "TRAINING VIDEOS",
+                                value: _dashboardController
+                                        .dashboardStaff.value.trainingCount ??
+                                    0,
+                                gradientColors: [
+                                  Color(0xFFe5e5e5),
+                                  Color(0xFFe5e5e5),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.1,
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 1.2,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                _staffviewController.currentIndex.value = 2;
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "TOTAL TRUCK GROUPS",
+                                value: _dashboardController
+                                        .dashboardStaff.value.truckGroupCount ??
+                                    0,
+                                gradientColors: [
+                                  Color(
+                                      0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                  Color(0xFFe5e5e5),
+                                ], // Gradient colors
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     SizedBox(
                       height: TDeviceUtils.getAppBarHeight() * 0.30,

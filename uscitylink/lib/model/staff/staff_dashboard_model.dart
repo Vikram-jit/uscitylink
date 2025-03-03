@@ -3,23 +3,33 @@ class StaffDashboardModel {
   int? messageCount;
   int? groupCount;
   int? userUnMessage;
+  int? templateCount;
+
+  int? trainingCount;
+  int? truckGroupCount;
   //List<LastFiveDriver> lastFiveDriver;
   int? driverCount;
   String? channelId;
   //List<UserUnReadMessage> userUnReadMessage;
 
-  StaffDashboardModel({
-    this.channelCount,
-    this.messageCount,
-    this.groupCount,
-    this.userUnMessage,
-    // this.lastFiveDriver,
-    this.driverCount,
-    this.channelId,
-    // this.userUnReadMessage
-  });
+  StaffDashboardModel(
+      {this.channelCount,
+      this.messageCount,
+      this.groupCount,
+      this.userUnMessage,
+      // this.lastFiveDriver,
+      this.driverCount,
+      this.channelId,
+      this.templateCount,
+      this.trainingCount,
+      this.truckGroupCount
+      // this.userUnReadMessage
+      });
 
   StaffDashboardModel.fromJson(Map<String, dynamic> json) {
+    templateCount = json['templateCount'];
+    truckGroupCount = json['truckGroupCount'];
+    trainingCount = json['trainingCount'];
     channelCount = json['channelCount'];
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
@@ -43,8 +53,11 @@ class StaffDashboardModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['channelCount'] = this.channelCount;
+    data['templateCount'] = this.templateCount;
+    data['trainingCount'] = this.trainingCount;
     data['messageCount'] = this.messageCount;
     data['groupCount'] = this.groupCount;
+    data['truckGroupCount'] = truckGroupCount;
     data['userUnMessage'] = this.userUnMessage;
     // if (this.lastFiveDriver != null) {
     //   data['lastFiveDriver'] =

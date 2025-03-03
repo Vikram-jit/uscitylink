@@ -120,145 +120,163 @@ class StaffChatView extends StatelessWidget {
                 true) {
               return const Center(child: Text("No Users Found Yet."));
             } else {
-              return ListView.builder(
-                controller: _scrollController,
-                itemCount: _staffchannelController
-                        .channelChatUser.value.userChannels?.length ??
-                    0,
-                itemBuilder: (context, index) {
-                  var channel = _staffchannelController
-                      .channelChatUser.value.userChannels?[index];
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _staffchannelController
+                              .channelChatUser.value.userChannels?.length ??
+                          0,
+                      itemBuilder: (context, index) {
+                        var channel = _staffchannelController
+                            .channelChatUser.value.userChannels?[index];
 
-                  return Dismissible(
-                    key: Key(
-                        '${channel?.channelId}'), // Use the unique channel ID
-                    direction: DismissDirection.endToStart, // Swipe to delete
+                        return Dismissible(
+                          key: Key(
+                              '${channel?.channelId}'), // Use the unique channel ID
+                          direction:
+                              DismissDirection.endToStart, // Swipe to delete
 
-                    onDismissed: (direction) {
-                      _staffchannelController
-                          .deleteMember(channel!.userProfile!.id!);
-                    },
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(0),
-                      leading: GetBuilder<StaffchannelController>(
-                        builder: (controller) {
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                radius: 25,
-                                backgroundColor: Colors.grey.shade400,
-                                child: Text(
-                                  channel?.userProfile?.username
-                                          ?.substring(0, 1)
-                                          .toUpperCase() ??
-                                      '', // Show first letter of username
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
-
-                              // Online Badge in the top-right corner, wrapped in Obx
-                              if (channel?.userProfile?.isOnline ??
-                                  false) // Show badge if user is online
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: Colors
-                                          .green, // Green color for online status
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors
-                                            .white, // White border around the badge
-                                        width: 2,
+                          onDismissed: (direction) {
+                            _staffchannelController
+                                .deleteMember(channel!.userProfile!.id!);
+                          },
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child:
+                                const Icon(Icons.delete, color: Colors.white),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(0),
+                            leading: GetBuilder<StaffchannelController>(
+                              builder: (controller) {
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 25,
+                                      backgroundColor: Colors.grey.shade400,
+                                      child: Text(
+                                        channel?.userProfile?.username
+                                                ?.substring(0, 1)
+                                                .toUpperCase() ??
+                                            '', // Show first letter of username
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 18,
+                                        ),
                                       ),
                                     ),
+
+                                    // Online Badge in the top-right corner, wrapped in Obx
+                                    if (channel?.userProfile?.isOnline ??
+                                        false) // Show badge if user is online
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: Colors
+                                                .green, // Green color for online status
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors
+                                                  .white, // White border around the badge
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Channel name
+                                Expanded(
+                                  child: Text(
+                                    channel?.userProfile?.username ??
+                                        'Unnamed Channel',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                            ],
-                          );
-                        },
-                      ),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Channel name
-                          Expanded(
-                            child: Text(
-                              channel?.userProfile?.username ??
-                                  'Unnamed Channel',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          // Time and Badge column
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Formatted time (UTC converted to local time)
-                              Text(
-                                Utils.formatUtcTime(channel
-                                        ?.lastMessage?.messageTimestampUtc) ??
-                                    '',
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.black45),
-                              ),
+                                // Time and Badge column
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Formatted time (UTC converted to local time)
+                                    Text(
+                                      Utils.formatUtcTime(channel?.lastMessage
+                                              ?.messageTimestampUtc) ??
+                                          '',
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.black45),
+                                    ),
 
-                              // Badge showing unread message count
-                              channel?.sentMessageCount != 0
-                                  ? Badge(
-                                      label: Text(
-                                        channel?.sentMessageCount == 0
-                                            ? ""
-                                            : '${channel?.sentMessageCount}', // Example unread count, replace with actual count
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                      backgroundColor: TColors.primary,
-                                    )
-                                  : const SizedBox(),
-                            ],
+                                    // Badge showing unread message count
+                                    channel?.sentMessageCount != 0
+                                        ? Badge(
+                                            label: Text(
+                                              channel?.sentMessageCount == 0
+                                                  ? ""
+                                                  : '${channel?.sentMessageCount}', // Example unread count, replace with actual count
+                                              style:
+                                                  const TextStyle(fontSize: 11),
+                                            ),
+                                            backgroundColor: TColors.primary,
+                                          )
+                                        : const SizedBox(),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            subtitle: Text(
+                              channel?.lastMessage?.body ??
+                                  "Not message yet", // Message body or description
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                            onTap: () {
+                              if (socketService.isConnected.value) {
+                                socketService.staffUnreadAllUserMessage(
+                                    channel?.channelId,
+                                    channel?.userProfile?.id);
+                              }
+                              Get.toNamed(
+                                AppRoutes.staff_user_message,
+                                arguments: {
+                                  'channelId': channel?.channelId,
+                                  'name': channel?.userProfile?.username,
+                                  'userId': channel?.userProfile?.id
+                                },
+                              );
+                              // Handle navigation to the message screen (pass channel as an argument)
+                            },
                           ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        channel?.lastMessage?.body ??
-                            "Not message yet", // Message body or description
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.black54),
-                      ),
-                      onTap: () {
-                        if (socketService.isConnected.value) {
-                          socketService.staffUnreadAllUserMessage(
-                              channel?.channelId, channel?.userProfile?.id);
-                        }
-                        Get.toNamed(
-                          AppRoutes.staff_user_message,
-                          arguments: {
-                            'channelId': channel?.channelId,
-                            'name': channel?.userProfile?.username,
-                            'userId': channel?.userProfile?.id
-                          },
                         );
-                        // Handle navigation to the message screen (pass channel as an argument)
                       },
                     ),
-                  );
-                },
+                  ),
+                  if (_staffchannelController.loading.value)
+                    Column(
+                      children: [
+                        Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ],
+                    ),
+                ],
               );
             }
           }),

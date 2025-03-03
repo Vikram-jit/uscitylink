@@ -17,15 +17,15 @@ class StaffView extends StatefulWidget {
 }
 
 class _StaffViewState extends State<StaffView> with WidgetsBindingObserver {
-  int _currentIndex = 0;
+  // int _currentIndex = 0;
 
   final StaffviewController _staffviewController =
       Get.put(StaffviewController());
 
   void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    // setState(() {
+    //   _currentIndex = index;
+    // });
     _staffviewController.setTabIndex(index);
   }
 
@@ -56,26 +56,30 @@ class _StaffViewState extends State<StaffView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: SalomonBottomBar(
-        backgroundColor: Colors.white,
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
-        items: [
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.home), title: const Text("Home")),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.chat), title: const Text("Chat")),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.group), title: const Text("Group Chat")),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.workspaces),
-              title: const Text("Channels")),
-        ],
-      ),
+      body: Obx(() {
+        return IndexedStack(
+          index: _staffviewController.currentIndex.value,
+          children: _screens,
+        );
+      }),
+      bottomNavigationBar: Obx(() {
+        return SalomonBottomBar(
+          backgroundColor: Colors.white,
+          currentIndex: _staffviewController.currentIndex.value,
+          onTap: _onItemTapped,
+          items: [
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.home), title: const Text("Home")),
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.chat), title: const Text("Chat")),
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.group), title: const Text("Group Chat")),
+            SalomonBottomBarItem(
+                icon: const Icon(Icons.workspaces),
+                title: const Text("Channels")),
+          ],
+        );
+      }),
     );
   }
 }

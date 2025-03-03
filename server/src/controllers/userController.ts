@@ -13,6 +13,8 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 import { generateNumericPassword } from "../utils/OtpService";
 import { sendNewPasswordEmail } from "../utils/sendEmail";
+import { Template } from "../models/Template";
+import { Training } from "../models/Training";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -900,10 +902,16 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
     const userChannelCount = await Channel.count({
     
     });
-
+    const templateCount = await Template.count({
+      where:{
+        channelId:req.activeChannel 
+      }
+    });
+    const trainingCount = await Training.count();
     const userTotalMessage = await Message.count({where:{
        channelId:req.activeChannel
     }});
+  
     const userUnMessage = await getUnrepliedMessagesCount(req.activeChannel || '');
     const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
     const driverCount = await User.count({where:{
@@ -914,8 +922,29 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
         
          channelId:req.activeChannel
       },
+      include:[
+        {
+          model:Group,
+          where:{
+            type:"group"
+          }
+        }
+      ]
     });
-
+    const userTotalTruckGroups = await GroupChannel.count({
+      where: {
+        
+         channelId:req.activeChannel
+      },
+      include:[
+        {
+          model:Group,
+          where:{
+            type:"truck"
+          }
+        }
+      ]
+    });
     const lastFiveDriver = await User.findAll({
       where:{
         user_type:"driver",
@@ -934,6 +963,9 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
+        templateCount,
+        trainingCount,
+        truckGroupCount:userTotalTruckGroups,
         channelCount: userChannelCount,
         messageCount: userTotalMessage,
         groupCount: userTotalGroups,
