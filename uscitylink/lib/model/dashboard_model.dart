@@ -6,7 +6,7 @@ class DashboardModel {
   int? groupCount;
   int? truckCount;
   int? trailerCount;
-  int? totalAmount;
+  double? totalAmount;
   bool? isDocumentExpired;
   List<LatestMessage>? latestMessage;
   List<LatestGroupMessage>? latestGroupMessage;
@@ -29,7 +29,7 @@ class DashboardModel {
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
     truckCount = json['truckCount'];
-    totalAmount = json['totalAmount'];
+    totalAmount = (json['totalAmount'] as num?)?.toDouble();
     isDocumentExpired = json['isDocumentExpired'];
     trucks = json['trucks'];
     channel =
@@ -56,7 +56,8 @@ class DashboardModel {
     }
     data['channelCount'] = this.channelCount;
     data['trucks'] = trucks;
-    data['totalAmount'] = totalAmount;
+    data['totalAmount'] =
+        (this.totalAmount is num) ? this.totalAmount?.toDouble() : 0.0;
     data['messageCount'] = this.messageCount;
     data['groupCount'] = this.groupCount;
     data['truckCount'] = this.truckCount;

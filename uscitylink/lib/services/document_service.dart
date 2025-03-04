@@ -22,7 +22,6 @@ class PayModel {
         ? Pagination.fromJson(json['pagination'])
         : null;
     totalAmount = (json['totalAmount'] as num?)?.toDouble();
-    ;
   }
 
   Map<String, dynamic> toJson() {
