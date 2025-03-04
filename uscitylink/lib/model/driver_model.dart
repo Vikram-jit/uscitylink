@@ -128,6 +128,7 @@ class Document {
   String? createdAt;
   String? updatedAt;
   String? docType;
+  String? expired_status;
 
   Document(
       {this.id,
@@ -139,7 +140,8 @@ class Document {
       this.expireDate,
       this.createdAt,
       this.updatedAt,
-      this.docType});
+      this.docType,
+      this.expired_status});
 
   Document.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -152,6 +154,7 @@ class Document {
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
     docType = json['doc_type'];
+    expired_status = json['expired_status'];
   }
 
   Map<String, dynamic> toJson() {
@@ -161,6 +164,7 @@ class Document {
     data['type'] = this.type;
     data['title'] = this.title;
     data['file'] = this.file;
+    data['expired_status'] = this.expired_status;
     data['issue_date'] = this.issueDate;
     data['expire_date'] = this.expireDate;
     data['created_at'] = this.createdAt;

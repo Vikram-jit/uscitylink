@@ -6,26 +6,31 @@ class DashboardModel {
   int? groupCount;
   int? truckCount;
   int? trailerCount;
+  int? totalAmount;
+  bool? isDocumentExpired;
   List<LatestMessage>? latestMessage;
   List<LatestGroupMessage>? latestGroupMessage;
 
-  DashboardModel({
-    this.trucks,
-    this.channelCount,
-    this.messageCount,
-    this.groupCount,
-    this.truckCount,
-    this.trailerCount,
-    this.latestMessage,
-    this.latestGroupMessage,
-    this.channel,
-  });
+  DashboardModel(
+      {this.trucks,
+      this.channelCount,
+      this.messageCount,
+      this.groupCount,
+      this.truckCount,
+      this.trailerCount,
+      this.latestMessage,
+      this.latestGroupMessage,
+      this.channel,
+      this.totalAmount,
+      this.isDocumentExpired});
 
   DashboardModel.fromJson(Map<String, dynamic> json) {
     channelCount = json['channelCount'];
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
     truckCount = json['truckCount'];
+    totalAmount = json['totalAmount'];
+    isDocumentExpired = json['isDocumentExpired'];
     trucks = json['trucks'];
     channel =
         json['channel'] != null ? new Channel.fromJson(json['channel']) : null;
@@ -51,9 +56,11 @@ class DashboardModel {
     }
     data['channelCount'] = this.channelCount;
     data['trucks'] = trucks;
+    data['totalAmount'] = totalAmount;
     data['messageCount'] = this.messageCount;
     data['groupCount'] = this.groupCount;
     data['truckCount'] = this.truckCount;
+    data['isDocumentExpired'] = this.isDocumentExpired;
     data['trailerCount'] = this.trailerCount;
     if (this.latestMessage != null) {
       data['latestMessage'] = latestMessage?.map((v) => v.toJson()).toList();

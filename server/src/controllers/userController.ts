@@ -15,6 +15,7 @@ import { generateNumericPassword } from "../utils/OtpService";
 import { sendNewPasswordEmail } from "../utils/sendEmail";
 import { Template } from "../models/Template";
 import { Training } from "../models/Training";
+import moment from "moment";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -550,6 +551,8 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     const userTotalMessage = await Message.count({
       where: {
         userProfileId: req?.user?.id,
+        messageDirection:"S",
+        deliveryStatus:"sent"
       },
     });
 
@@ -587,6 +590,21 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     const trailerCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS trailerCount FROM trailers`,
       {
+        type: QueryTypes.SELECT,
+      }
+    );
+    const userProfile = await UserProfile.findByPk(req.user?.id)
+    const user = await User.findByPk(userProfile?.userId);
+    const totalAmount = await secondarySequelize.query<any>(
+      `SELECT SUM(amount) AS totalAmount
+       FROM driver_pays 
+       WHERE driver_id = :driverId 
+      `,
+      {
+        replacements: {
+          driverId: user?.yard_id,
+        
+        },
         type: QueryTypes.SELECT,
       }
     );
@@ -674,10 +692,25 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     }
     const channel = await Channel.findOne();
 
+    const driverDocuments = await secondarySequelize.query<any>(
+      `SELECT * FROM documents 
+       WHERE type = 'driver' 
+       AND item_id = :id 
+       AND expire_date < NOW()`, 
+      {
+        replacements: {
+          id: user?.yard_id,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    
+
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
+        totalAmount:totalAmount?.[0]?.totalAmount || 0,
         trucks: truckIds ? truckIds?.join(",") : "",
         channel:channel,
         channelCount: userChannelCount,
@@ -688,6 +721,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         latestMessage,
         latestGroupMessage: messagesWithGroup,
         distinctChannelIds,
+        isDocumentExpired : driverDocuments.length > 0 ? true:false
       },
     });
   } catch (err: any) {
@@ -869,6 +903,25 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
         type: QueryTypes.SELECT,
       }
     );
+    const expiredDocuments = driverDocuments.map((doc) => {
+      const expiryDate = moment(doc.expire_date);
+      const now = moment();
+      const oneMonthLater = moment().add(1, "month");
+    
+      let status = "Valid"; // Default status
+    
+      if (expiryDate.isBefore(now)) {
+        status = "Expired"; // Document already expired
+      } else if (expiryDate.isBefore(oneMonthLater)) {
+        status = "Expire Soon"; // Document will expire within a month
+      }
+    
+      return {
+        ...doc,
+        expired_status: status, // Add new key
+      };
+    });
+
     const driverCountryStatus = await secondarySequelize.query<any>(
       `SELECT * FROM driver_country_statuses  WHERE driver_id = :id`,
       {
@@ -879,13 +932,40 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
         type: QueryTypes.SELECT,
       }
     );
+    if(driverCountryStatus?.length >0){
+      const expiryDate = moment(driverCountryStatus?.[0].expiry_date);
+      const now = moment();
+      const oneMonthLater = moment().add(1, "month");
+    
+      let status = "Valid"; // Default status
+    
+      if (expiryDate.isBefore(now)) {
+        status = "Expired"; // Document already expired
+      } else if (expiryDate.isBefore(oneMonthLater)) {
+        status = "Expire Soon"; // Document will expire within a month
+      }
+    
+      expiredDocuments.push({
+        title:"Country Status",
+        file:driverCountryStatus?.[0].document,
+        issue_date:driverCountryStatus?.[0].issue_date,
+        expire_date:driverCountryStatus?.[0].expiry_date,
+        created_at:driverCountryStatus?.[0].created_at,
+        updated_at:driverCountryStatus?.[0].updated_at,
+        doc_type:"server",
+        item_id:driverCountryStatus?.[0].id,
+        id:driverCountryStatus?.[0].id,
+        type:driverCountryStatus?.[0].country_status,
+        expired_status: status, 
+      })
+    }
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
       data:{
         driver :driver.length > 0 ? driver?.[0] : null,
         countryStatus : driverCountryStatus?.length >0 ? driverCountryStatus?.[0] : null,
-        document:driverDocuments
+        document:expiredDocuments
 
       }
     });
