@@ -38,13 +38,15 @@ class DriverProfileView extends StatelessWidget {
                 },
               ),
               backgroundColor: TColors.primary,
-              title: Text(
-                "${_controller.driverProfile.value.driver?.name ?? ""}",
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: Colors.white),
-              ),
+              title: Obx(() {
+                return Text(
+                  "${_controller.driverProfile.value.driver?.name ?? ""}",
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(color: Colors.white),
+                );
+              }),
             ),
             // Container(
             //   height: 150.0,

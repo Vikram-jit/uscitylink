@@ -1067,7 +1067,7 @@ export async function getUnrepliedMessagesCount(   channelId:string,): Promise<n
   try {
 
     // Fetch all received messages (R)
-    const receivedMessages = await Message.count({
+    const receivedMessages = await Message.findAll({
       where: {
         channelId:channelId,
         messageDirection: "R",
@@ -1079,33 +1079,33 @@ export async function getUnrepliedMessagesCount(   channelId:string,): Promise<n
       attributes: ["id", "userProfileId", "channelId", "createdAt"],
       
     });
-    return receivedMessages
+    return receivedMessages.length
 
     let unrepliedMessagesCount = 0;
 
-    // // Loop through each received message to check if it has a corresponding reply
-    // for (const receivedMessage of receivedMessages) {
-    //   // Check if there is a sent message replying to this received message
-    //   const replyExists = await Message.findOne({
-    //     where: {
-    //       type: {
-    //         [Op.ne]: "group", // Exclude messages where the type is 'group'
-    //       },
-    //       userProfileId: receivedMessage.userProfileId,
-    //       channelId: receivedMessage.channelId,
-    //       messageDirection: "S", // Sent message (reply)
-    //       createdAt: {
-    //         [Op.gt]: receivedMessage.createdAt, // Sent message must be after the received one
-    //       },
-    //     },
-    //   });
+    // Loop through each received message to check if it has a corresponding reply
+    for (const receivedMessage of receivedMessages) {
+      // Check if there is a sent message replying to this received message
+      const replyExists = await Message.findOne({
+        where: {
+          type: {
+            [Op.ne]: "group", // Exclude messages where the type is 'group'
+          },
+          userProfileId: receivedMessage.userProfileId,
+          channelId: receivedMessage.channelId,
+          messageDirection: "S", // Sent message (reply)
+          createdAt: {
+            [Op.gt]: receivedMessage.createdAt, // Sent message must be after the received one
+          },
+        },
+      });
 
     
-    //   if (!replyExists) {
-    //     unrepliedMessagesCount += 1;
-    //   }
-    //   console.log(unrepliedMessagesCount)
-    // }
+      if (!replyExists) {
+        unrepliedMessagesCount += 1;
+      }
+      console.log(unrepliedMessagesCount)
+    }
 
     
     return unrepliedMessagesCount;
