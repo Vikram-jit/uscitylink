@@ -206,7 +206,7 @@ class StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(5.0),
       ),
       child: Container(
-        width: TDeviceUtils.getScreenWidth(context) * 0.425,
+        width: TDeviceUtils.getScreenWidth(context) * 0.4,
         height: TDeviceUtils.getScreenHeight() * 0.15,
         // Apply the gradient to the container
         decoration: BoxDecoration(
@@ -261,6 +261,7 @@ class StatCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   title,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

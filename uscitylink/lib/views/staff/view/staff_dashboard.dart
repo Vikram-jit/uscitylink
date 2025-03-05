@@ -137,7 +137,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                       ),
                     ),
                     SizedBox(
-                      height: TDeviceUtils.getAppBarHeight() * 0.1,
+                      height: TDeviceUtils.getAppBarHeight() * 0.2,
                     ),
                     SizedBox(
                       child: Row(
@@ -180,6 +180,9 @@ class _StaffDashboardState extends State<StaffDashboard>
                       ),
                     ),
                     SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.2,
+                    ),
+                    SizedBox(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -218,6 +221,9 @@ class _StaffDashboardState extends State<StaffDashboard>
                           ),
                         ],
                       ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.2,
                     ),
                     SizedBox(
                       child: Row(

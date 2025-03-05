@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
@@ -31,7 +32,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   ChannelController _channelController = Get.find<ChannelController>();
   Timer? _channelUpdateTimer; // Timer for updating channelId
-
+  DashboardController _dashboardController = Get.find<DashboardController>();
   late MessageController messageController;
   SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
@@ -160,6 +161,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   if (_channelController.initialized) {
                     _channelController.getCount();
                   }
+                  _dashboardController.getDashboard();
                   Get.back();
                 },
               ),

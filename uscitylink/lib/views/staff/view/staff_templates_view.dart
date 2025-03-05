@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/template_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -9,6 +10,7 @@ class StaffTemplatesView extends StatelessWidget {
   StaffTemplatesView({super.key});
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   TemplateController _templateController = Get.put(TemplateController());
+  DashboardController _dashboardController = Get.find<DashboardController>();
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -20,6 +22,7 @@ class StaffTemplatesView extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.amber,
         onPressed: () {
+          _dashboardController.getStaffDashboard();
           Get.to(() => TemplateDetailsView(template: Template()));
         },
         label: Row(

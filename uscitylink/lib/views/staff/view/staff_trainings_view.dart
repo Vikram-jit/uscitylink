@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/staff/view/tainings/training_detail_view.dart';
@@ -16,7 +17,7 @@ class StaffTrainingsView extends StatefulWidget {
 class _StaffTrainingsViewState extends State<StaffTrainingsView> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   TrainingController _trainingController = Get.put(TrainingController());
-
+  DashboardController _dashboardController = Get.find<DashboardController>();
   @override
   void initState() {
     // TODO: implement initState
@@ -36,6 +37,7 @@ class _StaffTrainingsViewState extends State<StaffTrainingsView> {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                 onPressed: () {
+                  _dashboardController.getStaffDashboard();
                   Navigator.pop(context); // Navigate back
                 },
               ),

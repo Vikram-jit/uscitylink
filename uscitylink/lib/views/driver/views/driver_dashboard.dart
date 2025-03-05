@@ -46,11 +46,11 @@ class _DriverDashboardState extends State<DriverDashboard>
       if (socketService.isConnected.value) {
         socketService.socket.disconnect();
       }
-      print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
+      _dashboardController.getDashboard();
     }
   }
 
@@ -139,7 +139,9 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ],
                     ),
                   ),
-
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                  ),
                   SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -182,7 +184,9 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ],
                     ),
                   ),
-
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                  ),
                   SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -231,7 +235,9 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ],
                     ),
                   ),
-
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                  ),
                   SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -245,6 +251,20 @@ class _DriverDashboardState extends State<DriverDashboard>
                             title: "TRAILERS",
                             value: 0,
                             icon: Icons.car_crash,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ], // Gradient colors
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            channelController.setTabIndex(3);
+                          },
+                          child: StatCard(
+                            title: "TRAINING SECTION",
+                            value: 0,
+                            icon: Icons.class_,
                             gradientColors: [
                               Color(0xFFe5e5e5),
                               Color(0xFFe5e5e5),

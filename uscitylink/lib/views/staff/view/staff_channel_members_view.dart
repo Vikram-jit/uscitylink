@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
@@ -14,7 +15,8 @@ class StaffChannelMembersView extends StatelessWidget {
   // Get the controller for staff channel
   final StaffchannelController _staffChannelController =
       Get.find<StaffchannelController>();
-
+  final DashboardController _dashboardController =
+      Get.find<DashboardController>();
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -31,6 +33,7 @@ class StaffChannelMembersView extends StatelessWidget {
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                 onPressed: () {
+                  _dashboardController.getStaffDashboard();
                   Navigator.pop(context); // Navigate back
                 },
               ),

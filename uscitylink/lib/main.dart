@@ -1,5 +1,4 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -7,8 +6,6 @@ import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
 import 'package:uscitylink/routes/app_routes.dart';
-import 'package:uscitylink/services/background_service.dart';
-// import 'package:uscitylink/services/background_service.dart';
 import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
@@ -20,16 +17,15 @@ void main() async {
   final socketService = Get.put(SocketService());
 
   String? accessToken = await UserPreferenceController().getToken();
-  final fcmService = Get.put(FCMService());
 
   if (accessToken != null) {
     socketService.connectSocket();
 
     // Explicitly update the FCM token after login
-    String? token = fcmService.fcmToken.value;
-    if (token != null && token.isNotEmpty) {
-      await fcmService.updateDeviceToken(token);
-    }
+    // String? token = fcmService.fcmToken.value;
+    // if (token != null && token.isNotEmpty) {
+    //   await fcmService.updateDeviceToken(token);
+    // }
     Get.lazyPut(() => MessageController());
   }
   //BackgroundService.start();

@@ -1065,43 +1065,47 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
 
 export async function getUnrepliedMessagesCount(   channelId:string,): Promise<number> {
   try {
+
     // Fetch all received messages (R)
-    const receivedMessages = await Message.findAll({
+    const receivedMessages = await Message.count({
       where: {
         channelId:channelId,
-        messageDirection: "R", // Only consider received messages
+        messageDirection: "R",
         type: {
-          [Op.ne]: "group", // Exclude messages where the type is 'group'
+          [Op.ne]: "group", 
         },
+        deliveryStatus:"sent"
       },
       attributes: ["id", "userProfileId", "channelId", "createdAt"],
-   
+      
     });
+    return receivedMessages
 
     let unrepliedMessagesCount = 0;
 
-    // Loop through each received message to check if it has a corresponding reply
-    for (const receivedMessage of receivedMessages) {
-      // Check if there is a sent message replying to this received message
-      const replyExists = await Message.findOne({
-        where: {
-          type: {
-            [Op.ne]: "group", // Exclude messages where the type is 'group'
-          },
-          userProfileId: receivedMessage.userProfileId,
-          channelId: receivedMessage.channelId,
-          messageDirection: "S", // Sent message (reply)
-          createdAt: {
-            [Op.gt]: receivedMessage.createdAt, // Sent message must be after the received one
-          },
-        },
-      });
+    // // Loop through each received message to check if it has a corresponding reply
+    // for (const receivedMessage of receivedMessages) {
+    //   // Check if there is a sent message replying to this received message
+    //   const replyExists = await Message.findOne({
+    //     where: {
+    //       type: {
+    //         [Op.ne]: "group", // Exclude messages where the type is 'group'
+    //       },
+    //       userProfileId: receivedMessage.userProfileId,
+    //       channelId: receivedMessage.channelId,
+    //       messageDirection: "S", // Sent message (reply)
+    //       createdAt: {
+    //         [Op.gt]: receivedMessage.createdAt, // Sent message must be after the received one
+    //       },
+    //     },
+    //   });
 
     
-      if (!replyExists) {
-        unrepliedMessagesCount += 1;
-      }
-    }
+    //   if (!replyExists) {
+    //     unrepliedMessagesCount += 1;
+    //   }
+    //   console.log(unrepliedMessagesCount)
+    // }
 
     
     return unrepliedMessagesCount;

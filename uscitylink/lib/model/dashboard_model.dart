@@ -44,13 +44,13 @@ class DashboardModel {
     if (json['latestGroupMessage'] != null) {
       latestGroupMessage = <LatestGroupMessage>[];
       json['latestGroupMessage'].forEach((v) {
-        latestGroupMessage!.add(new LatestGroupMessage.fromJson(v));
+        latestGroupMessage!.add(LatestGroupMessage.fromJson(v));
       });
     }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
+    final Map<String, dynamic> data = Map<String, dynamic>();
     if (this.channel != null) {
       data['channel'] = this.channel!.toJson();
     }

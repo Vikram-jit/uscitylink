@@ -48,17 +48,32 @@ class Pay {
   String? document;
   String? createdAt;
   String? updatedAt;
+  String? adjustment_sign;
+  String? adjustment;
+  String? driver_addv;
+  String? other_pay;
+  String? layover;
+  String? pay_rate;
+  String? mileage;
 
-  Pay(
-      {this.id,
-      this.driverId,
-      this.tripId,
-      this.startDate,
-      this.endDate,
-      this.amount,
-      this.document,
-      this.createdAt,
-      this.updatedAt});
+  Pay({
+    this.id,
+    this.driverId,
+    this.tripId,
+    this.startDate,
+    this.endDate,
+    this.amount,
+    this.document,
+    this.createdAt,
+    this.updatedAt,
+    this.adjustment,
+    this.adjustment_sign,
+    this.driver_addv,
+    this.layover,
+    this.mileage,
+    this.other_pay,
+    this.pay_rate,
+  });
 
   Pay.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -67,6 +82,14 @@ class Pay {
     startDate = json['start_date'];
     endDate = json['end_date'];
     amount = (json['amount'] as num?)?.toDouble();
+    document = json['document'];
+    adjustment = json['adjustment'];
+    adjustment_sign = json['adjustment_sign'];
+    driver_addv = json['driver_addv'];
+    layover = json['layover'];
+    mileage = json['mileage'];
+    other_pay = json['other_pay'];
+    pay_rate = json['pay_rate'];
     document = json['document'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
@@ -83,6 +106,13 @@ class Pay {
     data['document'] = this.document;
     data['created_at'] = this.createdAt;
     data['updated_at'] = this.updatedAt;
+    data['adjustment'] = this.adjustment;
+    data['adjustment_sign'] = this.adjustment_sign;
+    data['layover'] = this.layover;
+    data['driver_addv'] = this.driver_addv;
+    data['pay_rate'] = this.pay_rate;
+    data['other_pay'] = this.other_pay;
+    data['mileage'] = this.mileage;
     return data;
   }
 }

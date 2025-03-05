@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
@@ -29,6 +30,7 @@ class FCMService extends GetxController {
   AuthService _authService = AuthService();
   ChannelController _channelController = Get.put(ChannelController());
   MessageController _messageController = Get.put(MessageController());
+
   StaffchatController _staffchatController = Get.put(StaffchatController());
 
   RxString fcmToken = ''.obs;
@@ -236,6 +238,10 @@ class FCMService extends GetxController {
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print('Received a message in the foreground:');
+      if (Get.isRegistered<DashboardController>()) {
+        Get.find<DashboardController>().getDashboard();
+      }
+
       // Initialize the badge count to 0
       var data = jsonEncode(message.data);
 

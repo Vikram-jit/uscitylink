@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/staff/staff_dashboard_model.dart';
 import 'package:uscitylink/services/dashboard_service.dart';
+import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class DashboardController extends GetxController {
@@ -14,9 +16,8 @@ class DashboardController extends GetxController {
   var loading = false.obs;
   final channel = Channel().obs;
   @override
-  void onInit() {
+  void onInit() async {
     super.onInit();
-    //getDashboard();
   }
 
   void getDashboard() {
