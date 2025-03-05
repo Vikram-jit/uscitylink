@@ -45,6 +45,11 @@ class StatCard extends StatelessWidget {
         Color(0xFF50C9C3), // Reddish
         Color(0xFF96DEDA), // Light Orange
       ];
+    } else if (title == "TRAINING SECTION") {
+      return [
+        Color(0xFF614385),
+        Color(0xFF516395),
+      ];
     }
     return [
       // Reddish
