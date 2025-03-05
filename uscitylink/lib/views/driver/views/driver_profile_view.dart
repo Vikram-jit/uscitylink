@@ -293,6 +293,38 @@ class DriverProfileView extends StatelessWidget {
                                   })
                                 ],
                               ),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.password,
+                                        color: TColors.primary,
+                                        size: 18,
+                                      ),
+                                      SizedBox(
+                                        width: 5,
+                                      ),
+                                      Text("ELD Password")
+                                    ],
+                                  ),
+                                  SizedBox(
+                                    width: 6,
+                                  ),
+                                  Text(
+                                    "-",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(color: Colors.black),
+                                  )
+                                ],
+                              ),
                             ],
                           ),
                         ),
