@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
@@ -25,7 +26,7 @@ class _ChatViewState extends State<ChatView>
   SocketService socketService = Get.find<SocketService>();
   ChannelController channelController = Get.find<ChannelController>();
   GroupController groupController = Get.put(GroupController());
-
+  DashboardController _dashboardController = Get.find<DashboardController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -86,12 +87,15 @@ class _ChatViewState extends State<ChatView>
         backgroundColor: TColors.primary,
         leading: IconButton(
           icon: Icon(
-            Icons.menu,
+            Icons.arrow_back_ios,
             color: Colors.white,
           ),
           onPressed: () {
+            _dashboardController.getDashboard();
+            Get.back();
+
             // Open the drawer using the scaffold key
-            _scaffoldKey.currentState?.openDrawer();
+            // _scaffoldKey.currentState?.openDrawer();
           },
         ),
         title: Text("Chats",

@@ -240,6 +240,7 @@ class FCMService extends GetxController {
       print('Received a message in the foreground:');
       if (Get.isRegistered<DashboardController>()) {
         Get.find<DashboardController>().getDashboard();
+        Get.find<DashboardController>().getStaffDashboard();
       }
 
       // Initialize the badge count to 0

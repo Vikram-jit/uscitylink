@@ -13,8 +13,11 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
+import 'package:uscitylink/views/driver/views/chat_view.dart';
+import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
+import 'package:uscitylink/views/driver/views/training_view.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
 class DriverDashboard extends StatefulWidget {
@@ -142,6 +145,108 @@ class _DriverDashboardState extends State<DriverDashboard>
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.3,
                   ),
+
+                  SizedBox(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            Get.to(() => ChatView());
+                            // Get.toNamed(
+                            //   AppRoutes.driverMessage,
+                            //   arguments: {
+                            //     'channelId': _dashboardController
+                            //         .dashboard.value.channel?.id,
+                            //     'name': _dashboardController
+                            //         .dashboard.value.channel?.name,
+                            //   },
+                            // );
+                          },
+                          child: StatCard(
+                            title: "UNREAD MESSAGE",
+                            icon: Icons.message,
+                            value: _dashboardController
+                                    .dashboard.value.messageCount ??
+                                0,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            Get.to(() => DriverProfileView());
+                          },
+                          child: StatCard(
+                            isDocumentExpired: _dashboardController
+                                    .dashboard.value.isDocumentExpired ??
+                                false,
+                            icon: Icons.person,
+                            title: "MY INFORMATION",
+                            value: 0,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                  ),
+                  SizedBox(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            truckController.changeTab(0);
+                            Get.to(() => DocumentView(
+                                  tabIndexDefault: 0,
+                                ));
+                            // channelController.setTabIndex(2);
+                          },
+                          child: StatCard(
+                            icon: Icons.fire_truck,
+                            title: "TRUCKS",
+                            value:
+                                _dashboardController.dashboard.value.trucks ??
+                                    0,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            truckController.changeTab(1);
+                            Get.to(() => DocumentView(
+                                  tabIndexDefault: 1,
+                                ));
+                            // channelController.setTabIndex(2);
+                          },
+                          child: StatCard(
+                            title: "TRAILERS",
+                            value: 0,
+                            icon: Icons.car_crash,
+                            gradientColors: [
+                              Color(0xFFe5e5e5),
+                              Color(0xFFe5e5e5),
+                            ], // Gradient colors
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                  ),
                   SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -166,100 +271,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                         ),
                         InkWell(
                           onTap: () {
-                            channelController.setTabIndex(2);
-                            truckController.changeTab(0);
-                          },
-                          child: StatCard(
-                            icon: Icons.fire_truck,
-                            title: "TRUCKS",
-                            value:
-                                _dashboardController.dashboard.value.trucks ??
-                                    0,
-                            gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.3,
-                  ),
-                  SizedBox(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            Get.to(() => DriverProfileView());
-                          },
-                          child: StatCard(
-                            isDocumentExpired: _dashboardController
-                                    .dashboard.value.isDocumentExpired ??
-                                false,
-                            icon: Icons.person,
-                            title: "MY INFORMATION",
-                            value: 0,
-                            gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
-                            ],
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.driverMessage,
-                              arguments: {
-                                'channelId': _dashboardController
-                                    .dashboard.value.channel?.id,
-                                'name': _dashboardController
-                                    .dashboard.value.channel?.name,
-                              },
-                            );
-                          },
-                          child: StatCard(
-                            title: "UNREAD MESSAGE",
-                            icon: Icons.message,
-                            value: _dashboardController
-                                    .dashboard.value.messageCount ??
-                                0,
-                            gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.3,
-                  ),
-                  SizedBox(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            channelController.setTabIndex(2);
-                            truckController.changeTab(1);
-                          },
-                          child: StatCard(
-                            title: "TRAILERS",
-                            value: 0,
-                            icon: Icons.car_crash,
-                            gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
-                            ], // Gradient colors
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            channelController.setTabIndex(3);
+                            Get.to(() => TrainingView());
                           },
                           child: StatCard(
                             title: "TRAINING SECTION",

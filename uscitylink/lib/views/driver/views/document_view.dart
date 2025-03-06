@@ -2,14 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 
 class DocumentView extends StatefulWidget {
-  int tabIndexDefault = 0;
-  DocumentView({super.key});
+  int tabIndexDefault;
+  DocumentView({super.key, this.tabIndexDefault = 0});
 
   @override
   State<DocumentView> createState() => _DocumentViewState();
@@ -19,7 +20,7 @@ class _DocumentViewState extends State<DocumentView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   // late TabController _tabController;
   final TruckController _controller = Get.put(TruckController());
-
+  DashboardController _dashboardController = Get.find<DashboardController>();
   late Timer _debounce;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -39,9 +40,9 @@ class _DocumentViewState extends State<DocumentView>
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trucks");
-        setState(() {
-          _controller.initialIndex.value = 0;
-        });
+        // setState(() {
+        _controller.initialIndex.value = 0;
+        // });
       }
       if (_controller.tabController.index == 1 &&
           !_controller.tabController.indexIsChanging) {
@@ -49,9 +50,9 @@ class _DocumentViewState extends State<DocumentView>
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trailers");
-        setState(() {
-          _controller.initialIndex.value = 1;
-        });
+        // setState(() {
+        _controller.initialIndex.value = 1;
+        // });
       }
     });
 
@@ -76,7 +77,7 @@ class _DocumentViewState extends State<DocumentView>
 
   @override
   void dispose() {
-    _controller.dispose();
+    //_controller.dispose();
     _debounce.cancel(); // Cancel debounce timer when widget is disposed
     super.dispose();
   }
@@ -94,12 +95,14 @@ class _DocumentViewState extends State<DocumentView>
             AppBar(
               leading: IconButton(
                 icon: Icon(
-                  Icons.menu,
+                  Icons.arrow_back_ios,
                   color: Colors.white,
                 ),
                 onPressed: () {
+                  _dashboardController.getDashboard();
+                  Get.back();
                   // Open the drawer using the scaffold key
-                  _scaffoldKey.currentState?.openDrawer();
+                  // _scaffoldKey.currentState?.openDrawer();
                 },
               ),
               backgroundColor: TColors.primary,

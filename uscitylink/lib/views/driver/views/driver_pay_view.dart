@@ -112,392 +112,402 @@ class DriverPayView extends StatelessWidget {
                     var pay = _payController.pays[index];
                     return Column(
                       children: [
-                        ExpansionTile(
-                          collapsedShape: Border.all(
-                              color: Colors.transparent,
-                              style: BorderStyle.none),
-                          title: Text("${pay.tripId}"),
+                        Card(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(6), // Rounded corners
+                          ),
+                          elevation: 4,
+                          child: Theme(
+                            data: ThemeData()
+                                .copyWith(dividerColor: Colors.transparent),
+                            child: ExpansionTile(
+                              shape: LinearBorder.none,
+                              title: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "Trip Id: ",
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700),
+                                      ),
+                                      Text(
+                                        "${pay.tripId}",
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700),
+                                      )
+                                    ],
+                                  ),
+                                  Container(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 5),
+                                    decoration: BoxDecoration(
+                                        color: pay.payment_status == "paid"
+                                            ? Colors.green
+                                            : Colors.red,
+                                        borderRadius: BorderRadius.circular(5)),
+                                    child: Text(
+                                      "${pay.payment_status?.toUpperCase()}",
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  SizedBox()
+                                ],
+                              ),
+                              subtitle: Column(
+                                children: [
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_month,
+                                                size: 14,
+                                              ),
+                                              Text(
+                                                "Start Date",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(fontSize: 14),
+                                              ),
+                                            ],
+                                          ),
+                                          Text("${pay.startDate}",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14))
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_month,
+                                                size: 14,
+                                              ),
+                                              Text(
+                                                "End Date",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(fontSize: 14),
+                                              ),
+                                            ],
+                                          ),
+                                          Text("${pay.endDate}",
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14))
+                                        ],
+                                      ),
+                                      SizedBox()
+                                    ],
+                                  ),
+                                ],
+                              ),
 
-                          /// subtitle: Divider(),
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              /// subtitle: Divider(),
                               children: [
-                                Text(
-                                  "Trip - ${pay.tripId}",
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18),
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(
-                              width: TDeviceUtils.getScreenWidth(context) * 0.9,
-                              child: Card(
-                                color: Colors.white,
-                                child: Column(
+                                Divider(),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    SizedBox(
-                                      height: 5,
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Column(
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.calendar_month,
-                                                    size: 14,
-                                                  ),
-                                                  Text(
-                                                    "Start Date",
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                            fontSize: 16),
-                                                  ),
-                                                ],
-                                              ),
-                                              Text("${pay.startDate}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700))
-                                            ],
-                                          ),
-                                          Column(
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.calendar_month,
-                                                    size: 14,
-                                                  ),
-                                                  Text(
-                                                    "End Date",
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                            fontSize: 16),
-                                                  ),
-                                                ],
-                                              ),
-                                              Text("${pay.endDate}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700))
-                                            ],
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    Divider(),
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 10),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Mileage",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text("${pay.mileage ?? 0.00}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700))
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Pay Rate(cent)",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text("${pay.pay_rate ?? 0}.00",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700))
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Layover",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text("+${pay.layover ?? 0.00}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.green))
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Adjustment",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text(
-                                                  "${pay.adjustment_sign ?? ""}${pay.adjustment ?? 0.00}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: pay.adjustment_sign !=
-                                                              null
-                                                          ? pay.adjustment_sign ==
-                                                                  "-"
-                                                              ? Colors.red
-                                                              : Colors.green
-                                                          : Colors.black))
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Other Pay",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text("+${pay.other_pay ?? 0.00}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.green))
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Driver Advance",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(fontSize: 14),
-                                              ),
-                                              Text(
-                                                  "-${pay.driver_addv ?? 0.00}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.red))
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Divider(),
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 10),
-                                      child: Column(
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "Total",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall
-                                                    ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        fontSize: 18),
-                                              ),
-                                              Text("\$${pay.amount}",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 22))
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: 10,
+                                    Text(
+                                      "Trip - ${pay.tripId}",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18),
                                     ),
                                   ],
                                 ),
-                              ),
+                                SizedBox(
+                                  width: TDeviceUtils.getScreenWidth(context) *
+                                      0.9,
+                                  child: Card(
+                                    color: Colors.white,
+                                    child: Column(
+                                      children: [
+                                        SizedBox(
+                                          height: 5,
+                                        ),
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Column(
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.calendar_month,
+                                                        size: 14,
+                                                      ),
+                                                      Text(
+                                                        "Start Date",
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .titleSmall
+                                                            ?.copyWith(
+                                                                fontSize: 16),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Text("${pay.startDate}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700))
+                                                ],
+                                              ),
+                                              Column(
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.calendar_month,
+                                                        size: 14,
+                                                      ),
+                                                      Text(
+                                                        "End Date",
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .titleSmall
+                                                            ?.copyWith(
+                                                                fontSize: 16),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Text("${pay.endDate}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700))
+                                                ],
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                        Divider(),
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Mileage",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text("${pay.mileage ?? 0.00}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700))
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 6,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Pay Rate(cent)",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text(
+                                                      "${pay.pay_rate ?? 0}.00",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700))
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 6,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Layover",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text(
+                                                      "+${pay.layover ?? 0.00}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Colors.green))
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 6,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Adjustment",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text(
+                                                      "${pay.adjustment_sign ?? ""}${pay.adjustment ?? 0.00}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: pay.adjustment_sign !=
+                                                                  null
+                                                              ? pay.adjustment_sign ==
+                                                                      "-"
+                                                                  ? Colors.red
+                                                                  : Colors.green
+                                                              : Colors.black))
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 6,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Other Pay",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text(
+                                                      "+${pay.other_pay ?? 0.00}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Colors.green))
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 6,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Driver Advance",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontSize: 14),
+                                                  ),
+                                                  Text(
+                                                      "-${pay.driver_addv ?? 0.00}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Colors.red))
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Divider(),
+                                        Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Total",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontSize: 18),
+                                                  ),
+                                                  Text("\$${pay.amount}",
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 22))
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: 10,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                              ],
                             ),
-                            // Padding(
-                            //   padding: const EdgeInsets.only(
-                            //       left: 16.0, right: 16.0),
-                            //   child: Column(
-                            //     children: [
-                            //       Row(
-                            //         mainAxisAlignment:
-                            //             MainAxisAlignment.spaceBetween,
-                            //         children: [
-                            //           Column(
-                            //             crossAxisAlignment:
-                            //                 CrossAxisAlignment.start,
-                            //             children: [
-                            //               Row(
-                            //                 children: [
-                            //                   Icon(
-                            //                     Icons.calendar_month,
-                            //                     size: 14,
-                            //                   ),
-                            //                   Text(
-                            //                     "Start Date",
-                            //                     style: Theme.of(context)
-                            //                         .textTheme
-                            //                         .titleSmall
-                            //                         ?.copyWith(fontSize: 16),
-                            //                   ),
-                            //                 ],
-                            //               ),
-                            //               Text("${pay.startDate}",
-                            //                   style: TextStyle(
-                            //                       fontWeight: FontWeight.w700))
-                            //             ],
-                            //           ),
-                            //           Column(
-                            //             crossAxisAlignment:
-                            //                 CrossAxisAlignment.start,
-                            //             children: [
-                            //               Row(
-                            //                 children: [
-                            //                   Icon(
-                            //                     Icons.calendar_month,
-                            //                     size: 14,
-                            //                   ),
-                            //                   Text(
-                            //                     "End Date",
-                            //                     style: Theme.of(context)
-                            //                         .textTheme
-                            //                         .titleSmall
-                            //                         ?.copyWith(fontSize: 16),
-                            //                   ),
-                            //                 ],
-                            //               ),
-                            //               Text("${pay.endDate}",
-                            //                   style: TextStyle(
-                            //                       fontWeight: FontWeight.w700))
-                            //             ],
-                            //           ),
-                            //           Column(
-                            //             crossAxisAlignment:
-                            //                 CrossAxisAlignment.start,
-                            //             children: [
-                            //               Row(
-                            //                 children: [
-                            //                   Icon(
-                            //                     Icons.money,
-                            //                     size: 16,
-                            //                   ),
-                            //                   Text(
-                            //                     "Amount",
-                            //                     style: Theme.of(context)
-                            //                         .textTheme
-                            //                         .titleSmall
-                            //                         ?.copyWith(fontSize: 16),
-                            //                   ),
-                            //                 ],
-                            //               ),
-                            //               Text(
-                            //                 "${pay.amount}",
-                            //                 style: TextStyle(
-                            //                     fontWeight: FontWeight.w700),
-                            //               )
-                            //             ],
-                            //           ),
-                            //         ],
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
-                            // if (pay.document != null)
-                            //   Padding(
-                            //     padding: EdgeInsets.only(top: 10, right: 10),
-                            //     child: InkWell(
-                            //       onTap: () {
-                            //         Get.to(() => DocumentDownload(
-                            //               file:
-                            //                   "https://msyard.s3.us-west-1.amazonaws.com/images/${pay.document}",
-                            //             ));
-                            //       },
-                            //       child: Container(
-                            //         width:
-                            //             TDeviceUtils.getScreenWidth(context) *
-                            //                 0.9,
-                            //         margin: EdgeInsets.only(left: 10),
-                            //         padding: EdgeInsets.all(6),
-                            //         height: 30,
-                            //         decoration: BoxDecoration(
-                            //             color: TColors.primaryStaff,
-                            //             borderRadius: BorderRadius.circular(6)),
-                            //         child: Center(
-                            //           child: Text(
-                            //             "View Document",
-                            //             style: TextStyle(color: Colors.white),
-                            //           ),
-                            //         ),
-                            //       ),
-                            //     ),
-                            //   ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                          ],
+                          ),
                         ),
-                        Divider()
                       ],
                     );
                   },

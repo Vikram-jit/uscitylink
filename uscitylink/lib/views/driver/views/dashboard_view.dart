@@ -44,9 +44,7 @@ class _DashboardViewState extends State<DashboardView>
 
   final List<Widget> _screens = [
     const DriverDashboard(),
-    const ChatView(),
-    DocumentView(),
-    TrainingView(),
+    // const ChatView(),
     const SettingView(),
   ];
 
@@ -93,29 +91,24 @@ class _DashboardViewState extends State<DashboardView>
         items: [
           SalomonBottomBarItem(
               icon: const Icon(Icons.home), title: const Text("Home")),
-          SalomonBottomBarItem(
-            icon: Obx(() {
-              return channelController.totalUnReadMessage.value > 0
-                  ? badges.Badge(
-                      position: badges.BadgePosition.topEnd(top: -15, end: -9),
-                      badgeContent: channelController.totalUnReadMessage.value >
-                              0
-                          ? Text(
-                              '${channelController.totalUnReadMessage.value}',
-                              style: TextStyle(color: Colors.white),
-                            )
-                          : null, // Hide the badge if unread message count is 0
-                      child: const Icon(Icons.chat), // Icon for the chat
-                    )
-                  : const Icon(Icons.chat);
-            }),
-            title: const Text("Chat"),
-          ),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.edit_document),
-              title: const Text("vehicles")),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.class_), title: const Text("Training")),
+          // SalomonBottomBarItem(
+          //   icon: Obx(() {
+          //     return channelController.totalUnReadMessage.value > 0
+          //         ? badges.Badge(
+          //             position: badges.BadgePosition.topEnd(top: -15, end: -9),
+          //             badgeContent: channelController.totalUnReadMessage.value >
+          //                     0
+          //                 ? Text(
+          //                     '${channelController.totalUnReadMessage.value}',
+          //                     style: TextStyle(color: Colors.white),
+          //                   )
+          //                 : null, // Hide the badge if unread message count is 0
+          //             child: const Icon(Icons.chat), // Icon for the chat
+          //           )
+          //         : const Icon(Icons.chat);
+          //   }),
+          //   title: const Text("Chat"),
+          // ),
           SalomonBottomBarItem(
               icon: const Icon(Icons.settings), title: const Text("Settings")),
         ],

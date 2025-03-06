@@ -55,25 +55,26 @@ class Pay {
   String? layover;
   String? pay_rate;
   String? mileage;
+  String? payment_status;
 
-  Pay({
-    this.id,
-    this.driverId,
-    this.tripId,
-    this.startDate,
-    this.endDate,
-    this.amount,
-    this.document,
-    this.createdAt,
-    this.updatedAt,
-    this.adjustment,
-    this.adjustment_sign,
-    this.driver_addv,
-    this.layover,
-    this.mileage,
-    this.other_pay,
-    this.pay_rate,
-  });
+  Pay(
+      {this.id,
+      this.driverId,
+      this.tripId,
+      this.startDate,
+      this.endDate,
+      this.amount,
+      this.document,
+      this.createdAt,
+      this.updatedAt,
+      this.adjustment,
+      this.adjustment_sign,
+      this.driver_addv,
+      this.layover,
+      this.mileage,
+      this.other_pay,
+      this.pay_rate,
+      this.payment_status});
 
   Pay.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -93,12 +94,14 @@ class Pay {
     document = json['document'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
+    payment_status = json['payment_status'];
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
     data['driver_id'] = this.driverId;
+    data['payment_status'] = this.payment_status;
     data['tripId'] = this.tripId;
     data['start_date'] = this.startDate;
     data['end_date'] = this.endDate;
