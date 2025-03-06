@@ -319,7 +319,7 @@ class DriverProfileView extends StatelessWidget {
                                     width: 6,
                                   ),
                                   Text(
-                                    "-",
+                                    "${_controller.driverProfile.value.driver?.eld_password ?? "-"}",
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelMedium
