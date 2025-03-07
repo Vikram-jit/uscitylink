@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -37,7 +39,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
-  ChannelController _channelController = Get.find<ChannelController>();
+  ChannelController _channelController = Get.put(ChannelController());
 
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
@@ -95,6 +97,9 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
+      Timer(Duration(seconds: 2), () {
+        socketService.checkVersion();
+      });
       if (!widget.channelId.isNotEmpty) {}
       groupController.getGroupMessages(
           widget.channelId, widget.groupId, widget.page);

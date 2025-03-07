@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -21,6 +23,9 @@ class StaffChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Timer(Duration(seconds: 2), () {
+      socketService.checkVersion();
+    });
     _scrollController.addListener(() {
       if (_staffchannelController.loading.value) return;
       if (_scrollController.position.pixels ==

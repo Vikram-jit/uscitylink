@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffview_controller.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
@@ -25,6 +28,8 @@ class _StaffDashboardState extends State<StaffDashboard>
       Get.put(CustomDrawerController());
   DashboardController _dashboardController = Get.find<DashboardController>();
   StaffviewController _staffviewController = Get.find<StaffviewController>();
+  SocketService socketService = Get.find<SocketService>();
+
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
@@ -34,7 +39,6 @@ class _StaffDashboardState extends State<StaffDashboard>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    print(state);
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       // App is in the background
@@ -43,6 +47,10 @@ class _StaffDashboardState extends State<StaffDashboard>
       // socketService.disconnect(); // Disconnect the socket when the app goes to background
     } else if (state == AppLifecycleState.resumed) {
       // App is in the foreground
+
+      Timer(Duration(seconds: 2), () {
+        socketService.checkVersion();
+      });
 
       print("App is in the foreground");
       // socketService

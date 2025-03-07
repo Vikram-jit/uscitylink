@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart';
@@ -63,6 +65,9 @@ class _ChatViewState extends State<ChatView>
     } else if (state == AppLifecycleState.resumed) {
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
+        Timer(Duration(seconds: 2), () {
+          socketService.checkVersion();
+        });
       }
     }
   }

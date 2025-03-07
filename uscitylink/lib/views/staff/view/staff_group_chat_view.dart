@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/model/group_model.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 import 'package:uscitylink/views/staff/widgets/group_tab.dart';
@@ -22,7 +25,7 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
   final StaffgroupController _staffGroupController =
       Get.put(StaffgroupController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
+  SocketService socketService = Get.find<SocketService>();
   @override
   void initState() {
     super.initState();
@@ -57,6 +60,9 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
       // Add logic for when the app goes to the background
       print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {
+      Timer(Duration(seconds: 2), () {
+        socketService.checkVersion();
+      });
       // Add logic for when the app comes back to the foreground
     }
   }

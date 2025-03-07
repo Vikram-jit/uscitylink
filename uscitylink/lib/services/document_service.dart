@@ -56,6 +56,7 @@ class Pay {
   String? pay_rate;
   String? mileage;
   String? payment_status;
+  List<Locations>? locations;
 
   Pay(
       {this.id,
@@ -74,7 +75,8 @@ class Pay {
       this.mileage,
       this.other_pay,
       this.pay_rate,
-      this.payment_status});
+      this.payment_status,
+      this.locations});
 
   Pay.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -95,6 +97,12 @@ class Pay {
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
     payment_status = json['payment_status'];
+    if (json['locations'] != null) {
+      locations = <Locations>[];
+      json['locations'].forEach((v) {
+        locations?.add(Locations.fromJson(v));
+      });
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -116,6 +124,54 @@ class Pay {
     data['pay_rate'] = this.pay_rate;
     data['other_pay'] = this.other_pay;
     data['mileage'] = this.mileage;
+    if (this.locations != null) {
+      data['locations'] = this.locations?.map((v) => v.toJson()).toList();
+    }
+    return data;
+  }
+}
+
+class Locations {
+  int? id;
+  int? driverPayDetailsId;
+  String? pickupLocation;
+  String? deliveryLocation;
+  String? mileage;
+  String? status;
+  String? createdAt;
+  String? updatedAt;
+
+  Locations(
+      {this.id,
+      this.driverPayDetailsId,
+      this.pickupLocation,
+      this.deliveryLocation,
+      this.mileage,
+      this.status,
+      this.createdAt,
+      this.updatedAt});
+
+  Locations.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    driverPayDetailsId = json['driver_pay_details_id'];
+    pickupLocation = json['pickup_location'];
+    deliveryLocation = json['delivery_location'];
+    mileage = json['mileage'];
+    status = json['status'];
+    createdAt = json['created_at'];
+    updatedAt = json['updated_at'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['id'] = this.id;
+    data['driver_pay_details_id'] = this.driverPayDetailsId;
+    data['pickup_location'] = this.pickupLocation;
+    data['delivery_location'] = this.deliveryLocation;
+    data['mileage'] = this.mileage;
+    data['status'] = this.status;
+    data['created_at'] = this.createdAt;
+    data['updated_at'] = this.updatedAt;
     return data;
   }
 }

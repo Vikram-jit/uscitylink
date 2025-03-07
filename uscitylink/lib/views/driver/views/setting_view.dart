@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
@@ -39,6 +41,9 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed) {
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
+        Timer(Duration(seconds: 2), () {
+          socketService.checkVersion();
+        });
       }
     }
   }

@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:ffi';
+import 'dart:io';
 
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
@@ -11,6 +11,8 @@ import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/services/auth_service.dart';
+import 'package:uscitylink/views/update_view.dart';
 
 class SocketService extends GetxController {
   UserPreferenceController userPreferenceController =
@@ -115,8 +117,13 @@ class SocketService extends GetxController {
     });
 
     socket.on('update_user_group_list', (data) {
-      if (Get.find<GroupController>().groups.isNotEmpty) {
-        Get.find<GroupController>().addNewMessage(data);
+      if (Get.isRegistered<GroupController>()) {
+        // ✅ Check if it's registered
+        final groupController = Get.find<GroupController>();
+
+        if (groupController.groups.isNotEmpty) {
+          groupController.addNewMessage(data);
+        }
       }
     });
 
@@ -199,6 +206,13 @@ class SocketService extends GetxController {
     socket.on('pong', (_) {
       pingResponse.value = 'Pong received!';
       print('Received pong from server');
+    });
+
+    socket.on('UPDATE_APP_VERSION_INFO', (message) {
+      print("update version $message");
+      if (message == "NewVersion") {
+        Get.offAll(() => UpdateView());
+      }
     });
 
     socket.on('disconnect', (_) {
@@ -386,6 +400,17 @@ class SocketService extends GetxController {
     }
   }
 
+  void checkVersion() async {
+    print("${isConnected.value} print");
+    if (isConnected.value) {
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      AppUpdateInfo appData = AppUpdateInfo(
+          buildNumber: packageInfo.buildNumber,
+          version: packageInfo.version,
+          platform: Platform.operatingSystem);
+      socket.emit("UPDATE_APP_VERSION", appData);
+    }
+  }
   // void staffListeningDriverTyping(String userId, bool isTyping) {
   //   if (isConnected.value) {
   //     socket.on("typing", {"userId": userId, "isTyping": isTyping});

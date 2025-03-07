@@ -311,33 +311,18 @@ class DriverPayView extends StatelessWidget {
                                           ),
                                         ),
                                         Divider(),
+                                        Text(
+                                          "Basic Details",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16),
+                                        ),
+                                        Divider(),
                                         Padding(
                                           padding: EdgeInsets.symmetric(
                                               horizontal: 10),
                                           child: Column(
                                             children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    "Mileage",
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                            fontSize: 14),
-                                                  ),
-                                                  Text("${pay.mileage ?? 0.00}",
-                                                      style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w700))
-                                                ],
-                                              ),
-                                              SizedBox(
-                                                height: 6,
-                                              ),
                                               Row(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment
@@ -464,6 +449,227 @@ class DriverPayView extends StatelessWidget {
                                           ),
                                         ),
                                         Divider(),
+                                        Text(
+                                          "Route Summary",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16),
+                                        ),
+                                        Column(
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.all(8.0),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    flex: 2,
+                                                    child: Text(
+                                                      "Pickup Location",
+                                                      style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700),
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    flex: 2,
+                                                    child: Text("Drop Location",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700)),
+                                                  ),
+                                                  Expanded(
+                                                    child: Text("Mileage",
+                                                        textAlign:
+                                                            TextAlign.end,
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700)),
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                            Divider(),
+                                            if (pay.locations != null &&
+                                                pay.locations!.isNotEmpty)
+                                              ...pay.locations!.map((location) {
+                                                return Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(8.0),
+                                                  child: Column(
+                                                    children: [
+                                                      Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Expanded(
+                                                            flex: 2,
+                                                            child: Text(
+                                                              "${location.pickupLocation}",
+                                                              style: TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600),
+                                                            ),
+                                                          ),
+                                                          Icon(
+                                                            Icons.arrow_forward,
+                                                            size: 16,
+                                                          ),
+                                                          SizedBox(
+                                                            width: 10,
+                                                          ),
+                                                          Expanded(
+                                                            flex: 2,
+                                                            child: Text(
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .start,
+                                                                "${location.deliveryLocation}",
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        10,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600)),
+                                                          ),
+                                                          Expanded(
+                                                            flex: 1,
+                                                            child: Text(
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .end,
+                                                                "${location.mileage}",
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600)),
+                                                          )
+                                                        ],
+                                                      ),
+                                                      Container(
+                                                        height: 1,
+                                                        margin: const EdgeInsets
+                                                            .symmetric(
+                                                            vertical: 8),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors
+                                                              .grey.shade200,
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                      0.2),
+                                                              offset:
+                                                                  Offset(0, 2),
+                                                              blurRadius: 4,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      SizedBox(
+                                                        height: 5,
+                                                      )
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList()
+                                            else
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Text(
+                                                        "-",
+                                                        style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600),
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 10,
+                                                    ),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Text("-",
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600)),
+                                                    ),
+                                                    Expanded(
+                                                      child: Text("0.0",
+                                                          textAlign:
+                                                              TextAlign.end,
+                                                          style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600)),
+                                                    )
+                                                  ],
+                                                ),
+                                              )
+                                          ],
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8.0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "Total Mileage",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w700),
+                                              ),
+                                              Text("${pay.mileage ?? 0.00}",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700))
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: 6,
+                                        ),
+                                        Divider(),
                                         Padding(
                                           padding: EdgeInsets.symmetric(
                                               horizontal: 10),
@@ -501,6 +707,41 @@ class DriverPayView extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                SizedBox(
+                                  height: 3,
+                                ),
+                                if (pay.document != null)
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.only(top: 10, right: 10),
+                                    child: InkWell(
+                                      onTap: () {
+                                        Get.to(() => DocumentDownload(
+                                              file:
+                                                  "https://msyard.s3.us-west-1.amazonaws.com/images/${pay.document}",
+                                            ));
+                                      },
+                                      child: Container(
+                                        width: TDeviceUtils.getScreenWidth(
+                                                context) *
+                                            0.9,
+                                        margin: EdgeInsets.only(left: 10),
+                                        padding: EdgeInsets.all(6),
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                            color: TColors.primaryStaff,
+                                            borderRadius:
+                                                BorderRadius.circular(6)),
+                                        child: Center(
+                                          child: Text(
+                                            "View Document",
+                                            style:
+                                                TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 SizedBox(
                                   height: 10,
                                 ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -76,7 +78,9 @@ class _StaffMessageViewState extends State<StaffMessageView>
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
       }
-
+      Timer(Duration(seconds: 2), () {
+        socketService.checkVersion();
+      });
       socketService
           .updateStaffActiveUserChat(_staffchatController.userId.value);
 

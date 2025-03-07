@@ -72,6 +72,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       // App is in the foreground
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
+        Timer(Duration(seconds: 2), () {
+          socketService.checkVersion();
+        });
       }
       if (messageController.channelId.value.isNotEmpty) {
         socketService.updateActiveChannel(messageController.channelId.value);

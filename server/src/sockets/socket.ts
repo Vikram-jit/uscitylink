@@ -22,6 +22,7 @@ import {
 } from "./messageHandler";
 import moment from "moment";
 import { disconnect } from "process";
+import { AppVersions } from "../models/AppVersions";
 
 let io: Server;
 interface User {
@@ -252,7 +253,7 @@ export const initSocket = (httpServer: any) => {
                   io.to(isSocket.id).emit("user_online_driver", {
                     userId: userProfile?.id,
                     channelId: value.channelId,
-                    isOnline:true
+                    isOnline: true,
                   });
                 }
               }
@@ -366,7 +367,6 @@ export const initSocket = (httpServer: any) => {
       async (channelId) => await driverActiveChannelUpdate(socket, channelId)
     );
 
-    
     socket.on(
       "update_channel_message_count",
       async (channelId) => await unreadAllMessage(io, socket, channelId)
@@ -376,13 +376,112 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction, url,thumbnail }) =>
-        await messageToDriver(io, socket, userId, body, direction, url,thumbnail)
+      async ({ userId, body, direction, url, thumbnail }) =>
+        await messageToDriver(
+          io,
+          socket,
+          userId,
+          body,
+          direction,
+          url,
+          thumbnail
+        )
+    );
+
+    socket.on(
+      "UPDATE_APP_VERSION",
+      async ({ version, buildNumber, platform }) => {
+        console.log(version,buildNumber,platform)
+        try {
+        
+      
+        const appLiveVersion = await AppVersions.findOne({
+          where: {
+            status: "active",
+            platform: platform,
+          },
+        });
+       
+        if (appLiveVersion == null) {
+          socket.emit("UPDATE_APP_VERSION_INFO", "Deprecate");
+          return;
+        }
+
+        const userProfile = await UserProfile.findByPk(socket?.user?.id);
+       
+        if (userProfile?.buildNumber == null && userProfile?.version == null) {
+          await UserProfile.update(
+            {
+              version: version,
+              buildNumber: buildNumber,
+              appUpdate: "1",
+            },
+            {
+              where: {
+                id: socket?.user?.id,
+              },
+            }
+          );
+          if (appLiveVersion == null) {
+            socket.emit("UPDATE_APP_VERSION_INFO", "Update");
+            return;
+          }
+        }
+
+        if (
+          buildNumber == appLiveVersion?.buildNumber &&
+          version == appLiveVersion?.version
+        ) {
+          if (userProfile?.appUpdate == "0") {
+            await UserProfile.update(
+              {
+                version: version,
+                buildNumber: buildNumber,
+                appUpdate: "1",
+              },
+              {
+                where: {
+                  id: socket?.user?.id,
+                },
+              }
+            );
+          }
+         
+            socket.emit("UPDATE_APP_VERSION_INFO", "UpToDate");
+            return;
+          
+        }
+
+        if (
+          buildNumber != appLiveVersion?.buildNumber &&
+          version != appLiveVersion?.version
+        ) {
+        
+            socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
+            return;
+          
+        }
+        if (version != appLiveVersion?.version) {
+         
+            socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
+            return;
+          
+        }
+        if (buildNumber != appLiveVersion?.buildNumber) {
+        
+            socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
+            return;
+          
+        }
+      } catch (error) {
+          console.log(error)
+      }
+      }
     );
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER_BY_GROUP,
-      async ({ userId, groupId, body, direction, url,thumbnail }) =>
+      async ({ userId, groupId, body, direction, url, thumbnail }) =>
         await messageToDriverByTruckGroup(
           io,
           socket,
@@ -390,18 +489,18 @@ export const initSocket = (httpServer: any) => {
           groupId,
           body,
           direction,
-          url,thumbnail
+          url,
+          thumbnail
         )
     );
 
-
-    socket.on("staff_list_update_driver_online",(data)=>{
-      console.log(data)
-    })
+    socket.on("staff_list_update_driver_online", (data) => {
+      console.log(data);
+    });
 
     socket.on(
       "send_group_message",
-      async ({ groupId, channelId, body, direction, url ,thumbnail}) =>
+      async ({ groupId, channelId, body, direction, url, thumbnail }) =>
         await messageToGroup(
           io,
           socket,
@@ -409,20 +508,27 @@ export const initSocket = (httpServer: any) => {
           channelId,
           body,
           direction,
-          url,thumbnail
+          url,
+          thumbnail
         )
     );
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null,channelId,thumbnail }) =>
-        await messageToChannelToUser(io, socket, body, url,channelId,thumbnail)
+      async ({ body, url = null, channelId, thumbnail }) =>
+        await messageToChannelToUser(
+          io,
+          socket,
+          body,
+          url,
+          channelId,
+          thumbnail
+        )
     );
 
     //Typing Staff Event
 
     socket.on("typing", (data) => {
-  
       const staff = global.staffActiveChannel[socket?.user?.id!];
       const driver = global.driverOpenChat.find(
         (e) => e.driverId == data.userId
@@ -441,40 +547,32 @@ export const initSocket = (httpServer: any) => {
     });
 
     socket.on("groupTyping", (data) => {
-   
-      const {groupId,isTyping} = data
-       
-       const userName:string[] = []
+      const { groupId, isTyping } = data;
+
+      const userName: string[] = [];
       Object.values(global.group_open_chat[groupId]).map((e) => {
-        
-        const onlineUser:any = global.userSockets[e.userId];
-        if (onlineUser && (e.userId == socket.user?.id)) {
-           console.log(onlineUser?.user)
+        const onlineUser: any = global.userSockets[e.userId];
+        if (onlineUser && e.userId == socket.user?.id) {
+          console.log(onlineUser?.user);
           userName.push(onlineUser.user?.name);
-        
-       }
-      });
-      Object.values(global.group_open_chat[groupId]).map((e) => {
-        
-        const onlineUser = global.userSockets[e.userId];
-        if (e.userId != socket.user?.id) {
-          if(onlineUser){
-            io.to(onlineUser.id).emit("groupTypingRecive", {
-              userId:socket.user?.id,
-              groupId:groupId,
-              typing: isTyping,
-              message: `${userName?.join(",")} typing...`
-            });
-          }
-         
         }
       });
-    
+      Object.values(global.group_open_chat[groupId]).map((e) => {
+        const onlineUser = global.userSockets[e.userId];
+        if (e.userId != socket.user?.id) {
+          if (onlineUser) {
+            io.to(onlineUser.id).emit("groupTypingRecive", {
+              userId: socket.user?.id,
+              groupId: groupId,
+              typing: isTyping,
+              message: `${userName?.join(",")} typing...`,
+            });
+          }
+        }
+      });
     });
 
-
     socket.on("driverTyping", (data) => {
-      
       const userId = socket?.user?.id;
       const driver = global.driverOpenChat.find((e) => e.driverId == userId);
       Object.entries(global.staffOpenChat).map(([key, value]) => {
@@ -505,9 +603,8 @@ export const initSocket = (httpServer: any) => {
     });
 
     socket.on("logout", async () => {
-      
       const userId = socket?.user?.id!;
-      console.log(userId,"socket logout")
+      console.log(userId, "socket logout");
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
       delete global.userSockets[userId];
@@ -532,7 +629,7 @@ export const initSocket = (httpServer: any) => {
             channelId: null,
             last_login: moment.utc(),
             device_token: null,
-            platform: null
+            platform: null,
           });
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
             const isSocket = global.userSockets[key];
@@ -540,12 +637,12 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online", null);
             }
           });
-        }else{
+        } else {
           await isUser.update({
             isOnline: false,
             last_login: moment.utc(),
             device_token: null,
-            platform: null
+            platform: null,
           });
         }
       }
@@ -593,8 +690,6 @@ export const initSocket = (httpServer: any) => {
             isOnline: false,
             channelId: null,
             last_login: moment.utc(),
-
-
           });
 
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
@@ -604,17 +699,15 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online_driver", {
                 userId: socket.user?.id,
                 channelId: value.channelId,
-                isOnline:false
+                isOnline: false,
               });
             }
           });
         } else {
           // await isUser.update({
-
           //   last_login: moment.utc(),
           //   device_token:"",
           //   platform:""
-
           // });
         }
       }

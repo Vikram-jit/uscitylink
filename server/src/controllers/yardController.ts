@@ -315,7 +315,7 @@ export async function getPays(req: Request, res: Response): Promise<any> {
       }
     );
     // Fetch the paginated data with the appropriate search condition
-    const pays = await secondarySequelize.query<any>(
+    const paysOld = await secondarySequelize.query<any>(
       `SELECT * FROM ${type} WHERE driver_id = :driverId ${searchCondition} ORDER BY id DESC LIMIT :limit OFFSET :offset`,
       {
         replacements: {
@@ -325,6 +325,19 @@ export async function getPays(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
+    const pays = await Promise.all(paysOld.map(async(e)=>{
+      const detailsM = await secondarySequelize.query<any>(
+        `SELECT * FROM driver_pay_mileages WHERE driver_pay_details_id = :driver_pay_details_id`,
+        {
+          replacements: {
+            driver_pay_details_id:  e.driver_pay_details_id,
+            ...replacements, // Spread other replacements if necessary
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+      return {...e,locations:detailsM}
+    }))
     // Calculate total pages (for pagination metadata)
     const totalCount = totalTrucks[0].total;
     const totalPages = Math.ceil(totalCount / pageSize);

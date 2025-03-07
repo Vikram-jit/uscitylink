@@ -1,17 +1,16 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
-import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:uscitylink/utils/utils.dart';
+
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
@@ -52,6 +51,9 @@ class _DriverDashboardState extends State<DriverDashboard>
     } else if (state == AppLifecycleState.resumed) {
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
+        Timer(Duration(seconds: 2), () {
+          socketService.checkVersion();
+        });
       }
       _dashboardController.getDashboard();
     }

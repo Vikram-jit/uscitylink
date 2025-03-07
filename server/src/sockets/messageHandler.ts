@@ -23,14 +23,14 @@ const notificationQueue = new Queue("jobQueue", {
   },
 });
 
-const groupMessageQueue = new Queue('groupMessageQueue', {
+export const groupMessageQueue = new Queue('groupMessageQueue', {
   redis: {
     host: '127.0.0.1',  
     port: 6379,          
   }
 });
 
-const groupNotificationStaffQueue = new Queue('groupNotificationStaffQueue', {
+export const groupNotificationStaffQueue = new Queue('groupNotificationStaffQueue', {
   redis: {
     host: '127.0.0.1',  
     port: 6379,          
@@ -38,6 +38,7 @@ const groupNotificationStaffQueue = new Queue('groupNotificationStaffQueue', {
 });
 
 groupNotificationStaffQueue.process(async (job)=>{
+  
   const {channelId,groupId, body, senderId} = job.data;
 
   const senderProfile = await UserProfile.findByPk(senderId);
