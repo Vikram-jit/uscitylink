@@ -403,13 +403,23 @@ export const initSocket = (httpServer: any) => {
             platform: platform,
           },
         });
-       
+        const userProfile = await UserProfile.findByPk(socket?.user?.id);
         if (appLiveVersion == null) {
-          socket.emit("UPDATE_APP_VERSION_INFO", "Deprecate");
+          await UserProfile.update(
+            {
+             
+              appUpdate: "0",
+            },
+            {
+              where: {
+                id: socket?.user?.id,
+              },
+            })
+          socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
           return;
         }
 
-        const userProfile = await UserProfile.findByPk(socket?.user?.id);
+      
        
         if (userProfile?.buildNumber == null && userProfile?.version == null) {
           await UserProfile.update(

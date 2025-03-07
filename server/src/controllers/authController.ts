@@ -212,16 +212,26 @@ export async function updateAppVersion(
         platform: platform,
       },
     });
-
+    const userProfile = await UserProfile.findByPk(req.user?.id);
     if(appLiveVersion == null){
+      await UserProfile.update(
+        {
+         
+          appUpdate: "0",
+        },
+        {
+          where: {
+            id: req.user?.id,
+          },
+        })
       return res.status(200).json({
         status: true,
-        data: "Deprecate",
+        data: "NewVersion",
         message: `App Update Version Successfully.`,
       });
     }
 
-    const userProfile = await UserProfile.findByPk(req.user?.id);
+  
 
     if (userProfile?.buildNumber == null && userProfile?.version == null) {
       await UserProfile.update(
