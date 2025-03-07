@@ -397,6 +397,8 @@ export const initSocket = (httpServer: any) => {
       
         const appLiveVersion = await AppVersions.findOne({
           where: {
+            version:version,
+            buildNumber:buildNumber,
             status: "active",
             platform: platform,
           },

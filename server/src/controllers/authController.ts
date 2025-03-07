@@ -206,6 +206,8 @@ export async function updateAppVersion(
 
     const appLiveVersion = await AppVersions.findOne({
       where: {
+        version:version,
+        buildNumber:buildNumber,
         status: "active",
         platform: platform,
       },
