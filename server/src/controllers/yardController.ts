@@ -341,13 +341,13 @@ export async function getPays(req: Request, res: Response): Promise<any> {
     // Calculate total pages (for pagination metadata)
     const totalCount = totalTrucks[0].total;
     const totalPages = Math.ceil(totalCount / pageSize);
-
+   
     return res.status(200).json({
       status: true,
       message: `Get pays Successfully.`,
       data: {
         data: pays,
-        totalAmount:totalAmount?.[0]?.totalAmount?.toFixed(2) || 0.00,
+        totalAmount:parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2))|| 0,
         pagination: {
           currentPage: page,
           pageSize: pageSize,

@@ -710,7 +710,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
-        totalAmount:totalAmount?.[0]?.totalAmount || 0,
+        totalAmount:parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2)) || 0,
         trucks: truckIds ? truckIds?.join(",") : "",
         channel:channel,
         channelCount: userChannelCount,
