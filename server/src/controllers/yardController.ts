@@ -347,7 +347,7 @@ export async function getPays(req: Request, res: Response): Promise<any> {
       message: `Get pays Successfully.`,
       data: {
         data: pays,
-        totalAmount:totalAmount?.[0]?.totalAmount || 0,
+        totalAmount:totalAmount?.[0]?.totalAmount?.toFixed(2) || 0.00,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
