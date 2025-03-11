@@ -261,10 +261,10 @@ class _StaffDashboardState extends State<StaffDashboard>
                                 AppRoutes.staffGroupMessage,
                                 arguments: {
                                   'channelId':
-                                      "99f1f213-a555-4aef-b329-74bc128cc798",
+                                      "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
                                   'name': "Staff",
                                   'groupId':
-                                      "740e3d41-845f-4ea1-a044-8ad04865dd39"
+                                      "1fe8cc7c-482f-4cdc-8d22-8ba0bb3b3578"
                                 },
                               );
                             },

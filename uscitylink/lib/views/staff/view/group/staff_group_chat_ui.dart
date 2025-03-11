@@ -207,6 +207,16 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
           padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
           child: Column(
             children: [
+              Obx(() {
+                if (groupController.isLoading.value)
+                  return Center(
+                    child: Text(
+                      "Loading...",
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+                return SizedBox();
+              }),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
