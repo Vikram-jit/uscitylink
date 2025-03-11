@@ -50,6 +50,12 @@ class StatCard extends StatelessWidget {
         Color(0xFF614385),
         Color(0xFF516395),
       ];
+    } else if (title == "STAFF GROUP") {
+      return [
+        // Reddish
+        Color(0xFFEABC6A),
+        Color(0xFFF0A13A),
+      ];
     }
     return [
       // Reddish
@@ -274,7 +280,8 @@ class StatCard extends StatelessWidget {
                           ? Colors.black
                           : (value is int &&
                                   value > 0 &&
-                                  title == "UNREAD MESSAGE")
+                                  (title == "UNREAD MESSAGE" ||
+                                      title == "STAFF GROUP"))
                               ? Colors.red
                               : Colors.black),
                 ),
@@ -292,7 +299,8 @@ class StatCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: value is int &&
                                 value > 0 &&
-                                (title == "UNREAD MESSAGES")
+                                (title == "UNREAD MESSAGES" ||
+                                    title == "STAFF GROUP")
                             ? Colors.red
                             : Colors.black),
                   ),

@@ -1073,7 +1073,28 @@ export async function unreadAllGroupMessageByStaff(
         },
       }
     );
-
+    
     io.to(socket.id).emit("update_group_staff_message_count", groupId);
+  }
+}
+
+export async function unreadAllGroupMessageByStaffGroup(
+  io: Server,
+  socket: CustomSocket,
+  groupId: string
+) {
+  if (groupId) {
+    await Group.update(
+      {
+        message_count: 0,
+      },
+      {
+        where: {
+          id: groupId,
+        },
+      }
+    );
+    
+   
   }
 }

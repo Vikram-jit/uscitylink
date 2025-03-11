@@ -710,7 +710,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
-        totalAmount:parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2)) || 0,
+        totalAmount: totalAmount?.[0]?.totalAmount ? parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2)) : 0,
         trucks: truckIds ? truckIds?.join(",") : "",
         channel:channel,
         channelCount: userChannelCount,
@@ -1038,7 +1038,9 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
       order:[["createdAt","DESC"]],
       limit:5
     })
-
+   const staffGroupCount = await Group.findOne({where:{
+    name:"Staff"
+   }})
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
@@ -1053,7 +1055,8 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
         lastFiveDriver,
         driverCount,
         channelId:req.activeChannel,
-        userUnReadMessage
+        userUnReadMessage,
+        staffGroupCount:staffGroupCount?.message_count ?? 0
       },
     });
   } catch (err: any) {

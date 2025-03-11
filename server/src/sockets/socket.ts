@@ -16,6 +16,7 @@ import {
   messageToDriverByTruckGroup,
   messageToGroup,
   unreadAllGroupMessageByStaff,
+  unreadAllGroupMessageByStaffGroup,
   unreadAllGroupMessageByUser,
   unreadAllMessage,
   unreadAllUserMessage,
@@ -354,7 +355,11 @@ export const initSocket = (httpServer: any) => {
       "update_group_staff_message_count",
       async (groupId) => await unreadAllGroupMessageByStaff(io, socket, groupId)
     );
-
+    socket.on(
+      "update_group_staff_message_count_staff",
+      async (groupId) => await unreadAllGroupMessageByStaffGroup(io, socket, groupId)
+    );
+    
     socket.on(
       "update_group_message_count",
       async (groupId) => await unreadAllGroupMessageByUser(io, socket, groupId)

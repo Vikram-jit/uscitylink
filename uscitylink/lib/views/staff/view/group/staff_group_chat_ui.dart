@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
@@ -40,17 +41,16 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
   ChannelController _channelController = Get.put(ChannelController());
-
+  DashboardController _dashboardController = Get.find<DashboardController>();
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
   @override
   void initState() {
-    print(widget.groupId);
     if (socketService.isConnected.value) {
       socketService.addUserToGroup(widget.channelId, widget.groupId);
-      socketService.updateCountGroup(widget.channelId);
+      socketService.updateCountGroup(widget.groupId);
     }
 
     super.initState();
@@ -169,6 +169,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
                   groupController.messages.clear();
                   groupController.currentPage.value = 1;
                   groupController.totalPages.value = 1;
+                  _dashboardController.getStaffDashboard();
                   if (_channelController.initialized) {
                     _channelController.getCount();
                   }

@@ -303,6 +303,7 @@ class SocketService extends GetxController {
       socket.emit("update_group_message_count", group_id);
       if (group_id.isNotEmpty) {
         socket.emit("update_group_message_count", group_id);
+        socket.emit("update_group_staff_message_count_staff", group_id);
       }
     } else {
       print("Not connected to socket.");

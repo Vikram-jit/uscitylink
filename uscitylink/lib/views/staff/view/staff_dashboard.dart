@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffview_controller.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -246,6 +247,32 @@ class _StaffDashboardState extends State<StaffDashboard>
                               title: "TOTAL TRUCK GROUPS",
                               value: _dashboardController
                                       .dashboardStaff.value.truckGroupCount ??
+                                  0,
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              Get.toNamed(
+                                AppRoutes.staffGroupMessage,
+                                arguments: {
+                                  'channelId':
+                                      "99f1f213-a555-4aef-b329-74bc128cc798",
+                                  'name': "Staff",
+                                  'groupId':
+                                      "740e3d41-845f-4ea1-a044-8ad04865dd39"
+                                },
+                              );
+                            },
+                            child: StatCard(
+                              icon: Icons.message,
+                              title: "STAFF GROUP",
+                              value: _dashboardController
+                                      .dashboardStaff.value.staffGroupCount ??
                                   0,
                               gradientColors: [
                                 Color(
