@@ -300,11 +300,9 @@ const ChatInterface = ({ type }: { type: string }) => {
           );
           return [...prevMessages, ...newMessages];
         });
-        if (groupMessage?.data?.messages.length == 0) {
+      
           setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
-        } else {
-          setHasMoreMessage(false);
-        }
+    
 
         setSenderId(groupMessage?.data?.senderId);
       }
@@ -346,7 +344,8 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
   const loadMoreGroupMessages = () => {
-    if (hasMore && !isLoading) {
+    console.log("hello")
+    if (hasMoreMessage && !isLoading) {
       setPageMessage((prevPage) => prevPage + 1);
     }
   };
@@ -522,7 +521,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       console.log(error);
     }
   }
-
+console.log(hasMoreMessage)
   return (
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
