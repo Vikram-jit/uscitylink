@@ -301,7 +301,7 @@ const ChatInterface = ({ type }: { type: string }) => {
           return [...prevMessages, ...newMessages];
         });
       
-          setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
+        setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
     
 
         setSenderId(groupMessage?.data?.senderId);
