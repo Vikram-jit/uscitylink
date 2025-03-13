@@ -203,7 +203,7 @@ export async function updateAppVersion(
 ): Promise<any> {
   try {
     const { version, buildNumber, platform } = req.body;
-
+    console.log(req.body)
     const appLiveVersion = await AppVersions.findOne({
       where: {
         version:version,

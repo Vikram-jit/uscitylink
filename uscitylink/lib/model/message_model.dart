@@ -22,6 +22,9 @@ class MessageModel {
   Group? group;
   String? type;
   String? thumbnail;
+  String? driverPin;
+  String? staffPin;
+  MessageModel? r_message;
   MessageModel(
       {this.id,
       this.channelId,
@@ -40,7 +43,10 @@ class MessageModel {
       this.sender,
       this.group,
       this.type,
-      this.thumbnail});
+      this.thumbnail,
+      this.r_message,
+      this.driverPin,
+      this.staffPin});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -59,6 +65,11 @@ class MessageModel {
     url = json['url'];
     type = json['type'];
     thumbnail = json['thumbnail'];
+    staffPin = json['staffPin'];
+    driverPin = json['driverPin'];
+    r_message = json['r_message'] != null
+        ? MessageModel.fromJson(json['r_message'])
+        : null;
     sender = json['sender'] != null ? Sender.fromJson(json['sender']) : null;
     group = json['group'] != null ? Group.fromJson(json['group']) : null;
   }
@@ -81,8 +92,13 @@ class MessageModel {
     data['url'] = url;
     data['thumbnail'] = thumbnail;
     data['type'] = type;
+    data['driverPin'] = driverPin;
+    data['staffPin'] = staffPin;
     if (sender != null) {
-      data['last_message'] = sender?.toJson();
+      data['sender'] = sender?.toJson();
+    }
+    if (r_message != null) {
+      data['r_message'] = r_message?.toJson();
     }
     if (group != null) {
       data['group'] = group?.toJson();

@@ -23,23 +23,25 @@ const notificationQueue = new Queue("jobQueue", {
   },
 });
 
-export const groupMessageQueue = new Queue('groupMessageQueue', {
+export const groupMessageQueue = new Queue("groupMessageQueue", {
   redis: {
-    host: '127.0.0.1',  
-    port: 6379,          
-  }
+    host: "127.0.0.1",
+    port: 6379,
+  },
 });
 
-export const groupNotificationStaffQueue = new Queue('groupNotificationStaffQueue', {
-  redis: {
-    host: '127.0.0.1',  
-    port: 6379,          
+export const groupNotificationStaffQueue = new Queue(
+  "groupNotificationStaffQueue",
+  {
+    redis: {
+      host: "127.0.0.1",
+      port: 6379,
+    },
   }
-});
+);
 
-groupNotificationStaffQueue.process(async (job)=>{
-  
-  const {channelId,groupId, body, senderId} = job.data;
+groupNotificationStaffQueue.process(async (job) => {
+  const { channelId, groupId, body, senderId } = job.data;
 
   const senderProfile = await UserProfile.findByPk(senderId);
   const groupProfile = await Group.findByPk(groupId);
@@ -58,32 +60,35 @@ groupNotificationStaffQueue.process(async (job)=>{
       },
     },
   });
-  const staffIds:string[] = [];
-   global.group_open_chat[groupId].map((item)=>{
-    if(item.channelId == channelId){
-      staffIds.push(item.userId)
+  const staffIds: string[] = [];
+  global.group_open_chat[groupId].map((item) => {
+    if (item.channelId == channelId) {
+      staffIds.push(item.userId);
     }
-  })
-
+  });
 
   await Promise.all(
     users.map(async (user) => {
       if (user) {
-    
         if (!staffIds.includes(user.id)) {
           const deviceToken = user.device_token;
           if (deviceToken) {
-            const isActiveChannel =   global.staffActiveChannel[user?.id]?.channelId == channelId ? "1" : "0"
+            const isActiveChannel =
+              global.staffActiveChannel[user?.id]?.channelId == channelId
+                ? "1"
+                : "0";
             await sendNotificationToDevice(deviceToken, {
-              title: `${senderProfile?.username} (${groupProfile?.name} Group)` || "",
+              title:
+                `${senderProfile?.username} (${groupProfile?.name} Group)` ||
+                "",
               badge: 0,
               body: body,
               data: {
                 channelId: channelId,
                 type: "GROUP NEW MESSAGE STAFF",
                 title: groupProfile?.name,
-                groupId:groupId,
-                isActiveChannel
+                groupId: groupId,
+                isActiveChannel,
               },
             });
           }
@@ -91,14 +96,10 @@ groupNotificationStaffQueue.process(async (job)=>{
       }
     })
   );
+});
 
-})
-
-
-
-groupMessageQueue.process(async (job:any)=>{
-
-  const {userId,title,device_token,body,data} = job.data;
+groupMessageQueue.process(async (job: any) => {
+  const { userId, title, device_token, body, data } = job.data;
 
   const messageCount = await UserChannel.sum("recieve_message_count", {
     where: {
@@ -116,10 +117,7 @@ groupMessageQueue.process(async (job:any)=>{
     body: body,
     data: data,
   });
-
-
-})  
-
+});
 
 notificationQueue.process(async (job: any) => {
   const { title, body, channel_id, userName, userId, staffId } = job.data;
@@ -149,11 +147,13 @@ notificationQueue.process(async (job: any) => {
   await Promise.all(
     users.map(async (user) => {
       if (user) {
-    
         if (!staffIds.includes(user.id)) {
           const deviceToken = user.device_token;
           if (deviceToken) {
-           const isActiveChannel =   global.staffActiveChannel[user?.id]?.channelId == channel_id ? "1" : "0"
+            const isActiveChannel =
+              global.staffActiveChannel[user?.id]?.channelId == channel_id
+                ? "1"
+                : "0";
             await sendNotificationToDevice(deviceToken, {
               title: `${userName} (${channel?.name})` || "",
               badge: 0,
@@ -163,7 +163,7 @@ notificationQueue.process(async (job: any) => {
                 type: "DRIVER NEW MESSAGE",
                 title: userName,
                 userId: userId,
-                isActiveChannel
+                isActiveChannel,
               },
             });
           }
@@ -186,7 +186,6 @@ groupNotificationStaffQueue.on("failed", (job, err) => {
   console.log(`Group Staff Notification failed: ${job.id}, Error: ${err}`);
 });
 
-
 export async function messageToChannelToUser(
   io: Server,
   socket: CustomSocket,
@@ -194,8 +193,8 @@ export async function messageToChannelToUser(
   url: string | null,
   channelId: string,
   thumbnail: string | null,
+  r_message_id: string | null
 ) {
-  
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
   );
@@ -211,17 +210,31 @@ export async function messageToChannelToUser(
       isRead: false,
       status: "sent",
       url: url,
-      thumbnail:thumbnail || null
+      thumbnail: thumbnail || null,
+      reply_message_id: r_message_id || null,
     });
     const message = await Message.findOne({
       where: {
         id: messageSave.id,
       },
-      include: {
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline"],
-      },
+      include: [
+        {
+          model: Message,
+          as: "r_message",
+          include: [
+            {
+              model: UserProfile,
+              as: "sender",
+              attributes: ["id", "username", "isOnline"],
+            },
+          ],
+        },
+        {
+          model: UserProfile,
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
+        },
+      ],
     });
     if (message) {
       const utcTime = moment.utc().toDate();
@@ -400,7 +413,7 @@ export async function messageToDriver(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail:string|null
+  thumbnail: string | null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -419,7 +432,7 @@ export async function messageToDriver(
     isRead: false,
     status: "sent",
     url: url || null,
-    thumbnail:thumbnail || null
+    thumbnail: thumbnail || null,
   });
   const message = await Message.findOne({
     where: {
@@ -579,25 +592,24 @@ export async function messageToDriverByTruckGroup(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail:string|null
+  thumbnail: string | null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
-  let userIds:String[] = [];
-  if(userId.length == 0){
+  let userIds: String[] = [];
+  if (userId.length == 0) {
     const users = await GroupUser.findAll({
-      where:{
-        groupId:groupId
-      }
-    })
-    users.forEach((item)=>{
-      userIds.push(item.dataValues.userProfileId)
-    })
-
-  }else{
-    userIds =  userId.split(",")
+      where: {
+        groupId: groupId,
+      },
+    });
+    users.forEach((item) => {
+      userIds.push(item.dataValues.userProfileId);
+    });
+  } else {
+    userIds = userId.split(",");
   }
-  let idsf:any = "";
+  let idsf: any = "";
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId
@@ -615,9 +627,9 @@ export async function messageToDriverByTruckGroup(
       status: "sent",
       url: url || null,
       type: "truck_group",
-      thumbnail:thumbnail ||null
+      thumbnail: thumbnail || null,
     });
-    idsf = messageSave.id
+    idsf = messageSave.id;
     const message = await Message.findOne({
       where: {
         id: messageSave.id,
@@ -748,7 +760,6 @@ export async function messageToDriverByTruckGroup(
   }
   await Group.update(
     {
-     
       last_message_id: idsf,
     },
     {
@@ -764,7 +775,7 @@ export async function messageToDriverByTruckGroup(
     deliveryStatus: "sent",
     messageTimestampUtc: utcTime,
     url: url || null,
-    thumbnail:thumbnail || null
+    thumbnail: thumbnail || null,
   });
 
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
@@ -782,6 +793,66 @@ export async function messageToDriverByTruckGroup(
       }
     }
   });
+}
+
+export async function deleteMessage(
+  io: Server,
+  socket: CustomSocket,
+  messageId: string,
+ 
+) {
+  if (messageId) {
+    
+      await Message.destroy(
+       
+        {
+          where: {
+            id: messageId,
+          },
+        }
+      );
+    
+    
+
+    io.to(socket.id).emit("delete_message", messageId);
+  }
+}
+
+
+export async function pinMessage(
+  io: Server,
+  socket: CustomSocket,
+  messageId: string,
+  value: string,
+  type: string
+) {
+  if (messageId) {
+    if (type == "driver") {
+      await Message.update(
+        {
+          driverPin: value,
+        },
+        {
+          where: {
+            id: messageId,
+          },
+        }
+      );
+    } else {
+      await Message.update(
+        {
+          staffPin: value,
+        },
+        {
+          where: {
+            id: messageId,
+          },
+        }
+      );
+    }
+
+    io.to(socket.id).emit("pin_done", messageId,value,type);
+  }
 }
 
 export async function unreadAllMessage(
@@ -895,14 +966,12 @@ export async function messageToGroup(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail:string|null
+  thumbnail: string | null
 ) {
-
   const group = await Group.findByPk(groupId);
   const channel = await Channel.findByPk(channelId);
 
   const utcTime = moment.utc().toDate();
-
 
   const message = await Message.create({
     channelId: channelId,
@@ -917,9 +986,8 @@ export async function messageToGroup(
     status: "sent",
     url: url || null,
     type: "group",
-    thumbnail:thumbnail || null
+    thumbnail: thumbnail || null,
   });
-
 
   const newMessage = await Message.findByPk(message.id, {
     include: {
@@ -938,13 +1006,12 @@ export async function messageToGroup(
     }
   });
 
-    groupNotificationStaffQueue.add({
-      channelId: channelId,
-      groupId: groupId,
-      body,
-      senderId:socket?.user?.id,
-
-    })
+  groupNotificationStaffQueue.add({
+    channelId: channelId,
+    groupId: groupId,
+    body,
+    senderId: socket?.user?.id,
+  });
 
   Object.entries(global.staffActiveChannel).map(([key, value]) => {
     const isStaffSocket = global.userSockets[key];
@@ -994,10 +1061,10 @@ export async function messageToGroup(
 
     if (isUser && isUser.device_token) {
       const isGroup = await Group.findByPk(groupId);
-      
+
       groupMessageQueue.add({
-        device_token:isUser?.device_token,
-        userId:isUser.id,
+        device_token: isUser?.device_token,
+        userId: isUser.id,
         title: `${isGroup?.name}(Group)` || "",
         body: body,
         data: {
@@ -1007,8 +1074,7 @@ export async function messageToGroup(
           channelId: channelId,
           name: isGroup?.name,
         },
-      })
-     
+      });
     }
   }
 
@@ -1073,7 +1139,7 @@ export async function unreadAllGroupMessageByStaff(
         },
       }
     );
-    
+
     io.to(socket.id).emit("update_group_staff_message_count", groupId);
   }
 }
@@ -1094,7 +1160,5 @@ export async function unreadAllGroupMessageByStaffGroup(
         },
       }
     );
-    
-   
   }
 }

@@ -16,7 +16,7 @@ class MessageController extends GetxController {
   var currentIndex = 0.obs;
   var channelId = "".obs;
   var name = "".obs;
-
+  var selectedRplyMessage = MessageModel().obs;
   var isTyping = false.obs;
   // Timer for typing timeout
   Timer? typingTimer;
@@ -73,8 +73,8 @@ class MessageController extends GetxController {
         .emit('driverTyping', {'isTyping': false, "channelId": channelId});
   }
 
-  void getChannelMessages(String channelId) {
-    __messageService.getChannelMessages(channelId).then((response) {
+  void getChannelMessages(String channelId, [String? driverPin]) {
+    __messageService.getChannelMessages(channelId, driverPin).then((response) {
       messages.value = response.data;
       socketService.updateActiveChannel(channelId);
     }).onError((error, stackTrace) {
@@ -105,11 +105,29 @@ class MessageController extends GetxController {
   }
 
   void onNewMessage(dynamic data) {
-    // Assuming the incoming message is a Map or JSON object that can be parsed to MessageModel
-    MessageModel newMessage =
-        MessageModel.fromJson(data); // Convert the data to MessageModel
+    MessageModel newMessage = MessageModel.fromJson(data);
 
-    messages.insert(0, newMessage); // Append the new message to the list
+    messages.insert(0, newMessage);
+    messages.refresh();
+  }
+
+  void pinMessage(dynamic data) {
+    final messageId = data[0];
+
+    messages
+        .where((message) => message.id == messageId)
+        .forEach((message) => message.driverPin = data[1]);
+    Utils.toastMessage(
+        "${data[1] == "1" ? "pin" : "un-pin"} message successfully");
+    messages.refresh();
+  }
+
+  void deleteMessage(dynamic data) {
+    final messageId = data;
+
+    messages.removeWhere((message) => message.id == messageId);
+
+    Utils.toastMessage("Deleted message successfully.");
     messages.refresh();
   }
 

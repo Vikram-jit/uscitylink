@@ -89,9 +89,10 @@ export const getMessages = async (
 ): Promise<any> => {
   try {
     const { channelId } = req.params;
-
+    const  driverPin = req.query.driverPin
     const messages = await Message.findAll({
       where: {
+        ...( driverPin == "1" && {driverPin:"1"}),
         channelId: channelId,
         userProfileId: req.user?.id,
         type: {
@@ -99,6 +100,17 @@ export const getMessages = async (
         },
       },
       include: [
+        {
+          model:Message,
+          as:"r_message",
+          include:[
+            {
+              model: UserProfile,
+              as: "sender",
+              attributes: ["id", "username", "isOnline"],
+            },
+          ]
+        },
         {
           model: UserProfile,
           as: "sender",

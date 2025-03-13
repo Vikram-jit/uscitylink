@@ -12,7 +12,7 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     
-    await queryInterface.removeColumn('app_versions', 'version');
+    await queryInterface.removeColumn('app_versions', 'platform');
    
     
   }

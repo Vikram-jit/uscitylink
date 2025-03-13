@@ -21,6 +21,7 @@ export class Message extends Model {
   public url?:string
   public type?:string
   public thumbnail?:string
+  public reply_message_id?:string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -87,6 +88,24 @@ Message.init(
       values: ['default', 'truck_group','group'],  // Enum values
     defaultValue: 'default',  
     },
+    driverPin: {
+      type: DataTypes.ENUM,
+      values: ['0', '1'],  // Enum values
+    defaultValue: '0',  
+    },
+    staffPin: {
+      type: DataTypes.ENUM,
+      values: ['0', '1'],  // Enum values
+    defaultValue: '0',  
+    },
+    reply_message_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "messages",
+        key: "id",
+      },
+    },
   },
   {
     sequelize:primarySequelize,
@@ -99,6 +118,7 @@ Message.init(
 
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
 Message.belongsTo(Channel, { foreignKey: 'channelId', as: 'channel' });
+Message.belongsTo(Message, { foreignKey: 'reply_message_id', as: 'r_message' });
 
 
 UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });

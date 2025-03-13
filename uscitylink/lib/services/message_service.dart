@@ -9,11 +9,11 @@ import 'package:uscitylink/model/staff/truck_group_model.dart';
 class MessageService {
   final _apiService = NetworkApiService();
 
-  Future<ApiResponse<List<MessageModel>>> getChannelMessages(
-      String channelId) async {
+  Future<ApiResponse<List<MessageModel>>> getChannelMessages(String channelId,
+      [String? driverPin]) async {
     try {
-      dynamic response =
-          await _apiService.getApi('${Constant.url}/message/$channelId');
+      dynamic response = await _apiService
+          .getApi('${Constant.url}/message/$channelId?driverPin=$driverPin');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

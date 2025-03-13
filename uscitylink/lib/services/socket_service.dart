@@ -42,7 +42,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300?token=$token';
+    return 'http://52.9.12.189:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -202,7 +202,16 @@ class SocketService extends GetxController {
         Get.find<GroupController>().updateTypingStatus(data);
       }
     });
-
+    socket.on("pin_done", (data) {
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().pinMessage(data);
+      }
+    });
+    socket.on("delete_message", (data) {
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().deleteMessage(data);
+      }
+    });
     socket.on('pong', (_) {
       pingResponse.value = 'Pong received!';
       print('Received pong from server');
@@ -257,16 +266,30 @@ class SocketService extends GetxController {
 
   // Method to send a message to the server
   void sendMessage(String body, String? url, String? channelId,
-      [String? thumbnail]) {
+      [String? thumbnail, String? r_message_id]) {
     if (isConnected.value) {
       socket.emit("send_message_to_channel", {
         "body": body,
         "url": url,
         "channelId": channelId,
-        "thumbnail": thumbnail
+        "thumbnail": thumbnail,
+        "r_message_id": r_message_id
       });
     } else {
       print("Not connected to socket.");
+    }
+  }
+
+  void pinMessage(String id, String value, String type) {
+    if (isConnected.value) {
+      socket
+          .emit("pin_message", {"messageId": id, "value": value, "type": type});
+    }
+  }
+
+  void deleteMessage(String id) {
+    if (isConnected.value) {
+      socket.emit("delete_message", {"messageId": id});
     }
   }
 

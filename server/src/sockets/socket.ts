@@ -11,10 +11,12 @@ import {
 } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
 import {
+  deleteMessage,
   messageToChannelToUser,
   messageToDriver,
   messageToDriverByTruckGroup,
   messageToGroup,
+  pinMessage,
   unreadAllGroupMessageByStaff,
   unreadAllGroupMessageByStaffGroup,
   unreadAllGroupMessageByUser,
@@ -377,6 +379,15 @@ export const initSocket = (httpServer: any) => {
       async (channelId) => await unreadAllMessage(io, socket, channelId)
     );
 
+    socket.on(
+      "pin_message",
+      async ({messageId,value, type}) => await pinMessage(io, socket, messageId,value,type)
+    );
+
+    socket.on(
+      "delete_message",
+      async ({messageId}) => await deleteMessage(io, socket, messageId)
+    );
     //sendMessage Event
 
     socket.on(
@@ -532,14 +543,14 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null, channelId, thumbnail }) =>
+      async ({ body, url = null, channelId, thumbnail,r_message_id }) =>
         await messageToChannelToUser(
           io,
           socket,
           body,
           url,
           channelId,
-          thumbnail
+          thumbnail,r_message_id
         )
     );
 
