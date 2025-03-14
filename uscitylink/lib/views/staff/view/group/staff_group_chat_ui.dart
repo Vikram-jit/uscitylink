@@ -50,10 +50,21 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
   void initState() {
     if (socketService.isConnected.value) {
       socketService.addUserToGroup(widget.channelId, widget.groupId);
+      if (widget.name != "Alert") {
+        if (widget.name != "Staff") {
+          socketService.updateStaffGroup(widget.groupId);
+        }
+      }
+      if (widget.name != "Staff") {
+        if (widget.name != "Alert") {
+          socketService.updateStaffGroup(widget.groupId);
+        }
+      }
       socketService.updateCountGroup(widget.groupId);
     }
 
     super.initState();
+
     _scrollController = ScrollController();
 
     _scrollController.addListener(() {

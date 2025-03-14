@@ -33,7 +33,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   late ScrollController _scrollController;
-  ChannelController _channelController = Get.find<ChannelController>();
+  ChannelController _channelController = Get.put(ChannelController());
 
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();

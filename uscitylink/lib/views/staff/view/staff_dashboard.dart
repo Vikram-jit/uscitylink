@@ -264,7 +264,7 @@ class _StaffDashboardState extends State<StaffDashboard>
                                       "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
                                   'name': "Staff",
                                   'groupId':
-                                      "1fe8cc7c-482f-4cdc-8d22-8ba0bb3b3578"
+                                      "b212c6df-1d52-4efd-a012-27d9e2b6a29d"
                                 },
                               );
                             },
@@ -273,6 +273,42 @@ class _StaffDashboardState extends State<StaffDashboard>
                               title: "STAFF GROUP",
                               value: _dashboardController
                                       .dashboardStaff.value.staffGroupCount ??
+                                  0,
+                              gradientColors: [
+                                Color(
+                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
+                                Color(0xFFe5e5e5),
+                              ], // Gradient colors
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.2,
+                    ),
+                    SizedBox(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              Get.toNamed(
+                                AppRoutes.staffGroupMessage,
+                                arguments: {
+                                  'channelId':
+                                      "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
+                                  'name': "Alert",
+                                  'groupId':
+                                      "1fe8cc7c-482f-4cdc-8d22-8ba0bb3b3578"
+                                },
+                              );
+                            },
+                            child: StatCard(
+                              icon: Icons.message,
+                              title: "ALERT GROUP",
+                              value: _dashboardController
+                                      .dashboardStaff.value.alertGroupCount ??
                                   0,
                               gradientColors: [
                                 Color(

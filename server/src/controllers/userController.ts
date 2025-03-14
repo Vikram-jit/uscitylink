@@ -1041,6 +1041,9 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
    const staffGroupCount = await Group.findOne({where:{
     name:"Staff"
    }})
+   const alertGroupCount = await Group.findOne({where:{
+    name:"Alert"
+   }})
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
@@ -1056,7 +1059,8 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
         driverCount,
         channelId:req.activeChannel,
         userUnReadMessage,
-        staffGroupCount:staffGroupCount?.message_count ?? 0
+        staffGroupCount:staffGroupCount?.message_count ?? 0,
+        alertGroupCount:alertGroupCount?.message_count ?? 0
       },
     });
   } catch (err: any) {

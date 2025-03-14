@@ -11,6 +11,7 @@ class StaffDashboardModel {
   int? driverCount;
   String? channelId;
   int? staffGroupCount;
+  int? alertGroupCount;
   //List<UserUnReadMessage> userUnReadMessage;
 
   StaffDashboardModel(
@@ -24,7 +25,8 @@ class StaffDashboardModel {
       this.templateCount,
       this.trainingCount,
       this.truckGroupCount,
-      this.staffGroupCount
+      this.staffGroupCount,
+      this.alertGroupCount
       // this.userUnReadMessage
       });
 
@@ -37,6 +39,7 @@ class StaffDashboardModel {
     groupCount = json['groupCount'];
     userUnMessage = json['userUnMessage'];
     staffGroupCount = json['staffGroupCount'];
+    alertGroupCount = json['alertGroupCount'];
     // if (json['lastFiveDriver'] != null) {
     //   lastFiveDriver = new List<LastFiveDriver>();
     //   json['lastFiveDriver'].forEach((v) {
@@ -63,6 +66,7 @@ class StaffDashboardModel {
     data['truckGroupCount'] = truckGroupCount;
     data['userUnMessage'] = this.userUnMessage;
     data['staffGroupCount'] = this.staffGroupCount;
+    data['alertGroupCount'] = this.alertGroupCount;
     // if (this.lastFiveDriver != null) {
     //   data['lastFiveDriver'] =
     //       this.lastFiveDriver.map((v) => v.toJson()).toList();
