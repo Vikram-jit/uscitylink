@@ -25,8 +25,9 @@ class StaffchatController {
   var truckNumbers = "".obs;
   Timer? typingTimer;
   late DateTime typingStartTime;
-
-  Future<void> getChannelMembers(String id, int page, String channelId) async {
+  var selectedRplyMessage = MessageModel().obs;
+  Future<void> getChannelMembers(String id, int page, String channelId,
+      [String? pinMessage]) async {
     if (loading.value) return; // Prevent multiple simultaneous requests
 
     loading.value = true;
@@ -34,11 +35,14 @@ class StaffchatController {
     try {
       // Fetch messages from the server with pagination.
       var response = await __channelService.getMesssageByUserId(
-          page: page, id: id, pageSize: 10, channelId: channelId);
+          page: page,
+          id: id,
+          pageSize: 10,
+          channelId: channelId,
+          pinMessage: pinMessage ?? "0");
 
       // Check if the response is valid
       if (response.data != null) {
-        print(response.data);
         truckNumbers.value = response.data.truckNumbers ?? "";
         // Append new messages if it's not the first page
         if (page > 1) {
@@ -133,5 +137,24 @@ class StaffchatController {
       message.value.messages?.insert(0, newMessage);
       message?.refresh();
     }
+  }
+
+  void pinMessage(dynamic data) {
+    final messageId = data[0];
+    message.value.messages!
+        .where((message) => message.id == messageId)
+        .forEach((message) => message.staffPin = data[1]);
+    Utils.toastMessage(
+        "${data[1] == "1" ? "pin" : "un-pin"} message successfully");
+    message.refresh();
+  }
+
+  void deleteMessage(dynamic data) {
+    final messageId = data;
+
+    message.value.messages!.removeWhere((message) => message.id == messageId);
+
+    Utils.toastMessage("Deleted message successfully.");
+    message.refresh();
   }
 }

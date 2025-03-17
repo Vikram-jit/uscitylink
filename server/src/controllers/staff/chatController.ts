@@ -211,12 +211,23 @@ export const getMessagesByUserId = async (
         channelId: channelId,
         userProfileId: id,
         groupId: null,
+        ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
-      include: {
+      include: [ {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+          },
+        ],
+      },{
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
-      },
+      }],
       order: [["messageTimestampUtc", "DESC"]],
       limit: pageSize,
       offset: offset,

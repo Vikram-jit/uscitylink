@@ -335,7 +335,7 @@ class LoginController extends GetxController {
               platform: Platform.operatingSystem);
 
           var result = await __authService.updateAppVersion(appData);
-
+          print(result);
           if (result.data == "NewVersion") {
             Get.offAll(() => UpdateView());
           } else {

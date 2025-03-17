@@ -245,25 +245,30 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
     });
 
     const userChannels = await  UserChannel.findAndCountAll({
-      where:{
-        channelId:req.activeChannel,
-        status:"active"
-      },
+      
       include: [
         {
           model: UserProfile,
           attributes: {
             exclude: ["password"],
           },
-          where:{
-            username: {
-              [Op.like]: `%${search}%`, 
-            },
-          },
+          // where: {
+          //   [Op.or]: [
+          //     { username: { [Op.like]: `%${search}%` } },
+          //   ],
+          // },
+          // where:{
+          //   username: {
+          //     [Op.like]: `%${search}%`, 
+          //   },
+          // },
           include: [
             {
               model: User,
               as: "user",
+              // where: {
+              //   driver_number: { [Op.like]: `%${search}%` },
+              // },
             },
           ],
           
@@ -273,6 +278,14 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
           as: "last_message",
         },
       ],
+      where: {
+         channelId:req.activeChannel,
+        status:"active",
+        [Op.or]: [
+          { "$UserProfile.username$": { [Op.like]: `%${search}%` } }, 
+          { "$UserProfile.user.driver_number$": { [Op.like]: `%${search}%` } }, 
+        ],
+      },
       order: [
         [
           

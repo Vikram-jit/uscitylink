@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
@@ -41,7 +42,8 @@ class _StaffMessageViewState extends State<StaffMessageView>
 
   StaffchatController _staffchatController = Get.put(StaffchatController());
   SocketService socketService = Get.find<SocketService>();
-
+  String pinMessage = "0";
+  final FocusNode _focusNode = FocusNode();
   @override
   void initState() {
     super.initState();
@@ -101,6 +103,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
     _staffchatController.currentPage.value = 1;
     _staffchatController.totalPages.value = 1;
     WidgetsBinding.instance.removeObserver(this);
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -125,12 +128,15 @@ class _StaffMessageViewState extends State<StaffMessageView>
       socketService
           .updateStaffActiveUserChat(_staffchatController.userId.value);
       socketService.sendMessageToUser(
-        _staffchatController.userId.value,
-        _staffchatController.messageController.text,
-        _staffchatController.templateUrl.value,
-      );
+          _staffchatController.userId.value,
+          _staffchatController.messageController.text,
+          _staffchatController.templateUrl.value,
+          null,
+          _staffchatController.selectedRplyMessage.value.id);
       _staffchatController.templateUrl.value = "";
+      _staffchatController.selectedRplyMessage.value = MessageModel();
       _staffchatController.messageController.clear();
+      _focusNode.unfocus();
     }
   }
 
@@ -147,6 +153,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
             _staffchatController.currentPage.value = 1;
             _staffchatController.totalPages.value = 1;
             _staffchatController.message.value = UserMessageModel();
+            _staffchatController.selectedRplyMessage.value = MessageModel();
             Get.back();
           },
           icon: const Icon(
@@ -194,6 +201,27 @@ class _StaffMessageViewState extends State<StaffMessageView>
             ],
           ),
         ),
+        actions: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                pinMessage = pinMessage == "0" ? "1" : "0";
+              });
+              _staffchatController.getChannelMembers(
+                  _staffchatController.userId.value,
+                  _staffchatController.currentPage.value,
+                  _staffchatController.channelId.value,
+                  pinMessage);
+            },
+            child: Icon(
+              Icons.push_pin,
+              color: pinMessage == "1" ? Colors.amber : Colors.white,
+            ),
+          ),
+          SizedBox(
+            width: 20,
+          )
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -264,11 +292,132 @@ class _StaffMessageViewState extends State<StaffMessageView>
                       itemBuilder: (context, index) {
                         MessageModel message =
                             _staffchatController.message.value.messages![index];
-                        return _buildChatMessage(message, context,
-                            _staffchatController.truckNumbers.value);
+                        return _buildChatMessage(
+                            message,
+                            context,
+                            _staffchatController.truckNumbers.value,
+                            _staffchatController,
+                            _focusNode);
                       },
                     );
                   }),
+                ),
+                Obx(
+                  () {
+                    // ignore: unnecessary_null_comparison
+                    return _staffchatController.selectedRplyMessage.value.id !=
+                            null
+                        ? Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border(
+                                    left: BorderSide(
+                                        color: _staffchatController
+                                                    .selectedRplyMessage
+                                                    .value
+                                                    .messageDirection ==
+                                                "S"
+                                            ? Colors.blue
+                                            : Colors.amber,
+                                        width: 4)),
+                                color: Colors.grey.shade200,
+                              ),
+                              width: TDeviceUtils.getScreenWidth(context) * 1,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    bottom: 8.0, right: 8.0, left: 8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Obx(() {
+                                      return Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            textAlign: TextAlign.start,
+                                            _staffchatController
+                                                        .selectedRplyMessage
+                                                        .value
+                                                        .messageDirection ==
+                                                    "S"
+                                                ? "You"
+                                                : "${_staffchatController.selectedRplyMessage.value.sender?.username}(staff)",
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                          InkWell(
+                                            onTap: () {
+                                              _staffchatController
+                                                  .selectedRplyMessage
+                                                  .value = MessageModel();
+                                              FocusScope.of(context).unfocus();
+                                            },
+                                            child: Container(
+                                              height: 20,
+                                              width: 20,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                    color: _staffchatController
+                                                                .selectedRplyMessage
+                                                                .value
+                                                                .messageDirection ==
+                                                            "S"
+                                                        ? Colors.blue
+                                                        : Colors.amber),
+                                                borderRadius:
+                                                    BorderRadius.circular(50),
+                                              ),
+                                              child: Center(
+                                                  child: Icon(
+                                                Icons.close_rounded,
+                                                size: 12,
+                                                color: _staffchatController
+                                                            .selectedRplyMessage
+                                                            .value
+                                                            .messageDirection ==
+                                                        "S"
+                                                    ? Colors.blue
+                                                    : Colors.amber,
+                                              )),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                    if (_staffchatController.selectedRplyMessage
+                                                .value.url !=
+                                            null &&
+                                        _staffchatController.selectedRplyMessage
+                                            .value.url!.isNotEmpty)
+                                      AttachementUi(
+                                        fileUrl:
+                                            "${Constant.aws}/${_staffchatController.selectedRplyMessage.value.url}",
+                                        thumbnail:
+                                            "${Constant.aws}/${_staffchatController.selectedRplyMessage.value.thumbnail}",
+                                      ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      _staffchatController
+                                          .selectedRplyMessage.value.body!,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox();
+                  },
                 ),
                 Obx(() {
                   return _staffchatController.typing.value
@@ -341,6 +490,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
                           },
                           keyboardType: TextInputType.multiline,
                           maxLines: null,
+                          focusNode: _focusNode,
                           controller: _staffchatController.messageController,
                           decoration: InputDecoration(
                             hintText: "Type your message...",
@@ -395,7 +545,11 @@ class _StaffMessageViewState extends State<StaffMessageView>
   }
 
   Widget _buildChatMessage(
-      MessageModel message, BuildContext context, String trucknumbers) {
+      MessageModel message,
+      BuildContext context,
+      String trucknumbers,
+      StaffchatController staffchatController,
+      FocusNode focusNode) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
@@ -404,68 +558,248 @@ class _StaffMessageViewState extends State<StaffMessageView>
           : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Column(
-          crossAxisAlignment: message.messageDirection == "S"
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: TDeviceUtils.getScreenWidth(context) * 0.5,
-              padding: const EdgeInsets.all(10.0),
-              decoration: BoxDecoration(
-                color: message.messageDirection == "S"
-                    ? Colors.blue[200]
-                    : Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: message.messageDirection == "S"
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
+        child: PopupMenuButton(
+          clipBehavior: Clip.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          offset: message.messageDirection == "R"
+              ? Offset.fromDirection(1.5, 70)
+              : Offset(TDeviceUtils.getScreenWidth(context) * 0, 60),
+          color: Colors.white,
+          onSelected: (value) {
+            switch (value) {
+              case 'reply':
+                FocusScope.of(context).requestFocus(_focusNode);
+                staffchatController.selectedRplyMessage.value = message;
+                // Handle reply action
+                break;
+              case 'pin':
+                socketService.pinMessage(message.id!,
+                    (message.staffPin ?? "0") == "0" ? "1" : "0", "staff");
+                // Handle pin action
+                break;
+              case 'delete':
+                socketService.deleteMessage(message.id!);
+                // Handle delete action
+                break;
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            PopupMenuItem<String>(
+              value: 'reply',
+              child: Row(
                 children: [
-                  if (hasImageUrl)
-                    AttachementUi(
-                      fileUrl: "${Constant.aws}/${message.url}",
-                      thumbnail: "${Constant.aws}/${message.thumbnail}",
+                  Icon(Icons.reply, color: Colors.grey[700]),
+                  SizedBox(width: 10),
+                  Text(
+                    "Reply",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w600,
                     ),
-                  const SizedBox(height: 5),
-                  Text(
-                    message.body!,
-                    style: const TextStyle(fontSize: 16),
                   ),
-                  SizedBox(height: 5),
-                  Text(
-                    message.messageDirection == "S"
-                        ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} ${message?.sender?.username}(staff)"
-                        : "${message.sender?.username} ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}",
-                    style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  if (message.messageDirection == "S" &&
-                      message.type == "truck_group")
-                    Text("From Truck Group: ${message?.group?.name}",
-                        style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.black54,
-                            fontWeight: FontWeight.w500)),
-                  if (message.messageDirection == "R" &&
-                      trucknumbers.isNotEmpty)
-                    Text("Assigned trucks:- ${trucknumbers}",
-                        style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.black54,
-                            fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
-            if (message.messageDirection == "S")
-              if (message.deliveryStatus == "sent")
-                Icon(Icons.done, color: Colors.grey.shade500, size: 16)
-              else
-                Icon(Icons.done_all, color: Colors.blue.shade500, size: 16),
+            const PopupMenuDivider(),
+            PopupMenuItem<String>(
+              value: 'pin',
+              child: Row(
+                children: [
+                  Icon(Icons.push_pin, color: Colors.grey[700]),
+                  SizedBox(width: 10),
+                  Text(
+                    "${message.staffPin == "0" ? "Pin" : "Un-Pin"} Message",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (message.messageDirection == "R" &&
+                message.deliveryStatus == "sent")
+              const PopupMenuDivider(),
+            if (message.messageDirection == "S" &&
+                message.deliveryStatus == "sent")
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, color: Colors.redAccent),
+                    SizedBox(width: 10),
+                    Text(
+                      "Delete",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
+          child: Column(
+            crossAxisAlignment: message.messageDirection == "S"
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: message.messageDirection == "S"
+                          ? Colors.blue[200]
+                          : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: message.messageDirection == "S"
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        if (message.r_message != null)
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border(
+                                  left: BorderSide(
+                                      color:
+                                          message.r_message?.messageDirection ==
+                                                  "R"
+                                              ? Colors.blue
+                                              : Colors.amber,
+                                      width: 4)),
+                              color: Colors.grey.shade200,
+                            ),
+                            width: TDeviceUtils.getScreenWidth(context) * 1,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 8.0, right: 8.0, left: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    height: 5,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        textAlign: TextAlign.start,
+                                        message.r_message?.messageDirection ==
+                                                "S"
+                                            ? "You"
+                                            : "${message.r_message?.sender?.username}",
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  if (message.r_message?.url != null)
+                                    AttachementUi(
+                                      fileUrl:
+                                          "${Constant.aws}/${message.r_message?.url}",
+                                      thumbnail:
+                                          "${Constant.aws}/${message.r_message?.thumbnail}",
+                                    ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    message.r_message?.body ?? "-",
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (hasImageUrl)
+                          AttachementUi(
+                            fileUrl: "${Constant.aws}/${message.url}",
+                            thumbnail: "${Constant.aws}/${message.thumbnail}",
+                          ),
+                        const SizedBox(height: 5),
+                        Text(
+                          message.body!,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          message.messageDirection == "S"
+                              ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} ${message?.sender?.username}(staff)"
+                              : "${message.sender?.username} ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}",
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500),
+                        ),
+                        if (message.messageDirection == "S" &&
+                            message.type == "truck_group")
+                          Text("From Truck Group: ${message?.group?.name}",
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500)),
+                        if (message.messageDirection == "R" &&
+                            trucknumbers.isNotEmpty)
+                          Text("Assigned trucks:- ${trucknumbers}",
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                  if (message.staffPin == "1")
+                    Positioned(
+                      // For messages sent by "R", place the icon at the top left,
+                      // otherwise place it at the top right.
+                      top: -8,
+
+                      left: message.messageDirection == "S" ? -5 : null,
+                      right: message.messageDirection != "S" ? -5 : null,
+                      child: Container(
+                        height: 20,
+                        width: 20,
+                        decoration: BoxDecoration(
+                            color: Colors.green,
+                            border: Border.all(color: Colors.green),
+                            borderRadius: BorderRadius.circular(50)),
+                        child: Center(
+                          child: Transform.rotate(
+                            angle: message.messageDirection == "S"
+                                ? -math.pi / 4
+                                : math.pi / 4,
+                            child: Icon(
+                              Icons.push_pin_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (message.messageDirection == "S")
+                if (message.deliveryStatus == "sent")
+                  Icon(Icons.done, color: Colors.grey.shade500, size: 16)
+                else
+                  Icon(Icons.done_all, color: Colors.blue.shade500, size: 16),
+            ],
+          ),
         ),
       ),
     );

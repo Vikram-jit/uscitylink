@@ -206,10 +206,16 @@ class SocketService extends GetxController {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().pinMessage(data);
       }
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().pinMessage(data);
+      }
     });
     socket.on("delete_message", (data) {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().deleteMessage(data);
+      }
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().deleteMessage(data);
       }
     });
     socket.on('pong', (_) {
@@ -281,6 +287,7 @@ class SocketService extends GetxController {
   }
 
   void pinMessage(String id, String value, String type) {
+    print("${id} ${value} ${type}");
     if (isConnected.value) {
       socket
           .emit("pin_message", {"messageId": id, "value": value, "type": type});
@@ -377,14 +384,15 @@ class SocketService extends GetxController {
   }
 
   void sendMessageToUser(String userId, String body, String? url,
-      [String? thumbnail]) {
+      [String? thumbnail, String? r_message_id]) {
     if (isConnected.value) {
       socket.emit("send_message_to_user", {
         "userId": userId,
         "body": body,
         "direction": "S",
         "url": url,
-        "thumbnail": thumbnail
+        "thumbnail": thumbnail,
+        "r_message_id": r_message_id
       });
     } else {
       print("Not connected to socket.");

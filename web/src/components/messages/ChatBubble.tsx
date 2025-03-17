@@ -13,7 +13,8 @@ import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
 import moment from 'moment';
 import MediaComponent from './MediaComment';
 import { Check, Ticket } from '@phosphor-icons/react';
-import { Done, DoneAll } from '@mui/icons-material';
+import { Delete, Done, DoneAll, Pin, PinDrop, PushPin, Replay, Reply } from '@mui/icons-material';
+import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -23,14 +24,15 @@ type ChatBubbleProps = MessageModel & {
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
-  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url,deliveryStatus ,thumbnail} = props;
+  const { body, variant, messageTimestampUtc,messageDirection,attachment,sender,url,deliveryStatus ,thumbnail,staffPin} = props;
   const isSent = variant === 'sent';
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const [isLiked, setIsLiked] = React.useState<boolean>(false);
   const [isCelebrated, setIsCelebrated] = React.useState<boolean>(false);
 
   return (
-    <Box sx={{ maxWidth: '60%', minWidth: 'auto' }}>
+    <Box sx={{ maxWidth: '60%', minWidth: 'auto' ,position:"relative"}}>
+     
       <Stack
         direction="row"
         spacing={2}
@@ -74,33 +76,62 @@ export default function ChatBubble(props: ChatBubbleProps) {
               borderTopLeftRadius: isSent ? 'lg' : 0,
             }}
           >
+            
+             {staffPin == "1" && <Box sx={{
+              position:"absolute",
+              top:-8,
+              ...(messageDirection == "R" && {  right : -5,transform: "rotate(60deg)",}),
+              ...(messageDirection == "S" && {  left : -5,transform: "rotate(300deg)",}),
+              
+              
+             }}> 
+        <PushPin sx={{color: messageDirection == "R" ? "green": "orange"}}/>
+      </Box>}
             <Typography sx={{fontSize:16}}>{body}</Typography>
           </Paper>
-          {/* {(isHovered || isLiked || isCelebrated) && (
+          {(isHovered) && (
             <Stack
-              direction="row"
+              direction="column"
               spacing={0.5}
               sx={{
                 justifyContent: isSent ? 'flex-end' : 'flex-start',
                 position: 'absolute',
-                top: '50%',
+                top: '100%',
                 p: 1.5,
+                background:"white",
+                zIndex:999999999999999
               }}
             >
-              <IconButton
-                size="small"
-                onClick={() => setIsLiked((prevState) => !prevState)}
-              >
-                {isLiked ? '❤️' : <FavoriteBorderIcon />}
-              </IconButton>
-              <IconButton
-                size="small"
-                onClick={() => setIsCelebrated((prevState) => !prevState)}
-              >
-                {isCelebrated ? '🎉' : <CelebrationOutlinedIcon />}
-              </IconButton>
+               <List disablePadding>
+          <ListItem disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+                <Reply />
+              </ListItemIcon>
+              <ListItemText primary="Reply" />
+            </ListItemButton>
+          </ListItem>
+          <Divider/>
+          <ListItem disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+               <PushPin/>
+              </ListItemIcon>
+              <ListItemText primary="Pin Message" />
+            </ListItemButton>
+          </ListItem>
+          <Divider/>
+          <ListItem disablePadding>
+            <ListItemButton>
+              <ListItemIcon>
+               <Delete/>
+              </ListItemIcon>
+              <ListItemText primary="Delete" />
+            </ListItemButton>
+          </ListItem>
+        </List>
             </Stack>
-          )} */}
+          )}
         </Box>
       )}
      {props.truckNumbers && messageDirection === "R" &&  <Typography variant="caption"> Assigned trucks:- <strong>{props.truckNumbers}</strong></Typography>}

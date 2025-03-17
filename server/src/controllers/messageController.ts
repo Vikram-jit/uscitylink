@@ -224,6 +224,7 @@ export const getMessagesByUserId = async (
         channelId: req.activeChannel,
         userProfileId: id,
         groupId: null,
+        ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
       include: {
         model: UserProfile,

@@ -25,6 +25,6 @@ export interface MessageModel {
   updatedAt: Date;
   url:string | null
   thumbnail:string | null
-
+  staffPin:string | null
   sender: SenderModel;
 }

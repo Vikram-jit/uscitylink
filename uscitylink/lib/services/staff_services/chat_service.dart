@@ -9,10 +9,11 @@ class ChatService {
       {int page = 1, // Default to page 1
       int pageSize = 10, // Default to 10 items per page
       String id = "",
-      String channelId = ""}) async {
+      String channelId = "",
+      String pinMessage = "0"}) async {
     try {
       dynamic response = await _apiService.getApi(
-          '${Constant.url}/staff/chat/message/$id/$channelId?page=$page&pageSize=$pageSize');
+          '${Constant.url}/staff/chat/message/$id/$channelId?page=$page&pageSize=$pageSize&pinMessage=$pinMessage');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

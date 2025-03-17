@@ -413,7 +413,8 @@ export async function messageToDriver(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail: string | null
+  thumbnail: string | null,
+  r_message_id:string | null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -433,16 +434,27 @@ export async function messageToDriver(
     status: "sent",
     url: url || null,
     thumbnail: thumbnail || null,
+    reply_message_id : r_message_id || null
   });
   const message = await Message.findOne({
     where: {
       id: messageSave.id,
     },
-    include: {
+    include: [ {
+      model: Message,
+      as: "r_message",
+      include: [
+        {
+          model: UserProfile,
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
+        },
+      ],
+    },{
       model: UserProfile,
       as: "sender",
       attributes: ["id", "username", "isOnline"],
-    },
+    }],
   });
   //Check Before send driver active room channel
   const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];

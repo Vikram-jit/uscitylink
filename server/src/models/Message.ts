@@ -22,9 +22,11 @@ export class Message extends Model {
   public type?:string
   public thumbnail?:string
   public reply_message_id?:string
+  public driverPin?:string
+  public staffPin?:string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
-
+   
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
 
@@ -96,7 +98,7 @@ Message.init(
     staffPin: {
       type: DataTypes.ENUM,
       values: ['0', '1'],  // Enum values
-    defaultValue: '0',  
+      defaultValue: '0',  
     },
     reply_message_id: {
       type: DataTypes.UUID,

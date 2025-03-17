@@ -392,7 +392,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction, url, thumbnail }) =>
+      async ({ userId, body, direction, url, thumbnail ,r_message_id}) =>
         await messageToDriver(
           io,
           socket,
@@ -400,7 +400,8 @@ export const initSocket = (httpServer: any) => {
           body,
           direction,
           url,
-          thumbnail
+          thumbnail,
+          r_message_id
         )
     );
 

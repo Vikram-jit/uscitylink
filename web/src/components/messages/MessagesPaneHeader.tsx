@@ -17,10 +17,16 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import { PaperPlane } from '@phosphor-icons/react';
 import TemplateDialog from '../dashboard/template/TemplateDialog';
 import moment from 'moment';
+import { MessageModel } from '@/redux/models/MessageModel';
 
 type MessagesPaneHeaderProps = {
   sender?: UserProfile;
   mediaPanel:boolean
+  pinMessage:string
+ 
+  setPinMessage:React.Dispatch<React.SetStateAction<string>>
+  setPage:React.Dispatch<React.SetStateAction<number>>
+  setMessages:React.Dispatch<React.SetStateAction<MessageModel[]>>
   setMediaPanel:React.Dispatch<React.SetStateAction<boolean>>
   setSelectedTemplate:React.Dispatch<React.SetStateAction<{name:string,body:string,url?:string}>>
 };
@@ -92,6 +98,19 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
           sx={{ display: { xs: 'none', md: 'inline-flex' } }}
         >
          {mediaPanel ? "View Messages"  : "View Media"}
+        </Button>
+        <Button
+          onClick={()=>{
+         
+            props.setPage(1)
+            props.setPinMessage((prev) => prev == "0" ? "1" :"0")
+           
+          }}
+          variant={props.pinMessage == "0" ? "outlined":"contained"}
+          size="small"
+          sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+        >
+         {props.pinMessage =="0" ? "View Pin Messages"  : "View All Messages"}
         </Button>
         <IconButton   onClick={handleClick}
             size="small"

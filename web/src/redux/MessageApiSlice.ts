@@ -17,11 +17,11 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
           totalPages:number,
         },truckNumbers?:string };
       },
-      { id: string,page: number; pageSize: number }
+      { id: string,page: number; pageSize: number ,pinMessage:string}
     >({
 
       query: (payload) => ({
-        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}`,
+        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}&pinMessage=${payload.pinMessage}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

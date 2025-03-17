@@ -34,7 +34,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
-
+  const [pinMessage,setPinMessage] = React.useState<string>("0")
+  const [oldPinValue,setOldPinValue] = React.useState<string>("0")
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
   const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
@@ -45,7 +46,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   });
 
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
-    { id: userId, page, pageSize: 10 },
+    { id: userId, page, pageSize: 10,pinMessage:pinMessage },
     {
       skip: !userId,
       pollingInterval: 30000,
@@ -88,6 +89,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   React.useEffect(() => {
     if (data && data.status) {
+      if(page == 1){
+        setMessages([])
+      }
       setMessages((prevMessages) => {
 
         const newMessages = data.data.messages.filter(
@@ -97,7 +101,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
     }
-  }, [data]);
+  }, [data,page]);
   React.useEffect(()=>{
     if(trackChannelState>0){
       setHasMore(false)
@@ -194,6 +198,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
           sender={data?.data?.userProfile}
           setMediaPanel={setMediaPanel}
           setSelectedTemplate={setSelectedTemplate}
+          pinMessage={pinMessage}
+          setPinMessage={setPinMessage}
+          setMessages={setMessages}
+          setPage={setPage}
+         
         />
       )}
 
