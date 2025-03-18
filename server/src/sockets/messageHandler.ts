@@ -15,6 +15,7 @@ import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import Queue from "bull";
 import Role from "../models/Role";
+import User from "../models/User";
 
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -226,6 +227,12 @@ export async function messageToChannelToUser(
               model: UserProfile,
               as: "sender",
               attributes: ["id", "username", "isOnline"],
+              include:[
+                {
+                  model:User,
+                  as:"user"
+                }
+              ]
             },
           ],
         },
@@ -448,6 +455,10 @@ export async function messageToDriver(
           model: UserProfile,
           as: "sender",
           attributes: ["id", "username", "isOnline"],
+          include:[{
+            model:User,
+            as:"user"
+          }]
         },
       ],
     },{

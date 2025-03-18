@@ -169,11 +169,12 @@ export default function ChatBubble(props: ChatBubbleProps) {
               spacing={0.5}
               sx={{
                 justifyContent: isSent ? 'flex-end' : 'flex-start',
-                // position: 'absolute',
-                top: '100%',
+                position: 'absolute',
+                top: 20,
                 p: 1.5,
                 background: 'white',
                 zIndex: 999999999999999,
+                height:150
               }}
             >
               <List disablePadding>
@@ -197,7 +198,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                     <ListItemIcon>
                       <PushPin />
                     </ListItemIcon>
-                    <ListItemText primary="Pin Message" />
+                    <ListItemText primary={staffPin == "0" ? "Pin Message" : "Un-pin Message"} />
                   </ListItemButton>
                 </ListItem>
                 <Divider />
