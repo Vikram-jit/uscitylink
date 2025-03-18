@@ -27,4 +27,5 @@ export interface MessageModel {
   thumbnail:string | null
   staffPin:string | null
   sender: SenderModel;
+  r_message:MessageModel
 }

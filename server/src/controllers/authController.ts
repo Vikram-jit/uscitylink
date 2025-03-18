@@ -4,7 +4,7 @@ import User from "../models/User";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 import Role from "../models/Role";
 import { secondarySequelize } from "../sequelize";
-import { QueryTypes, where } from "sequelize";
+import { QueryTypes } from "sequelize";
 import { UserProfile } from "../models/UserProfile";
 import {
   generateOTP,

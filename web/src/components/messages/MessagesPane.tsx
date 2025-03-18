@@ -1,21 +1,25 @@
 import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
+import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
+import { Close, WavingHand } from '@mui/icons-material';
 import { Button, CircularProgress, Divider, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import moment from 'moment';
 import InfiniteScroll from 'react-infinite-scroll-component';
-import { WavingHand } from '@mui/icons-material';
+import { useSelector } from 'react-redux';
+
 import { useSocket } from '@/lib/socketProvider';
+
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
+import MediaComponent from './MediaComment';
 import MediaPane from './MediaPane';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
-import { SingleChannelModel } from '@/redux/models/ChannelModel';
-import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 
 type MessagesPaneProps = {
   userId: string;
@@ -34,19 +38,20 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const [pinMessage,setPinMessage] = React.useState<string>("0")
-  const [oldPinValue,setOldPinValue] = React.useState<string>("0")
+  const [pinMessage, setPinMessage] = React.useState<string>('0');
+  const [oldPinValue, setOldPinValue] = React.useState<string>('0');
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
   const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
-  const [buttonTitle,setButtonTitle] = React.useState<string>("Scroll to Bottom")
+  const [buttonTitle, setButtonTitle] = React.useState<string>('Scroll to Bottom');
+  const [selectedMessageToReply, setSelectedMessageToReply] = React.useState<MessageModel | null>(null);
   const [selectedTemplate, setSelectedTemplate] = React.useState<{ name: string; body: string; url?: string }>({
     name: '',
     body: '',
   });
 
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
-    { id: userId, page, pageSize: 10,pinMessage:pinMessage },
+    { id: userId, page, pageSize: 10, pinMessage: pinMessage },
     {
       skip: !userId,
       pollingInterval: 30000,
@@ -75,25 +80,21 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setIsTyping(false);
       //setShowScrollToBottomButton(false)
       if (messagesContainerRef.current) {
-
         messagesContainerRef.current.scrollTo({
-            top: 1,
-          behavior: 'smooth'
+          top: 1,
+          behavior: 'smooth',
         });
-        setButtonTitle("Scroll to Bottom")
+        setButtonTitle('Scroll to Bottom');
       }
     }
   }, [userId]);
 
-
-
   React.useEffect(() => {
     if (data && data.status) {
-      if(page == 1){
-        setMessages([])
+      if (page == 1) {
+        setMessages([]);
       }
       setMessages((prevMessages) => {
-
         const newMessages = data.data.messages.filter(
           (message) => !prevMessages.some((prevMessage) => prevMessage.id === message.id)
         );
@@ -101,19 +102,18 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
       setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
     }
-  }, [data,page]);
-  React.useEffect(()=>{
-    if(trackChannelState>0){
-      setHasMore(false)
-      setMessages([])
+  }, [data, page]);
+  React.useEffect(() => {
+    if (trackChannelState > 0) {
+      setHasMore(false);
+      setMessages([]);
     }
-  },[trackChannelState])
+  }, [trackChannelState]);
   const loadMoreMessages = () => {
     if (hasMore && !isLoading) {
       setPage((prevPage) => prevPage + 1);
     }
   };
-
 
   // Socket handling (e.g., new messages)
   React.useEffect(() => {
@@ -121,10 +121,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
       socket.emit('staff_active_channel_user_update', userId);
 
       socket.on('receive_message_channel', (message: MessageModel) => {
-
-        setMessages((prevMessages) => [{...message},...prevMessages ]);
-        if(showScrollToBottomButton){
-          setButtonTitle("New Message")
+        setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
+        if (showScrollToBottomButton) {
+          setButtonTitle('New Message');
         }
         // Update user list if necessary
         setUserList((prevUserList) => {
@@ -146,8 +145,38 @@ export default function MessagesPane(props: MessagesPaneProps) {
       socket.on('stopTyping', () => {
         setIsTyping(false);
       });
-    }
 
+      socket.on('pin_done_web',(data:any)=>{
+      
+       
+        setMessages((prev) =>
+          prev.map((e) =>
+            e.id === data?.messageId ? { ...e, staffPin: data?.value } : e
+          )
+        );
+        if(data.value == "0"){
+          toast.success("Un-pin message successfully")
+        }else{
+          toast.success("Pin message successfully")
+        }
+      })
+
+      socket.on('delete_message',(data:any)=>{
+      
+       
+        setMessages((prev) =>
+          prev.filter((e) =>
+            e.id != data 
+          )
+        );
+      
+          toast.error("Deleted message successfully")
+        
+      })
+    }
+    
+  
+    
     const intervalId = setInterval(() => {
       if (userId && socket) {
         socket.emit('staff_open_chat', userId);
@@ -157,27 +186,25 @@ export default function MessagesPane(props: MessagesPaneProps) {
     // Cleanup the interval when the component is unmounted or userId changes
     return () => {
       if (socket) {
+        socket.off('delete_message');
         socket.off('receive_message_channel');
+        socket.off('pin_done');
         socket.off('staff_open_chat', userId);
       }
       clearInterval(intervalId); // Clear interval to avoid memory leaks
     };
-    
   }, [socket, userId]);
-
 
   const handleScroll = () => {
     const container = messagesContainerRef.current;
 
-    if(container){
+    if (container) {
       if (container?.scrollTop > -200) {
         setShowScrollToBottomButton(false);
       } else {
         setShowScrollToBottomButton(true);
       }
     }
-
-
   };
   if (isLoading && page === 1) {
     return <CircularProgress />;
@@ -202,17 +229,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
           setPinMessage={setPinMessage}
           setMessages={setMessages}
           setPage={setPage}
-         
         />
       )}
 
       {mediaPanel ? (
-        <MediaPane userId={props.userId} source='channel' channelId={"null"}/>
+        <MediaPane userId={props.userId} source="channel" channelId={'null'} />
       ) : (
         <>
           {data?.status && messages.length > 0 ? (
             <>
-
               <Box
                 id="scrollable-messages-container"
                 ref={messagesContainerRef}
@@ -227,11 +252,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
                 }}
               >
                 <InfiniteScroll
-                style={{
-                  display:"flex",
-                  flexDirection:"column-reverse"
-                }}
-                onScroll={handleScroll}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column-reverse',
+                  }}
+                  onScroll={handleScroll}
                   dataLength={messages.length}
                   next={loadMoreMessages}
                   hasMore={hasMore}
@@ -250,7 +275,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
                   >
                     {messages.map((message: MessageModel, index: number) => {
                       const currentDate = moment.utc(message.messageTimestampUtc).format('MM-DD-YYYY');
-                      const previousDate = index > 0 ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY') : null;
+                      const previousDate =
+                        index > 0 ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY') : null;
                       const isDifferentDay = previousDate && currentDate !== previousDate;
                       const isToday = currentDate === moment.utc().format('MM-DD-YYYY');
                       const isYou = message.messageDirection === 'S';
@@ -258,43 +284,96 @@ export default function MessagesPane(props: MessagesPaneProps) {
                       return (
                         <React.Fragment key={message.id}>
                           <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
-                            {message.messageDirection !== 'S' && <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />}
-                            <ChatBubble truckNumbers={data?.data?.truckNumbers} variant={isYou ? 'sent' : 'received'} {...message} attachment={false} sender={message?.sender} />
+                            {message.messageDirection !== 'S' && (
+                              <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                            )}
+                            <ChatBubble
+                              truckNumbers={data?.data?.truckNumbers}
+                              variant={isYou ? 'sent' : 'received'}
+                              {...message}
+                              attachment={false}
+                              sender={message?.sender}
+                              setSelectedMessageToReply={setSelectedMessageToReply}
+                            />
                           </Stack>
                           {isDifferentDay && <Divider>{isToday ? 'Today' : previousDate}</Divider>}
                         </React.Fragment>
                       );
                     })}
                   </Stack>
-
                 </InfiniteScroll>
               </Box>
-                    {
-                      showScrollToBottomButton &&   <Button
-                      variant="contained"
-                      color="secondary"
-                     size='small'
-                     sx={{
-                      width:200,
-                      alignSelf:"center",
-                      marginBottom:1
-                     }}
-                      onClick={()=>{
-                        if (messagesContainerRef.current) {
-
-                          messagesContainerRef.current.scrollTo({
-                              top: 1,
-                            behavior: 'smooth'
-                          });
-                          setButtonTitle("Scroll to Bottom")
-                        }
+              {showScrollToBottomButton && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  sx={{
+                    width: 200,
+                    alignSelf: 'center',
+                    marginBottom: 1,
+                  }}
+                  onClick={() => {
+                    if (messagesContainerRef.current) {
+                      messagesContainerRef.current.scrollTo({
+                        top: 1,
+                        behavior: 'smooth',
+                      });
+                      setButtonTitle('Scroll to Bottom');
+                    }
+                  }}
+                >
+                  {buttonTitle}
+                </Button>
+              )}
+              {selectedMessageToReply && (
+                <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'white', borderLeft: '6px solid blue' }}>
+                  {selectedMessageToReply?.url ? (
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        px: 1.75,
+                        py: 1.25,
+                        borderRadius: 'lg',
+                        // borderTopRightRadius: isSent ? 0 : 'lg',
+                        // borderTopLeftRadius: isSent ? 'lg' : 0,
                       }}
                     >
-                      {buttonTitle}
-                    </Button>
-
-                    }
-
+                      <MediaComponent
+                        thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.thumbnail}`}
+                        url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.url}`}
+                        name={selectedMessageToReply?.url ? selectedMessageToReply?.url : ' '}
+                      />
+                      {selectedMessageToReply?.body && (
+                        <Typography sx={{ fontSize: 16 }}>{selectedMessageToReply?.body}</Typography>
+                      )}
+                    </Paper>
+                  ) : (
+                    <>
+                      <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
+                        {' '}
+                       <Box sx={{display:"flex"}}>
+                       <Typography variant="body2">
+                          {selectedMessageToReply?.messageDirection === 'S'
+                            ? selectedMessageToReply?.sender?.username
+                              ? `${selectedMessageToReply?.sender?.username}(staff)`
+                              : '(staff)'
+                            : `${selectedMessageToReply?.sender?.username}(driver)`}
+                        </Typography>
+                        <Box sx={{width:"20px"}}></Box>
+                        <Typography variant="caption">
+                          {moment(selectedMessageToReply?.messageTimestampUtc).format('YYYY-MM-DD HH:mm')}
+                        </Typography>
+                       </Box>
+                       <IconButton onClick={()=>{
+                        setSelectedMessageToReply(null)
+                       }}><Close/></IconButton>
+                      </Stack>
+                      <Typography sx={{ fontSize: 16 }}>{selectedMessageToReply?.body}</Typography>
+                    </>
+                  )}
+                </Box>
+              )}
               {messages.length > 0 && (
                 <MessageInput
                   selectedTemplate={selectedTemplate}
@@ -303,14 +382,29 @@ export default function MessagesPane(props: MessagesPaneProps) {
                   setTextAreaValue={setTextAreaValue}
                   userId={userId}
                   onSubmit={() => {
-                    socket.emit('send_message_to_user', {
-                      body: textAreaValue,
-                      userId: userId,
-                      direction: 'S',
-                      ...(selectedTemplate ? { url: selectedTemplate.url } : {}),
-                    });
+                    if (selectedMessageToReply) {
+                      socket.emit('send_message_to_user', {
+                        body: textAreaValue,
+                        userId: userId,
+                        direction: 'S',
+                        url: null,
+                        thumbnail: null,
+                        r_message_id: selectedMessageToReply.id,
+                      });
+                    } else {
+                      socket.emit('send_message_to_user', {
+                        body: textAreaValue,
+                        userId: userId,
+                        direction: 'S',
+                        ...(selectedTemplate ? { url: selectedTemplate.url } : {}),
+                      });
+                    }
+
                     if (selectedTemplate) {
                       setSelectedTemplate({ name: '', body: '', url: '' });
+                    }
+                    if (selectedMessageToReply) {
+                      setSelectedMessageToReply(null);
                     }
                   }}
                 />
@@ -319,7 +413,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
           ) : (
             <Box flex={1} display={'flex'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
               {userId && messages.length === 0 ? (
-                <IconButton onClick={() => socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' })}>
+                <IconButton
+                  onClick={() => socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' })}
+                >
                   <Box display={'flex'} flexDirection={'column'} justifyContent={'center'} alignItems={'center'}>
                     <WavingHand color="warning" />
                     <Typography>Say Hi</Typography>

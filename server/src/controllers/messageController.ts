@@ -17,6 +17,7 @@ import SocketEvents from "../sockets/socketEvents";
 import UserChannel from "../models/UserChannel";
 import { sendNotificationToDevice } from "../utils/fcmService";
 import GroupUser from "../models/GroupUser";
+import User from "../models/User";
 dotenv.config();
 
 const s3Client = new S3Client({
@@ -226,11 +227,23 @@ export const getMessagesByUserId = async (
         groupId: null,
         ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
-      include: {
+      include:[ {
+        model:Message,
+        as:"r_message",
+        include:[
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include:[{model:User,as:'user'}]
+          },
+        ]
+      }, {
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
-      },
+        include:[{model:User,as:'user'}]
+      }],
       order: [["messageTimestampUtc", "DESC"]],
       limit: pageSize,
       offset: offset,

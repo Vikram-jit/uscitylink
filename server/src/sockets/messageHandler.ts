@@ -864,6 +864,7 @@ export async function pinMessage(
     }
 
     io.to(socket.id).emit("pin_done", messageId,value,type);
+    io.to(socket.id).emit("pin_done_web", {messageId,value,type});
   }
 }
 
