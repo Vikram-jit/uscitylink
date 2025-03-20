@@ -224,7 +224,9 @@ export const getMessagesByUserId = async (
       where: {
         channelId: req.activeChannel,
         userProfileId: id,
-        groupId: null,
+        type: {
+          [Op.ne]: "group",
+        },
         ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
       include:[ {
@@ -266,14 +268,32 @@ export const getMessagesByUserId = async (
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
 
-
+    const modifiedMessage = await Promise.all(
+      messages.rows.map(async (e) => {
+        let group = null;
+        if (e.type == "truck_group") {
+          group = await Group.findOne({
+            where: {
+              id: e?.groupId!,
+            },
+            include: [
+              {
+                model: GroupChannel,
+                as: "group_channel",
+              },
+            ],
+          });
+        }
+        return { ...e.dataValues, group };
+      })
+    );
 
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
       data: {
         userProfile,
-        messages: messages.rows,
+        messages: modifiedMessage,
         truckNumbers : truckNumbers ? truckNumbers?.join(","):null  ,
         pagination: {
           currentPage: page,
