@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 import 'package:pdf_render/pdf_render_widgets.dart';
+import 'package:uscitylink/views/widgets/audio_player_widget.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
+import 'package:path/path.dart' as p;
 
 class AttachementUi extends StatefulWidget {
   final String fileUrl;
@@ -29,6 +31,18 @@ class _AttachementUiState extends State<AttachementUi> {
     'wmv'
   ];
 
+  List<String> supportedAudioFormats = [
+    '.mp3', // MPEG Layer III Audio
+    '.aac', // Advanced Audio Coding
+    '.m4a', // MPEG-4 Audio
+    '.wav', // Waveform Audio File Format
+    '.ogg', // Ogg Vorbis
+    '.flac', // Free Lossless Audio Codec
+    '.aiff', // Audio Interchange File Format
+    '.amr', // Adaptive Multi-Rate Audio
+    '.ape', // Monkey's Audio
+    '.au', // Sun Microsystems Audio
+  ];
   @override
   Widget build(BuildContext context) {
     // Extract file extension (lowercase for consistency)
@@ -43,6 +57,8 @@ class _AttachementUiState extends State<AttachementUi> {
       return _buildPdfPreview(widget.fileUrl);
     } else if (videoExtensions.contains(extension)) {
       return _buildVideoPreview(widget.fileUrl, widget.thumbnail);
+    } else if (isSupportedFormat(widget.fileUrl)) {
+      return AudioPlayerWidget(audioUrl: widget.fileUrl);
     } else {
       // Unknown or unsupported file type
       return _buildUnsupportedFile();
@@ -104,6 +120,14 @@ class _AttachementUiState extends State<AttachementUi> {
         ),
       ),
     );
+  }
+
+  bool isSupportedFormat(String filePath) {
+    // Extract the file extension
+    String extension = p.extension(filePath).toLowerCase();
+    print(supportedAudioFormats.contains(extension));
+    // Check if the extension is in the list of supported formats
+    return supportedAudioFormats.contains(extension);
   }
 
   // Widget to show the image preview (network image)

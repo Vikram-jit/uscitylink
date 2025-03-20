@@ -152,7 +152,6 @@ class ImagePickerController extends GetxController {
           type);
 
       if (res.status) {
-        print("xxxxxxxxxx,${res.data.thumbnail}");
         if (source == "staff") {
           if (location == "group") {
             socketService.sendGroupMessage(groupId!, channelId, caption.value,

@@ -195,10 +195,13 @@ class NetworkApiService extends BaseApiServices {
   }
 
   Future<ApiResponse<FileModel>> fileUpload(
-      File data, String url, String channelId, String type) async {
+      File data, String url, String channelId, String type,
+      [bool isLoader = true]) async {
     try {
       // Show the loader while the file is uploading
-      Utils.showLoader();
+      if (isLoader) {
+        Utils.showLoader();
+      }
 
       // Prepare headers
       final headers = {
@@ -232,7 +235,10 @@ class NetworkApiService extends BaseApiServices {
       if (response.statusCode == 201) {
         Map<String, dynamic> responseJson = jsonDecode(responseString);
         FileModel fileModel = FileModel.fromJson(responseJson['data']);
-        Utils.hideLoader();
+        if (isLoader) {
+          Utils.hideLoader();
+        }
+
         return ApiResponse<FileModel>(
           data: fileModel,
           message: responseJson['message'] ?? 'File Uploaded successful',
@@ -240,17 +246,25 @@ class NetworkApiService extends BaseApiServices {
         );
       }
 
-      Utils.hideLoader();
+      if (isLoader) {
+        Utils.hideLoader();
+      }
 
       throw Exception("Unable to upload file");
     } on SocketException {
-      Utils.hideLoader();
+      if (isLoader) {
+        Utils.hideLoader();
+      }
       throw InternetException(); // Handle no internet connection
     } on TimeoutException {
-      Utils.hideLoader();
+      if (isLoader) {
+        Utils.hideLoader();
+      }
       throw RequestTimeout(); // Handle timeout errors
     } catch (e) {
-      Utils.hideLoader();
+      if (isLoader) {
+        Utils.hideLoader();
+      }
       throw Exception("An unexpected error occurred: $e");
     }
   }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
@@ -477,49 +478,236 @@ class _StaffMessageViewState extends State<StaffMessageView>
                   child: Row(
                     children: [
                       // Text Field for typing the message
-                      Expanded(
-                        child: TextField(
-                          onChanged: (text) {
-                            if (text.isNotEmpty) {
-                              _staffchatController.startTyping(
-                                  _staffchatController.userId.value);
-                            } else {
-                              _staffchatController.stopTyping(
-                                  _staffchatController.userId.value);
-                            }
-                          },
-                          keyboardType: TextInputType.multiline,
-                          maxLines: null,
-                          focusNode: _focusNode,
-                          controller: _staffchatController.messageController,
-                          decoration: InputDecoration(
-                            hintText: "Type your message...",
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.attachment),
-                              onPressed: () {
-                                Get.bottomSheet(
-                                  AttachmentBottomSheet(
-                                    channelId:
-                                        _staffchatController.channelId.value,
-                                    userId: widget.userId,
+                      if (!_staffchatController.isRecording.value)
+                        Expanded(
+                          child: TextField(
+                            onChanged: (text) {
+                              if (text.isNotEmpty) {
+                                _staffchatController.startTyping(
+                                    _staffchatController.userId.value);
+                              } else {
+                                _staffchatController.stopTyping(
+                                    _staffchatController.userId.value);
+                              }
+                            },
+                            keyboardType: TextInputType.multiline,
+                            maxLines: null,
+                            focusNode: _focusNode,
+                            controller: _staffchatController.messageController,
+                            decoration: InputDecoration(
+                              hintText: "Type your message...",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              suffixIcon: Row(
+                                mainAxisSize:
+                                    MainAxisSize.min, // Prevents stretching
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.attachment),
+                                    onPressed: () {
+                                      Get.bottomSheet(
+                                        AttachmentBottomSheet(
+                                          channelId: _staffchatController
+                                              .channelId.value,
+                                          userId: widget.userId,
+                                        ),
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.white,
+                                      );
+                                    },
                                   ),
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.white,
-                                );
-                              },
+                                  if (!_staffchatController.isRecording.value)
+                                    Obx(() => IconButton(
+                                          icon: Icon(
+                                              _staffchatController
+                                                      .isRecording.value
+                                                  ? Icons.stop
+                                                  : Icons.mic,
+                                              size: 28),
+                                          color: _staffchatController
+                                                  .isRecording.value
+                                              ? Colors.red
+                                              : Colors.blue,
+                                          onPressed: () {
+                                            _staffchatController
+                                                    .isRecording.value
+                                                ? _staffchatController
+                                                    .stopRecording()
+                                                : _staffchatController
+                                                    .startRecording();
+                                          },
+                                        )),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      if (_staffchatController.isRecording.value)
+                        Expanded(
+                          child: Obx(() {
+                            return Row(
+                              children: [
+                                if (_staffchatController.isRecording.value)
+                                  Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: () {
+                                          _staffchatController.showPlayer.value
+                                              ? _staffchatController
+                                                      .isPlaying.value
+                                                  ? _staffchatController
+                                                          .isPaused.value
+                                                      ? _staffchatController
+                                                          .resumePlaying()
+                                                      : _staffchatController
+                                                          .pausePlayback()
+                                                  : _staffchatController
+                                                      .playRecording()
+                                              : null;
+                                        },
+                                        child: Icon(
+                                            _staffchatController
+                                                    .showPlayer.value
+                                                ? (_staffchatController
+                                                            .isPlaying.value &&
+                                                        !_staffchatController
+                                                            .isPaused.value)
+                                                    ? Icons.pause
+                                                    : Icons.play_arrow
+                                                : Icons.mic,
+                                            color: _staffchatController
+                                                    .showPlayer.value
+                                                ? Colors.blueAccent
+                                                : Colors.red,
+                                            size: 28),
+                                      ),
+                                      SizedBox(width: 8),
+                                      if (_staffchatController.showPlayer.value)
+                                        Obx(() {
+                                          final remainingTime =
+                                              _staffchatController
+                                                      .totalDuration.value -
+                                                  _staffchatController
+                                                      .currentPosition.value;
+                                          return Text(
+                                            _staffchatController.formatDuration(
+                                                remainingTime ~/ 1000),
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold),
+                                          );
+                                        })
+                                      else
+                                        Text(
+                                          _staffchatController.formatDuration(
+                                              _staffchatController
+                                                  .recordingDuration.value),
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                    ],
+                                  ),
+                                SizedBox(
+                                  width: 10,
+                                ),
+                                if (_staffchatController.showPlayer.value)
+                                  Expanded(
+                                    flex: _staffchatController.isPlaying.value
+                                        ? 3
+                                        : 2,
+                                    child: Obx(() => Slider(
+                                          value: _staffchatController
+                                              .currentPosition.value
+                                              .toDouble(),
+                                          min: 0,
+                                          max: _staffchatController
+                                              .totalDuration.value
+                                              .toDouble(),
+                                          activeColor: Colors.blueAccent,
+                                          inactiveColor: Colors.grey[300],
+                                          onChanged: (value) {
+                                            _staffchatController
+                                                .seekTo(value.toInt());
+                                          },
+                                        )),
+                                  ),
+                                if (!_staffchatController.showPlayer.value)
+                                  Expanded(
+                                    child: Text(
+                                      "recording...",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                if (!_staffchatController.isRecording.value)
+                                  Expanded(
+                                    child: IconButton(
+                                      icon: Icon(Icons.mic,
+                                          color: Colors.blue, size: 30),
+                                      onPressed:
+                                          _staffchatController.startRecording,
+                                    ),
+                                  )
+                                else
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Obx(() {
+                                        return IconButton(
+                                          icon: Icon(
+                                            _staffchatController.isPaused.value
+                                                ? Icons.mic
+                                                : !_staffchatController
+                                                        .showPlayer.value
+                                                    ? Icons.stop
+                                                    : null,
+                                            color: _staffchatController
+                                                    .isPaused.value
+                                                ? Colors.orange
+                                                : Colors.red,
+                                            size: 30,
+                                          ),
+                                          onPressed: () {
+                                            _staffchatController.isPaused.value
+                                                ? _staffchatController
+                                                    .resumeRecording()
+                                                : _staffchatController
+                                                    .pauseRecording();
+                                          },
+                                        );
+                                      }),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Colors.red, size: 30),
+                                        onPressed:
+                                            _staffchatController.deleteRecoding,
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            );
+                          }),
+                        ),
                       const SizedBox(width: 8),
-                      // Plus button to send the message
+
                       GestureDetector(
-                        onTap: _sendMessage,
+                        onTap: () {
+                          if (_staffchatController.isRecording.value) {
+                            _staffchatController.sendAudio(
+                                widget.channelId,
+                                "chat",
+                                "",
+                                "",
+                                "staff",
+                                _staffchatController.userId.value);
+                          } else {
+                            _sendMessage();
+                          }
+                        },
                         child: Container(
                           height: 50,
                           width: 50,
@@ -653,7 +841,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                    width: TDeviceUtils.getScreenWidth(context) * 0.6,
                     padding: const EdgeInsets.all(10.0),
                     decoration: BoxDecoration(
                       color: message.messageDirection == "S"
