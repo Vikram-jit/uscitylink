@@ -12,6 +12,7 @@ import { getSocketInstance } from "../../sockets/socket";
 import { sendNotificationToDevice } from "../../utils/fcmService";
 import Role from "../../models/Role";
 import Queue from "bull";
+import GroupChannel from "../../models/GroupChannel";
 
 
 export const groupMessageQueueApi = new Queue('groupMessageQueueApi', {
@@ -216,7 +217,7 @@ export const getMessagesByUserId = async (
         ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
       include: [
-        {model:Group,as:"group"},
+      
         {
         model: Message,
         as: "r_message",
@@ -236,7 +237,25 @@ export const getMessagesByUserId = async (
       limit: pageSize,
       offset: offset,
     });
-
+    const modifiedMessage = await Promise.all(
+      messages.rows.map(async (e) => {
+        let group = null;
+        if (e.type == "truck_group") {
+          group = await Group.findOne({
+            where: {
+              id: e?.groupId!,
+            },
+            include: [
+              {
+                model: GroupChannel,
+                as: "group_channel",
+              },
+            ],
+          });
+        }
+        return { ...e.dataValues, group };
+      })
+    );
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
 
@@ -262,7 +281,7 @@ export const getMessagesByUserId = async (
       message: `Fetch message successfully`,
       data: {
         userProfile,
-        messages: messages.rows,
+        messages: modifiedMessage,
         truckNumbers: truckNumbers ? truckNumbers?.join(",") : null,
         pagination: {
           currentPage: page,

@@ -121,7 +121,6 @@ Message.init(
 Message.belongsTo(UserProfile, { foreignKey: 'senderId', as: 'sender' });
 Message.belongsTo(Channel, { foreignKey: 'channelId', as: 'channel' });
 Message.belongsTo(Message, { foreignKey: 'reply_message_id', as: 'r_message' });
-Message.belongsTo(Group, { foreignKey: 'groupId', as: 'group' });
 
 
 UserProfile.hasMany(Message, { foreignKey: 'senderId', as: 'messages' });
