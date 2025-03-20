@@ -215,7 +215,9 @@ export const getMessagesByUserId = async (
         },
         ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
-      include: [ {
+      include: [
+        {model:Group,as:"group"},
+        {
         model: Message,
         as: "r_message",
         include: [
