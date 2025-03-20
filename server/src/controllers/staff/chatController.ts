@@ -210,7 +210,9 @@ export const getMessagesByUserId = async (
       where: {
         channelId: channelId,
         userProfileId: id,
-        groupId: null,
+        type: {
+          [Op.ne]: "group",
+        },
         ...(req.query.pinMessage == "1" && {staffPin:"1"})
       },
       include: [ {
