@@ -392,7 +392,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
                       thumbnail: "${Constant.aws}/${message.thumbnail}",
                     ),
                   const SizedBox(height: 5),
-                  Text(
+                  SelectableText(
                     message.body!,
                     style: const TextStyle(fontSize: 16),
                   ),
