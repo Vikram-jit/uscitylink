@@ -53,6 +53,21 @@ export default function MediaComponent({ url, width, height, file_name, name ,th
       </IconButton >
       {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
     </>;
+     case '.mp3':
+      case '.aac':
+      case '.m4a':
+      case '.wav':
+      case '.ogg':
+      case '.flac':
+      case '.aiff':
+      case '.amr':
+      case '.ape':
+        return <>
+       
+       <audio controls>
+        <source src={url}></source>
+       </audio>
+      </>;
     case '.3gpp':
       return (
         <>

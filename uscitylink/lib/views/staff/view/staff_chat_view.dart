@@ -229,12 +229,12 @@ class StaffChatView extends StatelessWidget {
                                     ),
 
                                     // Badge showing unread message count
-                                    channel?.sentMessageCount != 0
+                                    channel?.unreadCount != 0
                                         ? Badge(
                                             label: Text(
-                                              channel?.sentMessageCount == 0
+                                              channel?.unreadCount == 0
                                                   ? ""
-                                                  : '${channel?.sentMessageCount}', // Example unread count, replace with actual count
+                                                  : '${channel?.unreadCount}', // Example unread count, replace with actual count
                                               style:
                                                   const TextStyle(fontSize: 11),
                                             ),

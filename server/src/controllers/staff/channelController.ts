@@ -5,6 +5,7 @@ import UserChannel from "../../models/UserChannel";
 import User from "../../models/User";
 import GroupUser from "../../models/GroupUser";
 import Role from "../../models/Role";
+import { MessageStaff } from "../../models/MessageStaff";
 
 export async function updateStaffActiceChannel(
   req: Request,
@@ -212,7 +213,7 @@ export async function getDrivers(
 
     const offset = (page - 1) * pageSize;
 
-    const users: any = await UserProfile.findAndCountAll({
+    const users = await UserProfile.findAndCountAll({
       where: {
         role_id: isDriverRole?.id,
       },
@@ -244,7 +245,6 @@ export async function getDrivers(
     const total= users.count;
     const totalPages = Math.ceil(total / pageSize);
 
-   
 
     return res.status(200).json({
       status: true,

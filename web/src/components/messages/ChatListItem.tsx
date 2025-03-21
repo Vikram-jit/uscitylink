@@ -44,7 +44,7 @@ export default function ChatListItem(props: ChatListItemProps) {
             toggleMessagesPane();
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
-            if (user.sent_message_count > 0) {
+            if (user.unreadCount > 0) {
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
               dispatch(apiSlice.util.invalidateTags(['channels']));
             }
@@ -82,8 +82,8 @@ export default function ChatListItem(props: ChatListItemProps) {
               </Typography>
             </Box>
             <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
-              {user?.sent_message_count > 0 && (
-                <Chip variant="filled" color="primary" size="small" label={user?.sent_message_count} sx={{ ml: 1 }} />
+              {user?.unreadCount > 0 && (
+                <Chip variant="filled" color="primary" size="small" label={user?.unreadCount} sx={{ ml: 1 }} />
               )}
               <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
                 {formatDate(user?.last_message?.messageTimestampUtc)}

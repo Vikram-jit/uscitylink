@@ -102,7 +102,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                           children: [
                             SizedBox(
                               width:
-                                  TDeviceUtils.getScreenWidth(context) * 0.32,
+                                  TDeviceUtils.getScreenWidth(context) * 0.30,
                               child: Slider(
                                 activeColor: Colors.blue,
                                 min: 0.0,

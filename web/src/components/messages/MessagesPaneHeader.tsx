@@ -75,7 +75,8 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
             noWrap
             sx={{ fontWeight: 'fontWeightBold' }}
           >
-            {sender?.username}
+            {sender?.username}({sender?.user?.driver_number})
+            
             {sender?.isOnline && (
               <Chip
                 size="small"
@@ -86,6 +87,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
               />
             )}
           </Typography>
+          <Typography variant="h6">{sender?.user?.phone_number}</Typography>
           <Typography variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD HH:mm') :'' }</Typography>
         </div>
       </Stack>

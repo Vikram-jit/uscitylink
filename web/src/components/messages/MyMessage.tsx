@@ -117,7 +117,7 @@ export default function MyMessage() {
               if (channel.userProfileId === userId) {
                 return {
                   ...channel,
-                  sent_message_count: channel.sent_message_count + 1,
+                  unreadCount: channel.unreadCount + 1,
                   last_message: message,
                 };
               }
@@ -144,6 +144,7 @@ export default function MyMessage() {
       });
 
       socket.on('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
+        console.log("enter")
         if (userList && userList.id === channelId) {
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList;
@@ -152,7 +153,7 @@ export default function MyMessage() {
               if (channel.userProfileId === userId) {
                 return {
                   ...channel,
-                  sent_message_count: 0,
+                  unreadCount: 0,
                 };
               }
               return channel;
@@ -163,8 +164,8 @@ export default function MyMessage() {
         }
       });
       return () => {
-        socket.off('update_channel_sent_message_count');
-        socket.off('new_message_count_update_staff');
+        // socket.off('update_channel_sent_message_count');
+        // socket.off('new_message_count_update_staff');
       };
     }
   }, [socket, isFetching]);

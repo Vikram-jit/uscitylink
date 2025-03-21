@@ -16,6 +16,7 @@ import { sendNewPasswordEmail } from "../utils/sendEmail";
 import { Template } from "../models/Template";
 import { Training } from "../models/Training";
 import moment from "moment";
+import { MessageStaff } from "../models/MessageStaff";
 
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
@@ -992,7 +993,13 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
        channelId:req.activeChannel
     }});
   
-    const userUnMessage = await getUnrepliedMessagesCount(req.activeChannel || '');
+    const userUnMessage = await MessageStaff.count({
+      where:{
+        staffId:req.user?.id,
+        status:"un-read",
+        type:"chat"
+      }
+    })
     const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
     const driverCount = await User.count({where:{
       user_type:"driver"

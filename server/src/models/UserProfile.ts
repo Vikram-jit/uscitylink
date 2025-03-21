@@ -3,6 +3,7 @@ import { primarySequelize } from "../sequelize";
 import UserChannel from "./UserChannel";
 import Role from "./Role";
 import GroupUser from "./GroupUser";
+import { MessageStaff } from "./MessageStaff";
 
 // Define the attributes of the model
 interface UserProfileAttributes {
@@ -62,7 +63,8 @@ export class UserProfile
     UserProfile.belongsTo(models.Role, { foreignKey: "role_id", as: "role" });
     UserProfile.hasMany(UserChannel, { foreignKey: 'userProfileId', as: 'userChannels' });
     UserProfile.hasMany(GroupUser, { foreignKey: 'userProfileId', as: 'userGroups' });
-
+    UserProfile.hasMany(MessageStaff, { foreignKey: 'driverId', as: 'staff_message' });
+   
   }
 
   

@@ -16,6 +16,7 @@ import Group from "../models/Group";
 import Queue from "bull";
 import Role from "../models/Role";
 import User from "../models/User";
+import { MessageStaff } from "../models/MessageStaff";
 
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -121,8 +122,8 @@ groupMessageQueue.process(async (job: any) => {
 });
 
 notificationQueue.process(async (job: any) => {
-  const { title, body, channel_id, userName, userId, staffId } = job.data;
-
+  const { title, body, channel_id, userName, userId, staffId,messageId } = job.data;
+   console.log(job)
   const roleId = await Role.findOne({
     where: {
       name: "staff",
@@ -136,25 +137,40 @@ notificationQueue.process(async (job: any) => {
   });
 
   const channel = await Channel.findByPk(channel_id);
-
+    
   const users = await UserProfile.findAll({
     where: {
       role_id: roleId?.id,
-      device_token: {
-        [Op.ne]: null,
-      },
+      // device_token: {
+      //   [Op.ne]: null,
+      // },
     },
   });
+  console.log(users.length,"USERCOPUNT")
   await Promise.all(
     users.map(async (user) => {
       if (user) {
         if (!staffIds.includes(user.id)) {
+          await MessageStaff.findOrCreate({
+            where: {
+              messageId: messageId,
+              staffId: user.id,
+              driverId:staffId
+            },
+            defaults: {
+              messageId: messageId,
+              staffId: user.id,
+              driverId:staffId,
+              status:"un-read"
+            },
+          });
           const deviceToken = user.device_token;
           if (deviceToken) {
             const isActiveChannel =
               global.staffActiveChannel[user?.id]?.channelId == channel_id
                 ? "1"
                 : "0";
+               
             await sendNotificationToDevice(deviceToken, {
               title: `${userName} (${channel?.name})` || "",
               badge: 0,
@@ -258,6 +274,13 @@ export async function messageToChannelToUser(
             socket?.user?.id === e.userId
           ) {
             if (isSocket) {
+              await MessageStaff.create({
+                messageId:messageSave.id,
+                staffId:staffId,
+                driverId:socket?.user?.id,
+                status:"read",
+                type:"chat"
+              })
               await message?.update(
                 {
                   deliveryStatus: "seen",
@@ -281,7 +304,7 @@ export async function messageToChannelToUser(
                 const channel = await Channel.findByPk(message?.channelId);
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel ++`
+                  `New Message received on ${channel?.name} channel`
                 );
                 await UserChannel.update(
                   {
@@ -350,7 +373,19 @@ export async function messageToChannelToUser(
         const newPromise = Object.entries(global.staffActiveChannel).map(
           async ([staffId, el]) => {
             const isSocket = global.userSockets[staffId];
-
+            await MessageStaff.findOrCreate({
+              where: {
+                messageId: messageSave.id,
+                staffId: staffId,
+                driverId:socket?.user?.id
+              },
+              defaults: {
+                messageId: messageSave.id,
+                staffId: staffId,
+                driverId:socket?.user?.id,
+                status:"un-read"
+              },
+            });
             if (
               el.role == "staff" &&
               el.channelId == findUserChannel.channelId
@@ -366,6 +401,7 @@ export async function messageToChannelToUser(
                   "notification_new_message",
                   `New Message received `
                 );
+               
               }
             } else {
               if (
@@ -407,6 +443,8 @@ export async function messageToChannelToUser(
       userId: findUserChannel.driverId,
       userName: `${findUserChannel.name}`,
       staffId: socket?.user?.id,
+      messageId:messageSave.id,
+
     });
   }
 }
@@ -934,6 +972,17 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
+   
+    await MessageStaff.update({
+      status:"read"
+    },{
+      where:{
+        driverId:userId,
+        staffId:socket?.user?.id,
+        status:"un-read"
+      }
+    })
+
     await UserChannel.update(
       {
         sent_message_count: 0,

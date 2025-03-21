@@ -260,7 +260,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                   dataLength={messages.length}
                   next={loadMoreMessages}
                   hasMore={hasMore}
-                  loader={<h4>Loading...</h4>} // Loader will be shown at the top when scrolling up
+                  loader={<h4>Loading...</h4>} 
                   scrollThreshold={0.95}
                   scrollableTarget="scrollable-messages-container"
                   inverse={true} // Load older messages on scroll up
@@ -369,7 +369,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                         setSelectedMessageToReply(null)
                        }}><Close/></IconButton>
                       </Stack>
-                      <Typography sx={{ fontSize: 16 }}>{selectedMessageToReply?.body}</Typography>
+                      <Typography sx={{ fontSize: 16,whiteSpace: 'pre-wrap' }}>{selectedMessageToReply?.body}</Typography>
                     </>
                   )}
                 </Box>

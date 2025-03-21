@@ -13,6 +13,7 @@ import { sendNotificationToDevice } from "../../utils/fcmService";
 import Role from "../../models/Role";
 import Queue from "bull";
 import GroupChannel from "../../models/GroupChannel";
+import { MessageStaff } from "../../models/MessageStaff";
 
 
 export const groupMessageQueueApi = new Queue('groupMessageQueueApi', {
@@ -171,10 +172,21 @@ export async function getChatMessageUser(
 
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);
-
+    const modifiedData = await Promise.all(userChannels.rows.map(async(e)=>{
+      const unreadCount = await MessageStaff.count({
+        where:{
+          driverId:e.userProfileId,
+          status:"un-read",
+          type:"chat",
+          staffId:req.user?.id
+        }
+      })
+      return {...e.dataValues,unreadCount:unreadCount}
+    }))
+   
     const newData = {
       ...data?.dataValues,
-      user_channels: userChannels.rows,
+      user_channels: modifiedData,
       pagination: {
         currentPage: page,
         pageSize: pageSize,

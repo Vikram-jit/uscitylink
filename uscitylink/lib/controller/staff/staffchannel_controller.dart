@@ -320,7 +320,7 @@ class StaffchannelController extends GetxController {
             orElse: () => UserChannels(),
           );
           if (member?.id != null) {
-            member?.sentMessageCount = 0;
+            member?.unreadCount = 0;
             channelChatUser.refresh();
           }
         }

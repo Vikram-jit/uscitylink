@@ -48,31 +48,10 @@ export default function ChatsPane(props: ChatsPaneProps) {
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
         <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold', mr: 'auto' }}>
           Messages
-          {/* <Chip
-            variant="outlined"
-            color="primary"
-            size="small"
-            label="4"
-            sx={{ ml: 1 }}
-          /> */}
+         
         </Typography>
-        {/* <IconButton
-          aria-label="edit"
-          color="inherit"
-          size="small"
-          sx={{ display: { xs: 'none', sm: 'flex' } }}
-        >
-          <EditNoteRoundedIcon />
-        </IconButton> */}
-        {/* <IconButton
-          aria-label="close"
-          color="inherit"
-          size="small"
-          onClick={toggleMessagesPane}
-          sx={{ display: { sm: 'none' } }}
-        >
-          <CloseRoundedIcon />
-        </IconButton> */}
+        
+       
       </Stack>
       <Box sx={{ px: 2, pb: 1.5 }}>
         <Input value={search} onChange={handleSearchChange} size="small" startAdornment={<SearchRoundedIcon />} placeholder="Search" aria-label="Search" fullWidth />

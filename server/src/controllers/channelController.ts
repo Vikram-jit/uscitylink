@@ -10,6 +10,7 @@ import { Message } from "../models/Message";
 import { Op } from "sequelize";
 import { getUnrepliedMessagesCount } from "./userController";
 import GroupUser from "../models/GroupUser";
+import { MessageStaff } from "../models/MessageStaff";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -232,7 +233,8 @@ export async function getById(req: Request, res: Response): Promise<any> {
 export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1; 
-    const pageSize = parseInt(req.query.pageSize as string) || 10; 
+   // const pageSize = parseInt(req.query.pageSize as string) || 30; 
+    const pageSize = 30; 
 
     const search = req.query.search as string || ''
 
@@ -270,6 +272,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
               //   driver_number: { [Op.like]: `%${search}%` },
               // },
             },
+            
           ],
           
         },
@@ -305,9 +308,21 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);
     
+    const modifiedData = await Promise.all(userChannels.rows.map(async(e)=>{
+      const unreadCount = await MessageStaff.count({
+        where:{
+          driverId:e.userProfileId,
+          status:"un-read",
+          type:"chat",
+          staffId:req.user?.id
+        }
+      })
+      return {...e.dataValues,unreadCount:unreadCount}
+    }))
+
     const newData ={
       ...data?.dataValues,
-      user_channels:userChannels.rows,
+      user_channels:modifiedData,
       pagination: {
         currentPage: page,
         pageSize: pageSize,
@@ -317,7 +332,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
     }
     return res.status(200).json({
       status: true,
-      message: `Channel Fetch Successfully..`,
+      message: `Channel Fetchs Successfully..`,
       data: newData,
     });
   } catch (err: any) {
@@ -341,10 +356,11 @@ export async function getActiveChannel(
         userProfile?.dataValues?.channelId || ""
       );
     }
-    const userUnMessage = await UserChannel.sum("sent_message_count",{
+    const userUnMessage = await MessageStaff.count({
       where:{
-        channelId:req.activeChannel,
-        isGroup:0
+        staffId:req.user?.id,
+        type:"chat",
+        status:"un-read"
       }
     });
     const groupCount = await Group.sum('message_count');

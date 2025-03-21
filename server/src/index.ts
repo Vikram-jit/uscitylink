@@ -30,6 +30,7 @@ import Group from "./models/Group";
 
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
+import { MessageStaff } from "./models/MessageStaff";
 
 
 dotenv.config();
@@ -93,7 +94,7 @@ server.listen(PORT, async () => {
 
 
   User.associate({ UserProfile });
-  UserProfile.associate({ User, Role,UserChannel,Channel,GroupUser });
+  UserProfile.associate({ User, Role,UserChannel,Channel,GroupUser,MessageStaff });
   Role.associate({ UserProfile });
   Channel.associate({ UserChannel,GroupChannel });
   UserChannel.associate({ UserProfile, Channel });
@@ -101,7 +102,7 @@ server.listen(PORT, async () => {
   Group.associate({ GroupChannel,GroupUser });
   GroupUser.associate({ UserProfile, Group });
   GroupChannel.associate({ Group, Channel });
- 
+  MessageStaff.associate({UserProfile})
   // UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
   // Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
 

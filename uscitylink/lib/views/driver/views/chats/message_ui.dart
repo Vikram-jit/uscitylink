@@ -669,7 +669,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: TDeviceUtils.getScreenWidth(context) * 0.5,
+                      width: TDeviceUtils.getScreenWidth(context) * 0.6,
                       padding: const EdgeInsets.all(10.0),
                       decoration: BoxDecoration(
                         color: message.messageDirection == "R"
@@ -727,11 +727,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                       ],
                                     ),
                                     if (message.r_message?.url != null)
-                                      AttachementUi(
-                                        fileUrl:
-                                            "${Constant.aws}/${message.r_message?.url}",
-                                        thumbnail:
-                                            "${Constant.aws}/${message.r_message?.thumbnail}",
+                                      Container(
+                                        width: TDeviceUtils.getScreenWidth(
+                                                context) *
+                                            0.8,
+                                        child: AttachementUi(
+                                          fileUrl:
+                                              "${Constant.aws}/${message.r_message?.url}",
+                                          thumbnail:
+                                              "${Constant.aws}/${message.r_message?.thumbnail}",
+                                        ),
                                       ),
                                     const SizedBox(height: 1),
                                     Text(

@@ -218,7 +218,9 @@ export const getMessagesByUserId = async (
 
     const offset = (page - 1) * pageSize;
 
-    const userProfile = await UserProfile.findByPk(id);
+    const userProfile = await UserProfile.findByPk(id,{include:[
+      {model:User,as:"user"}
+    ]});
 
     const messages = await Message.findAndCountAll({
       where: {
@@ -243,7 +245,7 @@ export const getMessagesByUserId = async (
       }, {
         model: UserProfile,
         as: "sender",
-        attributes: ["id", "username", "isOnline"],
+        attributes: ["id", "username", "isOnline",],
         include:[{model:User,as:'user'}]
       }],
       order: [["messageTimestampUtc", "DESC"]],
