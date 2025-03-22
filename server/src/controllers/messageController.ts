@@ -222,6 +222,8 @@ export const getMessagesByUserId = async (
       {model:User,as:"user"}
     ]});
 
+    
+
     const messages = await Message.findAndCountAll({
       where: {
         channelId: req.activeChannel,
@@ -290,10 +292,12 @@ export const getMessagesByUserId = async (
       })
     );
 
+    
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
       data: {
+       
         userProfile,
         messages: modifiedMessage,
         truckNumbers : truckNumbers ? truckNumbers?.join(","):null  ,

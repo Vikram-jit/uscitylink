@@ -54,10 +54,10 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: SingleChannelModel;
       },
-      { page: number; pageSize: number; search: string }
+      { page: number; pageSize: number; search: string,type:string }
     >({
       query: (payload) => ({
-        url: `channel/members?page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search}`,
+        url: `channel/members?page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search}&type=${payload.type}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

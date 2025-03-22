@@ -222,6 +222,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       {data?.data && userId && (
         <MessagesPaneHeader
           mediaPanel={mediaPanel}
+          truckNumbers={data?.data?.truckNumbers}
           sender={data?.data?.userProfile}
           setMediaPanel={setMediaPanel}
           setSelectedTemplate={setSelectedTemplate}

@@ -233,7 +233,7 @@ export async function getById(req: Request, res: Response): Promise<any> {
 export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1; 
-   // const pageSize = parseInt(req.query.pageSize as string) || 30; 
+   
     const pageSize = 30; 
 
     const search = req.query.search as string || ''
@@ -246,69 +246,129 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
 
     });
 
-    const userChannels = await  UserChannel.findAndCountAll({
+  
+    let userChannels:any
+    if(req.query.type == "truck"){
+      const groupFilter = await Group.findAll({
+        where:{
+          name:`${search}`,
+          type:"truck"
+        },
+        include:[{
+          model:GroupUser,
+          as:"group_users",
+          attributes:["userProfileId"]
+        }]
+      })
+
+  
+      const getUserIds = await Promise.all(groupFilter.map((e:any)=>e?.group_users?.map((el:any)=>el.userProfileId)))
+     
+      let uniqueArray = [...new Set(getUserIds.flat())];
+      if(search == ""){
+        uniqueArray=[]
+      }
+      userChannels = await  UserChannel.findAndCountAll({
       
-      include: [
-        {
-          model: UserProfile,
-          attributes: {
-            exclude: ["password"],
-          },
-          // where: {
-          //   [Op.or]: [
-          //     { username: { [Op.like]: `%${search}%` } },
-          //   ],
-          // },
-          // where:{
-          //   username: {
-          //     [Op.like]: `%${search}%`, 
-          //   },
-          // },
-          include: [
-            {
-              model: User,
-              as: "user",
-              // where: {
-              //   driver_number: { [Op.like]: `%${search}%` },
-              // },
+        include: [
+          {
+            model: UserProfile,
+            attributes: {
+              exclude: ["password"],
             },
+            include: [
+              {
+                model: User,
+                as: "user",
+               
+              },
+              
+            ],
             
+          },
+          {
+            model: Message,
+            as: "last_message",
+          },
+        ],
+        where: {
+          channelId:req.activeChannel,
+          status:"active",
+          userProfileId:{[Op.in]:uniqueArray}
+        },
+        order: [
+          [
+            
+            "sent_message_count",
+            "DESC",
           ],
-          
-        },
-        {
-          model: Message,
-          as: "last_message",
-        },
-      ],
-      where: {
-         channelId:req.activeChannel,
-        status:"active",
-        [Op.or]: [
-          { "$UserProfile.username$": { [Op.like]: `%${search}%` } }, 
-          { "$UserProfile.user.driver_number$": { [Op.like]: `%${search}%` } }, 
+        
+          [
+           
+            "last_message_utc",
+            "DESC",
+          ],
         ],
-      },
-      order: [
-        [
-          
-          "sent_message_count",
-          "DESC",
-        ],
+        
+      })
+    }else{
+       userChannels = await  UserChannel.findAndCountAll({
       
-        [
-         
-          "last_message_utc",
-          "DESC",
+        include: [
+          {
+            model: UserProfile,
+            attributes: {
+              exclude: ["password"],
+            },
+            include: [
+              {
+                model: User,
+                as: "user",
+               
+              },
+              
+            ],
+            
+          },
+          {
+            model: Message,
+            as: "last_message",
+          },
         ],
-      ],
-      limit: pageSize,
-      offset: offset,
-    })
+        where: {
+           channelId:req.activeChannel,
+          status:"active",
+          [Op.or]: [
+            { "$UserProfile.username$": { [Op.like]: `%${search}%` } }, 
+            { "$UserProfile.user.driver_number$": { [Op.like]: `%${search}%` } }, 
+          ],
+        },
+        order: [
+          [
+            
+            "sent_message_count",
+            "DESC",
+          ],
+        
+          [
+           
+            "last_message_utc",
+            "DESC",
+          ],
+        ],
+        limit: pageSize,
+        offset: offset,
+      })
+  
+    }
+
+    
+
+
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);
     
-    const modifiedData = await Promise.all(userChannels.rows.map(async(e)=>{
+    const modifiedData = await Promise.all(userChannels.rows.map(async(e:any)=>{
       const unreadCount = await MessageStaff.count({
         where:{
           driverId:e.userProfileId,
@@ -322,6 +382,8 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
 
     const newData ={
       ...data?.dataValues,
+     
+     
       user_channels:modifiedData,
       pagination: {
         currentPage: page,

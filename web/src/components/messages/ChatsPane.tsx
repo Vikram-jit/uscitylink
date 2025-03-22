@@ -1,30 +1,48 @@
 import * as React from 'react';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import { Box, Chip, IconButton, Input, List, Paper, Stack, Typography } from '@mui/material';
+import { Box, Input, List, Paper, Stack, Typography } from '@mui/material';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { Truck } from '@phosphor-icons/react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 
 import ChatListItem from './ChatListItem';
-import { ChatProps } from './types';
-import { toggleMessagesPane } from './utils';
+import { styled } from '@mui/system';
 
 type ChatsPaneProps = {
   chats: SingleChannelModel;
   loadMoreMessages: any;
   hasMore: any;
+  
   setSelectedChannelId?: (id: string) => void;
-
+  selected:boolean;
+  setSelected:React.Dispatch<React.SetStateAction<boolean>>
   selectedChannelId?: string;
   selectedUserId: string;
   setSelectedUserId: (id: string) => void;
-  setSearch:React.Dispatch<React.SetStateAction<string>>
-  search:string,
-  handleSearchChange:any
+  setSearch: React.Dispatch<React.SetStateAction<string>>;
+  search: string;
+  handleSearchChange: any;
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
+ 
+
+  const handleToggle = () => {
+    if(!props.selected == false){
+      props.setSearch("")
+    }
+   props.setSelected(!props.selected);
+   
+  };
+  const CustomToggleButton = styled(ToggleButton)(({ theme }) => ({
+    '&.Mui-selected, &.Mui-selected:hover': {
+      color: theme.palette.common.white,
+      backgroundColor: theme.palette.primary.main,
+    },
+  }));
+  
   const {
     chats,
 
@@ -33,7 +51,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
     loadMoreMessages,
     hasMore,
     search,
-    handleSearchChange
+    handleSearchChange,
   } = props;
 
   return (
@@ -48,13 +66,23 @@ export default function ChatsPane(props: ChatsPaneProps) {
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
         <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold', mr: 'auto' }}>
           Messages
-         
         </Typography>
-        
-       
       </Stack>
       <Box sx={{ px: 2, pb: 1.5 }}>
-        <Input value={search} onChange={handleSearchChange} size="small" startAdornment={<SearchRoundedIcon />} placeholder="Search" aria-label="Search" fullWidth />
+        <Input
+          value={search}
+          onChange={handleSearchChange}
+          size="small"
+          startAdornment={<SearchRoundedIcon />}
+          endAdornment={
+            <CustomToggleButton  sx={{marginBottom:1}} value="type" selected={props.selected} onChange={handleToggle}>
+              <Truck size={18} />
+            </CustomToggleButton>
+          }
+          placeholder="Search"
+          aria-label="Search"
+          fullWidth
+        />
       </Box>
       <List
         id="scrollable-channel-container"

@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { IconButton, Typography } from '@mui/material';
 
-import 'react-medium-image-zoom/dist/styles.css';
 
 import { DocumentScanner } from '@mui/icons-material';
 import { Box } from '@mui/system';

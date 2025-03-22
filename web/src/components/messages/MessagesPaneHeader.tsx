@@ -23,7 +23,7 @@ type MessagesPaneHeaderProps = {
   sender?: UserProfile;
   mediaPanel:boolean
   pinMessage:string
- 
+  truckNumbers?:string
   setPinMessage:React.Dispatch<React.SetStateAction<string>>
   setPage:React.Dispatch<React.SetStateAction<number>>
   setMessages:React.Dispatch<React.SetStateAction<MessageModel[]>>
@@ -88,7 +88,8 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
             )}
           </Typography>
           <Typography variant="h6">{sender?.user?.phone_number}</Typography>
-          <Typography variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD HH:mm') :'' }</Typography>
+          <Typography variant="body1">Truck Groups: <b>{props.truckNumbers}</b></Typography>
+          <Typography marginTop={1} variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD HH:mm') :'' }</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>

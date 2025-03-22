@@ -15,11 +15,11 @@ export default function MyMessage() {
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
   const [search, setSearch] = React.useState<string>('');
-
+  const [selected, setSelected] = React.useState<boolean>(false);
   const searchItem = useDebounce(search, 200);
   const { trackChannelState } = useSelector((state: any) => state.channel);
   const { data, isLoading, refetch, isFetching } = useGetChannelMembersQuery(
-    { page, pageSize: 12, search: searchItem },
+    { page, pageSize: 12, search: searchItem ,type:selected?"truck":"user"},
     {
       refetchOnFocus: true,
     }
@@ -32,6 +32,9 @@ export default function MyMessage() {
 
   React.useEffect(() => {
     if (data?.status && data?.data) {
+      if(searchItem === ""){
+        setUserList(null)
+      }
       const newUsers = data?.data?.user_channels || [];
 
       if (userList?.id !== data?.data?.id) {
@@ -78,7 +81,7 @@ export default function MyMessage() {
       setUserList(null);
       setSelectedUserId('');
 
-      socket.emit('staff_open_chat', "");
+      socket.emit('staff_open_chat', '');
     }
   }, [trackChannelState]);
 
@@ -105,7 +108,6 @@ export default function MyMessage() {
         userId: string;
         message: MessageModel;
       }) => {
-
         // Check if the current channel matches the one receiving the socket update
         if (data?.data?.id === channelId) {
           // Update the user list with the new message count
@@ -144,7 +146,7 @@ export default function MyMessage() {
       });
 
       socket.on('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
-        console.log("enter")
+        console.log('enter');
         if (userList && userList.id === channelId) {
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList;
@@ -200,6 +202,9 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
+      
+          selected={selected}
+          setSelected={setSelected}
           search={search}
           setSearch={setSearch}
           handleSearchChange={handleSearchChange}

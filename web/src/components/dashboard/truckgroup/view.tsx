@@ -748,7 +748,7 @@ console.log(hasMoreMessage)
                                 />
                               </Paper>
                             )}
-                            {msg.body}
+                            <p style={{whiteSpace: 'pre-wrap'}}>{msg.body}</p>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
                               {msg.deliveryStatus === 'sent' && <BsCheckAll />}

@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Download } from '@mui/icons-material';
+import { Add, Download, Replay,Remove } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Grid, IconButton, Paper, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
-
+import { TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
-
 import Image from 'next/image';
 import ReactPlayer from 'react-player';
 
@@ -16,6 +15,17 @@ const options = {
 interface Viewer {
   documentKey: string;
 }
+const Controls = () => {
+  const { zoomIn, zoomOut, resetTransform } = useControls();
+
+  return (
+    <div className="tools">
+      <Button variant="contained" onClick={() => zoomIn()}><Add/></Button>
+      <Button onClick={() => zoomOut()}><Remove/></Button>
+      <Button color="error" onClick={() => resetTransform()}><Replay/></Button>
+    </div>
+  );
+};
 export default function Viewer({ documentKey }: Viewer) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -115,7 +125,7 @@ export default function Viewer({ documentKey }: Viewer) {
               zIndex: 10, // Make sure the loader is on top
             }}
           >
-            <CircularProgress/>
+            <CircularProgress />
           </div>
         )}
 
@@ -152,23 +162,29 @@ export default function Viewer({ documentKey }: Viewer) {
               zIndex: 10, // Make sure the loader is on top
             }}
           >
-          <CircularProgress/>
+            <CircularProgress />
           </div>
         )}
 
-        <Paper sx={{ width: '100%', padding: 3, boxShadow: 3,background: "rgba(0, 0, 0, 0.5)" }}>
+        <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-            <Image
-              src={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
-              alt=""
-              width={1020}
-              height={600}
-              objectFit="contain"
-              style={{
-                objectFit: 'contain',
-              }}
-              onLoadingComplete={handleLoadingComplete}
-            />
+            <TransformWrapper initialScale={1}>
+             <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
+             <Controls />
+             <Box marginBottom={2}></Box>
+              <TransformComponent>
+                <Image
+                  src={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
+                  alt="image"
+                  width={1020}
+                  height={1020}
+                  objectFit="contain"
+                  style={{ objectFit: 'contain' }}
+                  onLoadingComplete={handleLoadingComplete}
+                />
+              </TransformComponent>
+             </Box>
+            </TransformWrapper>
           </Box>
         </Paper>
       </Box>
