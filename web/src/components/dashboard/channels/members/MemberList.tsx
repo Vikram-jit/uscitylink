@@ -15,7 +15,7 @@ export default function MemberList() {
   const {search} = useSelector((state:any)=>state)
   const value = useDebounce(search.search,200)
   const [page, setPage] = React.useState(1);
-  const { data, isLoading } = useGetChannelMembersQuery({page:page,pageSize:10,search:value});
+  const { data, isLoading } = useGetChannelMembersQuery({page:page,pageSize:10,search:value,type:"user"});
 
   return (
     <>
