@@ -34,7 +34,7 @@ export default function Page({params}:{params:{role:string}}): React.JSX.Element
             Add
           </Button>
           <div style={{marginLeft:8}}></div>
-          <SyncUserDialog role={params.role} />
+          {/* <SyncUserDialog role={params.role} /> */}
         </div>
       </Stack>
       <UserList/>
