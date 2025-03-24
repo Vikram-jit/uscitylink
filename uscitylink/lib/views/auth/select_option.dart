@@ -4,6 +4,7 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
+// ignore: must_be_immutable
 class SelectOption extends StatelessWidget {
   final String name;
   final String email;

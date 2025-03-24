@@ -18,6 +18,10 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   late Stream<Duration> _positionStream;
   late Stream<PlayerState> _playerStateStream;
 
+  // Local variable to hold slider value during dragging.
+  double? _dragValue;
+  bool _isDragging = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,42 +54,43 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         final processingState = playerState?.processingState;
         final playing = playerState?.playing ?? false;
 
+        Widget controlButton;
+
+        // If playback is complete, show a restart button.
+        if (processingState == ProcessingState.completed) {
+          controlButton = IconButton(
+            icon: const Icon(Icons.replay),
+            iconSize: 24.0,
+            color: Colors.blueAccent,
+            onPressed: () async {
+              await _audioPlayer.seek(Duration.zero);
+              await _audioPlayer.play();
+            },
+          );
+        } else if (playing) {
+          controlButton = IconButton(
+            icon: const Icon(Icons.pause),
+            iconSize: 24.0,
+            onPressed: _audioPlayer.pause,
+          );
+        } else {
+          controlButton = IconButton(
+            padding: const EdgeInsets.all(0),
+            icon: const Icon(Icons.play_arrow),
+            iconSize: 24.0,
+            onPressed: _audioPlayer.play,
+          );
+        }
+
         return Container(
           width: double.infinity,
+          height: 60,
           decoration: BoxDecoration(
               color: Colors.white, borderRadius: BorderRadius.circular(5)),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              if (processingState == ProcessingState.loading ||
-                  processingState == ProcessingState.buffering)
-                Container(
-                  margin: EdgeInsets.all(8.0),
-                  width: 30,
-                  height: 30,
-                  child: CircularProgressIndicator(),
-                )
-              else if (playing)
-                Container(
-                  width: 30,
-                  height: 30,
-                  child: IconButton(
-                    icon: Icon(Icons.pause),
-                    iconSize: 24.0,
-                    onPressed: _audioPlayer.pause,
-                  ),
-                )
-              else
-                Container(
-                  width: 30,
-                  height: 30,
-                  child: IconButton(
-                    padding: EdgeInsets.all(0),
-                    icon: Icon(Icons.play_arrow),
-                    iconSize: 24.0,
-                    onPressed: _audioPlayer.play,
-                  ),
-                ),
+              controlButton,
               Expanded(
                 child: StreamBuilder<Duration?>(
                   stream: _durationStream,
@@ -98,30 +103,54 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
                         if (position > duration) {
                           position = duration;
                         }
+                        // Use local _dragValue if user is dragging.
+                        final sliderValue = _isDragging
+                            ? _dragValue ?? position.inMilliseconds.toDouble()
+                            : position.inMilliseconds.toDouble();
                         return Row(
                           children: [
                             SizedBox(
                               width:
                                   TDeviceUtils.getScreenWidth(context) * 0.30,
                               child: Slider(
-                                activeColor: Colors.blue,
                                 min: 0.0,
                                 max: duration.inMilliseconds.toDouble(),
-                                value: position.inMilliseconds.toDouble().clamp(
+                                value: sliderValue.clamp(
                                     0.0, duration.inMilliseconds.toDouble()),
+                                activeColor: Colors.blueAccent,
+                                inactiveColor: Colors.grey[300],
+                                onChangeStart: (value) {
+                                  setState(() {
+                                    _isDragging = true;
+                                    _dragValue = value;
+                                  });
+                                },
                                 onChanged: (value) {
+                                  setState(() {
+                                    _dragValue = value;
+                                  });
+                                },
+                                onChangeEnd: (value) {
                                   _audioPlayer.seek(
                                       Duration(milliseconds: value.round()));
+                                  setState(() {
+                                    _isDragging = false;
+                                    _dragValue = null;
+                                  });
                                 },
                               ),
                             ),
-
                             SizedBox(
                               width:
                                   TDeviceUtils.getScreenWidth(context) * 0.11,
-                              child: Text(_formatDuration(position)),
+                              child: Text(
+                                _formatDuration(Duration(
+                                    milliseconds: _isDragging
+                                        ? _dragValue?.round() ??
+                                            position.inMilliseconds
+                                        : position.inMilliseconds)),
+                              ),
                             ),
-                            // Text(_formatDuration(duration)),
                           ],
                         );
                       },

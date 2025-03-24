@@ -4,11 +4,8 @@ import 'package:get/get.dart';
 
 import 'package:uscitylink/controller/login_controller.dart';
 
-import 'package:uscitylink/utils/constant/colors.dart';
-
 import 'package:uscitylink/utils/device/device_utility.dart';
 
-import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/widgets/custom_button.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 

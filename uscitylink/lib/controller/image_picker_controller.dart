@@ -79,6 +79,8 @@ class ImagePickerController extends GetxController {
       isLoading.value = true;
       final XFile? image = await _picker.pickImage(
           source: ImageSource.gallery, imageQuality: 25);
+      // final List<XFile>? images =
+      //     await _picker.pickMultiImage(imageQuality: 25);
 
       if (image != null) {
         selectedImage.value = File(image.path);

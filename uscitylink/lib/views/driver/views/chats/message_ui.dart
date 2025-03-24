@@ -8,6 +8,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/audio_controller.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
@@ -20,6 +21,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
+import 'package:uscitylink/views/widgets/audio_record_widget.dart';
 
 class Messageui extends StatefulWidget {
   final String channelId;
@@ -35,6 +37,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   ChannelController _channelController = Get.find<ChannelController>();
   Timer? _channelUpdateTimer; // Timer for updating channelId
   DashboardController _dashboardController = Get.find<DashboardController>();
+  AudioController _audioController = Get.put(AudioController());
   late MessageController messageController;
   final FocusNode _focusNode = FocusNode();
   SocketService socketService = Get.find<SocketService>();
@@ -108,6 +111,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     socketService.updateActiveChannel("");
     _focusNode.dispose();
     _scrollController.dispose();
+    Get.delete<AudioController>();
     super.dispose();
   }
 
@@ -437,66 +441,106 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        // Text Field for typing the message
-                        Expanded(
-                          child: TextField(
-                            onChanged: (text) {
-                              if (text.isNotEmpty) {
-                                messageController.startTyping(
-                                    widget.channelId); // Start typing
+                    Obx(() {
+                      return Row(
+                        children: [
+                          // Text Field for typing the message
+                          if (!_audioController.isRecording.value)
+                            Expanded(
+                              child: TextField(
+                                onChanged: (text) {
+                                  if (text.isNotEmpty) {
+                                    messageController.startTyping(
+                                        widget.channelId); // Start typing
+                                  } else {
+                                    messageController.stopTyping(widget
+                                        .channelId); // Stop typing if text is empty
+                                  }
+                                },
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                decoration: InputDecoration(
+                                  hintText: "Type your message...",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  suffixIcon: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons
+                                            .attachment), // You can use any icon here
+                                        onPressed: () {
+                                          // Handle the icon press action
+                                          Get.bottomSheet(
+                                            AttachmentBottomSheet(
+                                              channelId: messageController
+                                                  .channelId.value,
+                                            ),
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.white,
+                                          );
+                                        },
+                                      ),
+                                      if (!_audioController.isRecording.value)
+                                        Obx(
+                                          () => IconButton(
+                                            icon: Icon(
+                                                _audioController
+                                                        .isRecording.value
+                                                    ? Icons.stop
+                                                    : Icons.mic,
+                                                size: 28),
+                                            color: _audioController
+                                                    .isRecording.value
+                                                ? Colors.red
+                                                : Colors.blue,
+                                            onPressed: () {
+                                              _audioController.isRecording.value
+                                                  ? _audioController
+                                                      .stopRecording()
+                                                  : _audioController
+                                                      .startRecording();
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (_audioController.isRecording.value)
+                            AudioRecordWidget(
+                                audioController: _audioController),
+                          const SizedBox(width: 8),
+                          // Plus button to send the message
+                          GestureDetector(
+                            onTap: () {
+                              if (_audioController.isRecording.value) {
+                                _audioController.sendAudio(widget.channelId,
+                                    "media", "message", "", "driver", "");
                               } else {
-                                messageController.stopTyping(widget
-                                    .channelId); // Stop typing if text is empty
+                                _sendMessage();
                               }
                             },
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            decoration: InputDecoration(
-                              hintText: "Type your message...",
-                              border: OutlineInputBorder(
+                            child: Container(
+                              height: 50,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
                                 borderRadius: BorderRadius.circular(30),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons
-                                    .attachment), // You can use any icon here
-                                onPressed: () {
-                                  // Handle the icon press action
-                                  Get.bottomSheet(
-                                    AttachmentBottomSheet(
-                                      channelId:
-                                          messageController.channelId.value,
-                                    ),
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.white,
-                                  );
-                                },
+                              child: const Icon(
+                                Icons.send,
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Plus button to send the message
-                        GestureDetector(
-                          onTap: _sendMessage,
-                          child: Container(
-                            height: 50,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: const Icon(
-                              Icons.send,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                    })
                   ],
                 ),
               ),
@@ -669,7 +713,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      width: TDeviceUtils.getScreenWidth(context) * 0.6,
+                      width: TDeviceUtils.getScreenWidth(context) * 0.7,
                       padding: const EdgeInsets.all(10.0),
                       decoration: BoxDecoration(
                         color: message.messageDirection == "R"

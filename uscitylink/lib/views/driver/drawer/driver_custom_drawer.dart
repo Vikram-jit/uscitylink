@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
-import 'package:uscitylink/views/staff/view/staff_trainings_view.dart';
 
 class DriverCustomDrawer extends StatefulWidget {
   final GlobalKey<ScaffoldState> globalKey;

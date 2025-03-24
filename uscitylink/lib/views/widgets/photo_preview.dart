@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -25,6 +26,7 @@ class PhotoPreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Obx(() {
         // If the image is still loading, show the loader
         if (controller.isLoading.value) {
@@ -42,10 +44,9 @@ class PhotoPreviewScreen extends StatelessWidget {
                 if (controller.selectedImage.value != null) {
                   return Image.file(
                     controller.selectedImage.value!,
-                    fit: BoxFit
-                        .cover, // Ensure the image fits well in the screen
-                    height: double.infinity, // Take up the full screen height
-                    width: double.infinity, // Take up the full screen width
+                    fit: BoxFit.fitWidth,
+                    height: double.infinity,
+                    width: double.infinity,
                   );
                 } else {
                   return const SizedBox();
@@ -55,7 +56,7 @@ class PhotoPreviewScreen extends StatelessWidget {
 
             // Transparent black overlay with caption at the bottom
             Positioned(
-              bottom: 0,
+              bottom: 15,
               left: 0,
               right: 0,
               child: Container(
@@ -104,7 +105,7 @@ class PhotoPreviewScreen extends StatelessWidget {
 
             // Top-left Close Image Button (Clear and Pick Image)
             Positioned(
-              top: 50,
+              top: 60,
               right: 20,
               child: InkWell(
                 onTap: () {
@@ -119,7 +120,7 @@ class PhotoPreviewScreen extends StatelessWidget {
                   height: 40,
                   width: 40,
                   decoration: BoxDecoration(
-                    color: Colors.black38.withOpacity(0.2),
+                    color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: const Icon(

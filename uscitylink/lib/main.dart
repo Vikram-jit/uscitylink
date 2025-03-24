@@ -6,7 +6,6 @@ import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
 import 'package:uscitylink/routes/app_routes.dart';
-import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 

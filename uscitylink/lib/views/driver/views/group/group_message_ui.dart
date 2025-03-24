@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/audio_controller.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
@@ -16,6 +17,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
+import 'package:uscitylink/views/widgets/audio_record_widget.dart';
 
 class GroupMessageui extends StatefulWidget {
   final String channelId;
@@ -41,6 +43,8 @@ class _GroupMessageuiState extends State<GroupMessageui>
 
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
+  AudioController _audioController = Get.put(AudioController());
+
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
   @override
@@ -109,6 +113,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
     //groupController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     // socketService.updateActiveChannel("");
+    Get.delete<AudioController>();
     super.dispose();
   }
 
@@ -287,65 +292,110 @@ class _GroupMessageuiState extends State<GroupMessageui>
                     : Container();
               }),
               Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    // Text Field for typing the message
-                    Expanded(
-                      child: TextField(
-                        onChanged: (text) {
-                          if (text.isNotEmpty) {
-                            groupController
-                                .startTyping(widget.groupId); // Start typing
-                          } else {
-                            groupController.stopTyping(
-                                widget.groupId); // Stop typing if text is empty
-                          }
-                        },
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          hintText: "Type your message...",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          suffixIcon: IconButton(
-                            icon: const Icon(
-                                Icons.attachment), // You can use any icon here
-                            onPressed: () {
-                              // Handle the icon press action
-                              Get.bottomSheet(
-                                AttachmentBottomSheet(
-                                  channelId: widget.channelId,
-                                  groupId: widget.groupId,
+                padding: const EdgeInsets.all(0.0),
+                child: Obx(
+                  () {
+                    return Row(
+                      children: [
+                        // Text Field for typing the message
+                        if (!_audioController.isRecording.value)
+                          Expanded(
+                            child: TextField(
+                              onChanged: (text) {
+                                if (text.isNotEmpty) {
+                                  groupController.startTyping(
+                                      widget.groupId); // Start typing
+                                } else {
+                                  groupController.stopTyping(widget
+                                      .groupId); // Stop typing if text is empty
+                                }
+                              },
+                              controller: _controller,
+                              decoration: InputDecoration(
+                                hintText: "Type your message...",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
-                                isScrollControlled: true,
-                                backgroundColor: Colors.white,
-                              );
-                            },
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                suffixIcon: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons
+                                          .attachment), // You can use any icon here
+                                      onPressed: () {
+                                        // Handle the icon press action
+                                        Get.bottomSheet(
+                                          AttachmentBottomSheet(
+                                            channelId: widget.channelId,
+                                            groupId: widget.groupId,
+                                          ),
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.white,
+                                        );
+                                      },
+                                    ),
+                                    if (!_audioController.isRecording.value)
+                                      Obx(
+                                        () => IconButton(
+                                          icon: Icon(
+                                              _audioController.isRecording.value
+                                                  ? Icons.stop
+                                                  : Icons.mic,
+                                              size: 28),
+                                          color:
+                                              _audioController.isRecording.value
+                                                  ? Colors.red
+                                                  : Colors.blue,
+                                          onPressed: () {
+                                            _audioController.isRecording.value
+                                                ? _audioController
+                                                    .stopRecording()
+                                                : _audioController
+                                                    .startRecording();
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_audioController.isRecording.value)
+                          AudioRecordWidget(audioController: _audioController),
+                        const SizedBox(width: 8),
+                        // Plus button to send the message
+                        GestureDetector(
+                          onTap: () {
+                            if (_audioController.isRecording.value) {
+                              _audioController.sendAudio(
+                                  widget.channelId,
+                                  "media",
+                                  "group",
+                                  widget.groupId,
+                                  "staff",
+                                  "");
+                            } else {
+                              _sendMessage();
+                            }
+                          },
+                          child: Container(
+                            height: 50,
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Plus button to send the message
-                    GestureDetector(
-                      onTap: _sendMessage,
-                      child: Container(
-                        height: 50,
-                        width: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Icon(
-                          Icons.send,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -370,7 +420,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
               : CrossAxisAlignment.start,
           children: [
             Container(
-              width: TDeviceUtils.getScreenWidth(context) * 0.5,
+              width: TDeviceUtils.getScreenWidth(context) * 0.7,
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
                 color: message.senderId == senderId

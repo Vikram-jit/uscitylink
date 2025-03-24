@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';

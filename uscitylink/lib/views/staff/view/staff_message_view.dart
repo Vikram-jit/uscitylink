@@ -520,26 +520,27 @@ class _StaffMessageViewState extends State<StaffMessageView>
                                     },
                                   ),
                                   if (!_staffchatController.isRecording.value)
-                                    Obx(() => IconButton(
-                                          icon: Icon(
-                                              _staffchatController
-                                                      .isRecording.value
-                                                  ? Icons.stop
-                                                  : Icons.mic,
-                                              size: 28),
-                                          color: _staffchatController
-                                                  .isRecording.value
-                                              ? Colors.red
-                                              : Colors.blue,
-                                          onPressed: () {
+                                    Obx(
+                                      () => IconButton(
+                                        icon: Icon(
                                             _staffchatController
                                                     .isRecording.value
-                                                ? _staffchatController
-                                                    .stopRecording()
-                                                : _staffchatController
-                                                    .startRecording();
-                                          },
-                                        )),
+                                                ? Icons.stop
+                                                : Icons.mic,
+                                            size: 28),
+                                        color: _staffchatController
+                                                .isRecording.value
+                                            ? Colors.red
+                                            : Colors.blue,
+                                        onPressed: () {
+                                          _staffchatController.isRecording.value
+                                              ? _staffchatController
+                                                  .stopRecording()
+                                              : _staffchatController
+                                                  .startRecording();
+                                        },
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
