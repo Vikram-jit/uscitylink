@@ -7,6 +7,7 @@ import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/widgets/photo_preview.dart';
+import 'package:uscitylink/views/widgets/photo_preview_multiple.dart';
 import 'package:uscitylink/views/widgets/video_preview_screen.dart';
 import 'package:video_compress/video_compress.dart';
 
@@ -15,6 +16,7 @@ class ImagePickerController extends GetxController {
   SocketService socketService = Get.find<SocketService>();
 
   Rx<File?> selectedImage = Rx<File?>(null);
+  Rx<List<File>> selectedImages = Rx<List<File>>([]);
   Rx<File?> selectedVideo = Rx<File?>(null);
   RxString caption = ''.obs;
   RxString selectedSource = ''.obs;
@@ -77,15 +79,18 @@ class ImagePickerController extends GetxController {
     try {
       selectedSource.value = "gallery";
       isLoading.value = true;
-      final XFile? image = await _picker.pickImage(
-          source: ImageSource.gallery, imageQuality: 25);
-      // final List<XFile>? images =
-      //     await _picker.pickMultiImage(imageQuality: 25);
+      // final XFile? image = await _picker.pickMultiImage(
+      //     source: ImageSource.gallery, imageQuality: 25);
+      final List<XFile>? images =
+          await _picker.pickMultiImage(imageQuality: 25);
 
-      if (image != null) {
-        selectedImage.value = File(image.path);
+      if (images != null) {
+        for (var item in images) {
+          selectedImages.value.add(File(item.path));
+        }
+
         isLoading.value = false;
-        Get.to(() => PhotoPreviewScreen(
+        Get.to(() => PhotoPreviewMultiple(
             channelId: channelId,
             type: "media",
             location: location,

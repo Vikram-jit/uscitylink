@@ -171,13 +171,13 @@ export default function ChatBubble(props: ChatBubbleProps) {
           Assigned trucks:- <strong>{props.truckNumbers}</strong>
         </Typography>
       )}
-      {messageDirection === 'S' && (
+     
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', mb: 0.25 }}>
          
           <IconButton onClick={handleClick} sx={{ padding: 0 }}>
             <DotsThree />
           </IconButton>
-          {deliveryStatus == 'sent' ? (
+          {messageDirection === 'S' && deliveryStatus == 'sent' ? (
             <Done
               sx={{
                 fontSize: 14,
@@ -190,7 +190,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                 color: 'blue',
               }}
             />
-          )}
+          )} 
           <Popover
             id={`${props.id}-popover`}
             open={open}
@@ -249,7 +249,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             </List>
           </Popover>
         </Stack>
-      )}
+    
     </Box>
   );
 }

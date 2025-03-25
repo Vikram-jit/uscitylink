@@ -4,7 +4,7 @@ import { UserProfile } from "../models/UserProfile";
 
 import multer from "multer";
 import multerS3 from "multer-s3";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"; // AWS SDK v3 imports
+import { S3Client } from "@aws-sdk/client-s3"; // AWS SDK v3 imports
 import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import Channel from "../models/Channel";
@@ -32,17 +32,16 @@ const s3Client = new S3Client({
 const upload = multer({
   storage: multerS3({
     s3: s3Client,
-    bucket: "ciity-sms", // Your S3 bucket name
+    bucket: "ciity-sms", 
 
     key: function (req: Request, file, cb) {
       const fileName = Date.now().toString() + "-" + file.originalname;
-      cb(null, `uscitylink/${fileName}`); // Store file in "messages/" folder in S3
+      cb(null, `uscitylink/${fileName}`); 
     },
   }),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB file size limit (adjust as needed)
+    fileSize: 50 * 1024 * 1024, 
   },
-  
 });
 
 export const createMessage = async (
@@ -90,10 +89,10 @@ export const getMessages = async (
 ): Promise<any> => {
   try {
     const { channelId } = req.params;
-    const  driverPin = req.query.driverPin
+    const driverPin = req.query.driverPin;
     const messages = await Message.findAll({
       where: {
-        ...( driverPin == "1" && {driverPin:"1"}),
+        ...(driverPin == "1" && { driverPin: "1" }),
         channelId: channelId,
         userProfileId: req.user?.id,
         type: {
@@ -102,15 +101,15 @@ export const getMessages = async (
       },
       include: [
         {
-          model:Message,
-          as:"r_message",
-          include:[
+          model: Message,
+          as: "r_message",
+          include: [
             {
               model: UserProfile,
               as: "sender",
               attributes: ["id", "username", "isOnline"],
             },
-          ]
+          ],
         },
         {
           model: UserProfile,
@@ -218,11 +217,9 @@ export const getMessagesByUserId = async (
 
     const offset = (page - 1) * pageSize;
 
-    const userProfile = await UserProfile.findByPk(id,{include:[
-      {model:User,as:"user"}
-    ]});
-
-    
+    const userProfile = await UserProfile.findByPk(id, {
+      include: [{ model: User, as: "user" }],
+    });
 
     const messages = await Message.findAndCountAll({
       where: {
@@ -231,43 +228,50 @@ export const getMessagesByUserId = async (
         type: {
           [Op.ne]: "group",
         },
-        ...(req.query.pinMessage == "1" && {staffPin:"1"})
+        ...(req.query.pinMessage == "1" && { staffPin: "1" }),
       },
-      include:[ {
-        model:Message,
-        as:"r_message",
-        include:[
-          {
-            model: UserProfile,
-            as: "sender",
-            attributes: ["id", "username", "isOnline"],
-            include:[{model:User,as:'user'}]
-          },
-        ]
-      }, {
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline",],
-        include:[{model:User,as:'user'}]
-      }],
+      include: [
+        {
+          model: Message,
+          as: "r_message",
+          include: [
+            {
+              model: UserProfile,
+              as: "sender",
+              attributes: ["id", "username", "isOnline"],
+              include: [{ model: User, as: "user" }],
+            },
+          ],
+        },
+        {
+          model: UserProfile,
+          as: "sender",
+          attributes: ["id", "username", "isOnline"],
+          include: [{ model: User, as: "user" }],
+        },
+      ],
       order: [["messageTimestampUtc", "DESC"]],
       limit: pageSize,
       offset: offset,
     });
 
     const groupUser = await GroupUser.findAll({
-      where:{
-        userProfileId:id
+      where: {
+        userProfileId: id,
       },
-      include:[{
-        model:Group,
-       where:{
-        type:"truck"
-       }
-      }]
-    })
+      include: [
+        {
+          model: Group,
+          where: {
+            type: "truck",
+          },
+        },
+      ],
+    });
 
-    const truckNumbers = await Promise.all(groupUser.map((e)=>e.dataValues.Group.name));
+    const truckNumbers = await Promise.all(
+      groupUser.map((e) => e.dataValues.Group.name)
+    );
 
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
@@ -292,15 +296,13 @@ export const getMessagesByUserId = async (
       })
     );
 
-    
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
       data: {
-       
         userProfile,
         messages: modifiedMessage,
-        truckNumbers : truckNumbers ? truckNumbers?.join(","):null  ,
+        truckNumbers: truckNumbers ? truckNumbers?.join(",") : null,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
@@ -320,7 +322,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
   try {
     const channelId = req.body.channelId || req.activeChannel;
     const groupId = req.query.groupId || null;
- 
+
     const userId = req.query.userId || req.user?.id;
     if (req.file) {
       const file = req.file as any;
@@ -334,7 +336,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         key: file?.key,
         file_type: req.body.type,
         groupId: groupId,
-        upload_source: req.query.source || "message"
+        upload_source: req.query.source || "message",
       });
     }
 
@@ -349,6 +351,48 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
+
+export const fileUploadMultiple = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const channelId = req.body.channelId || req.activeChannel;
+    const groupId = req.query.groupId || null;
+
+    const userId = req.query.userId || req.user?.id;
+
+    const uploadedFiles: any = req.files;
+
+    await Promise.all(
+      uploadedFiles?.map(async (item: any, index: any) => {
+        const file = item as any;
+        await Media.create({
+          user_profile_id: userId,
+          channelId: channelId,
+          file_name: file?.originalname,
+          file_size: file.size,
+          mime_type: file.mimetype,
+          key: file?.key,
+          file_type: req.body.type,
+          groupId: groupId,
+          upload_source: req.query.source || "message",
+        });
+      })
+    );
+
+    return res.status(201).json({
+      status: true,
+      message: `Upload sent successfully`,
+      data: req.file,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
+
 export const fileUploadWeb = async (
   req: Request,
   res: Response
@@ -392,8 +436,8 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit + "") || 10;
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
-    console.log(req.query.type,req.query.source)
-    if(source == "staff" ){
+    console.log(req.query.type, req.query.source);
+    if (source == "staff") {
       const userProfile = await UserProfile.findByPk(req.params.channelId);
       const media = await Media.findAndCountAll({
         where: {
@@ -407,7 +451,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                   },
                 ]
               : []),
-            
+
             ...(source === "staff"
               ? [
                   {
@@ -416,36 +460,34 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                   },
                 ]
               : []),
-              ...(source === "staff"
-                ? [
-                    {
-                      channelId: req.activeChannel,
-                      upload_source: "chat",
-                      user_profile_id: req.params.channelId,
-                    },
-                  ]
-                : []),
-    
-         
+            ...(source === "staff"
+              ? [
+                  {
+                    channelId: req.activeChannel,
+                    upload_source: "chat",
+                    user_profile_id: req.params.channelId,
+                  },
+                ]
+              : []),
           ],
-  
+
           file_type: req.query.type || "media",
         },
         limit: limit,
         offset: offset,
         order: [["createdAt", "DESC"]],
       });
-   
+
       return res.status(200).json({
         status: true,
         message: `Get media successfully`,
         data: {
-          channel:{
-            id:userProfile?.id,
-            name:userProfile?.username,
-            description:"",
-            createdAt:userProfile?.createdAt,
-            updatedAt:userProfile?.updatedAt
+          channel: {
+            id: userProfile?.id,
+            name: userProfile?.username,
+            description: "",
+            createdAt: userProfile?.createdAt,
+            updatedAt: userProfile?.updatedAt,
           },
           media: media.rows,
           page,
@@ -454,16 +496,12 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
           totalPages: Math.ceil(media.count / limit),
         },
       });
-
     }
-
-
 
     const channelId =
       req.params.channelId == "null" ? req.activeChannel : req.params.channelId;
     const userId = req.query.userId ?? req.user?.id;
 
-   
     const channel =
       source == "channel"
         ? await Channel.findByPk(channelId)
@@ -481,15 +519,15 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                 },
               ]
             : []),
-            ...(source === "channel"
-              ? [
-                  {
-                    channelId: channelId,
-                    upload_source: "chat",
-                    user_profile_id: userId,
-                  },
-                ]
-              : []),
+          ...(source === "channel"
+            ? [
+                {
+                  channelId: channelId,
+                  upload_source: "chat",
+                  user_profile_id: userId,
+                },
+              ]
+            : []),
           ...(source === "channel"
             ? [
                 {
@@ -535,7 +573,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-export const uploadMiddleware = upload.single("file"); // 'file' is the key used in form-data
+export const uploadMiddleware = upload.single("file");
 
 export const quickMessageAndReply = async (
   req: Request,
@@ -545,12 +583,9 @@ export const quickMessageAndReply = async (
     const { userProfileId, body } = req.body;
     const channelId = req.activeChannel;
 
-
-    
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === userProfileId
     );
-  
 
     const messageSave = await Message.create({
       channelId: req.activeChannel,
@@ -566,21 +601,21 @@ export const quickMessageAndReply = async (
     });
 
     const message = await Message.findOne({
-      where:{
-        id:messageSave.id
+      where: {
+        id: messageSave.id,
       },
       include: {
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
       },
-    })
+    });
 
     const findStaffActiveChannel = global.staffActiveChannel[req.user?.id];
 
     //Check Before send driver active room channel
     const isDriverSocket = global.userSockets[userProfileId];
-  
+
     if (
       findDriverSocket &&
       findDriverSocket?.channelId == findStaffActiveChannel?.channelId
@@ -596,18 +631,18 @@ export const quickMessageAndReply = async (
             },
           }
         );
-        getSocketInstance().to(isDriverSocket?.id).emit(
-          SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          message
-        );
+        getSocketInstance()
+          .to(isDriverSocket?.id)
+          .emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
       }
     } else {
       if (isDriverSocket) {
-        getSocketInstance().to(isDriverSocket?.id).emit("update_user_channel_list", message);
-        getSocketInstance().to(isDriverSocket?.id).emit(
-          "new_message_count_update",
-          message?.channelId
-        );
+        getSocketInstance()
+          .to(isDriverSocket?.id)
+          .emit("update_user_channel_list", message);
+        getSocketInstance()
+          .to(isDriverSocket?.id)
+          .emit("new_message_count_update", message?.channelId);
         const isUser = await UserProfile.findOne({
           where: {
             id: userProfileId,
@@ -618,23 +653,25 @@ export const quickMessageAndReply = async (
             const isChannel = await Channel.findByPk(
               findStaffActiveChannel?.channelId
             );
-            const messageCount =  await UserChannel.sum("recieve_message_count",{
-              where:{
-                userProfileId:userProfileId,
-                
+            const messageCount = await UserChannel.sum(
+              "recieve_message_count",
+              {
+                where: {
+                  userProfileId: userProfileId,
+                },
               }
-            })
-        
-            const userGroupsCount  = await GroupUser.sum("message_count",{
-              where:{userProfileId:userProfileId}
-            })
+            );
+
+            const userGroupsCount = await GroupUser.sum("message_count", {
+              where: { userProfileId: userProfileId },
+            });
             await sendNotificationToDevice(isUser.device_token, {
               title: isChannel?.name || "",
-              badge:messageCount+ userGroupsCount,
+              badge: messageCount + userGroupsCount,
               body: body,
               data: {
                 channelId: isChannel?.id,
-  
+
                 type: "NEW MESSAGE",
                 title: isChannel?.name,
               },
@@ -652,23 +689,25 @@ export const quickMessageAndReply = async (
             const isChannel = await Channel.findByPk(
               findStaffActiveChannel?.channelId
             );
-            const messageCount =  await UserChannel.sum("recieve_message_count",{
-              where:{
-                userProfileId:userProfileId,
-                
+            const messageCount = await UserChannel.sum(
+              "recieve_message_count",
+              {
+                where: {
+                  userProfileId: userProfileId,
+                },
               }
-            })
-        
-            const userGroupsCount  = await GroupUser.sum("message_count",{
-              where:{userProfileId:userProfileId}
-            })
+            );
+
+            const userGroupsCount = await GroupUser.sum("message_count", {
+              where: { userProfileId: userProfileId },
+            });
             await sendNotificationToDevice(isUser.device_token, {
-              badge:messageCount+ userGroupsCount,
+              badge: messageCount + userGroupsCount,
               title: isChannel?.name || "",
               body: body,
               data: {
                 channelId: isChannel?.id,
-  
+
                 type: "NEW MESSAGE",
                 title: isChannel?.name,
               },
@@ -676,7 +715,7 @@ export const quickMessageAndReply = async (
           }
         }
       }
-  
+
       await UserChannel.update(
         {
           recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
@@ -690,7 +729,7 @@ export const quickMessageAndReply = async (
       );
     }
     const utcTime = moment.utc().toDate();
-  
+
     await UserChannel.update(
       {
         last_message_id: message?.id,
@@ -707,12 +746,11 @@ export const quickMessageAndReply = async (
     Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
       if (e.channelId === findStaffActiveChannel?.channelId) {
         const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
-  
+
         if (isSocket) {
-          getSocketInstance().to(isSocket.id).emit(
-            SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-            message
-          );
+          getSocketInstance()
+            .to(isSocket.id)
+            .emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
         }
       }
     });
@@ -727,3 +765,5 @@ export const quickMessageAndReply = async (
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 };
+
+export const uploadMultipleMiddleware = upload.array("file");
