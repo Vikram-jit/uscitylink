@@ -81,7 +81,7 @@ export default function DropdownButton({ btnName, fileName }: { btnName: string;
         <MenuItem
           onClick={() =>
             downloadFile(
-              `http://localhost:4300/api/v1/media/convertAndDownloadPdf/${encodeURIComponent(fileName)}`,
+              `${process.env.API_URL}/api/v1/media/convertAndDownloadPdf/${encodeURIComponent(fileName)}`,
               fileName,
               'pdf'
             )
