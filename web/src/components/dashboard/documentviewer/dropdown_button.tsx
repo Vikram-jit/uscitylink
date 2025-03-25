@@ -70,7 +70,7 @@ export default function DropdownButton({ btnName, fileName }: { btnName: string;
         <MenuItem
           onClick={() =>
             downloadFile(
-              `http://localhost:4300/api/v1/media/convertAndDownload/${encodeURIComponent(fileName)}`,
+              `${process.env.API_URL}media/convertAndDownload/${encodeURIComponent(fileName)}`,
               fileName,
               'jpg'
             )
