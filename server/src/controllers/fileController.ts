@@ -6,6 +6,11 @@ import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import sharp from 'sharp';
+import { Readable } from "stream";
+import imageToPDF from 'image-to-pdf';
+
 dotenv.config();
 
 
@@ -13,6 +18,14 @@ AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   region: "us-west-1",
+});
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-west-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
 });
 
 const s3 = new AWS.S3();
@@ -224,6 +237,78 @@ export const fileUploadAWS = async (
   }
 };
 
+export async function convertImageAndDownload(req:Request,res:Response){
+  const bucketName = 'ciity-sms';
+  const objectKey = decodeURIComponent(req.params.fileName); // Adjust the path as needed
+
+  try {
+    // Retrieve the image from S3
+    const getObjectParams = { Bucket: bucketName, Key: objectKey };
+    const command = new GetObjectCommand(getObjectParams);
+    const { Body } = await s3Client.send(command);
+
+    if (!Body || !(Body instanceof Readable)) {
+      res.status(404).send('File not found in S3 or Body is not a readable stream.');
+      return;
+    }
+
+    // Convert stream to buffer
+    const imageBuffer = await streamToBuffer(Body);
+
+    // Convert the image to JPEG using Sharp
+    const transformedImage = await sharp(imageBuffer).jpeg().toBuffer();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', 'attachment; filename=converted-image.jpg');
+
+    // Send the converted image as the response
+    res.send(transformedImage);
+  } catch (error) {
+    console.error('Error processing the image:', error);
+    res.status(500).send('Error processing the image.');
+  }
+}
+
+export async function convertImageToPDFAndDownload(req: Request, res: Response) {
+  const fileName = decodeURIComponent(req.params.fileName)
+  const bucketName = 'ciity-sms';
+  const objectKey = fileName; 
+  try {
+    // Retrieve the image from S3
+    const getObjectParams = { Bucket: bucketName, Key: objectKey };
+    const command = new GetObjectCommand(getObjectParams);
+    const { Body } = await s3Client.send(command);
+
+    if (!Body || !(Body instanceof Readable)) {
+      res.status(404).send('File not found in S3 or Body is not a readable stream.');
+      return;
+    }
+
+    // Convert stream to buffer
+    const imageBuffer = await streamToBuffer(Body);
+
+    // Convert the image buffer to PDF
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const buffers: Buffer[] = [];
+      imageToPDF([imageBuffer], 'A4')
+        .on('data', (chunk:any) => buffers.push(chunk))
+        .on('end', () => resolve(Buffer.concat(buffers)))
+        .on('error', reject);
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=converted-image.pdf');
+
+    // Send the PDF as the response
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error processing the image:', error);
+    res.status(500).send('Error processing the image.');
+  }
+}
+
 export const uploadAwsMiddleware = upload.single("file");
 
 
@@ -267,4 +352,15 @@ function uploadToS3(filePath:string, bucketName:string, s3Key:string) {
       }
     });
   });
+
+  
 }
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
+};

@@ -6,6 +6,21 @@ import { MessageModel } from './models/MessageModel';
 
 export const MessageApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+  
+    convertAndDownloadPdf: builder.query({
+      query: (fileName) => ({
+        url: `media/convertAndDownloadPdf/${fileName}`,
+        method: 'GET',
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+    convertAndDownloadJpg: builder.query({
+      query: (fileName) => ({
+        url: `media/convertAndDownload/${fileName}`, 
+        method: 'GET',
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
     getMessagesByUserId: builder.query<
       {
         status: boolean;
@@ -104,4 +119,4 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useQuickMessageMutation, useGetMessagesByUserIdQuery, useVideoUploadMutation, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;
+export const {useConvertAndDownloadJpgQuery,useConvertAndDownloadPdfQuery, useQuickMessageMutation, useGetMessagesByUserIdQuery, useVideoUploadMutation, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;

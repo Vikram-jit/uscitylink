@@ -8,6 +8,7 @@ import { TransformComponent, TransformWrapper, useControls } from 'react-zoom-pa
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import Image from 'next/image';
 import ReactPlayer from 'react-player';
+import DropdownButton from './dropdown_button';
 
 const options = {
   cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
@@ -170,7 +171,8 @@ export default function Viewer({ documentKey }: Viewer) {
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <TransformWrapper initialScale={1}>
              <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
-             <Controls />
+              <Box display={"flex"} justifyContent={"center"}> <Controls />
+              <DropdownButton btnName='Download' fileName={`uscitylink/${key}`}/></Box>
              <Box marginBottom={2}></Box>
               <TransformComponent>
                 <Image

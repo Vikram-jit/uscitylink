@@ -47,10 +47,11 @@ const NotificationGuard = ({ children }: { children: React.ReactNode }) => {
 
   // If permission is granted, render the children components
   return <div>
-  <h2>Notification Component</h2>
+ 
   {!permissionGranted && (
     <button onClick={checkUserAndRequestPermission}>Enable Notifications</button>
   )}
+  {children}
 </div>
 };
 

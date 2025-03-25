@@ -15,7 +15,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <AuthGuard>
-      {/* <NotificationGuard> */}
+      <NotificationGuard>
       <GlobalStyles
         styles={{
           body: {
@@ -45,7 +45,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         </Box>
       </Box>
       </SocketProvider>
-      {/* </NotificationGuard> */}
+      </NotificationGuard>
     </AuthGuard>
   );
 }
