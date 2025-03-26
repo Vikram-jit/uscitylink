@@ -24,6 +24,7 @@ class MessageModel {
   String? thumbnail;
   String? driverPin;
   String? staffPin;
+  String? url_upload_type;
   MessageModel? r_message;
   MessageModel(
       {this.id,
@@ -46,10 +47,12 @@ class MessageModel {
       this.thumbnail,
       this.r_message,
       this.driverPin,
-      this.staffPin});
+      this.staffPin,
+      this.url_upload_type});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
+    url_upload_type = json['url_upload_type'];
     channelId = json['channelId'];
     userProfileId = json['userProfileId'];
     groupId = json['groupId'];
@@ -77,6 +80,7 @@ class MessageModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
+    data['url_upload_type'] = url_upload_type;
     data['channelId'] = channelId;
     data['userProfileId'] = userProfileId;
     data['groupId'] = groupId;

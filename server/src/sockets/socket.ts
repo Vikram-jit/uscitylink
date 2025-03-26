@@ -280,6 +280,7 @@ export const initSocket = (httpServer: any) => {
   });
 
   io.on("connection", (socket: CustomSocket) => {
+    
     socket.on("group_user_add", async ({ group_id, channel_id }) => {
       const user_id = socket?.user?.id!;
 

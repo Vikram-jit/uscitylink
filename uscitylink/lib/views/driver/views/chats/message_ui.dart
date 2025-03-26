@@ -796,6 +796,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             AttachementUi(
                               fileUrl: "${Constant.aws}/${message.url}",
                               thumbnail: "${Constant.aws}/${message.thumbnail}",
+                              url_upload_type:
+                                  message?.url_upload_type ?? "server",
                             ),
                           const SizedBox(height: 5),
                           SelectableText(

@@ -103,6 +103,12 @@ class SocketService extends GetxController {
         }
       }
     });
+    socket.on('update_file_upload_status', (data) {
+      print(data);
+      if (Get.isRegistered<MessageController>()) {
+        Get.find<MessageController>().updateUrlStatus(data);
+      }
+    });
 
     socket.on("new_message_count_update_staff", (data) {
       if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {

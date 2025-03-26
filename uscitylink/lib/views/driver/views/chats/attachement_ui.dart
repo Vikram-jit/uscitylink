@@ -7,9 +7,14 @@ import 'package:uscitylink/views/widgets/document_download.dart';
 import 'package:path/path.dart' as p;
 
 class AttachementUi extends StatefulWidget {
+  final String url_upload_type;
   final String fileUrl;
   final String thumbnail;
-  AttachementUi({super.key, required this.fileUrl, this.thumbnail = ""});
+  AttachementUi(
+      {super.key,
+      required this.fileUrl,
+      this.thumbnail = "",
+      this.url_upload_type = "server"});
 
   @override
   State<AttachementUi> createState() => _AttachementUiState();
@@ -51,7 +56,7 @@ class _AttachementUiState extends State<AttachementUi> {
     // Check for file extension and display corresponding preview
     if (['png', 'jpg', 'jpeg'].contains(extension)) {
       // Image files (PNG, JPG, JPEG)
-      return _buildImagePreview(widget.fileUrl);
+      return _buildImagePreview(widget.fileUrl, widget.url_upload_type);
     } else if (extension == 'pdf') {
       // PDF file
       return _buildPdfPreview(widget.fileUrl);
@@ -131,7 +136,44 @@ class _AttachementUiState extends State<AttachementUi> {
   }
 
   // Widget to show the image preview (network image)
-  Widget _buildImagePreview(String imageUrl) {
+  Widget _buildImagePreview(String imageUrl, String url_upload_type) {
+    print(url_upload_type);
+    if (url_upload_type == "not-upload") {
+      return Container(
+        height: 200,
+        width: double.infinity,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Circular progress indicator
+                SizedBox(
+                  height: 60.0,
+                  width: 60.0,
+                  child: CircularProgressIndicator(),
+                ),
+                // Centered icon
+                Icon(
+                  Icons.cloud_upload,
+                  size: 32.0,
+                  color: Colors.grey,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Text(
+              "sending...",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            )
+          ],
+        ),
+      );
+    }
     return InkWell(
       onTap: () {
         // Navigate to full-screen image view (if necessary)

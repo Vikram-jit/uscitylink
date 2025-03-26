@@ -143,6 +143,26 @@ class ImagePickerController extends GetxController {
     }
   }
 
+  void uploadMultiFile(String channelId, String type, String location,
+      String? groupId, String? source, String? userId) async {
+    try {
+      var res = await _apiService.multiFileUpload(
+          selectedImages.value!,
+          "${Constant.url}/media/uploadFileQueue?groupId=$groupId&userId=$userId&source=$location&location=$type",
+          channelId,
+          caption.value);
+
+      if (res.status) {
+        Get.back();
+        while (Get.isBottomSheetOpen == true) {
+          Get.back();
+        }
+      }
+    } catch (e) {
+      Utils.snackBar("File Upload Error", e.toString());
+    }
+  }
+
   void uploadFileVideo(String channelId, String type, String location,
       String? groupId, String? source, String? userId) async {
     try {
@@ -192,6 +212,7 @@ class ImagePickerController extends GetxController {
   }
 
   void clearSelectedImage() {
+    selectedImages.value.clear();
     selectedSource.value = selectedSource.value;
     selectedImage.value = null;
     caption.value = ''; // Clear caption too

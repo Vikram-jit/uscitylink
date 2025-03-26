@@ -41,7 +41,7 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
         leading: IconButton(
           onPressed: () {
             controller.clearSelectedImage();
-            //     Get.back();
+            Get.back();
           },
           icon: Icon(Icons.arrow_back_ios),
           color: Colors.white,
@@ -152,7 +152,7 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                           vertical: 12, horizontal: 16),
                       suffixIcon: InkWell(
                         onTap: () {
-                          controller.uploadFile(
+                          controller.uploadMultiFile(
                               widget.channelId,
                               widget.type,
                               widget.location,

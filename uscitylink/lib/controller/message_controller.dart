@@ -122,6 +122,15 @@ class MessageController extends GetxController {
     messages.refresh();
   }
 
+  void updateUrlStatus(dynamic data) {
+    final messageId = data["messageId"];
+    messages
+        .where((message) => message.id == messageId)
+        .forEach((message) => message.url_upload_type = data["status"]);
+
+    messages.refresh();
+  }
+
   void deleteMessage(dynamic data) {
     final messageId = data;
 

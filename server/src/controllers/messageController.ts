@@ -18,7 +18,39 @@ import UserChannel from "../models/UserChannel";
 import { sendNotificationToDevice } from "../utils/fcmService";
 import GroupUser from "../models/GroupUser";
 import User from "../models/User";
+import Queue, { Job } from "bull";
+import fs from "fs";
+import AWS from "aws-sdk";
+import path from "path";
+import { messageToChannelToUser, notifiyFileUploadDriverToStaff } from "../sockets/messageHandler";
+
 dotenv.config();
+
+const storage = multer.diskStorage({
+  destination: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, destination: string) => void
+  ) => {
+    cb(null, path.join(__dirname, "../", "../public/uscitylink/dummy"));
+  },
+  filename: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void
+  ) => {
+    cb(null, `${Date.now()}-${file.originalname?.replace(" ","_")}`);
+  },
+});
+
+export const uploadLocal = multer({ storage });
+
+export const fileUploadQueue = new Queue("fileUploadQueue", {
+  redis: {
+    host: "127.0.0.1",
+    port: 6379,
+  },
+});
 
 const s3Client = new S3Client({
   region: "us-west-1", // Your AWS region
@@ -28,19 +60,147 @@ const s3Client = new S3Client({
   },
 });
 
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+});
+
+export const processFileUpload = async (
+  job: Job<{
+    filePath: string;
+    fileName: string;
+    mediaId: string;
+    source: string;
+    channelId: string;
+    groupId?: string;
+    userId: string;
+    location:string
+  }>
+): Promise<void> => {
+  const { filePath, fileName, mediaId ,source,channelId,groupId,userId,location} = job.data;
+
+  const fileStream = fs.createReadStream(filePath);
+
+  const uploadParams = {
+    Bucket: process.env.BUCKET_NAME!,
+    Key: `uscitylink/dummy/${fileName}`,
+    Body: fileStream,
+  };
+  const maxRetries = 3;
+  let attempt = 0;
+  let uploadSuccess = false;
+
+  const existingMessage = await Message.findOne({
+    where: { url: `uscitylink/dummy/${fileName}` },
+  });
+
+  while (attempt < maxRetries) {
+    try {
+      await s3.upload(uploadParams).promise();
+
+      await Media.update(
+        { upload_type: 'server' },
+        { where: { id: mediaId } }
+      );
+
+
+      if (existingMessage) {
+        await Message.update(
+          { url_upload_type: 'server' },
+          { where: { id: existingMessage.id } }
+        );
+      }
+
+      fs.unlinkSync(filePath);
+      console.log(`File ${fileName} uploaded successfully.`);
+      const socket =global.userSockets[userId]
+      uploadSuccess = true;
+      if (source == "staff") {
+        if (location == "group") {
+
+          // getSocketInstance().emit("send_group_message", {
+          //   "groupId": groupId,
+          //   "channelId": channelId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+          
+        } else if (location == "truck") {
+          // getSocketInstance().emit("send_message_to_user_by_group", {
+          //   "userId": userId,
+          //   "groupId": groupId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+        } else {
+          // getSocketInstance().emit("send_message_to_user", {
+          //   "userId": userId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null,
+          //   "r_message_id": null
+          // });
+        }
+      } else {
+        if (location == "group") {
+          // getSocketInstance().emit("send_group_message", {
+          //   "groupId": groupId,
+          //   "channelId": channelId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+        } else {
+       
+          await notifiyFileUploadDriverToStaff(getSocketInstance(),socket,channelId,existingMessage!.id,"server");
+        }
+      }
+      break; // Exit loop if upload is successful
+
+    } catch (error) {
+      attempt++;
+      console.error(`Attempt ${attempt} - Error uploading file ${fileName}:`, error);
+
+      if (attempt >= maxRetries) {
+        console.error(`Failed to upload file ${fileName} after ${maxRetries} attempts.`);
+
+        if (existingMessage) {
+          await Message.update(
+            { url_upload_type: 'failed' },
+            { where: { id: existingMessage.id } }
+          );
+        }
+
+        throw error;
+      }
+
+      const delay = Math.pow(2, attempt) * 100; // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
+fileUploadQueue.process(processFileUpload);
+
 // Multer setup for file upload to S3 using AWS SDK v3
 const upload = multer({
   storage: multerS3({
     s3: s3Client,
-    bucket: "ciity-sms", 
+    bucket: "ciity-sms",
 
     key: function (req: Request, file, cb) {
       const fileName = Date.now().toString() + "-" + file.originalname;
-      cb(null, `uscitylink/${fileName}`); 
+      cb(null, `uscitylink/${fileName}`);
     },
   }),
   limits: {
-    fileSize: 50 * 1024 * 1024, 
+    fileSize: 50 * 1024 * 1024,
   },
 });
 
@@ -758,6 +918,130 @@ export const quickMessageAndReply = async (
     return res.status(201).json({
       status: true,
       message: `Message sent successfully`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
+
+export const fileUploadByQueue = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    if (!req.files || !Array.isArray(req.files)) {
+      return res.status(400).send("No files uploaded.");
+    }
+    const channelId = req.body.channelId || req.activeChannel;
+    const groupId = req.query.groupId || null;
+    const body = req.body.body
+    const userId = req.query.userId || req.user?.id;
+    const files = req.files as Express.Multer.File[];
+    const fileUpload: any = [];
+    
+    for (const file of files) {
+      const filePath = file.path;
+      const fileName =file.originalname?.replace(" ","_");
+      const fileNameS3 = `${Date.now()}-${fileName}`;
+      const source = req.query.location;
+      const location = req.query.source;
+      const socket = global.userSockets[userId]
+      // console.log(socket)
+      // socket.emit("send_message_to_channel", {
+      //   "body": body,
+      //   "url": `uscitylink/dummy/${fileNameS3}`,
+      //   "channelId": channelId,
+      //   "thumbnail": null,
+      //   "r_message_id": null
+      // });
+     
+      if (source == "staff") {
+        if (location == "group") {
+
+          // getSocketInstance().emit("send_group_message", {
+          //   "groupId": groupId,
+          //   "channelId": channelId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+          
+        } else if (location == "truck") {
+          // getSocketInstance().emit("send_message_to_user_by_group", {
+          //   "userId": userId,
+          //   "groupId": groupId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+        } else {
+          // getSocketInstance().emit("send_message_to_user", {
+          //   "userId": userId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null,
+          //   "r_message_id": null
+          // });
+        }
+      } else {
+        if (location == "group") {
+          // getSocketInstance().emit("send_group_message", {
+          //   "groupId": groupId,
+          //   "channelId": channelId,
+          //   "body": body,
+          //   "direction": "S",
+          //   "url": `uscitylink/dummy/${fileNameS3}`,
+          //   "thumbnail": null
+          // });
+        } else {
+       
+          await messageToChannelToUser(getSocketInstance(),socket,body,`uscitylink/dummy/${fileNameS3}`,channelId,null,null)
+        }
+      }
+      // Create media record in the database
+      const media = await Media.create({
+        user_profile_id: userId,
+        channelId: channelId,
+        file_name: fileName,
+        file_size: file.size,
+        mime_type: file.mimetype,
+        key: `uscitylink/dummy/${fileNameS3}`,
+        file_type: req.body.type,
+        groupId: groupId,
+        upload_source: source || "message",
+        upload_type: "local",
+      });
+    
+
+      
+
+
+      // Add job to the queue for the current file
+      await fileUploadQueue.add({
+        filePath,
+        fileName: fileNameS3,
+        mediaId: media.id,
+       
+        channelId,
+        groupId,
+        userId,
+         source: req.query.location,
+         location : req.query.source
+      });
+
+
+      fileUpload.push({ ...file, key: `uscitylink/dummy/${fileNameS3}` });
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: `File upload successfully`,
+      data: fileUpload,
     });
   } catch (err: any) {
     return res

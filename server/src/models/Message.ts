@@ -24,6 +24,7 @@ export class Message extends Model {
   public reply_message_id?:string
   public driverPin?:string
   public staffPin?:string
+  public url_upload_type?:string
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
    
@@ -99,6 +100,10 @@ Message.init(
       type: DataTypes.ENUM,
       values: ['0', '1'],  // Enum values
       defaultValue: '0',  
+    },
+    url_upload_type:{
+      type: DataTypes.STRING,
+      defaultValue: "not-upload",
     },
     reply_message_id: {
       type: DataTypes.UUID,

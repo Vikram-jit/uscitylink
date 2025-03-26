@@ -269,6 +269,82 @@ class NetworkApiService extends BaseApiServices {
     }
   }
 
+  Future<ApiResponse<List<FileModel>>> multiFileUpload(
+      List<File> files, String url, String channelId, String body,
+      [bool isLoader = true]) async {
+    try {
+      // Show the loader while the files are uploading
+      if (isLoader) {
+        Utils.showLoader();
+      }
+
+      // Prepare headers
+      final headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+
+      String? token = await userPreferenceController.getToken();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Initialize MultipartRequest
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..headers.addAll(headers)
+        ..fields['channelId'] = channelId
+        ..fields['body'] = body;
+
+      // Add each file to the request
+      for (File file in files) {
+        var multipartFile = await http.MultipartFile.fromPath(
+          'files', // Use 'files[]' to indicate a list of files
+          file.path,
+        );
+        request.files.add(multipartFile);
+      }
+      print(request.fields);
+      final response = await request.send().timeout(const Duration(hours: 1));
+      final responseString = await response.stream.bytesToString();
+
+      if (response.statusCode == 201) {
+        Map<String, dynamic> responseJson = jsonDecode(responseString);
+        List<FileModel> fileModels = (responseJson['data'] as List)
+            .map((data) => FileModel.fromJson(data))
+            .toList();
+        if (isLoader) {
+          Utils.hideLoader();
+        }
+
+        return ApiResponse<List<FileModel>>(
+          data: fileModels,
+          message: responseJson['message'] ?? 'Files uploaded successfully',
+          status: responseJson['status'] ?? true,
+        );
+      }
+
+      if (isLoader) {
+        Utils.hideLoader();
+      }
+
+      throw Exception("Unable to upload files");
+    } on SocketException {
+      if (isLoader) {
+        Utils.hideLoader();
+      }
+      throw InternetException(); // Handle no internet connection
+    } on TimeoutException {
+      if (isLoader) {
+        Utils.hideLoader();
+      }
+      throw RequestTimeout(); // Handle timeout errors
+    } catch (e) {
+      if (isLoader) {
+        Utils.hideLoader();
+      }
+      throw Exception("An unexpected error occurred: $e");
+    }
+  }
+
   Future<ApiResponse<VideoUpload>> videoUpload(
       File data, String url, String channelId, String type) async {
     try {

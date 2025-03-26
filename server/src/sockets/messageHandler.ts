@@ -122,8 +122,9 @@ groupMessageQueue.process(async (job: any) => {
 });
 
 notificationQueue.process(async (job: any) => {
-  const { title, body, channel_id, userName, userId, staffId,messageId } = job.data;
-   console.log(job)
+  const { title, body, channel_id, userName, userId, staffId, messageId } =
+    job.data;
+  console.log(job);
   const roleId = await Role.findOne({
     where: {
       name: "staff",
@@ -137,7 +138,7 @@ notificationQueue.process(async (job: any) => {
   });
 
   const channel = await Channel.findByPk(channel_id);
-    
+
   const users = await UserProfile.findAll({
     where: {
       role_id: roleId?.id,
@@ -146,7 +147,7 @@ notificationQueue.process(async (job: any) => {
       // },
     },
   });
-  console.log(users.length,"USERCOPUNT")
+  console.log(users.length, "USERCOPUNT");
   await Promise.all(
     users.map(async (user) => {
       if (user) {
@@ -155,13 +156,13 @@ notificationQueue.process(async (job: any) => {
             where: {
               messageId: messageId,
               staffId: user.id,
-              driverId:staffId
+              driverId: staffId,
             },
             defaults: {
               messageId: messageId,
               staffId: user.id,
-              driverId:staffId,
-              status:"un-read"
+              driverId: staffId,
+              status: "un-read",
             },
           });
           const deviceToken = user.device_token;
@@ -170,7 +171,7 @@ notificationQueue.process(async (job: any) => {
               global.staffActiveChannel[user?.id]?.channelId == channel_id
                 ? "1"
                 : "0";
-               
+
             await sendNotificationToDevice(deviceToken, {
               title: `${userName} (${channel?.name})` || "",
               badge: 0,
@@ -229,6 +230,7 @@ export async function messageToChannelToUser(
       url: url,
       thumbnail: thumbnail || null,
       reply_message_id: r_message_id || null,
+      url_upload_type: "not-upload",
     });
     const message = await Message.findOne({
       where: {
@@ -243,12 +245,12 @@ export async function messageToChannelToUser(
               model: UserProfile,
               as: "sender",
               attributes: ["id", "username", "isOnline"],
-              include:[
+              include: [
                 {
-                  model:User,
-                  as:"user"
-                }
-              ]
+                  model: User,
+                  as: "user",
+                },
+              ],
             },
           ],
         },
@@ -275,12 +277,12 @@ export async function messageToChannelToUser(
           ) {
             if (isSocket) {
               await MessageStaff.create({
-                messageId:messageSave.id,
-                staffId:staffId,
-                driverId:socket?.user?.id,
-                status:"read",
-                type:"chat"
-              })
+                messageId: messageSave.id,
+                staffId: staffId,
+                driverId: socket?.user?.id,
+                status: "read",
+                type: "chat",
+              });
               await message?.update(
                 {
                   deliveryStatus: "seen",
@@ -377,13 +379,13 @@ export async function messageToChannelToUser(
               where: {
                 messageId: messageSave.id,
                 staffId: staffId,
-                driverId:socket?.user?.id
+                driverId: socket?.user?.id,
               },
               defaults: {
                 messageId: messageSave.id,
                 staffId: staffId,
-                driverId:socket?.user?.id,
-                status:"un-read"
+                driverId: socket?.user?.id,
+                status: "un-read",
               },
             });
             if (
@@ -401,7 +403,6 @@ export async function messageToChannelToUser(
                   "notification_new_message",
                   `New Message received `
                 );
-               
               }
             } else {
               if (
@@ -443,8 +444,7 @@ export async function messageToChannelToUser(
       userId: findUserChannel.driverId,
       userName: `${findUserChannel.name}`,
       staffId: socket?.user?.id,
-      messageId:messageSave.id,
-
+      messageId: messageSave.id,
     });
   }
 }
@@ -459,7 +459,7 @@ export async function messageToDriver(
   direction: string,
   url: string | null,
   thumbnail: string | null,
-  r_message_id:string | null
+  r_message_id: string | null
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -479,31 +479,36 @@ export async function messageToDriver(
     status: "sent",
     url: url || null,
     thumbnail: thumbnail || null,
-    reply_message_id : r_message_id || null
+    reply_message_id: r_message_id || null,
   });
   const message = await Message.findOne({
     where: {
       id: messageSave.id,
     },
-    include: [ {
-      model: Message,
-      as: "r_message",
-      include: [
-        {
-          model: UserProfile,
-          as: "sender",
-          attributes: ["id", "username", "isOnline"],
-          include:[{
-            model:User,
-            as:"user"
-          }]
-        },
-      ],
-    },{
-      model: UserProfile,
-      as: "sender",
-      attributes: ["id", "username", "isOnline"],
-    }],
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [
+              {
+                model: User,
+                as: "user",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    ],
   });
   //Check Before send driver active room channel
   const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
@@ -859,26 +864,18 @@ export async function messageToDriverByTruckGroup(
 export async function deleteMessage(
   io: Server,
   socket: CustomSocket,
-  messageId: string,
- 
+  messageId: string
 ) {
   if (messageId) {
-    
-      await Message.destroy(
-       
-        {
-          where: {
-            id: messageId,
-          },
-        }
-      );
-    
-    
+    await Message.destroy({
+      where: {
+        id: messageId,
+      },
+    });
 
     io.to(socket.id).emit("delete_message", messageId);
   }
 }
-
 
 export async function pinMessage(
   io: Server,
@@ -912,8 +909,8 @@ export async function pinMessage(
       );
     }
 
-    io.to(socket.id).emit("pin_done", messageId,value,type);
-    io.to(socket.id).emit("pin_done_web", {messageId,value,type});
+    io.to(socket.id).emit("pin_done", messageId, value, type);
+    io.to(socket.id).emit("pin_done_web", { messageId, value, type });
   }
 }
 
@@ -972,16 +969,18 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
-   
-    await MessageStaff.update({
-      status:"read"
-    },{
-      where:{
-        driverId:userId,
-        staffId:socket?.user?.id,
-        status:"un-read"
+    await MessageStaff.update(
+      {
+        status: "read",
+      },
+      {
+        where: {
+          driverId: userId,
+          staffId: socket?.user?.id,
+          status: "un-read",
+        },
       }
-    })
+    );
 
     await UserChannel.update(
       {
@@ -1234,4 +1233,36 @@ export async function unreadAllGroupMessageByStaffGroup(
       }
     );
   }
+}
+
+export async function notifiyFileUploadDriverToStaff(
+  io: Server,
+  socket: CustomSocket,
+  channelId: string,
+  messageId: string,
+  type: string
+) {
+  const findUserChannel = global.driverOpenChat.find(
+    (e) => e.driverId == socket?.user?.id
+  );
+  if (findUserChannel) {
+
+      socket.emit("update_file_upload_status",{status:type,messageId:messageId})
+
+   
+  }
+
+  const promises = Object.entries(global.staffOpenChat).map(
+    async ([staffId, e]) => {
+      const isSocket = global.userSockets[staffId];
+
+      if (
+        e.channelId === channelId &&
+        socket?.user?.id === e.userId
+      ) {
+        if (isSocket) {
+        }
+      }
+    }
+  );
 }

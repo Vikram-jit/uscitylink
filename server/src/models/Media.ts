@@ -12,6 +12,7 @@ export class Media extends Model {
   public mime_type?: string;
   public file_size?: string;
   public thumbnail?: string;
+  public upload_type?: string;
   public upload_source?: string;
 
   public key?: string;
@@ -63,6 +64,9 @@ Media.init(
     },
     key: {
       type: DataTypes.TEXT,
+    },
+    upload_type: {
+      type: DataTypes.STRING,
     },
   },
   {
