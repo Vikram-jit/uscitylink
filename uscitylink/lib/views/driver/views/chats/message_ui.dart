@@ -418,6 +418,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                       messageController.selectedRplyMessage
                                           .value.url!.isNotEmpty)
                                     AttachementUi(
+                                      directionType: messageController
+                                          .selectedRplyMessage
+                                          .value
+                                          .messageDirection!,
                                       fileUrl:
                                           "${Constant.aws}/${messageController.selectedRplyMessage.value.url}",
                                       thumbnail:
@@ -776,6 +780,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                                 context) *
                                             0.8,
                                         child: AttachementUi(
+                                          directionType:
+                                              message.messageDirection!,
                                           fileUrl:
                                               "${Constant.aws}/${message.r_message?.url}",
                                           thumbnail:
@@ -794,6 +800,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           // If there's an image URL, show the image with a loading indicator
                           if (hasImageUrl)
                             AttachementUi(
+                              direction:
+                                  message.senderId == message.userProfileId,
+                              location: "driver",
+                              directionType: message.messageDirection!,
                               fileUrl: "${Constant.aws}/${message.url}",
                               thumbnail: "${Constant.aws}/${message.thumbnail}",
                               url_upload_type:
@@ -909,7 +919,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "chat", "", "driver_chat", "");
+                      channelId, "chat", "", "driver_chat", "", "driver");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

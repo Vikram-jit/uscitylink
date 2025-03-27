@@ -75,7 +75,7 @@ class ImagePickerController extends GetxController {
   }
 
   Future<void> pickImageFromGallery(String channelId, String location,
-      String? groupId, String source, String userId) async {
+      String? groupId, String source, String userId, String uploadBy) async {
     try {
       selectedSource.value = "gallery";
       isLoading.value = true;
@@ -84,8 +84,8 @@ class ImagePickerController extends GetxController {
       final List<XFile>? images =
           await _picker.pickMultiImage(imageQuality: 25);
 
-      if (images != null) {
-        for (var item in images) {
+      if (images!.length > 0) {
+        for (var item in images!) {
           selectedImages.value.add(File(item.path));
         }
 
@@ -96,7 +96,8 @@ class ImagePickerController extends GetxController {
             location: location,
             groupId: groupId,
             source: source,
-            userId: userId));
+            userId: userId,
+            uploadBy: uploadBy));
       }
     } catch (e) {
       print('Error picking image from gallery: $e');
@@ -144,15 +145,16 @@ class ImagePickerController extends GetxController {
   }
 
   void uploadMultiFile(String channelId, String type, String location,
-      String? groupId, String? source, String? userId) async {
+      String? groupId, String? source, String? userId, String? uploadBy) async {
     try {
       var res = await _apiService.multiFileUpload(
           selectedImages.value!,
-          "${Constant.url}/media/uploadFileQueue?groupId=$groupId&userId=$userId&source=$location&location=$type",
+          "${Constant.url}/media/uploadFileQueue?groupId=$groupId&userId=$userId&source=$location&location=$type&uploadBy=$uploadBy",
           channelId,
           caption.value);
 
       if (res.status) {
+        selectedImages.value.clear();
         Get.back();
         while (Get.isBottomSheetOpen == true) {
           Get.back();

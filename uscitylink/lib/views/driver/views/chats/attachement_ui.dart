@@ -10,11 +10,17 @@ class AttachementUi extends StatefulWidget {
   final String url_upload_type;
   final String fileUrl;
   final String thumbnail;
+  final bool direction;
+  final String directionType;
+  final String location;
   AttachementUi(
       {super.key,
       required this.fileUrl,
+      required this.directionType,
       this.thumbnail = "",
-      this.url_upload_type = "server"});
+      this.url_upload_type = "server",
+      this.direction = false,
+      this.location = "driver"});
 
   @override
   State<AttachementUi> createState() => _AttachementUiState();
@@ -50,6 +56,9 @@ class _AttachementUiState extends State<AttachementUi> {
   ];
   @override
   Widget build(BuildContext context) {
+    print(widget.direction &&
+        widget.location == "driver" &&
+        widget.directionType == "R");
     // Extract file extension (lowercase for consistency)
     String extension = widget.fileUrl.split('.').last.toLowerCase();
 
@@ -137,42 +146,84 @@ class _AttachementUiState extends State<AttachementUi> {
 
   // Widget to show the image preview (network image)
   Widget _buildImagePreview(String imageUrl, String url_upload_type) {
-    print(url_upload_type);
     if (url_upload_type == "not-upload") {
-      return Container(
-        height: 200,
-        width: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                // Circular progress indicator
-                SizedBox(
-                  height: 60.0,
-                  width: 60.0,
-                  child: CircularProgressIndicator(),
-                ),
-                // Centered icon
-                Icon(
-                  Icons.cloud_upload,
-                  size: 32.0,
-                  color: Colors.grey,
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 5,
-            ),
-            Text(
-              "sending...",
-              style: TextStyle(fontWeight: FontWeight.w600),
+      return widget.direction &&
+              widget.location == "driver" &&
+              widget.directionType == "R"
+          ? Container(
+              height: 200,
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Circular progress indicator
+                      SizedBox(
+                        height: 60.0,
+                        width: 60.0,
+                        child: CircularProgressIndicator(),
+                      ),
+                      // Centered icon
+                      Icon(
+                        widget.location == "driver" &&
+                                widget.directionType == "R"
+                            ? Icons.cloud_upload
+                            : Icons.download,
+                        size: 32.0,
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 5,
+                  ),
+                  Text(
+                    "${widget.location == "driver" && widget.directionType == "R" ? "sending..." : "receiving..."}",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  )
+                ],
+              ),
             )
-          ],
-        ),
-      );
+          : Container(
+              height: 200,
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Circular progress indicator
+                      SizedBox(
+                        height: 60.0,
+                        width: 60.0,
+                        child: CircularProgressIndicator(),
+                      ),
+                      // Centered icon
+                      Icon(
+                        widget.location == "staff" &&
+                                widget.directionType == "S"
+                            ? Icons.cloud_upload
+                            : Icons.download,
+                        size: 32.0,
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 5,
+                  ),
+                  Text(
+                    "${widget.location == "staff" && widget.directionType == "S" ? "sending..." : "receiving..."}",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  )
+                ],
+              ),
+            );
     }
     return InkWell(
       onTap: () {

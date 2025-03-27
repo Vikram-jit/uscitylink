@@ -119,7 +119,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   React.useEffect(() => {
     if (socket) {
       socket.emit('staff_active_channel_user_update', userId);
-
+      
       socket.on('receive_message_channel', (message: MessageModel) => {
         setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
         if (showScrollToBottomButton) {
@@ -160,7 +160,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
           toast.success("Pin message successfully")
         }
       })
-
+      socket.on("update_file_recivied_status",(data:any)=>{
+       setMessages((prev) =>
+          prev.map((e) =>
+            e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
+          )
+        );
+       })
       socket.on('delete_message',(data:any)=>{
       
        
@@ -187,6 +193,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     return () => {
       if (socket) {
         socket.off('delete_message');
+        socket.off('update_file_recivied_status');
         socket.off('receive_message_channel');
         socket.off('pin_done');
         socket.off('staff_open_chat', userId);
@@ -341,6 +348,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                       }}
                     >
                       <MediaComponent
+                        
                         thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.thumbnail}`}
                         url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.url}`}
                         name={selectedMessageToReply?.url ? selectedMessageToReply?.url : ' '}

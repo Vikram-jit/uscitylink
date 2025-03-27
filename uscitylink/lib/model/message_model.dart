@@ -26,6 +26,7 @@ class MessageModel {
   String? staffPin;
   String? url_upload_type;
   MessageModel? r_message;
+
   MessageModel(
       {this.id,
       this.channelId,

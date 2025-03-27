@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
@@ -306,7 +307,6 @@ class StaffchatController extends GetxController {
   }
 
   void updateTypingStatus(dynamic data) {
-    print(data);
     typing.value = data['isTyping'];
     typingMessage.value = data['message'];
   }
@@ -403,5 +403,14 @@ class StaffchatController extends GetxController {
       Utils.hideLoader();
       Utils.snackBar("File Upload Error", e.toString());
     }
+  }
+
+  void updateUrlStatus(dynamic data) {
+    final messageId = data["messageId"];
+    message.value.messages
+        ?.where((message) => message.id == messageId)
+        .forEach((message) => message.url_upload_type = data["status"]);
+
+    message.refresh();
   }
 }

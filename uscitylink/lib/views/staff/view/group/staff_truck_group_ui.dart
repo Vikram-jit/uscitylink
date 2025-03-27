@@ -483,6 +483,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
                     AttachementUi(
+                      directionType: "S",
                       fileUrl: "${Constant.aws}/${message.url}",
                       thumbnail: "${Constant.aws}/${message.thumbnail}",
                     ),
@@ -594,7 +595,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "truck", groupId, "staff", "");
+                      channelId, "truck", groupId, "staff", "", "staff");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

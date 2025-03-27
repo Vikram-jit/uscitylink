@@ -1235,19 +1235,21 @@ export async function unreadAllGroupMessageByStaffGroup(
   }
 }
 
-export async function notifiyFileUploadDriverToStaff(
+export async function notifiyFileUploadStaffToDriver(
   io: Server,
   socket: CustomSocket,
   channelId: string,
   messageId: string,
-  type: string
+  type: string,
+  userId:string
 ) {
   const findUserChannel = global.driverOpenChat.find(
-    (e) => e.driverId == socket?.user?.id
+    (e) => e.driverId == userId && e.channelId == channelId
   );
+  
   if (findUserChannel) {
 
-      socket.emit("update_file_upload_status",{status:type,messageId:messageId})
+    socket.emit("update_file_upload_status",{status:type,messageId:messageId})
 
    
   }
@@ -1255,14 +1257,127 @@ export async function notifiyFileUploadDriverToStaff(
   const promises = Object.entries(global.staffOpenChat).map(
     async ([staffId, e]) => {
       const isSocket = global.userSockets[staffId];
-
+  
       if (
         e.channelId === channelId &&
         socket?.user?.id === e.userId
       ) {
         if (isSocket) {
+          isSocket.emit("update_file_sent_status",{status:type,messageId:messageId})
+        }else{
+            const userProfile = await UserProfile.findOne({
+              where:{
+                id:socket?.user?.id
+              }
+            })
+            if(userProfile){
+              if(userProfile.device_token){
+                await sendNotificationToDevice(userProfile.device_token,{
+                   badge:0,
+                   title:"Upload Media",
+                   body:"Send media successfully",
+                   data:{}
+                })
+              }
+            }
+          }
+      }
+    }
+  );
+  await Promise.all(promises)
+}
+
+
+export async function notifiyFileUploadDriverToStaffGroup(
+  io: Server,
+  socket: CustomSocket,
+  groupId:string,
+  channelId: string,
+  messageId: string,
+  type: string,
+  userId:string
+) {
+  let isCheckUserInGroup = true;
+  Object.values(global.group_open_chat[groupId]).map((e) => {
+    if(e.userId == userId){
+      isCheckUserInGroup = false;
+    }
+    const onlineUser = global.userSockets[e.userId];
+    if (onlineUser) {
+      // userIdActiveGroup.push(e.userId);
+      io.to(onlineUser.id).emit("update_file_upload_status_group", {groupId,status:type,messageId:messageId});
+    }
+  });
+  if(isCheckUserInGroup){
+    const userProfile = await UserProfile.findOne({
+      where:{
+        id:userId
+      }
+    })
+    if(userProfile){
+      if(userProfile.device_token){
+        await sendNotificationToDevice(userProfile.device_token,{
+           badge:0,
+           title:"Upload Group Media",
+           body:"Send group media successfully",
+           data:{}
+        })
+      }
+    }
+  }
+}
+
+
+export async function notifiyFileUploadDriverToStaff(
+  io: Server,
+  socket: CustomSocket,
+  channelId: string,
+  messageId: string,
+  type: string,
+  userId:string
+) {
+  const findUserChannel = global.driverOpenChat.find(
+    (e) => e.driverId == socket?.user?.id && e.channelId == channelId
+  );
+  
+  if (findUserChannel) {
+
+    socket.emit("update_file_upload_status",{status:type,messageId:messageId})
+
+   
+  }else{
+    const userProfile = await UserProfile.findOne({
+      where:{
+        id:userId
+      }
+    })
+    if(userProfile){
+      if(userProfile.device_token){
+        await sendNotificationToDevice(userProfile.device_token,{
+           badge:0,
+           title:"Upload Media",
+           body:"Send media successfully",
+           data:{}
+        })
+      }
+    }
+  }
+
+  const promises = Object.entries(global.staffOpenChat).map(
+    async ([staffId, e]) => {
+      const isSocket = global.userSockets[staffId];
+      console.log(staffId,"testing value")
+   console.log( e.channelId === channelId &&
+    socket?.user?.id === e.userId,"testing value")
+      if (
+        e.channelId === channelId &&
+        socket?.user?.id === e.userId
+      ) {
+        if (isSocket) {
+          isSocket.emit("update_file_recivied_status",{status:type,messageId:messageId})
         }
       }
     }
   );
+  await Promise.all(promises)
 }

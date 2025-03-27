@@ -2,15 +2,12 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { DocumentScanner, Download } from '@mui/icons-material';
 import { IconButton, Typography } from '@mui/material';
-
-
-import { DocumentScanner } from '@mui/icons-material';
 import { Box } from '@mui/system';
-import { FilePdf ,PlayCircle} from '@phosphor-icons/react';
+import { FilePdf, PlayCircle } from '@phosphor-icons/react';
 
 import DocumentDialog from '../DocumentDialog';
-
 
 interface MediaComponent {
   url: string;
@@ -19,13 +16,14 @@ interface MediaComponent {
   height?: number;
   thumbnail?: string;
   name: string;
+  type?: string;
 }
 
-export default function MediaComponent({ url, width, height, file_name, name ,thumbnail}: MediaComponent) {
+export default function MediaComponent({ url, width, height, file_name, name, thumbnail, type }: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
   const file = name?.split('/');
-  
+
   const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm', '.mpeg', '.mpg', '.wmv'];
 
   switch (getFileExtension(url)) {
@@ -38,35 +36,38 @@ export default function MediaComponent({ url, width, height, file_name, name ,th
     case '.mpeg':
     case '.mpg':
     case '.wmv':
-      return <>
-      <IconButton onClick={() => setOpenDocument(true)} style={{position:"relative"}}>
-        <Image
-          height={height || 60}
-          src={thumbnail || ""}
-          alt=""
-          width={181}
-          style={{ height: 200, width: 181, objectFit: 'contain' }}
-          objectFit="contain"
-        />
-        <PlayCircle size={50} style={{position:"absolute",color:"white"}}/>
-      </IconButton >
-      {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
-    </>;
-     case '.mp3':
-      case '.aac':
-      case '.m4a':
-      case '.wav':
-      case '.ogg':
-      case '.flac':
-      case '.aiff':
-      case '.amr':
-      case '.ape':
-        return <>
-       
-       <audio controls>
-        <source src={url}></source>
-       </audio>
-      </>;
+      return (
+        <>
+          <IconButton onClick={() => setOpenDocument(true)} style={{ position: 'relative' }}>
+            <Image
+              height={height || 60}
+              src={thumbnail || ''}
+              alt=""
+              width={181}
+              style={{ height: 200, width: 181, objectFit: 'contain' }}
+              objectFit="contain"
+            />
+            <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
+          </IconButton>
+          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
+        </>
+      );
+    case '.mp3':
+    case '.aac':
+    case '.m4a':
+    case '.wav':
+    case '.ogg':
+    case '.flac':
+    case '.aiff':
+    case '.amr':
+    case '.ape':
+      return (
+        <>
+          <audio controls>
+            <source src={url}></source>
+          </audio>
+        </>
+      );
     case '.3gpp':
       return (
         <>
@@ -80,34 +81,76 @@ export default function MediaComponent({ url, width, height, file_name, name ,th
     case '.jpeg ':
       return (
         <>
-          <IconButton onClick={() => setOpenDocument(true)}>
-            <img src={url} alt="" />
-          </IconButton>
+          {type == 'not-upload' ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Download /> <Typography>receiving</Typography>
+            </Box>
+          ) : (
+            <IconButton onClick={() => setOpenDocument(true)}>
+              <img src={url} alt="" />
+            </IconButton>
+          )}
+
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
       );
     case '.jpg':
       return (
         <>
-          <IconButton onClick={() => setOpenDocument(true)}>
-            <Image
-              height={height || 60}
-              src={url}
-              alt=""
-              width={181}
-              style={{ height: 200, width: 181, objectFit: 'contain' }}
-              objectFit="contain"
-            />
-          </IconButton>
+          {' '}
+          {type == 'not-upload' ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Download /> <Typography>receiving...</Typography>
+            </Box>
+          ) : (
+            <IconButton onClick={() => setOpenDocument(true)}>
+              <Image
+                height={height || 60}
+                src={url}
+                alt=""
+                width={181}
+                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                objectFit="contain"
+              />
+            </IconButton>
+          )}
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
       );
     case '.png':
       return (
         <>
-          <IconButton onClick={() => setOpenDocument(true)}>
-            <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
-          </IconButton>
+          {type == 'not-upload' ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Download /> <Typography>receiving...</Typography>
+            </Box>
+          ) : (
+            <IconButton onClick={() => setOpenDocument(true)}>
+              <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+            </IconButton>
+          )}
+
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
       );
@@ -134,18 +177,46 @@ export default function MediaComponent({ url, width, height, file_name, name ,th
         case '.jpeg':
           return (
             <>
-              <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
-              </IconButton>
+              {type == 'not-upload' ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Download /> <Typography>receiving...</Typography>
+                </Box>
+              ) : (
+                <IconButton onClick={() => setOpenDocument(true)}>
+                  <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+                </IconButton>
+              )}
+
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>
           );
         case '.png':
           return (
             <>
-              <IconButton onClick={() => setOpenDocument(true)}>
-                <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
-              </IconButton>
+              {type == 'not-upload' ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Download /> <Typography>receiving...</Typography>
+                </Box>
+              ) : (
+                <IconButton onClick={() => setOpenDocument(true)}>
+                  <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+                </IconButton>
+              )}
+
               {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
             </>
           );

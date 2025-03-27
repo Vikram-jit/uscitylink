@@ -28,4 +28,5 @@ export interface MessageModel {
   staffPin:string | null
   sender: SenderModel;
   r_message:MessageModel
+  url_upload_type:string
 }

@@ -76,6 +76,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
           }}
         >
           <MediaComponent
+          type={props.url_upload_type}
             thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${thumbnail}`}
             url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`}
             name={url ? url : ' '}

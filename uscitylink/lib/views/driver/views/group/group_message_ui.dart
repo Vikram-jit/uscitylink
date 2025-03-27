@@ -438,6 +438,9 @@ class _GroupMessageuiState extends State<GroupMessageui>
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
                     AttachementUi(
+                      directionType: message.messageDirection!,
+                      direction: message.userProfileId == message.sender,
+                      url_upload_type: message.url_upload_type ?? "server",
                       fileUrl: "${Constant.aws}/${message.url}",
                       thumbnail: "${Constant.aws}/${message.thumbnail}",
                     ),
@@ -522,7 +525,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(
-                      channelId, "group", groupId, "driver_chat", "");
+                      channelId, "group", groupId, "driver_chat", "", "driver");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

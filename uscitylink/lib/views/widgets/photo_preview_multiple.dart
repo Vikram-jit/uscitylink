@@ -9,19 +9,22 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 class PhotoPreviewMultiple extends StatefulWidget {
   final String channelId;
   final String type;
+  final String uploadBy;
   final String location;
   final String? groupId;
   final String? source;
   final String? userId;
 
-  PhotoPreviewMultiple(
-      {super.key,
-      required this.channelId,
-      required this.type,
-      required this.location,
-      this.groupId,
-      this.userId,
-      this.source});
+  PhotoPreviewMultiple({
+    super.key,
+    required this.channelId,
+    required this.type,
+    required this.location,
+    required this.uploadBy,
+    this.groupId,
+    this.userId,
+    this.source,
+  });
 
   @override
   State<PhotoPreviewMultiple> createState() => _PhotoPreviewMultipleState();
@@ -158,7 +161,8 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                               widget.location,
                               widget.groupId,
                               widget.source,
-                              widget.userId);
+                              widget.userId,
+                              widget.uploadBy);
                         },
                         child: const Icon(
                           Icons.send,

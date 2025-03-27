@@ -314,15 +314,16 @@ class _StaffMessageViewState extends State<StaffMessageView>
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border(
-                                    left: BorderSide(
-                                        color: _staffchatController
-                                                    .selectedRplyMessage
-                                                    .value
-                                                    .messageDirection ==
-                                                "S"
-                                            ? Colors.blue
-                                            : Colors.amber,
-                                        width: 4)),
+                                  left: BorderSide(
+                                      color: _staffchatController
+                                                  .selectedRplyMessage
+                                                  .value
+                                                  .messageDirection ==
+                                              "S"
+                                          ? Colors.blue
+                                          : Colors.amber,
+                                      width: 4),
+                                ),
                                 color: Colors.grey.shade200,
                               ),
                               width: TDeviceUtils.getScreenWidth(context) * 1,
@@ -401,6 +402,11 @@ class _StaffMessageViewState extends State<StaffMessageView>
                                         _staffchatController.selectedRplyMessage
                                             .value.url!.isNotEmpty)
                                       AttachementUi(
+                                        directionType: _staffchatController
+                                                .selectedRplyMessage
+                                                .value
+                                                .messageDirection ??
+                                            "",
                                         fileUrl:
                                             "${Constant.aws}/${_staffchatController.selectedRplyMessage.value.url}",
                                         thumbnail:
@@ -900,6 +906,13 @@ class _StaffMessageViewState extends State<StaffMessageView>
                                   ),
                                   if (message.r_message?.url != null)
                                     AttachementUi(
+                                      location: "staff",
+                                      directionType:
+                                          message.r_message?.messageDirection ??
+                                              "",
+                                      url_upload_type:
+                                          message.r_message?.url_upload_type ??
+                                              "server",
                                       fileUrl:
                                           "${Constant.aws}/${message.r_message?.url}",
                                       thumbnail:
@@ -916,6 +929,11 @@ class _StaffMessageViewState extends State<StaffMessageView>
                           ),
                         if (hasImageUrl)
                           AttachementUi(
+                            location: "staff",
+                            directionType: message.messageDirection!,
+                            direction:
+                                message.userProfileId == message.senderId,
+                            url_upload_type: message?.url_upload_type ?? "",
                             fileUrl: "${Constant.aws}/${message.url}",
                             thumbnail: "${Constant.aws}/${message.thumbnail}",
                           ),
@@ -1042,7 +1060,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   imagePickerController.pickImageFromGallery(channelId, "chat",
-                      "", "staff", _staffchatController.userId.value);
+                      "", "staff", _staffchatController.userId.value, "staff");
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

@@ -110,6 +110,23 @@ class SocketService extends GetxController {
       }
     });
 
+    socket.on('update_file_upload_status_group', (data) {
+      if (Get.isRegistered<GroupController>()) {
+        Get.find<GroupController>().updateUrlStatus(data);
+      }
+    });
+    socket.on('update_file_sent_status', (data) {
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().updateUrlStatus(data);
+      }
+    });
+
+    socket.on('update_file_recivied_status', (data) {
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().updateUrlStatus(data);
+      }
+    });
+
     socket.on("new_message_count_update_staff", (data) {
       if (Get.find<StaffchannelController>().channelChatUser.value.id != null) {
         Get.find<StaffchannelController>().addNewMessageWithouIncrement(data);
