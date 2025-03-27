@@ -99,7 +99,7 @@ export const processFileUpload = async (
 
   const uploadParams = {
     Bucket: process.env.BUCKET_NAME!,
-    Key: `uscitylink/dummy/${fileName}`,
+    Key: `uscitylink/${fileName}`,
     Body: fileStream,
   };
   const maxRetries = 3;
@@ -107,7 +107,7 @@ export const processFileUpload = async (
   let uploadSuccess = false;
 
   const existingMessage = await Message.findOne({
-    where: { url: `uscitylink/dummy/${fileName}` },
+    where: { url: `uscitylink/${fileName}` },
   });
 
   while (attempt < maxRetries) {
@@ -998,7 +998,7 @@ export const fileUploadByQueue = async (
             userId,
             body,
             "S",
-            `uscitylink/dummy/${fileNameS3}`,
+            `uscitylink/${fileNameS3}`,
             null,
             null
           );
@@ -1013,7 +1013,7 @@ export const fileUploadByQueue = async (
             channelId,
             body,
             "S",
-            `uscitylink/dummy/${fileNameS3}`,
+            `uscitylink/${fileNameS3}`,
             null
           );
         } else {
@@ -1021,7 +1021,7 @@ export const fileUploadByQueue = async (
             getSocketInstance(),
             socket,
             body,
-            `uscitylink/dummy/${fileNameS3}`,
+            `uscitylink/${fileNameS3}`,
             channelId,
             null,
             null
@@ -1035,7 +1035,7 @@ export const fileUploadByQueue = async (
         file_name: fileName,
         file_size: file.size,
         mime_type: file.mimetype,
-        key: `uscitylink/dummy/${fileNameS3}`,
+        key: `uscitylink/${fileNameS3}`,
         file_type: req.body.type,
         groupId: groupId,
         upload_source: source || "message",
@@ -1054,7 +1054,7 @@ export const fileUploadByQueue = async (
         location: req.query.source,
       });
 
-      fileUpload.push({ ...file, key: `uscitylink/dummy/${fileNameS3}` });
+      fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
 
     return res.status(201).json({
