@@ -116,7 +116,28 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       body: payload,
     }),
   }),
+  uploadMultipleFiles: builder.mutation<
+    {
+      status: boolean;
+      message: string;
+      data: any;
+    },
+    {formData:FormData,groupId?:string|null,userId?:string,location?:string,source?:string,uploadBy?:string}
+  >({
+    query: (formData) => ({
+      url: `media/uploadFileQueue?groupId=${formData.groupId}&userId=${formData.userId}&source=${formData.source}&location=${formData.location}&uploadBy=${formData.uploadBy}`,
+      method: 'POST',
+      body: formData.formData,
+      formData: true,
+      // headers: {
+
+      //   'Content-Type': 'multipart/form-data',
+      // },
+    }),
+
+    invalidatesTags: ['media','messages'],
+  }),
   }),
 });
 
-export const {useConvertAndDownloadJpgQuery,useConvertAndDownloadPdfQuery, useQuickMessageMutation, useGetMessagesByUserIdQuery, useVideoUploadMutation, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;
+export const {useUploadMultipleFilesMutation, useConvertAndDownloadJpgQuery,useConvertAndDownloadPdfQuery, useQuickMessageMutation, useGetMessagesByUserIdQuery, useVideoUploadMutation, useFileUploadMutation,useGetMediaQuery } = MessageApiSlice;

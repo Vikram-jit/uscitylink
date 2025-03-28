@@ -21,81 +21,108 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Obx(() {
-        if (_staffgroupController.loading.value) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-        return ListView.builder(
-            itemCount: _staffgroupController.groups.value.data?.length,
-            itemBuilder: (context, index) {
-              var group = _staffgroupController.groups.value.data?[index];
-              return Dismissible(
-                key: Key('${group?.id}'),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) {
-                  _staffgroupController.deleteGroup(group!.id!);
-                },
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(0),
-                  leading: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.grey.shade400,
-                    child: Text(
-                      group?.name?.substring(0, 1) ?? '',
-                      style: const TextStyle(color: Colors.black, fontSize: 18),
-                    ),
-                  ),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          group?.name ?? 'Unnamed Group',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            Utils.formatUtcTime(
-                                    group?.lastMessage?.messageTimestampUtc) ??
-                                '',
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.black45),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    group?.lastMessage?.body ?? "messages",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                  onTap: () {
-                    _socketService?.socket
-                        ?.emit('staff_open_truck_group', group?.id);
-                    Get.toNamed(
-                      AppRoutes.staff_truck_group_detail,
-                      arguments: {'groupId': group?.id},
-                    );
+      child: RefreshIndicator(
+        onRefresh: () async {
+          _staffgroupController.getGroups(
+              1, _staffgroupController.searchController.text);
+        },
+        child: Obx(() {
+          if (_staffgroupController.loading.value &&
+              (_staffgroupController.groups.value?.data?.isEmpty ?? true)) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if (_staffgroupController.groups.value?.data?.isEmpty ?? true) {
+            return Center(child: Text("No any record found."));
+          }
+          return ListView.builder(
+              controller: ScrollController()
+                ..addListener(() {
+                  if (_staffgroupController.loading.value) return;
+                  if (_staffgroupController.currentPage.value <
+                      _staffgroupController.totalPages.value) {
+                    final groupData = _staffgroupController.groups.value.data;
+                    if (groupData != null && groupData.isNotEmpty) {
+                      final lastItem = groupData[groupData.length - 1];
+                      if (lastItem == groupData[groupData.length - 1]) {
+                        _staffgroupController.getGroups(
+                            _staffgroupController.currentPage.value + 1,
+                            _staffgroupController.searchController.text);
+                      }
+                    }
+                  }
+                }),
+              itemCount: _staffgroupController.groups.value.data?.length,
+              itemBuilder: (context, index) {
+                var group = _staffgroupController.groups.value.data?[index];
+                return Dismissible(
+                  key: Key('${group?.id}'),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (direction) {
+                    _staffgroupController.deleteGroup(group!.id!);
                   },
-                ),
-              );
-            });
-      }),
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(0),
+                    leading: CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.grey.shade400,
+                      child: Text(
+                        group?.name?.substring(0, 1) ?? '',
+                        style:
+                            const TextStyle(color: Colors.black, fontSize: 18),
+                      ),
+                    ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            group?.name ?? 'Unnamed Group',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              Utils.formatUtcTime(group
+                                      ?.lastMessage?.messageTimestampUtc) ??
+                                  '',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.black45),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      group?.lastMessage?.body ?? "messages",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                    onTap: () {
+                      _socketService?.socket
+                          ?.emit('staff_open_truck_group', group?.id);
+                      Get.toNamed(
+                        AppRoutes.staff_truck_group_detail,
+                        arguments: {'groupId': group?.id},
+                      );
+                    },
+                  ),
+                );
+              });
+        }),
+      ),
     );
   }
 }

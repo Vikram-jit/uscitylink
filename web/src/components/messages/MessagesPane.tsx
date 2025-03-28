@@ -167,6 +167,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
           )
         );
        })
+       socket.on("update_file_sent_status",(data:any)=>{
+        setMessages((prev) =>
+           prev.map((e) =>
+             e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
+           )
+         );
+        })
+ 
+       
       socket.on('delete_message',(data:any)=>{
       
        
@@ -192,6 +201,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     // Cleanup the interval when the component is unmounted or userId changes
     return () => {
       if (socket) {
+        socket.off('update_file_sent_status');
         socket.off('delete_message');
         socket.off('update_file_recivied_status');
         socket.off('receive_message_channel');

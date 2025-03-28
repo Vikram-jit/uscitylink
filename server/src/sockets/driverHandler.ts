@@ -22,7 +22,7 @@ export async function driverActiveChannelUpdate(
       );
   
       if (existingDriver) {
-          console.log(existingDriver);
+         
           existingDriver.channelId = channelId;
           console.log(`Updated channelId for driver ${socket?.user?.id}`);
         //}

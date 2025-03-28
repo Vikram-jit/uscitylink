@@ -5,7 +5,7 @@ export async function staffActiveChannelUpdate(
   socket: CustomSocket,
   channelId: string
 ) {
-  console.log(channelId,"channelIdUpdate")
+ 
   const userId = socket?.user?.id!;
   
   // Check if the staffId already exists in the global.staffActiveChannel object
@@ -62,14 +62,14 @@ export async function staffOpenChatUpdate(
   userId: string | null | undefined
 ) {
 
-  console.log(userId,"staff_open_chat")
+ 
   const staffId = socket?.user?.id!;
 
   // Check if userId is empty (null or undefined)
   if (!userId) {
     // If userId is empty, remove the entry from staffOpenChat if it exists
     delete global.staffOpenChat[staffId!]; // Remove the staff entry from the object
-    console.log(global.staffOpenChat,"after remove")
+    
     return;
   }
 
@@ -90,7 +90,7 @@ export async function staffOpenChatUpdate(
       global.staffOpenChat[staffId!].userId = userId;
     }
   }
-  console.log(global.staffOpenChat)
+
 }
 
 
@@ -99,7 +99,7 @@ export async function staffOpenTruckGroupUpdate(
   groupId: string | null | undefined
 ) {
 
-  console.log(groupId,"staff_open_truckGroup")
+
   
   const staffId = socket?.user?.id!;
   
@@ -107,7 +107,7 @@ export async function staffOpenTruckGroupUpdate(
   if (!groupId) {
     // If userId is empty, remove the entry from staffOpenChat if it exists
     delete global.staffOpenTruckGroup[staffId!]; // Remove the staff entry from the object
-    console.log(global.staffOpenTruckGroup,"after remove")
+ 
     return;
   }
 
@@ -128,5 +128,5 @@ export async function staffOpenTruckGroupUpdate(
       global.staffOpenTruckGroup[staffId!].groupId = groupId;
     }
   }
-  console.log(global.staffOpenTruckGroup)
+  
 }

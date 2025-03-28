@@ -18,16 +18,6 @@ class SocketService extends GetxController {
   UserPreferenceController userPreferenceController =
       UserPreferenceController();
 
-  // late StaffchannelController _staffchannelController;
-  // @override
-  // void onInit() {
-  //   super.onInit();
-
-  //   // Inject controllers using Get.put() inside the service
-
-  //   _staffchannelController = Get.put(StaffchannelController());
-  // }
-
   late IO.Socket socket;
   var pingResponse = "No pong received yet".obs;
 
@@ -104,7 +94,6 @@ class SocketService extends GetxController {
       }
     });
     socket.on('update_file_upload_status', (data) {
-      print(data);
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().updateUrlStatus(data);
       }
@@ -124,6 +113,12 @@ class SocketService extends GetxController {
     socket.on('update_file_recivied_status', (data) {
       if (Get.isRegistered<StaffchatController>()) {
         Get.find<StaffchatController>().updateUrlStatus(data);
+      }
+    });
+
+    socket.on('update_url_status_truck_group', (data) {
+      if (Get.isRegistered<GroupController>()) {
+        Get.find<GroupController>().updateTruckUrlStatus(data);
       }
     });
 

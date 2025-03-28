@@ -53,7 +53,7 @@ export async function create(req: Request, res: Response): Promise<any> {
           },
         ],
       });
-      console.log(isCheckMemebr);
+    
       if (isCheckMemebr) {
         const username = isCheckMemebr?.UserProfile?.username;
         const groupName = isCheckMemebr?.Group?.name;

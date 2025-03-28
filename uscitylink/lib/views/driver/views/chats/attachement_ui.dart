@@ -56,9 +56,6 @@ class _AttachementUiState extends State<AttachementUi> {
   ];
   @override
   Widget build(BuildContext context) {
-    print(widget.direction &&
-        widget.location == "driver" &&
-        widget.directionType == "R");
     // Extract file extension (lowercase for consistency)
     String extension = widget.fileUrl.split('.').last.toLowerCase();
 

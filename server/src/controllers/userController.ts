@@ -206,7 +206,7 @@ export async function getUserWithoutChannel(
 ): Promise<any> {
   try {
 
-   console.log(req.query.type)
+  
       const type = req.query.type || ""
 
     const isDriverRole = await Role.findOne({
@@ -325,7 +325,7 @@ export async function updateDeviceToken(
   res: Response
 ): Promise<any> {
   try {
-    console.log(req.body);
+  
     await UserProfile.update(
       {
         device_token: req.body.device_token,
@@ -420,7 +420,7 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
 }
 
 export async function syncDriver(req: Request, res: Response): Promise<any> {
-  console.log("eneterß");
+  
   try {
     const isRole = await Role.findOne({
       where: {

@@ -341,6 +341,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
           [Op.or]: [
             { "$UserProfile.username$": { [Op.like]: `%${search}%` } }, 
             { "$UserProfile.user.driver_number$": { [Op.like]: `%${search}%` } }, 
+            { "$UserProfile.user.phone_number$": { [Op.like]: `%${search}%` } }, 
           ],
         },
         order: [

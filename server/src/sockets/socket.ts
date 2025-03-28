@@ -330,7 +330,7 @@ export const initSocket = (httpServer: any) => {
       } else {
         console.log(`Group ${group_id} does not exist`);
       }
-      console.log(group_open_chat);
+     
     });
 
     //Staff Open Chat
@@ -409,7 +409,7 @@ export const initSocket = (httpServer: any) => {
     socket.on(
       "UPDATE_APP_VERSION",
       async ({ version, buildNumber, platform }) => {
-        console.log(version,buildNumber,platform)
+       
         try {
         
       
@@ -525,7 +525,7 @@ export const initSocket = (httpServer: any) => {
     );
 
     socket.on("staff_list_update_driver_online", (data) => {
-      console.log(data);
+    
     });
 
     socket.on(
@@ -583,7 +583,7 @@ export const initSocket = (httpServer: any) => {
       Object.values(global.group_open_chat[groupId]).map((e) => {
         const onlineUser: any = global.userSockets[e.userId];
         if (onlineUser && e.userId == socket.user?.id) {
-          console.log(onlineUser?.user);
+          
           userName.push(onlineUser.user?.name);
         }
       });
@@ -634,7 +634,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on("logout", async () => {
       const userId = socket?.user?.id!;
-      console.log(userId, "socket logout");
+      
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
       delete global.userSockets[userId];

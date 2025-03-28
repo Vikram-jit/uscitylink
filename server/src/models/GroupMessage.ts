@@ -10,6 +10,7 @@ class GroupMessage extends Model {
   public deliveryStatus!: string;
   public messageTimestampUtc!: Date;
    public thumbnail?:string
+   public url_upload_type?:string
   static associate(models: any) {
     GroupMessage.belongsTo(models.Group, { foreignKey: "groupId" });
     GroupMessage.belongsTo(models.UserProfile, { foreignKey: "senderId" });
@@ -42,6 +43,10 @@ GroupMessage.init(
       },
     },
     body: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    url_upload_type: {
       type: DataTypes.TEXT,
       allowNull: false,
     },

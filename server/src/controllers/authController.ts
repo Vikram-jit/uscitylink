@@ -203,7 +203,7 @@ export async function updateAppVersion(
 ): Promise<any> {
   try {
     const { version, buildNumber, platform } = req.body;
-    console.log(req.body)
+   
     const appLiveVersion = await AppVersions.findOne({
       where: {
         version:version,
@@ -370,7 +370,7 @@ export async function loginWithPassword(
 //Send OTP
 export async function sendOtp(req: Request, res: Response): Promise<any> {
   try {
-    console.log(req.body);
+   
     const expiresAt = moment().add(10, "minutes").toDate();
     const otp = generateOTP(6);
     await Otp.create({

@@ -319,6 +319,19 @@ class GroupController extends GetxController {
     }
   }
 
+  void updateTruckUrlStatus(dynamic data) {
+    try {
+      final messageId = data["messageId"];
+      truckMessages
+          .where((message) => message.id == messageId)
+          .forEach((message) => message.url_upload_type = data["status"]);
+
+      truckMessages.refresh();
+    } catch (e) {
+      print("Error while adding new message: $e");
+    }
+  }
+
   // Update a channel with a new message
   void addNewMessage(dynamic messageData) {
     try {

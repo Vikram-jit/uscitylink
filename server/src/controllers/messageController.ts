@@ -25,11 +25,14 @@ import path from "path";
 import {
   messageToChannelToUser,
   messageToDriver,
+  messageToDriverByTruckGroup,
   messageToGroup,
   notifiyFileUploadDriverToStaff,
   notifiyFileUploadDriverToStaffGroup,
   notifiyFileUploadStaffToDriver,
+  notifiyFileUploadTruckGroupMembers,
 } from "../sockets/messageHandler";
+import GroupMessage from "../models/GroupMessage";
 
 dotenv.config();
 
@@ -129,23 +132,35 @@ export const processFileUpload = async (
       uploadSuccess = true;
       if (source == "staff") {
         if (location == "group") {
-          // getSocketInstance().emit("send_group_message", {
-          //   "groupId": groupId,
-          //   "channelId": channelId,
-          //   "body": body,
-          //   "direction": "S",
-          //   "url": `uscitylink/dummy/${fileNameS3}`,
-          //   "thumbnail": null
-          // });
+          await notifiyFileUploadDriverToStaffGroup(
+            getSocketInstance(),
+            socket,
+            groupId!,
+            channelId,
+            existingMessage!.id,
+            "server",
+            userId
+          );
         } else if (location == "truck") {
-          // getSocketInstance().emit("send_message_to_user_by_group", {
-          //   "userId": userId,
-          //   "groupId": groupId,
-          //   "body": body,
-          //   "direction": "S",
-          //   "url": `uscitylink/dummy/${fileNameS3}`,
-          //   "thumbnail": null
-          // });
+          const existingGroupMessage = await GroupMessage.findOne({
+            where: { url: `uscitylink/${fileName}` },
+          });
+          if (existingGroupMessage) {
+            await GroupMessage.update(
+              { url_upload_type: "server" },
+              { where: { id: existingGroupMessage.id } }
+            );
+          }
+    
+          await notifiyFileUploadTruckGroupMembers(
+            getSocketInstance(),
+            socket,
+            channelId,
+            groupId!,
+            existingMessage!.id,
+            "server",
+            userId,existingGroupMessage!.id
+          );
         } else {
           await notifiyFileUploadStaffToDriver(
             getSocketInstance(),
@@ -518,7 +533,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         file_type: req.body.type,
         groupId: groupId,
         upload_source: req.query.source || "message",
-        upload_type:"server"
+        upload_type: "server",
       });
     }
 
@@ -597,7 +612,7 @@ export const fileUploadWeb = async (
         key: file?.key,
         file_type: req.body.type,
         upload_source: source,
-           upload_type:"server"
+        upload_type: "server",
       });
     }
 
@@ -619,7 +634,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit + "") || 10;
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
-    console.log(req.query.type, req.query.source);
+
     if (source == "staff") {
       const userProfile = await UserProfile.findByPk(req.params.channelId);
       const media = await Media.findAndCountAll({
@@ -954,45 +969,54 @@ export const fileUploadByQueue = async (
   res: Response
 ): Promise<any> => {
   try {
+    console.log(req.files)
+    console.log(req.query,"fileTesting")
     if (!req.files || !Array.isArray(req.files)) {
       return res.status(400).send("No files uploaded.");
     }
     const channelId = req.body.channelId || req.activeChannel;
     const groupId = req.query.groupId || null;
     const body = req.body.body;
-    const userId = req.query.userId || req.user?.id 
+    const userId = req.query.userId || req.user?.id;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
-   
+
     for (const file of files) {
       const filePath = file.path;
       const fileName = file.originalname?.replace(" ", "_");
       const fileNameS3 = `${Date.now()}-${fileName}`;
       const source = req.query.location;
       const location = req.query.source;
-      const uploadBy = req.query.uploadBy as string
+      const uploadBy = req.query.uploadBy as string;
      
       // for staff
       if (uploadBy == "staff") {
         const socket = global.userSockets[req.user?.id];
         if (location == "group") {
-          // getSocketInstance().emit("send_group_message", {
-          //   "groupId": groupId,
-          //   "channelId": channelId,
-          //   "body": body,
-          //   "direction": "S",
-          //   "url": `uscitylink/dummy/${fileNameS3}`,
-          //   "thumbnail": null
-          // });
+          await messageToGroup(
+            getSocketInstance(),
+            socket,
+            groupId!.toString(),
+            channelId,
+            body,
+            "S",
+            `uscitylink/${fileNameS3}`,
+            null,
+            "not-upload"
+          );
         } else if (location == "truck") {
-          // getSocketInstance().emit("send_message_to_user_by_group", {
-          //   "userId": userId,
-          //   "groupId": groupId,
-          //   "body": body,
-          //   "direction": "S",
-          //   "url": `uscitylink/dummy/${fileNameS3}`,
-          //   "thumbnail": null
-          // });
+          
+          await messageToDriverByTruckGroup(
+            getSocketInstance(),
+            socket,
+            "",
+            groupId!.toString(),
+            body,
+            "S",
+            `uscitylink/${fileNameS3}`,
+            null,
+            "not-upload"
+          );
         } else {
           await messageToDriver(
             getSocketInstance(),
@@ -1002,7 +1026,8 @@ export const fileUploadByQueue = async (
             "S",
             `uscitylink/${fileNameS3}`,
             null,
-            null
+            null,
+            "not-upload"
           );
         }
       } else {
@@ -1016,7 +1041,8 @@ export const fileUploadByQueue = async (
             body,
             "S",
             `uscitylink/${fileNameS3}`,
-            null
+            null,
+            "not-upload"
           );
         } else {
           await messageToChannelToUser(
@@ -1026,7 +1052,8 @@ export const fileUploadByQueue = async (
             `uscitylink/${fileNameS3}`,
             channelId,
             null,
-            null
+            null,
+            "not-upload"
           );
         }
       }
@@ -1038,7 +1065,7 @@ export const fileUploadByQueue = async (
         file_size: file.size,
         mime_type: file.mimetype,
         key: `uscitylink/${fileNameS3}`,
-        file_type: req.body.type,
+        file_type: req.body.type || file.mimetype.startsWith('image/') ? 'media' : 'doc',
         groupId: groupId,
         upload_source: source || "message",
         upload_type: "local",

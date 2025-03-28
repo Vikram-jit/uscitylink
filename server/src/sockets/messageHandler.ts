@@ -124,7 +124,7 @@ groupMessageQueue.process(async (job: any) => {
 notificationQueue.process(async (job: any) => {
   const { title, body, channel_id, userName, userId, staffId, messageId } =
     job.data;
-  console.log(job);
+
   const roleId = await Role.findOne({
     where: {
       name: "staff",
@@ -147,7 +147,7 @@ notificationQueue.process(async (job: any) => {
       // },
     },
   });
-  console.log(users.length, "USERCOPUNT");
+
   await Promise.all(
     users.map(async (user) => {
       if (user) {
@@ -211,7 +211,8 @@ export async function messageToChannelToUser(
   url: string | null,
   channelId: string,
   thumbnail: string | null,
-  r_message_id: string | null
+  r_message_id: string | null,
+  url_upload_type?: string
 ) {
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id
@@ -230,7 +231,7 @@ export async function messageToChannelToUser(
       url: url,
       thumbnail: thumbnail || null,
       reply_message_id: r_message_id || null,
-      url_upload_type: "server",
+      url_upload_type: url_upload_type || "server",
     });
     const message = await Message.findOne({
       where: {
@@ -459,7 +460,8 @@ export async function messageToDriver(
   direction: string,
   url: string | null,
   thumbnail: string | null,
-  r_message_id: string | null
+  r_message_id: string | null,
+  url_upload_type?: string
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -480,7 +482,7 @@ export async function messageToDriver(
     url: url || null,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
-    url_upload_type: "server",
+    url_upload_type: url_upload_type || "server",
   });
   const message = await Message.findOne({
     where: {
@@ -659,7 +661,8 @@ export async function messageToDriverByTruckGroup(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail: string | null
+  thumbnail: string | null,
+  url_upload_type?: string
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
   const utcTime = moment.utc().toDate();
@@ -695,7 +698,7 @@ export async function messageToDriverByTruckGroup(
       url: url || null,
       type: "truck_group",
       thumbnail: thumbnail || null,
-      url_upload_type: "server",
+      url_upload_type: url_upload_type || "server",
     });
     idsf = messageSave.id;
     const message = await Message.findOne({
@@ -844,6 +847,7 @@ export async function messageToDriverByTruckGroup(
     messageTimestampUtc: utcTime,
     url: url || null,
     thumbnail: thumbnail || null,
+    url_upload_type: url_upload_type || "server",
   });
 
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
@@ -1040,7 +1044,8 @@ export async function messageToGroup(
   body: string,
   direction: string,
   url: string | null,
-  thumbnail: string | null
+  thumbnail: string | null,
+  url_upload_type?: string
 ) {
   const group = await Group.findByPk(groupId);
   const channel = await Channel.findByPk(channelId);
@@ -1061,7 +1066,7 @@ export async function messageToGroup(
     url: url || null,
     type: "group",
     thumbnail: thumbnail || null,
-    url_upload_type: "server",
+    url_upload_type: url_upload_type || "server",
   });
 
   const newMessage = await Message.findByPk(message.id, {
@@ -1244,92 +1249,94 @@ export async function notifiyFileUploadStaffToDriver(
   channelId: string,
   messageId: string,
   type: string,
-  userId:string
+  userId: string
 ) {
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == userId && e.channelId == channelId
   );
-  
+
   if (findUserChannel) {
-
-    socket.emit("update_file_upload_status",{status:type,messageId:messageId})
-
-   
+    socket.emit("update_file_upload_status", {
+      status: type,
+      messageId: messageId,
+    });
   }
 
   const promises = Object.entries(global.staffOpenChat).map(
     async ([staffId, e]) => {
       const isSocket = global.userSockets[staffId];
-  
-      if (
-        e.channelId === channelId &&
-        socket?.user?.id === e.userId
-      ) {
+
+      if (e.channelId === channelId && socket?.user?.id === e.userId) {
         if (isSocket) {
-          isSocket.emit("update_file_sent_status",{status:type,messageId:messageId})
-        }else{
-            const userProfile = await UserProfile.findOne({
-              where:{
-                id:socket?.user?.id
-              }
-            })
-            if(userProfile){
-              if(userProfile.device_token){
-                await sendNotificationToDevice(userProfile.device_token,{
-                   badge:0,
-                   title:"Upload Media",
-                   body:"Send media successfully",
-                   data:{}
-                })
-              }
+          isSocket.emit("update_file_sent_status", {
+            status: type,
+            messageId: messageId,
+          });
+        } else {
+          const userProfile = await UserProfile.findOne({
+            where: {
+              id: socket?.user?.id,
+            },
+          });
+          if (userProfile) {
+            if (userProfile.device_token) {
+              await sendNotificationToDevice(userProfile.device_token, {
+                badge: 0,
+                title: "Upload Media",
+                body: "Send media successfully",
+                data: {},
+              });
             }
           }
+        }
       }
     }
   );
-  await Promise.all(promises)
+  await Promise.all(promises);
 }
-
 
 export async function notifiyFileUploadDriverToStaffGroup(
   io: Server,
   socket: CustomSocket,
-  groupId:string,
+  groupId: string,
   channelId: string,
   messageId: string,
   type: string,
-  userId:string
+  userId: string
 ) {
   let isCheckUserInGroup = true;
   Object.values(global.group_open_chat[groupId]).map((e) => {
-    if(e.userId == userId){
+    if (e.userId == userId) {
       isCheckUserInGroup = false;
     }
     const onlineUser = global.userSockets[e.userId];
     if (onlineUser) {
       // userIdActiveGroup.push(e.userId);
-      io.to(onlineUser.id).emit("update_file_upload_status_group", {groupId,status:type,messageId:messageId});
+      io.to(onlineUser.id).emit("update_file_upload_status_group", {
+        groupId,
+        status: type,
+        messageId: messageId,
+      });
     }
   });
-  if(isCheckUserInGroup){
+  if (isCheckUserInGroup) {
     const userProfile = await UserProfile.findOne({
-      where:{
-        id:userId
-      }
-    })
-    if(userProfile){
-      if(userProfile.device_token){
-        await sendNotificationToDevice(userProfile.device_token,{
-           badge:0,
-           title:"Upload Group Media",
-           body:"Send group media successfully",
-           data:{}
-        })
+      where: {
+        id: userId,
+      },
+    });
+    if (userProfile) {
+      if (userProfile.device_token) {
+        await sendNotificationToDevice(userProfile.device_token, {
+          badge: 0,
+          title: "Upload Group Media",
+          body: "Send group media successfully",
+          data: {},
+        });
       }
     }
   }
 }
-
 
 export async function notifiyFileUploadDriverToStaff(
   io: Server,
@@ -1337,31 +1344,31 @@ export async function notifiyFileUploadDriverToStaff(
   channelId: string,
   messageId: string,
   type: string,
-  userId:string
+  userId: string
 ) {
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id && e.channelId == channelId
   );
-  
+
   if (findUserChannel) {
-
-    socket.emit("update_file_upload_status",{status:type,messageId:messageId})
-
-   
-  }else{
+    socket.emit("update_file_upload_status", {
+      status: type,
+      messageId: messageId,
+    });
+  } else {
     const userProfile = await UserProfile.findOne({
-      where:{
-        id:userId
-      }
-    })
-    if(userProfile){
-      if(userProfile.device_token){
-        await sendNotificationToDevice(userProfile.device_token,{
-           badge:0,
-           title:"Upload Media",
-           body:"Send media successfully",
-           data:{}
-        })
+      where: {
+        id: userId,
+      },
+    });
+    if (userProfile) {
+      if (userProfile.device_token) {
+        await sendNotificationToDevice(userProfile.device_token, {
+          badge: 0,
+          title: "Upload Media",
+          body: "Send media successfully",
+          data: {},
+        });
       }
     }
   }
@@ -1369,18 +1376,65 @@ export async function notifiyFileUploadDriverToStaff(
   const promises = Object.entries(global.staffOpenChat).map(
     async ([staffId, e]) => {
       const isSocket = global.userSockets[staffId];
-      console.log(staffId,"testing value")
-   console.log( e.channelId === channelId &&
-    socket?.user?.id === e.userId,"testing value")
-      if (
-        e.channelId === channelId &&
-        socket?.user?.id === e.userId
-      ) {
+
+      if (e.channelId === channelId && socket?.user?.id === e.userId) {
         if (isSocket) {
-          isSocket.emit("update_file_recivied_status",{status:type,messageId:messageId})
+          isSocket.emit("update_file_recivied_status", {
+            status: type,
+            messageId: messageId,
+          });
         }
       }
     }
   );
-  await Promise.all(promises)
+  await Promise.all(promises);
+}
+
+export async function notifiyFileUploadTruckGroupMembers(
+  io: Server,
+  socket: CustomSocket,
+  channelId: string,
+  groupId: string,
+  messageId: string,
+  type: string,
+  userId: string,
+  groupMessageId: string
+) {
+  const users = await GroupUser.findAll({
+    where: {
+      groupId: groupId,
+    },
+  });
+  await Promise.all(
+    users.map(async (item) => {
+      const findUserChannel = global.driverOpenChat.find(
+        (e) =>
+          e.driverId == item.dataValues.userProfileId &&
+          e.channelId == channelId
+      );
+
+      if (findUserChannel) {
+        const driverSocket = global.userSockets[findUserChannel.driverId];
+        driverSocket.emit("update_file_upload_status", {
+          status: type,
+          messageId: messageId,
+        });
+      }
+    })
+  );
+
+  const promises = Object.entries(global.staffOpenTruckGroup).map(
+    async ([staffId, e]) => {
+      const isSocket = global.userSockets[staffId];
+      if (e.groupId == groupId && channelId == e.channelId) {
+        if (isSocket) {
+          isSocket.emit("update_url_status_truck_group", {
+            status: type,
+            messageId: groupMessageId,
+          });
+        }
+      }
+    }
+  );
+  await Promise.all(promises);
 }

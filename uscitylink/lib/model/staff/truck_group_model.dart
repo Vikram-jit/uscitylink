@@ -289,6 +289,7 @@ class Messages {
   String? createdAt;
   String? updatedAt;
   Sender? sender;
+  String? url_upload_type;
 
   Messages(
       {this.id,
@@ -301,11 +302,13 @@ class Messages {
       this.createdAt,
       this.updatedAt,
       this.sender,
-      this.thumbnail});
+      this.thumbnail,
+      this.url_upload_type});
 
   Messages.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     groupId = json['groupId'];
+    url_upload_type = json['url_upload_type'];
     senderId = json['senderId'];
     body = json['body'];
     deliveryStatus = json['deliveryStatus'];
@@ -321,6 +324,7 @@ class Messages {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
+    data['url_upload_type'] = this.url_upload_type;
     data['groupId'] = this.groupId;
     data['senderId'] = this.senderId;
     data['body'] = this.body;

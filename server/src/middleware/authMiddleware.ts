@@ -24,7 +24,7 @@ export const authMiddleware = async (
 
   try {
     const decoded: any = verifyToken(token);
-    console.log(token)
+  
     if (decoded?.id) {
       const userProfile = await UserProfile.findByPk(decoded?.id);
      

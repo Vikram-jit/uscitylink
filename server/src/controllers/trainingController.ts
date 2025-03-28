@@ -504,7 +504,7 @@ export async function addQutionsTrainingVideo(
               driverId: el,
             },
           });
-          console.log(isCheck);
+        
           if (!isCheck) {
             const td = await TrainingDriver.create({
               tainingId: training.id,

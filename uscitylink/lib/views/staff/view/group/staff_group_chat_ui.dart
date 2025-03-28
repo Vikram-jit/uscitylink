@@ -516,6 +516,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
                   // If there's an image URL, show the image with a loading indicator
                   if (hasImageUrl)
                     AttachementUi(
+                      location: "staff",
                       directionType: message.messageDirection!,
                       direction: message.userProfileId == message.senderId,
                       url_upload_type: message.url_upload_type ?? "server",
