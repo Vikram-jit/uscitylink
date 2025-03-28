@@ -138,6 +138,7 @@ export const fileUploadAWS = async (
         groupId: groupId == "null" ? null : groupId,
         upload_source: req.query.source || "message",
         thumbnail: thumbnail_data?.Key,
+           upload_type:"server"
       });
     
       }

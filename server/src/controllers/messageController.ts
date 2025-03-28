@@ -518,6 +518,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
         file_type: req.body.type,
         groupId: groupId,
         upload_source: req.query.source || "message",
+        upload_type:"server"
       });
     }
 
@@ -596,6 +597,7 @@ export const fileUploadWeb = async (
         key: file?.key,
         file_type: req.body.type,
         upload_source: source,
+           upload_type:"server"
       });
     }
 

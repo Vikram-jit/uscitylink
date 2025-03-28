@@ -230,7 +230,7 @@ export async function messageToChannelToUser(
       url: url,
       thumbnail: thumbnail || null,
       reply_message_id: r_message_id || null,
-      url_upload_type: "not-upload",
+      url_upload_type: "server",
     });
     const message = await Message.findOne({
       where: {
@@ -480,6 +480,7 @@ export async function messageToDriver(
     url: url || null,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
+    url_upload_type: "server",
   });
   const message = await Message.findOne({
     where: {
@@ -694,6 +695,7 @@ export async function messageToDriverByTruckGroup(
       url: url || null,
       type: "truck_group",
       thumbnail: thumbnail || null,
+      url_upload_type: "server",
     });
     idsf = messageSave.id;
     const message = await Message.findOne({
@@ -1059,6 +1061,7 @@ export async function messageToGroup(
     url: url || null,
     type: "group",
     thumbnail: thumbnail || null,
+    url_upload_type: "server",
   });
 
   const newMessage = await Message.findByPk(message.id, {
