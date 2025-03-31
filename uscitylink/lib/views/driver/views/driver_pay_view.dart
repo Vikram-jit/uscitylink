@@ -671,6 +671,47 @@ class DriverPayView extends StatelessWidget {
                                         ),
                                         Divider(),
                                         Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8.0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "Note",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w700),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8.0),
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              "${pay.note ?? "-"}",
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleSmall
+                                                  ?.copyWith(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600),
+                                            ),
+                                          ),
+                                        ),
+                                        Divider(),
+                                        SizedBox(
+                                          height: 6,
+                                        ),
+                                        Padding(
                                           padding: EdgeInsets.symmetric(
                                               horizontal: 10),
                                           child: Column(

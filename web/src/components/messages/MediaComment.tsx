@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { DocumentScanner, Download } from '@mui/icons-material';
+import { DocumentScanner, Download, Upload } from '@mui/icons-material';
 import { IconButton, Typography } from '@mui/material';
 import { Box } from '@mui/system';
 import { FilePdf, PlayCircle } from '@phosphor-icons/react';
@@ -17,9 +17,19 @@ interface MediaComponent {
   thumbnail?: string;
   name: string;
   type?: string;
+  messageDirection?: string;
 }
 
-export default function MediaComponent({ url, width, height, file_name, name, thumbnail, type }: MediaComponent) {
+export default function MediaComponent({
+  url,
+  width,
+  height,
+  file_name,
+  name,
+  thumbnail,
+  type,
+  messageDirection,
+}: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
   const file = name?.split('/');
@@ -114,7 +124,17 @@ export default function MediaComponent({ url, width, height, file_name, name, th
                 alignItems: 'center',
               }}
             >
-              <Download /> <Typography>receiving...</Typography>
+              {messageDirection == 'S' ? (
+                <>
+                  {' '}
+                  <Upload /> <Typography>sending...</Typography>
+                </>
+              ) : (
+                <>
+                  {' '}
+                  <Download /> <Typography>receiving...</Typography>
+                </>
+              )}
             </Box>
           ) : (
             <IconButton onClick={() => setOpenDocument(true)}>
@@ -143,7 +163,17 @@ export default function MediaComponent({ url, width, height, file_name, name, th
                 alignItems: 'center',
               }}
             >
-              <Download /> <Typography>receiving...</Typography>
+              {messageDirection == 'S' ? (
+                <>
+                  {' '}
+                  <Upload /> <Typography>sending...</Typography>
+                </>
+              ) : (
+                <>
+                  {' '}
+                  <Download /> <Typography>receiving...</Typography>
+                </>
+              )}
             </Box>
           ) : (
             <IconButton onClick={() => setOpenDocument(true)}>
@@ -186,7 +216,17 @@ export default function MediaComponent({ url, width, height, file_name, name, th
                     alignItems: 'center',
                   }}
                 >
+                  {messageDirection == 'S' ? (
+                <>
+                  {' '}
+                  <Upload /> <Typography>sending...</Typography>
+                </>
+              ) : (
+                <>
+                  {' '}
                   <Download /> <Typography>receiving...</Typography>
+                </>
+              )}
                 </Box>
               ) : (
                 <IconButton onClick={() => setOpenDocument(true)}>
@@ -209,7 +249,17 @@ export default function MediaComponent({ url, width, height, file_name, name, th
                     alignItems: 'center',
                   }}
                 >
+                  {messageDirection == 'S' ? (
+                <>
+                  {' '}
+                  <Upload /> <Typography>sending...</Typography>
+                </>
+              ) : (
+                <>
+                  {' '}
                   <Download /> <Typography>receiving...</Typography>
+                </>
+              )}
                 </Box>
               ) : (
                 <IconButton onClick={() => setOpenDocument(true)}>

@@ -39,7 +39,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [pinMessage, setPinMessage] = React.useState<string>('0');
-  const [oldPinValue, setOldPinValue] = React.useState<string>('0');
+  const [unreadMessage, setUnReadMessage] = React.useState<string>('0');
+ 
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
   const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
@@ -51,7 +52,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   });
 
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
-    { id: userId, page, pageSize: 10, pinMessage: pinMessage },
+    { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage },
     {
       skip: !userId,
       pollingInterval: 30000,
@@ -245,6 +246,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
           setSelectedTemplate={setSelectedTemplate}
           pinMessage={pinMessage}
           setPinMessage={setPinMessage}
+          unreadMessage={unreadMessage}
+          setUnReadMessage={setUnReadMessage}
           setMessages={setMessages}
           setPage={setPage}
         />
@@ -431,7 +434,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
             </>
           ) : (
             <Box flex={1} display={'flex'} flexDirection={'column'} alignItems={'center'} justifyContent={'center'}>
-              {userId && messages.length === 0 ? (
+              {userId && messages.length === 0  ?  (
                 <IconButton
                   onClick={() => socket.emit('send_message_to_user', { body: 'Hi', userId: userId, direction: 'S' })}
                 >
@@ -441,7 +444,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                   </Box>
                 </IconButton>
               ) : (
-                <Typography>Not Chat Selected</Typography>
+                <Typography>Not Chat found</Typography>
               )}
             </Box>
           )}

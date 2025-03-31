@@ -1,40 +1,42 @@
 import * as React from 'react';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import { Box, Input, List, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Input, List, Paper, Stack, Typography } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { styled } from '@mui/system';
 import { Truck } from '@phosphor-icons/react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 
 import ChatListItem from './ChatListItem';
-import { styled } from '@mui/system';
 
 type ChatsPaneProps = {
   chats: SingleChannelModel;
   loadMoreMessages: any;
   hasMore: any;
-  
+
   setSelectedChannelId?: (id: string) => void;
-  selected:boolean;
-  setSelected:React.Dispatch<React.SetStateAction<boolean>>
+  selected: boolean;
+  setSelected: React.Dispatch<React.SetStateAction<boolean>>;
   selectedChannelId?: string;
   selectedUserId: string;
   setSelectedUserId: (id: string) => void;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   search: string;
   handleSearchChange: any;
+  unreadMessage: string;
+
+  setUserList: React.Dispatch<React.SetStateAction<SingleChannelModel | null>>;
+  setUnReadMessage: React.Dispatch<React.SetStateAction<string>>;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
- 
-
   const handleToggle = () => {
-    if(!props.selected == false){
-      props.setSearch("")
+    if (!props.selected == false) {
+      props.setSearch('');
     }
-   props.setSelected(!props.selected);
-   
+    props.setSelected(!props.selected);
   };
   const CustomToggleButton = styled(ToggleButton)(({ theme }) => ({
     '&.Mui-selected, &.Mui-selected:hover': {
@@ -42,7 +44,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
       backgroundColor: theme.palette.primary.main,
     },
   }));
-  
+
   const {
     chats,
 
@@ -67,6 +69,17 @@ export default function ChatsPane(props: ChatsPaneProps) {
         <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold', mr: 'auto' }}>
           Messages
         </Typography>
+        <Button
+          size="small"
+          variant={props.unreadMessage == '0' ? 'outlined' : 'contained'}
+          onClick={() => {
+            props.setPage(1)
+            props.setUserList(null);
+            props.setUnReadMessage(props.unreadMessage == '1' ? '0' : '1');
+          }}
+        >
+          {props.unreadMessage == '1' ? 'All' : 'Un-read'}{' '}
+        </Button>
       </Stack>
       <Box sx={{ px: 2, pb: 1.5 }}>
         <Input
@@ -75,7 +88,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           size="small"
           startAdornment={<SearchRoundedIcon />}
           endAdornment={
-            <CustomToggleButton  sx={{marginBottom:1}} value="type" selected={props.selected} onChange={handleToggle}>
+            <CustomToggleButton sx={{ marginBottom: 1 }} value="type" selected={props.selected} onChange={handleToggle}>
               <Truck size={18} />
             </CustomToggleButton>
           }

@@ -3,20 +3,36 @@ import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMu
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { AttachFile, Attachment } from '@mui/icons-material';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import { CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Popover } from '@mui/material';
+import {
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Popover,
+} from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import ImageGallery from 'react-image-gallery';
 import ReactPlayer from 'react-player';
 import { useDispatch } from 'react-redux';
-import ImageGallery from 'react-image-gallery';
+
 import 'react-image-gallery/styles/css/image-gallery.css';
+
+import { File, Video } from '@phosphor-icons/react';
 
 import { useSocket } from '@/lib/socketProvider';
 
 import MediaComponent from './MediaComment';
-import { File, Video } from '@phosphor-icons/react';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -28,22 +44,20 @@ export type MessageInputProps = {
 };
 
 export default function MessageInput(props: MessageInputProps) {
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
 
+  const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-    const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
-  
-    const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
-      setAnchorEl(event.currentTarget);
-    };
-  
-    const handleClose = () => {
-      setAnchorEl(null);
-    };
-    const open = Boolean(anchorEl);
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+  const open = Boolean(anchorEl);
 
-    const [fileUpload, { isLoading }] = useFileUploadMutation();
-    const [uploadMultipleFiles, { isLoading:multipleLoader }] = useUploadMultipleFilesMutation();
-  const [videoUpload, { isLoading:videoLoader }] = useVideoUploadMutation();
+  const [fileUpload, { isLoading }] = useFileUploadMutation();
+  const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
+  const [videoUpload, { isLoading: videoLoader }] = useVideoUploadMutation();
   const { socket } = useSocket();
   const { textAreaValue, setTextAreaValue, onSubmit } = props;
   const [caption, setCaption] = React.useState('');
@@ -83,20 +97,30 @@ export default function MessageInput(props: MessageInputProps) {
 
   // Handle the file input change event
   const handleFileChange = (event: any) => {
-
     //console.log(event.target.files)
     const selectedFile = event.target.files[0];
     if (selectedFile) {
-      setFile(selectedFile)
-    //  const selectedFiles = Array.from(event.target.files);
-     // setFiles(selectedFiles);
+      //setFile(selectedFile);
+      const selectedFiles = Array.from(event.target.files);
+      setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
+
+  const handleFileChangeVedio = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      //   const selectedFiles = Array.from(event.target.files);
+      //  setFiles(selectedFiles);
       setPreviewDialogOpen(true);
     }
   };
   React.useEffect(() => {
     // Cleanup function to revoke object URLs
     return () => {
-      files.forEach((file:any) => URL.revokeObjectURL(file.preview));
+      files.forEach((file: any) => URL.revokeObjectURL(file.preview));
     };
   }, [files]);
 
@@ -109,6 +133,9 @@ export default function MessageInput(props: MessageInputProps) {
 
   const handleIconClick = () => {
     document?.getElementById('file-input')?.click();
+  };
+  const handleVedioClick = () => {
+    document?.getElementById('file-input-vedio')?.click();
   };
 
   const handleCancel = () => {
@@ -140,21 +167,7 @@ export default function MessageInput(props: MessageInputProps) {
     }
   };
 
-  const renderFilePreviewMultiple = (file:any) => {
-    const objectUrl = URL.createObjectURL(file);
-    const extension = file.name.split('.').pop().toLowerCase();
-    const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
-
-    if (file.type.startsWith('image/')) {
-      return <img src={objectUrl} alt={file.name} style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }} />;
-    } else if (file.type === 'application/pdf') {
-      return <div>PDF Preview (placeholder)</div>;
-    } else if (videoExtensions.includes(extension)) {
-      return <ReactPlayer height={200} width={500} url={objectUrl} controls />;
-    } else {
-      return <div>File Preview Not Available</div>;
-    }
-  };
+ 
 
   async function sendMessage() {
     try {
@@ -162,21 +175,22 @@ export default function MessageInput(props: MessageInputProps) {
 
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
 
-
       dispatch(showLoader());
       let formData = new FormData();
       formData.append('file', file);
       formData.append('userId', props.userId);
-      formData.append('source', "message");
+      formData.append('source', 'message');
       formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
-      const res = videoExtensions.includes(extension) ? await videoUpload({formData,userId:props.userId,groupId:null}).unwrap() : await fileUpload(formData).unwrap();
+      const res = videoExtensions.includes(extension)
+        ? await videoUpload({ formData, userId: props.userId, groupId: null }).unwrap()
+        : await fileUpload(formData).unwrap();
       if (res.status) {
         socket.emit('send_message_to_user', {
           body: caption,
           userId: props.userId,
           direction: 'S',
           url: res?.data?.key,
-          thumbnail:res?.data?.thumbnail
+          thumbnail: res?.data?.thumbnail,
         });
         setFile(null);
         setCaption('');
@@ -193,28 +207,28 @@ export default function MessageInput(props: MessageInputProps) {
 
   async function sendFiles() {
     try {
+      dispatch(showLoader());
 
-        dispatch(showLoader());
+      let formData = new FormData();
 
-        let formData = new FormData();
-      
-      //const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+      formData.append('body', caption);
+      formData.append('type', '');
+      formData.append('channelId', '');
+      //  formData.append("files",files)
 
-     // const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+      for (const file of files) {
+        formData.append('files', file, file.name);
+      }
 
-
-     formData.append("body",caption)
-     formData.append("type","")
-     formData.append("channelId","")
-    //  formData.append("files",files)
-     
-    for (const file of files) {
-      formData.append('files', file,file.name);
-  }
-     // const res = videoExtensions.includes(extension) ? await videoUpload({formData,userId:props.userId,groupId:null}).unwrap() : await fileUpload(formData).unwrap();
-     const res = await uploadMultipleFiles({formData:formData,userId:props.userId,groupId:"",location:"message",source:"message",uploadBy:"staff"}).unwrap();
+      const res = await uploadMultipleFiles({
+        formData: formData,
+        userId: props.userId,
+        groupId: '',
+        location: 'message',
+        source: 'message',
+        uploadBy: 'staff',
+      }).unwrap();
       if (res?.status) {
-      
         setFiles([]);
         setCaption('');
         setPreviewDialogOpen(false);
@@ -287,28 +301,50 @@ export default function MessageInput(props: MessageInputProps) {
                 pr: 1,
               }}
             >
-               <input
-                
-                id="file-input"
+              <input id="file-input" type="file" multiple style={{ display: 'none' }} onChange={handleFileChange} />
+
+              <input
+                id="file-input-vedio"
                 type="file"
-                
-                style={{ display: 'none' }} 
-                onChange={handleFileChange} 
+                accept="video/*"
+                style={{ display: 'none' }}
+                onChange={handleFileChangeVedio}
               />
-             
-              {/* <input
-                
-                id="file-input"
-                type="file"
-                  accept="video/*"
-                style={{ display: 'none' }} 
-                onChange={handleFileChange} 
-              /> */}
-             
-             
-              <IconButton onClick={handleIconClick}>
+
+              <IconButton onClick={attachmenPopOver}>
                 <AttachFile />
               </IconButton>
+              <Popover
+                id={`attachment-popover`}
+                open={open}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+              >
+                <List disablePadding>
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={handleIconClick}>
+                      <ListItemIcon>
+                        <File />
+                      </ListItemIcon>
+                      <ListItemText primary="Media/Docs" />
+                    </ListItemButton>
+                  </ListItem>
+                  <Divider />
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={handleVedioClick}>
+                      <ListItemIcon>
+                        <Video />
+                      </ListItemIcon>
+                      <ListItemText primary={'Video'} />
+                    </ListItemButton>
+                  </ListItem>
+                  <Divider />
+                </List>
+              </Popover>
               <Button
                 disabled={isLoading}
                 size="small"
@@ -346,10 +382,8 @@ export default function MessageInput(props: MessageInputProps) {
           <DialogTitle>Selected Files</DialogTitle>
           <DialogContent>
             <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
-              {/* Render file preview */}
-              {renderFilePreview()}
-            {/* <MediaGallery mediaFiles={files}/> */}
-              {/* Input for file description */}
+              {files.length > 0 ? <MediaGallery mediaFiles={files} /> : renderFilePreview()}
+
               <TextField
                 fullWidth
                 placeholder="Enter caption..."
@@ -364,7 +398,7 @@ export default function MessageInput(props: MessageInputProps) {
             <Button onClick={handleCancel} color="secondary">
               Cancel
             </Button>
-            <Button disabled={isLoading} onClick={sendMessage} color="primary">
+            <Button disabled={isLoading} onClick={files.length ? sendFiles : sendMessage} color="primary">
               Send {isLoading && <CircularProgress />}
             </Button>
           </DialogActions>
@@ -374,9 +408,8 @@ export default function MessageInput(props: MessageInputProps) {
   );
 }
 
-
-const MediaGallery = ({ mediaFiles }:any) => {
-  const galleryItems = mediaFiles.map((file:any) => {
+const MediaGallery = ({ mediaFiles }: any) => {
+  const galleryItems = mediaFiles.map((file: any) => {
     const objectUrl = URL.createObjectURL(file);
     const extension = file.name.split('.').pop().toLowerCase();
     const isVideo = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'].includes(extension);
@@ -385,64 +418,19 @@ const MediaGallery = ({ mediaFiles }:any) => {
     return {
       original: objectUrl,
       thumbnail: objectUrl,
-      renderItem: () => (
+      renderItem: () =>
         isVideo ? (
-          <video controls style={{ width: '100%',height:"75vh" }}>
+          <video controls style={{ width: '100%', height: '75vh' }}>
             <source src={objectUrl} type={file.type} />
             Your browser does not support the video tag.
           </video>
         ) : isPDF ? (
-          <iframe
-            src={objectUrl}
-            title={file.name}
-            style={{ width: '100%', height: '75vh' }}
-          />
+          <iframe src={objectUrl} title={file.name} style={{ width: '100%', height: '75vh' }} />
         ) : (
           <img src={objectUrl} alt={file.name} style={{ height: '75vh' }} />
-        )
-      ),
+        ),
     };
   });
 
   return <ImageGallery items={galleryItems} showThumbnails={false} />;
 };
-
-
-{/* <Popover
-id={`attachment-popover`}
-open={open}
-anchorEl={anchorEl}
-onClose={handleClose}
-anchorOrigin={{
-  vertical: 'bottom',
-  horizontal: 'left',
-}}
->
-<List disablePadding>
-  <ListItem disablePadding>
-    <ListItemButton onClick={handleIconClick}
-     
-    >
-      <ListItemIcon>
-        <File/>
-        
-      </ListItemIcon>
-      <ListItemText primary="Media/Docs" />
-    </ListItemButton>
-  </ListItem>
-  <Divider />
-  <ListItem disablePadding>
-    <ListItemButton
-     
-    >
-      <ListItemIcon >
-        <Video/>
-      
-      </ListItemIcon>
-      <ListItemText primary={"Video"} />
-    </ListItemButton>
-  </ListItem>
-  <Divider />
- 
-</List>
-</Popover> */}

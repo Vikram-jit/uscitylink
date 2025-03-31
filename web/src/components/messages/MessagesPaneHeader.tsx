@@ -23,8 +23,10 @@ type MessagesPaneHeaderProps = {
   sender?: UserProfile;
   mediaPanel:boolean
   pinMessage:string
+  unreadMessage:string
   truckNumbers?:string
   setPinMessage:React.Dispatch<React.SetStateAction<string>>
+  setUnReadMessage:React.Dispatch<React.SetStateAction<string>>
   setPage:React.Dispatch<React.SetStateAction<number>>
   setMessages:React.Dispatch<React.SetStateAction<MessageModel[]>>
   setMediaPanel:React.Dispatch<React.SetStateAction<boolean>>
@@ -115,6 +117,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
         >
          {props.pinMessage =="0" ? "View Pin Messages"  : "View All Messages"}
         </Button>
+       
         <IconButton   onClick={handleClick}
             size="small"
             sx={{ ml: 2 }}
@@ -168,6 +171,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
           </ListItemIcon>
           Templates
         </MenuItem>
+       
       </Menu>
       {templateDialog && <TemplateDialog open={templateDialog} setOpen={setTemplateDialog} setSelectedTemplate={props.setSelectedTemplate}/>}
       </Stack>

@@ -234,10 +234,10 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1; 
    
-    const pageSize = 30; 
+    const pageSize = 50; 
 
     const search = req.query.search as string || ''
-
+    const unreadMessage = req.query.unreadMessage  as string || "0"
     const offset = (page - 1) * pageSize;
     const data: any = await Channel.findOne({
       where: {
@@ -309,9 +309,76 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
             "DESC",
           ],
         ],
-        
+        limit: pageSize,
+        offset: offset,
       })
-    }else{
+    }else if(unreadMessage == "1"){
+
+
+      const unreadChatFilter = await MessageStaff.findAll({
+        where:{
+          staffId:req.user?.id,
+          type:"chat",
+          status:"un-read"
+        },
+      })
+
+      
+
+  
+      const getUserIds = await Promise.all(unreadChatFilter.map((e:any)=>e?.driverId))
+
+      let uniqueArray = [...new Set(getUserIds)];
+     
+      // if(search == ""){
+      //   uniqueArray=[]
+      // }
+     console.log(uniqueArray,"unreadMessageuniqueArray")
+      userChannels = await  UserChannel.findAndCountAll({
+      
+        include: [
+          {
+            model: UserProfile,
+            attributes: {
+              exclude: ["password"],
+            },
+            include: [
+              {
+                model: User,
+                as: "user",
+               
+              },
+              
+            ],
+            
+          },
+          {
+            model: Message,
+            as: "last_message",
+          },
+        ],
+        where: {
+          channelId:req.activeChannel,
+          status:"active",
+          userProfileId:{[Op.in]:uniqueArray}
+        },
+        order: [
+          [
+            
+            "sent_message_count",
+            "DESC",
+          ],
+        
+          [
+           
+            "last_message_utc",
+            "DESC",
+          ],
+        ],
+        limit: pageSize,
+        offset: offset,
+      })
+    } else{
        userChannels = await  UserChannel.findAndCountAll({
       
         include: [
@@ -362,9 +429,6 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
       })
   
     }
-
-    
-
 
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);

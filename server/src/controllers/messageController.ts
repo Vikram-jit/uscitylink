@@ -102,7 +102,7 @@ export const processFileUpload = async (
 
   const uploadParams = {
     Bucket: process.env.BUCKET_NAME!,
-    Key: `uscitylink/${fileName}`,
+    Key: `uscitylink/dummy/${fileName}`,
     Body: fileStream,
   };
   const maxRetries = 3;
@@ -110,7 +110,7 @@ export const processFileUpload = async (
   let uploadSuccess = false;
 
   const existingMessage = await Message.findOne({
-    where: { url: `uscitylink/${fileName}` },
+    where: { url: `uscitylink/dummy/${fileName}` },
   });
 
   while (attempt < maxRetries) {
@@ -143,7 +143,7 @@ export const processFileUpload = async (
           );
         } else if (location == "truck") {
           const existingGroupMessage = await GroupMessage.findOne({
-            where: { url: `uscitylink/${fileName}` },
+            where: { url: `uscitylink/dummy/${fileName}` },
           });
           if (existingGroupMessage) {
             await GroupMessage.update(
@@ -410,7 +410,7 @@ export const getMessagesByUserId = async (
     const { id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-
+    
     const offset = (page - 1) * pageSize;
 
     const userProfile = await UserProfile.findByPk(id, {
@@ -969,8 +969,7 @@ export const fileUploadByQueue = async (
   res: Response
 ): Promise<any> => {
   try {
-    console.log(req.files)
-    console.log(req.query,"fileTesting")
+   
     if (!req.files || !Array.isArray(req.files)) {
       return res.status(400).send("No files uploaded.");
     }
@@ -1000,7 +999,7 @@ export const fileUploadByQueue = async (
             channelId,
             body,
             "S",
-            `uscitylink/${fileNameS3}`,
+            `uscitylink/dummy/${fileNameS3}`,
             null,
             "not-upload"
           );
@@ -1013,7 +1012,7 @@ export const fileUploadByQueue = async (
             groupId!.toString(),
             body,
             "S",
-            `uscitylink/${fileNameS3}`,
+            `uscitylink/dummy/${fileNameS3}`,
             null,
             "not-upload"
           );
@@ -1024,7 +1023,7 @@ export const fileUploadByQueue = async (
             userId,
             body,
             "S",
-            `uscitylink/${fileNameS3}`,
+            `uscitylink/dummy/${fileNameS3}`,
             null,
             null,
             "not-upload"
@@ -1040,7 +1039,7 @@ export const fileUploadByQueue = async (
             channelId,
             body,
             "S",
-            `uscitylink/${fileNameS3}`,
+            `uscitylink/dummy/${fileNameS3}`,
             null,
             "not-upload"
           );
@@ -1049,7 +1048,7 @@ export const fileUploadByQueue = async (
             getSocketInstance(),
             socket,
             body,
-            `uscitylink/${fileNameS3}`,
+            `uscitylink/dummy/${fileNameS3}`,
             channelId,
             null,
             null,
@@ -1064,7 +1063,7 @@ export const fileUploadByQueue = async (
         file_name: fileName,
         file_size: file.size,
         mime_type: file.mimetype,
-        key: `uscitylink/${fileNameS3}`,
+        key: `uscitylink/dummy/${fileNameS3}`,
         file_type: req.body.type || file.mimetype.startsWith('image/') ? 'media' : 'doc',
         groupId: groupId,
         upload_source: source || "message",
@@ -1083,7 +1082,7 @@ export const fileUploadByQueue = async (
         location: req.query.source,
       });
 
-      fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
+      fileUpload.push({ ...file, key: `uscitylink/dummy/${fileNameS3}` });
     }
 
     return res.status(201).json({

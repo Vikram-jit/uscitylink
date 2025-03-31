@@ -3,11 +3,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { apiSlice } from '@/redux/apiSlice';
 import { useGetGroupByIdQuery, useGetGroupMessagesQuery, useGetGroupsQuery } from '@/redux/GroupApiSlice';
-import { useFileUploadMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
+import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
 import { GroupModel } from '@/redux/models/GroupModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { Add, AttachFile } from '@mui/icons-material';
+import 'react-image-gallery/styles/css/image-gallery.css';
 import {
   Avatar,
   Badge,
@@ -27,6 +28,7 @@ import {
   ListItemButton,
   ListItemText,
   Paper,
+  Popover,
   TextField,
   Typography,
 } from '@mui/material';
@@ -35,6 +37,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { styled } from '@mui/system';
 import { Circle, PaperPlane } from '@phosphor-icons/react';
+import { File, Video } from '@phosphor-icons/react/dist/ssr';
 import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
@@ -52,6 +55,7 @@ import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
+import ReactImageGallery from 'react-image-gallery';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -141,6 +145,19 @@ const ChatInterface = ({ type }: { type: string }) => {
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  const [anchorElPopOver, setAnchorElPopOver] = React.useState<HTMLButtonElement | null>(null);
+
+  const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorElPopOver(event.currentTarget);
+  };
+
+  const handleClosePopOver = () => {
+    setAnchorElPopOver(null);
+  };
+  const openPopOver = Boolean(anchorElPopOver);
+  const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
+
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [fileUpload] = useFileUploadMutation();
@@ -199,13 +216,13 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
 
-  const handleFileChange = (event: any) => {
-    const selectedFile = event.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setPreviewDialogOpen(true);
-    }
-  };
+  // const handleFileChange = (event: any) => {
+  //   const selectedFile = event.target.files[0];
+  //   if (selectedFile) {
+  //     setFile(selectedFile);
+  //     setPreviewDialogOpen(true);
+  //   }
+  // };
 
   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -300,9 +317,8 @@ const ChatInterface = ({ type }: { type: string }) => {
           );
           return [...prevMessages, ...newMessages];
         });
-      
+
         setHasMoreMessage(groupMessage.data.pagination.currentPage < groupMessage.data.pagination.totalPages);
-    
 
         setSenderId(groupMessage?.data?.senderId);
       }
@@ -312,10 +328,29 @@ const ChatInterface = ({ type }: { type: string }) => {
   useEffect(() => {
     if (socket) {
       if (type == 'group') {
+        
+        socket.on('update_file_upload_status_group',(data:any)=>{
+         
+          setMessages((prev:any) =>
+             prev.map((e:any) =>
+               e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
+             )
+           );
+        
+      })
         socket.on('new_group_message_received', (message: MessageModel) =>
           handleReceiveMessage(message, selectedGroup)
         );
       } else {
+        socket.on('update_url_status_truck_group',(data:any)=>{
+         console.log(data)
+            setMessages((prev:any) =>
+               prev.map((e:any) =>
+                 e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
+               )
+             );
+          
+        })
         socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
       }
 
@@ -344,7 +379,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
   const loadMoreGroupMessages = () => {
-    console.log("hello")
+    console.log('hello');
     if (hasMoreMessage && !isLoading) {
       setPageMessage((prevPage) => prevPage + 1);
     }
@@ -414,7 +449,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-   
+
     try {
       // userId,groupId,body,direction,url
 
@@ -459,6 +494,52 @@ const ChatInterface = ({ type }: { type: string }) => {
       setError('Failed to send message. Please try again.');
     }
   };
+ async function sendFiles() {
+    try {
+
+      const userIds = group!.data.members
+      .filter((e) => e.userProfileId && e.status == 'active')
+      .map((e) => e.userProfileId);
+    if (userIds.length == 0) {
+      alert('Please Add member before send message into group');
+      dispatch(hideLoader());
+      return;
+    }
+      dispatch(showLoader());
+
+      let formData = new FormData();
+
+      formData.append('body', caption);
+      formData.append('type', '');
+      formData.append('channelId', '');
+      //  formData.append("files",files)
+
+      for (const file of files) {
+        formData.append('files', file, file.name);
+      }
+
+      const res = await uploadMultipleFiles({
+        formData: formData,
+        userId: "",
+        groupId: selectedGroup,
+        location: type =="group" ? 'group': 'truck',
+        source: type =="group" ? 'group': 'truck',
+        uploadBy: 'staff',
+      }).unwrap();
+      if (res?.status) {
+
+        setFiles([]);
+        setCaption('');
+        setPreviewDialogOpen(false);
+        dispatch(hideLoader());
+      }
+      dispatch(hideLoader());
+      console.log(res);
+    } catch (error) {
+      dispatch(hideLoader());
+      console.log(error);
+    }
+  }
 
   const formatTimestamp = (timestamp: Date): string => {
     return moment.utc(timestamp).format('HH:mm');
@@ -466,7 +547,32 @@ const ChatInterface = ({ type }: { type: string }) => {
   const handleIconClick = () => {
     document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
   };
+  const [files, setFiles] = React.useState<any>([]);
 
+  const handleFileChange = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      //setFile(selectedFile);
+      const selectedFiles = Array.from(event.target.files);
+      setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
+
+  const handleVedioClick = () => {
+    document?.getElementById('file-input-vedio')?.click();
+  };
+  const handleFileChangeVedio = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      //   const selectedFiles = Array.from(event.target.files);
+      //  setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
   async function sendMessage() {
     try {
       const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -488,7 +594,9 @@ const ChatInterface = ({ type }: { type: string }) => {
         formData.append('source', type);
         formData.append('groupId', group.data.group.id);
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
-        const res = videoExtensions.includes(extension) ? await videoUpload({formData,userId:'',groupId:group.data.group.id}).unwrap() : await fileUpload(formData).unwrap();
+        const res = videoExtensions.includes(extension)
+          ? await videoUpload({ formData, userId: '', groupId: group.data.group.id }).unwrap()
+          : await fileUpload(formData).unwrap();
         if (res.status) {
           if (type == 'group') {
             socket?.emit('send_group_message', {
@@ -497,7 +605,7 @@ const ChatInterface = ({ type }: { type: string }) => {
               body: newMessage,
               direction: 'S',
               url: res?.data?.key,
-              thumbnail:res?.data?.thumbnail
+              thumbnail: res?.data?.thumbnail,
             });
           } else {
             socket?.emit('send_message_to_user_by_group', {
@@ -506,7 +614,7 @@ const ChatInterface = ({ type }: { type: string }) => {
               body: caption,
               url: res?.data?.key,
               direction: 'S',
-              thumbnail:res?.data?.thumbnail
+              thumbnail: res?.data?.thumbnail,
             });
           }
 
@@ -521,7 +629,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       console.log(error);
     }
   }
-console.log(hasMoreMessage)
+  
   return (
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
@@ -742,13 +850,15 @@ console.log(hasMoreMessage)
                                 }}
                               >
                                 <MediaComponent
+                                type={msg.url_upload_type}
+                                  messageDirection={msg.messageDirection || 'S'}
                                   url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
                                   name={msg.url ? msg.url : ' '}
                                   thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
                                 />
                               </Paper>
                             )}
-                            <p style={{whiteSpace: 'pre-wrap'}}>{msg.body}</p>
+                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
                               {msg.deliveryStatus === 'sent' && <BsCheckAll />}
@@ -826,14 +936,53 @@ console.log(hasMoreMessage)
                       />
                     )}
                     <input
+                      id="file-input-vedio"
+                      type="file"
+                      accept="video/*"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChangeVedio}
+                    />
+                    <input
+                      multiple
                       id="file-input"
                       type="file"
                       style={{ display: 'none' }} // Hide the input element
                       onChange={handleFileChange} // Handle file selection
                     />
-                    <IconButton onClick={handleIconClick}>
+                    <IconButton onClick={attachmenPopOver}>
                       <AttachFile />
                     </IconButton>
+                    <Popover
+                      id={`attachment-popover`}
+                      open={openPopOver}
+                      anchorEl={anchorElPopOver}
+                      onClose={handleClosePopOver}
+                      // anchorOrigin={{
+                      //   vertical: 'bottom',
+                      //   horizontal: 'left',
+                      // }}
+                    >
+                      <List disablePadding>
+                        <ListItem disablePadding>
+                          <ListItemButton onClick={handleIconClick}>
+                            <ListItemIcon>
+                              <File />
+                            </ListItemIcon>
+                            <ListItemText primary="Media/Docs" />
+                          </ListItemButton>
+                        </ListItem>
+                        <Divider />
+                        <ListItem disablePadding>
+                          <ListItemButton onClick={handleVedioClick}>
+                            <ListItemIcon>
+                              <Video />
+                            </ListItemIcon>
+                            <ListItemText primary={'Video'} />
+                          </ListItemButton>
+                        </ListItem>
+                        <Divider />
+                      </List>
+                    </Popover>
                     <TextField
                       fullWidth
                       placeholder="Type a message"
@@ -894,7 +1043,7 @@ console.log(hasMoreMessage)
           <DialogContent>
             <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
               {/* Render file preview */}
-              {renderFilePreview()}
+              {files.length > 0 ? <MediaGallery mediaFiles={files} /> : renderFilePreview()}
 
               {/* Input for file description */}
               <TextField
@@ -911,8 +1060,8 @@ console.log(hasMoreMessage)
             <Button onClick={handleCancel} color="secondary">
               Cancel
             </Button>
-            <Button disabled={isLoading} onClick={sendMessage} color="primary">
-              Send {isLoading && <CircularProgress />}
+            <Button disabled={isLoading||multipleLoader} onClick={files.length ? sendFiles : sendMessage} color="primary">
+              Send {(isLoading||multipleLoader) && <CircularProgress />}
             </Button>
           </DialogActions>
         </Dialog>
@@ -920,5 +1069,33 @@ console.log(hasMoreMessage)
     </Grid>
   );
 };
+
+const MediaGallery = ({ mediaFiles }: any) => {
+  const galleryItems = mediaFiles.map((file: any) => {
+    const objectUrl = URL.createObjectURL(file);
+    const extension = file.name.split('.').pop().toLowerCase();
+    const isVideo = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'].includes(extension);
+    const isPDF = extension === 'pdf';
+
+    return {
+      original: objectUrl,
+      thumbnail: objectUrl,
+      renderItem: () =>
+        isVideo ? (
+          <video controls style={{ width: '100%', height: '75vh' }}>
+            <source src={objectUrl} type={file.type} />
+            Your browser does not support the video tag.
+          </video>
+        ) : isPDF ? (
+          <iframe src={objectUrl} title={file.name} style={{ width: '100%', height: '75vh' }} />
+        ) : (
+          <img src={objectUrl} alt={file.name} style={{ height: '75vh' }} />
+        ),
+    };
+  });
+
+  return <ReactImageGallery items={galleryItems} showThumbnails={false} />;
+};
+
 
 export default ChatInterface;

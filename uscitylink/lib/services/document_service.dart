@@ -57,10 +57,12 @@ class Pay {
   String? mileage;
   String? payment_status;
   List<Locations>? locations;
+  String? note;
 
   Pay(
       {this.id,
       this.driverId,
+      this.note,
       this.tripId,
       this.startDate,
       this.endDate,
@@ -81,6 +83,7 @@ class Pay {
   Pay.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     driverId = json['driver_id'];
+    note = json['note'];
     tripId = json['tripId'];
     startDate = json['start_date'];
     endDate = json['end_date'];
@@ -111,6 +114,7 @@ class Pay {
     data['driver_id'] = this.driverId;
     data['payment_status'] = this.payment_status;
     data['tripId'] = this.tripId;
+    data['note'] = this.note;
     data['start_date'] = this.startDate;
     data['end_date'] = this.endDate;
     data['amount'] = (amount as num?)?.toDouble();

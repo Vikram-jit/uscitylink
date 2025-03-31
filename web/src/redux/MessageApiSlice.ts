@@ -32,11 +32,11 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
           totalPages:number,
         },truckNumbers?:string };
       },
-      { id: string,page: number; pageSize: number ,pinMessage:string}
+      { id: string,page: number; pageSize: number ,pinMessage:string,unreadMessage?:string}
     >({
 
       query: (payload) => ({
-        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}&pinMessage=${payload.pinMessage}`,
+        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}&pinMessage=${payload.pinMessage}&unreadMessage=${payload.unreadMessage}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

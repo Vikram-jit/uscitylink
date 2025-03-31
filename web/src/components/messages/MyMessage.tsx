@@ -18,48 +18,60 @@ export default function MyMessage() {
   const [selected, setSelected] = React.useState<boolean>(false);
   const searchItem = useDebounce(search, 200);
   const { trackChannelState } = useSelector((state: any) => state.channel);
+   const [unreadMessage, setUnReadMessage] = React.useState<string>('0');
+
   const { data, isLoading, refetch, isFetching } = useGetChannelMembersQuery(
-    { page, pageSize: 12, search: searchItem ,type:selected?"truck":"user"},
+    { page, pageSize: 12, search: searchItem ,type:selected?"truck":"user",unreadMessage:unreadMessage},
     {
       refetchOnFocus: true,
     }
   );
+
+ 
 
   const [userList, setUserList] = React.useState<SingleChannelModel | null>(null);
 
   const [selectedUserId, setSelectedUserId] = React.useState<string>('');
   const { socket } = useSocket();
 
+  React.useEffect(()=>{
+    if(searchItem == "" && page == 1){
+      setUserList(null)
+    }
+  },[searchItem])
+ 
+
+  
+
   React.useEffect(() => {
     if (data?.status && data?.data) {
-      if(searchItem === ""){
-        setUserList(null)
-      }
+    
       const newUsers = data?.data?.user_channels || [];
-
+  
       if (userList?.id !== data?.data?.id) {
         setUserList(data?.data);
       } else {
+        if(unreadMessage == "1" && page==1){
+          setUserList(null)
+        }
         setUserList((prevUserList) => {
           if (!prevUserList) {
             return data.data;
           }
-
+  
           const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
-
           const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
-
+  
           return {
             ...prevUserList,
             user_channels: [...prevUserList.user_channels, ...uniqueUsers],
           };
         });
       }
-
-      // Check if there are more pages
+  
       setHasMore(data?.data?.pagination.currentPage < data.data.pagination?.totalPages);
     }
-  }, [data, isFetching]); // Make sure to track userList in the dependency array
+  }, [data, isFetching]);
 
   const loadMoreMessages = () => {
     if (hasMore && !isLoading) {
@@ -146,7 +158,7 @@ export default function MyMessage() {
       });
 
       socket.on('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
-        console.log('enter');
+       
         if (userList && userList.id === channelId) {
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList;
@@ -202,7 +214,10 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
-      
+           setPage={setPage}
+          setUserList={setUserList}
+          unreadMessage={unreadMessage}
+          setUnReadMessage={setUnReadMessage}
           selected={selected}
           setSelected={setSelected}
           search={search}
