@@ -518,26 +518,56 @@ export const getMessagesByGroupId = async (
         },
       ],
     });
-
-    const messages = await GroupMessage.findAndCountAll({
-      where: {
-        groupId: isGroup?.id,
+    const senderId = req.user?.id;
+  const messages = await Message.findAndCountAll({
+    where:{
+      groupId:isGroup?.id,
+      type:"default"
+    },
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [{ model: User, as: "user" }],
+          },
+        ],
       },
-      include: {
+      {
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
+        include: [{ model: User, as: "user" }],
       },
-      order: [["messageTimestampUtc", "DESC"]],
-      limit: pageSize,
-      offset: offset,
-    });
+    ],
+    order: [["messageTimestampUtc", "DESC"]],
+    limit: pageSize,
+    offset: offset,
+  })
+    // const messages = await GroupMessage.findAndCountAll({
+    //   where: {
+    //     groupId: isGroup?.id,
+    //   },
+    //   include: {
+    //     model: UserProfile,
+    //     as: "sender",
+    //     attributes: ["id", "username", "isOnline"],
+    //   },
+    //   order: [["messageTimestampUtc", "DESC"]],
+    //   limit: pageSize,
+    //   offset: offset,
+    // });
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
     return res.status(200).json({
       status: true,
       message: `Fetch message successfully`,
       data: {
+        senderId,
         group: isGroup,
         members: isGroupMembers,
         messages: messages.rows,

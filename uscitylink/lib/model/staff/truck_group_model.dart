@@ -1,7 +1,9 @@
+import 'package:uscitylink/model/message_model.dart';
+
 class TruckGroupModel {
   Group? group;
   List<Members>? members;
-  List<Messages>? messages;
+  List<MessageModel>? messages;
   Pagination? pagination;
 
   TruckGroupModel({this.group, this.members, this.messages, this.pagination});
@@ -15,9 +17,9 @@ class TruckGroupModel {
       });
     }
     if (json['messages'] != null) {
-      messages = <Messages>[];
+      messages = <MessageModel>[];
       json['messages'].forEach((v) {
-        messages?.add(new Messages.fromJson(v));
+        messages?.add(new MessageModel.fromJson(v));
       });
     }
     pagination = json['pagination'] != null

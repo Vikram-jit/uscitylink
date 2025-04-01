@@ -20,7 +20,7 @@ class GroupController extends GetxController {
   var loading = false.obs;
   var isLoading = false.obs;
   var messages = <MessageModel>[].obs;
-  var truckMessages = <Messages>[].obs;
+  var truckMessages = <MessageModel>[].obs;
   final __groupService = GroupService();
   final __messageService = MessageService();
   var currentPage = 1.obs;
@@ -379,7 +379,7 @@ class GroupController extends GetxController {
   }
 
   void onNewMessageToTruck(dynamic data) {
-    Messages newMessage = Messages.fromJson(data);
+    MessageModel newMessage = MessageModel.fromJson(data);
     if (truckGroup.value.group?.id == newMessage.groupId) {
       truckMessages.insert(0, newMessage);
       truckMessages.refresh();

@@ -11,6 +11,7 @@ import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/template_controller.dart';
+import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/staff/truck_group_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -450,11 +451,11 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     );
   }
 
-  Widget _buildChatMessage(Messages message, String senderId) {
+  Widget _buildChatMessage(MessageModel message, String senderId) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
-      alignment: message.senderId != senderId
+      alignment: message.messageDirection == "R"
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Padding(
@@ -503,7 +504,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                 ],
               ),
             ),
-            if (message.senderId == senderId)
+            if (message.messageDirection == "S")
               if (message.deliveryStatus == "sent")
                 Icon(
                   Icons.done,

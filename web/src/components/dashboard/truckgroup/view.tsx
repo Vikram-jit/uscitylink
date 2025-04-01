@@ -130,7 +130,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const { data: groupList } = useGetGroupsQuery({ type: type, page, search: searchItem });
 
-  const [messages, setMessages] = useState<any>([]);
+  const [messages, setMessages] = useState<MessageModel[]>([]);
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
 
@@ -250,6 +250,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleReceiveMessage = useCallback(
     (message: any, groupId: string) => {
+      console.log(message,"tyr")
       if (message.groupId !== selectedGroup) {
         return; // Ignore the message if the groupId does not match selectedId
       }
@@ -307,6 +308,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         });
 
         setHasMoreMessage(group.data.pagination.currentPage < group.data.pagination.totalPages);
+        setSenderId(group?.data?.senderId);
       }
     } else {
       if (groupMessage?.data?.messages) {
@@ -343,7 +345,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         );
       } else {
         socket.on('update_url_status_truck_group',(data:any)=>{
-         console.log(data)
+
             setMessages((prev:any) =>
                prev.map((e:any) =>
                  e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
@@ -351,7 +353,8 @@ const ChatInterface = ({ type }: { type: string }) => {
              );
           
         })
-        socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
+       // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
+        socket.on('receive_message_group_truck', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
       }
 
       // Cleanup the event listener when the component unmounts or socket changes
@@ -359,7 +362,8 @@ const ChatInterface = ({ type }: { type: string }) => {
         if (type == 'group') {
           socket.off('new_group_message_received', handleReceiveMessage);
         } else {
-          socket.off('receive_message_group', handleReceiveMessage);
+          //socket.off('receive_message_group', handleReceiveMessage);
+          socket.off('receive_message_group_truck', handleReceiveMessage);
         }
       };
     }
@@ -827,11 +831,13 @@ const ChatInterface = ({ type }: { type: string }) => {
                       scrollableTarget="scrollable-messages-group-container"
                       inverse={true} // Load older messages on scroll up
                     >
-                      {messages.map((msg: any) => (
+
+                      { type == "group" ? messages.map((msg) => (
                         <>
-                          {msg.senderId != senderId && msg.sender && (
+                        
+                          {msg.senderId != senderId && msg.sender ? (
                             <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <Typography variant="caption">{msg?.sender?.username}</Typography>
+                              <Typography variant="caption">{msg?.sender?.username} </Typography>
                               <Badge
                                 color={msg?.sender.isOnline ? 'success' : 'default'}
                                 variant={msg?.sender.isOnline ? 'dot' : 'standard'}
@@ -839,7 +845,10 @@ const ChatInterface = ({ type }: { type: string }) => {
                                 overlap="circular"
                               />
                             </Box>
-                          )}
+                          ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Typography variant="caption">{msg?.sender?.username} {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
+                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                        </Box>}
                           <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
                             {msg.url && (
                               <Paper
@@ -859,11 +868,49 @@ const ChatInterface = ({ type }: { type: string }) => {
                               </Paper>
                             )}
                             <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Typography variant="caption">{formatTimestamp(msg.messageTimestampUtc)}</Typography>
-                              {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                            </Box>
+                          
                           </MessageBubble>
+                        
+                        </>
+                      )):messages.map((msg) => (
+                        <>
+                        
+                          {msg.messageDirection == "R" ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                              <Typography variant="caption">{msg?.sender?.username} {`(${msg.sender.user?.driver_number})`}</Typography>
+                              <Badge
+                                color={msg?.sender.isOnline ? 'success' : 'default'}
+                                variant={msg?.sender.isOnline ? 'dot' : 'standard'}
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                overlap="circular"
+                              />
+                            </Box>
+                          ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Typography variant="caption">{msg?.sender?.username}(satff) {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
+                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                        </Box>}
+                          <MessageBubble key={msg.id} isOwn={msg.messageDirection == "S"}>
+                            {msg.url && (
+                              <Paper
+                                variant="outlined"
+                                sx={{
+                                  px: 1.75,
+                                  py: 1.25,
+                                }}
+                              >
+                                <MediaComponent
+                                type={msg.url_upload_type}
+                                  messageDirection={msg.messageDirection || 'S'}
+                                  url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                                  name={msg.url ? msg.url : ' '}
+                                  thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
+                                />
+                              </Paper>
+                            )}
+                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
+                          
+                          </MessageBubble>
+                        
                         </>
                       ))}
                     </InfiniteScroll>

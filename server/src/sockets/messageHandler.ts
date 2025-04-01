@@ -221,6 +221,7 @@ export async function messageToChannelToUser(
     const messageSave = await Message.create({
       channelId: findUserChannel.channelId || channelId,
       userProfileId: socket?.user?.id,
+      groupId:socket?.user?.truck_group_id || null,
       body,
       messageDirection: "R",
       deliveryStatus: "sent",
@@ -259,6 +260,12 @@ export async function messageToChannelToUser(
           model: UserProfile,
           as: "sender",
           attributes: ["id", "username", "isOnline"],
+          include: [
+            {
+              model: User,
+              as: "user",
+            },
+          ],
         },
       ],
     });
@@ -437,6 +444,23 @@ export async function messageToChannelToUser(
         }
       );
       io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+      if(socket?.user?.truck_group_id){
+        Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
+          if (
+            e.channelId === channelId &&
+            socket?.user?.truck_group_id == e.groupId
+          ) {
+            const isSocket = global.userSockets[staffId];
+      
+            if (isSocket) {
+              io.to(isSocket.id).emit(
+                "receive_message_group_truck",
+                message
+              );
+            }
+          }
+        });
+      }
     }
     notificationQueue.add({
       title: "",
@@ -850,6 +874,23 @@ export async function messageToDriverByTruckGroup(
     url_upload_type: url_upload_type || "server",
   });
 
+  const newSaveStaff = await Message.create({
+    channelId: findStaffActiveChannel?.channelId,
+    groupId: groupId,
+    userProfileId: socket?.user?.id,
+    body,
+    messageDirection: direction,
+    deliveryStatus: "sent",
+    messageTimestampUtc: utcTime,
+    senderId: socket?.user?.id,
+    isRead: false,
+    status: "sent",
+    url: url || null,
+    type: "default",
+    thumbnail: thumbnail || null,
+    url_upload_type: url_upload_type || "server",
+  });
+
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
     if (
       e.channelId === findStaffActiveChannel?.channelId &&
@@ -861,6 +902,10 @@ export async function messageToDriverByTruckGroup(
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
           group_message
+        );
+        io.to(isSocket.id).emit(
+          "receive_message_group_truck",
+          newSaveStaff
         );
       }
     }

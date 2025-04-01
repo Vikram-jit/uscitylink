@@ -183,7 +183,9 @@ export default function MyMessage() {
       };
     }
   }, [socket, isFetching]);
-
+  function onChangeUnread(){
+    setUserList(null)
+  }
   if (isLoading) {
     return <CircularProgress />;
   }
@@ -214,6 +216,7 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
+         onChangeUnread={onChangeUnread}
            setPage={setPage}
           setUserList={setUserList}
           unreadMessage={unreadMessage}

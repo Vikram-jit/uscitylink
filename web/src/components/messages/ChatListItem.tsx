@@ -67,7 +67,10 @@ export default function ChatListItem(props: ChatListItemProps) {
           <Stack direction="row" spacing={1.5}>
             <AvatarWithStatus online={user?.UserProfile?.isOnline} title={user?.UserProfile?.username} />
             <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1">{user?.UserProfile?.username} ({user.UserProfile.user.driver_number})</Typography>
+            <Typography variant="subtitle1">{user?.UserProfile?.username} <span style={{fontSize:12}}> ({user.UserProfile.user.driver_number})</span></Typography>
+            <Typography sx={{
+              fontSize:12
+            }}> {user?.assginTrucks ? `assgined trucks: ${user?.assginTrucks}`: ""} </Typography>
               <Typography
                 variant="body2"
                 sx={{

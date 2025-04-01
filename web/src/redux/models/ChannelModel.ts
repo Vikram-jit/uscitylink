@@ -33,7 +33,7 @@ export interface UserChannel {
   recieve_message_count:number
   sent_message_count:number
   status:string
-  unreadCount:number
+  unreadCount:number,assginTrucks:string
 }
 
 export interface UserProfile {

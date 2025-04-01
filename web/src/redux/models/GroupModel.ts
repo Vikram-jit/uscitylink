@@ -22,9 +22,10 @@ export interface group_channel {
 }
 
 export interface SingleGroupModel {
+  senderId:string
   group: Group;
   members: Member[];
-  messages: any[];
+  messages: MessageModel[];
   pagination:pagination
 }
 

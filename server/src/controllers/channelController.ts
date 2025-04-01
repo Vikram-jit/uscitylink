@@ -314,7 +314,6 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
       })
     }else if(unreadMessage == "1"){
 
-
       const unreadChatFilter = await MessageStaff.findAll({
         where:{
           staffId:req.user?.id,
@@ -442,7 +441,22 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
           staffId:req.user?.id
         }
       })
-      return {...e.dataValues,unreadCount:unreadCount}
+      const groupUsers:any = await GroupUser.findAll({
+        where:{
+          userProfileId:e.userProfileId,
+          status:"active"
+        },
+        include:[{
+          model:Group,
+          where:{
+            type:"truck",
+
+          }
+        }]
+      })
+      const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
+
+      return {...e.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
     }))
 
     const newData ={

@@ -2,7 +2,6 @@ import { Server, Socket } from "socket.io";
 import { verifyToken } from "../utils/jwt";
 import { UserProfile } from "../models/UserProfile";
 import SocketEvents from "./socketEvents";
-import { Message } from "../models/Message";
 import Role from "../models/Role";
 import {
   staffActiveChannelUpdate,
@@ -24,8 +23,9 @@ import {
   unreadAllUserMessage,
 } from "./messageHandler";
 import moment from "moment";
-import { disconnect } from "process";
 import { AppVersions } from "../models/AppVersions";
+import GroupUser from "../models/GroupUser";
+import Group from "../models/Group";
 
 let io: Server;
 interface User {
@@ -72,13 +72,13 @@ declare global {
   var group_open_chat: Record<string, group_chat[]>;
 }
 export interface CustomSocket extends Socket {
-  user?: { id: string; name: string }; // Define your custom user structure
+  user?: { id: string; name: string; truck_group_id: string };
 }
 
 export const initSocket = (httpServer: any) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "*", // Allow requests from your React app (localhost:3000)
+      origin: "*",
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type"],
     },
@@ -126,10 +126,16 @@ export const initSocket = (httpServer: any) => {
               },
             }
           );
+          const groupUser = await GroupUser.findOne({
+            where: {
+              userProfileId: userProfile.id,
+            },
+          });
 
           socket.user = {
             id: userProfile.id,
             name: userProfile.username || "Unknown",
+            truck_group_id: groupUser ? groupUser.dataValues.groupId : "",
           };
 
           global.userSockets[userProfile.id] = socket;
@@ -280,7 +286,6 @@ export const initSocket = (httpServer: any) => {
   });
 
   io.on("connection", (socket: CustomSocket) => {
-    
     socket.on("group_user_add", async ({ group_id, channel_id }) => {
       const user_id = socket?.user?.id!;
 
@@ -330,7 +335,6 @@ export const initSocket = (httpServer: any) => {
       } else {
         console.log(`Group ${group_id} does not exist`);
       }
-     
     });
 
     //Staff Open Chat
@@ -360,9 +364,10 @@ export const initSocket = (httpServer: any) => {
     );
     socket.on(
       "update_group_staff_message_count_staff",
-      async (groupId) => await unreadAllGroupMessageByStaffGroup(io, socket, groupId)
+      async (groupId) =>
+        await unreadAllGroupMessageByStaffGroup(io, socket, groupId)
     );
-    
+
     socket.on(
       "update_group_message_count",
       async (groupId) => await unreadAllGroupMessageByUser(io, socket, groupId)
@@ -382,18 +387,19 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       "pin_message",
-      async ({messageId,value, type}) => await pinMessage(io, socket, messageId,value,type)
+      async ({ messageId, value, type }) =>
+        await pinMessage(io, socket, messageId, value, type)
     );
 
     socket.on(
       "delete_message",
-      async ({messageId}) => await deleteMessage(io, socket, messageId)
+      async ({ messageId }) => await deleteMessage(io, socket, messageId)
     );
     //sendMessage Event
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction, url, thumbnail ,r_message_id}) =>
+      async ({ userId, body, direction, url, thumbnail, r_message_id }) =>
         await messageToDriver(
           io,
           socket,
@@ -409,60 +415,35 @@ export const initSocket = (httpServer: any) => {
     socket.on(
       "UPDATE_APP_VERSION",
       async ({ version, buildNumber, platform }) => {
-       
         try {
-        
-      
-        const appLiveVersion = await AppVersions.findOne({
-          where: {
-            version:version,
-            buildNumber:buildNumber,
-            status: "active",
-            platform: platform,
-          },
-        });
-        const userProfile = await UserProfile.findByPk(socket?.user?.id);
-        if (appLiveVersion == null) {
-          await UserProfile.update(
-            {
-             
-              appUpdate: "0",
-            },
-            {
-              where: {
-                id: socket?.user?.id,
-              },
-            })
-          socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
-          return;
-        }
-
-      
-       
-        if (userProfile?.buildNumber == null && userProfile?.version == null) {
-          await UserProfile.update(
-            {
+          const appLiveVersion = await AppVersions.findOne({
+            where: {
               version: version,
               buildNumber: buildNumber,
-              appUpdate: "1",
+              status: "active",
+              platform: platform,
             },
-            {
-              where: {
-                id: socket?.user?.id,
-              },
-            }
-          );
+          });
+          const userProfile = await UserProfile.findByPk(socket?.user?.id);
           if (appLiveVersion == null) {
-            socket.emit("UPDATE_APP_VERSION_INFO", "Update");
+            await UserProfile.update(
+              {
+                appUpdate: "0",
+              },
+              {
+                where: {
+                  id: socket?.user?.id,
+                },
+              }
+            );
+            socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
             return;
           }
-        }
 
-        if (
-          buildNumber == appLiveVersion?.buildNumber &&
-          version == appLiveVersion?.version
-        ) {
-          if (userProfile?.appUpdate == "0") {
+          if (
+            userProfile?.buildNumber == null &&
+            userProfile?.version == null
+          ) {
             await UserProfile.update(
               {
                 version: version,
@@ -475,37 +456,53 @@ export const initSocket = (httpServer: any) => {
                 },
               }
             );
+            if (appLiveVersion == null) {
+              socket.emit("UPDATE_APP_VERSION_INFO", "Update");
+              return;
+            }
           }
-         
+
+          if (
+            buildNumber == appLiveVersion?.buildNumber &&
+            version == appLiveVersion?.version
+          ) {
+            if (userProfile?.appUpdate == "0") {
+              await UserProfile.update(
+                {
+                  version: version,
+                  buildNumber: buildNumber,
+                  appUpdate: "1",
+                },
+                {
+                  where: {
+                    id: socket?.user?.id,
+                  },
+                }
+              );
+            }
+
             socket.emit("UPDATE_APP_VERSION_INFO", "UpToDate");
             return;
-          
-        }
+          }
 
-        if (
-          buildNumber != appLiveVersion?.buildNumber &&
-          version != appLiveVersion?.version
-        ) {
-        
+          if (
+            buildNumber != appLiveVersion?.buildNumber &&
+            version != appLiveVersion?.version
+          ) {
             socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
             return;
-          
-        }
-        if (version != appLiveVersion?.version) {
-         
+          }
+          if (version != appLiveVersion?.version) {
             socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
             return;
-          
-        }
-        if (buildNumber != appLiveVersion?.buildNumber) {
-        
+          }
+          if (buildNumber != appLiveVersion?.buildNumber) {
             socket.emit("UPDATE_APP_VERSION_INFO", "NewVersion");
             return;
-          
+          }
+        } catch (error) {
+          console.log(error);
         }
-      } catch (error) {
-          console.log(error)
-      }
       }
     );
 
@@ -524,9 +521,7 @@ export const initSocket = (httpServer: any) => {
         )
     );
 
-    socket.on("staff_list_update_driver_online", (data) => {
-    
-    });
+    socket.on("staff_list_update_driver_online", (data) => {});
 
     socket.on(
       "send_group_message",
@@ -545,14 +540,15 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null, channelId, thumbnail,r_message_id }) =>
+      async ({ body, url = null, channelId, thumbnail, r_message_id }) =>
         await messageToChannelToUser(
           io,
           socket,
           body,
           url,
           channelId,
-          thumbnail,r_message_id
+          thumbnail,
+          r_message_id
         )
     );
 
@@ -583,7 +579,6 @@ export const initSocket = (httpServer: any) => {
       Object.values(global.group_open_chat[groupId]).map((e) => {
         const onlineUser: any = global.userSockets[e.userId];
         if (onlineUser && e.userId == socket.user?.id) {
-          
           userName.push(onlineUser.user?.name);
         }
       });
@@ -634,7 +629,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on("logout", async () => {
       const userId = socket?.user?.id!;
-      
+
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
       delete global.userSockets[userId];

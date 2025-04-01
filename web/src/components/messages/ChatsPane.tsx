@@ -29,6 +29,7 @@ type ChatsPaneProps = {
   setUserList: React.Dispatch<React.SetStateAction<SingleChannelModel | null>>;
   setUnReadMessage: React.Dispatch<React.SetStateAction<string>>;
   setPage: React.Dispatch<React.SetStateAction<number>>;
+  onChangeUnread:()=>void
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
@@ -74,11 +75,12 @@ export default function ChatsPane(props: ChatsPaneProps) {
           variant={props.unreadMessage == '0' ? 'outlined' : 'contained'}
           onClick={() => {
             props.setPage(1)
-            props.setUserList(null);
+    
             props.setUnReadMessage(props.unreadMessage == '1' ? '0' : '1');
+            props?.onChangeUnread();
           }}
         >
-          {props.unreadMessage == '1' ? 'All' : 'Un-read'}{' '}
+          {props.unreadMessage == '1' ? 'Normal' : 'Un-read'}{' '}
         </Button>
       </Stack>
       <Box sx={{ px: 2, pb: 1.5 }}>

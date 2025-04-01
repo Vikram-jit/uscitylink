@@ -498,7 +498,7 @@ export const getMessagesByUserId = async (
       data: {
         userProfile,
         messages: modifiedMessage,
-        truckNumbers: truckNumbers ? truckNumbers?.join(",") : null,
+        truckNumbers: truckNumbers ? truckNumbers?.join(",") : "",
         pagination: {
           currentPage: page,
           pageSize: pageSize,
