@@ -1,7 +1,7 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('messages', 'type', {
-      type: Sequelize.ENUM('default', 'truck_group','group'),  
+      type: Sequelize.ENUM('default', 'truck_group','group','staff_message'),  
       allowNull: false, 
       defaultValue: 'default'
     });

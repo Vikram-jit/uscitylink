@@ -31,6 +31,7 @@ type MessagesPaneHeaderProps = {
   setMessages:React.Dispatch<React.SetStateAction<MessageModel[]>>
   setMediaPanel:React.Dispatch<React.SetStateAction<boolean>>
   setSelectedTemplate:React.Dispatch<React.SetStateAction<{name:string,body:string,url?:string}>>
+  onHandlePin:()=>void
 };
 
 export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
@@ -109,7 +110,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
          
             props.setPage(1)
             props.setPinMessage((prev) => prev == "0" ? "1" :"0")
-           
+           props.onHandlePin()
           }}
           variant={props.pinMessage == "0" ? "outlined":"contained"}
           size="small"

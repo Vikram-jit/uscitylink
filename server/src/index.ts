@@ -22,6 +22,7 @@ import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import chatRoutes from "./routes/staff/chatRoutes";
+import staffChatRoutes from "./routes/staff/staffChatRoutes";
 import staffGroupRoutes from "./routes/staff/groupRoutes";
 import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
@@ -71,6 +72,7 @@ app.use("/api/v1/template", templateRoutes);
 app.use("/api/v1/staff/channel", channelStaffRoutes);
 app.use("/api/v1/staff/chat", chatRoutes);
 app.use("/api/v1/staff/groups", staffGroupRoutes);
+app.use("/api/v1/staff/private/chat", staffChatRoutes);
 
 
 // Start server

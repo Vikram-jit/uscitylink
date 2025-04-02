@@ -15,6 +15,7 @@ export const paths = {
     truck_group: '/dashboard/truckgroup',
     templates: '/dashboard/templates',
     trainings: '/dashboard/trainings',
+    staff_chat: '/dashboard/staff_chat',
   },
   user:{
     "add":'/dashboard/users/add'

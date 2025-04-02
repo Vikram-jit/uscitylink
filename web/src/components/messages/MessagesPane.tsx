@@ -54,6 +54,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
     { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage },
     {
+      
       skip: !userId,
       pollingInterval: 30000,
       refetchOnFocus: true,
@@ -70,6 +71,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       refetch();
     }
   }, [userId, refetch]);
+
   React.useEffect(() => {
     if (userId) {
       // Resetting all necessary states when userId changes
@@ -104,12 +106,15 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
     }
   }, [data, page]);
+
+
   React.useEffect(() => {
     if (trackChannelState > 0) {
       setHasMore(false);
       setMessages([]);
     }
   }, [trackChannelState]);
+
   const loadMoreMessages = () => {
     if (hasMore && !isLoading) {
       setPage((prevPage) => prevPage + 1);
@@ -148,18 +153,19 @@ export default function MessagesPane(props: MessagesPaneProps) {
       });
 
       socket.on('pin_done_web',(data:any)=>{
-      
+        if(data.value == "0"){
+          toast.success("Un-pin message successfully")
+        }else{
+          toast.success("Pin message successfully")
+        }
        
         setMessages((prev) =>
           prev.map((e) =>
             e.id === data?.messageId ? { ...e, staffPin: data?.value } : e
           )
         );
-        if(data.value == "0"){
-          toast.success("Un-pin message successfully")
-        }else{
-          toast.success("Pin message successfully")
-        }
+       
+       
       })
       socket.on("update_file_recivied_status",(data:any)=>{
        setMessages((prev) =>
@@ -196,6 +202,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     const intervalId = setInterval(() => {
       if (userId && socket) {
         socket.emit('staff_open_chat', userId);
+       
       }
     }, 15000); // Every 15 seconds
 
@@ -207,6 +214,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         socket.off('update_file_recivied_status');
         socket.off('receive_message_channel');
         socket.off('pin_done');
+        socket.off('pin_done_web');
         socket.off('staff_open_chat', userId);
       }
       clearInterval(intervalId); // Clear interval to avoid memory leaks
@@ -224,6 +232,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
       }
     }
   };
+
+  function onHandlePin(){
+    setMessages([])
+
+  }
   if (isLoading && page === 1) {
     return <CircularProgress />;
   }
@@ -239,6 +252,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     >
       {data?.data && userId && (
         <MessagesPaneHeader
+          onHandlePin={onHandlePin}
           mediaPanel={mediaPanel}
           truckNumbers={data?.data?.truckNumbers}
           sender={data?.data?.userProfile}
