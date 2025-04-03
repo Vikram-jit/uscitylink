@@ -5,6 +5,7 @@ import UserChannel from "./UserChannel";
 import GroupUser from "./GroupUser";
 import Group from "./Group";
 import Channel from "./Channel";
+import PrivateChatMember from "./PrivateChatMember";
 
 export class Message extends Model {
   public id!: string; // Primary key
@@ -141,3 +142,7 @@ GroupUser.belongsTo(Message, {
   as: "last_message",
 });
 Group.belongsTo(Message, { foreignKey: "last_message_id", as: "last_message" });
+PrivateChatMember.belongsTo(Message, {
+  foreignKey: "last_message_id",
+  as: "last_message",
+});

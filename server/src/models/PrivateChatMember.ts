@@ -11,7 +11,7 @@ class PrivateChatMember extends Model {
   public last_message_id?: string;
   public status?: string;
 
-  static associate(models: any) {}
+ 
 }
 
 PrivateChatMember.init(

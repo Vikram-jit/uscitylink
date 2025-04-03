@@ -16,6 +16,7 @@ import {
   messageToDriverByTruckGroup,
   messageToGroup,
   pinMessage,
+  sendMessageToStaffMember,
   unreadAllGroupMessageByStaff,
   unreadAllGroupMessageByStaffGroup,
   unreadAllGroupMessageByUser,
@@ -26,6 +27,7 @@ import moment from "moment";
 import { AppVersions } from "../models/AppVersions";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
+import PrivateChatMember from "../models/PrivateChatMember";
 
 let io: Server;
 interface User {
@@ -70,6 +72,7 @@ declare global {
   var onlineUsers: Record<string, User>;
   var driverOpenChat: driver_open_chat[];
   var group_open_chat: Record<string, group_chat[]>;
+  var staff_open_staff_chat: Record<string, string>;
 }
 export interface CustomSocket extends Socket {
   user?: { id: string; name: string; truck_group_id: string };
@@ -93,6 +96,7 @@ export const initSocket = (httpServer: any) => {
   global.staffOpenChat = {};
   global.staffOpenTruckGroup = {};
   global.group_open_chat = {};
+  global.staff_open_staff_chat = {};
   //Validate User Connect With Socket
   io.use(async (socket: CustomSocket, next) => {
     const token = socket.handshake.query.token as string;
@@ -369,6 +373,19 @@ export const initSocket = (httpServer: any) => {
     );
 
     socket.on(
+      "staff_message_send",
+      async ({ body, messageDirection, type, private_chat_id }) =>
+        await sendMessageToStaffMember(
+          io,
+          socket,
+          body,
+          messageDirection,
+          type,
+          private_chat_id
+        )
+    );
+
+    socket.on(
       "update_group_message_count",
       async (groupId) => await unreadAllGroupMessageByUser(io, socket, groupId)
     );
@@ -536,6 +553,28 @@ export const initSocket = (httpServer: any) => {
           url,
           thumbnail
         )
+    );
+
+    socket.on("update_staff_open_staff_chat", (chat_id) => {
+      global.staff_open_staff_chat[socket.user!.id] = chat_id;
+    });
+
+    socket.on(
+      "typing_staff_to_staff_chat",
+      async ({ chat_id, user_id, isTyping }) => {
+        const staff = global.staffActiveChannel[socket?.user?.id!];
+        const findActiveChat = global.staff_open_staff_chat[user_id];
+        if (findActiveChat == chat_id) {
+          const isSocket = global.userSockets[user_id];
+          if (isSocket) {
+            io.to(isSocket.id).emit("typingStaffChat", {
+              chat_id:chat_id,
+              typing: isTyping,
+              message: `${staff.name} is typing...`,
+            });
+          }
+        }
+      }
     );
 
     socket.on(

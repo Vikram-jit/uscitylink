@@ -37,9 +37,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
     r_message,
   } = props;
   const isSent = variant === 'sent';
-  const [isHovered, setIsHovered] = React.useState<boolean>(false);
-  const [isLiked, setIsLiked] = React.useState<boolean>(false);
-  const [isCelebrated, setIsCelebrated] = React.useState<boolean>(false);
+
   const { socket } = useSocket();
 
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);

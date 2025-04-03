@@ -28,5 +28,6 @@ export interface MessageModel {
   staffPin:string | null
   sender: SenderModel;
   r_message:MessageModel
-  url_upload_type:string
+  url_upload_type:string,
+  private_chat_id:string|null
 }

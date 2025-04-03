@@ -17,6 +17,7 @@ import Queue from "bull";
 import Role from "../models/Role";
 import User from "../models/User";
 import { MessageStaff } from "../models/MessageStaff";
+import PrivateChatMember from "../models/PrivateChatMember";
 
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -221,7 +222,7 @@ export async function messageToChannelToUser(
     const messageSave = await Message.create({
       channelId: findUserChannel.channelId || channelId,
       userProfileId: socket?.user?.id,
-      groupId:socket?.user?.truck_group_id || null,
+      groupId: socket?.user?.truck_group_id || null,
       body,
       messageDirection: "R",
       deliveryStatus: "sent",
@@ -444,19 +445,16 @@ export async function messageToChannelToUser(
         }
       );
       io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
-      if(socket?.user?.truck_group_id){
+      if (socket?.user?.truck_group_id) {
         Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
           if (
             e.channelId === channelId &&
             socket?.user?.truck_group_id == e.groupId
           ) {
             const isSocket = global.userSockets[staffId];
-      
+
             if (isSocket) {
-              io.to(isSocket.id).emit(
-                "receive_message_group_truck",
-                message
-              );
+              io.to(isSocket.id).emit("receive_message_group_truck", message);
             }
           }
         });
@@ -903,10 +901,7 @@ export async function messageToDriverByTruckGroup(
           SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
           group_message
         );
-        io.to(isSocket.id).emit(
-          "receive_message_group_truck",
-          newSaveStaff
-        );
+        io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
       }
     }
   });
@@ -1482,4 +1477,128 @@ export async function notifiyFileUploadTruckGroupMembers(
     }
   );
   await Promise.all(promises);
+}
+
+export async function sendMessageToStaffMember(
+  io: Server,
+  socket: CustomSocket,
+  body: string,
+  messageDirection: string,
+  type: string,
+  private_chat_id: string
+) {
+  const onlineUserId = socket.user?.id as string;
+
+  const privateChatFirst = await PrivateChatMember.findOne({
+    where: {
+      id: private_chat_id,
+    },
+  });
+
+  const userProfile =
+    privateChatFirst?.createdBy == onlineUserId
+      ? privateChatFirst?.userProfileId
+      : privateChatFirst?.createdBy;
+
+  const activeChannel = global.staffActiveChannel[onlineUserId];
+
+  const messageSave = await Message.create({
+    channelId: activeChannel.channelId,
+    userProfileId: userProfile,
+    groupId: null,
+    body,
+    messageDirection: messageDirection,
+    deliveryStatus: "sent",
+    messageTimestampUtc: new Date(),
+    senderId: onlineUserId,
+    isRead: false,
+    status: "sent",
+    url: null,
+    thumbnail: null,
+    reply_message_id: null,
+    url_upload_type: "server",
+    private_chat_id: private_chat_id,
+    type: "staff_message",
+  });
+  const message = await Message.findOne({
+    where: {
+      id: messageSave.id,
+    },
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [
+              {
+                model: User,
+                as: "user",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    ],
+  });
+
+  await PrivateChatMember.update(
+    {
+      last_message_id: message?.id,
+    },
+    {
+      where: {
+        id: private_chat_id,
+      },
+    }
+  );
+
+ 
+  const isSocket = global.userSockets[userProfile!];
+  const isCheckCreatedBy = await PrivateChatMember.findOne({
+    where:{
+      id:private_chat_id
+    }
+  })
+  if(isCheckCreatedBy?.createdBy == socket.user?.id){
+    await isCheckCreatedBy?.update({
+      reciverCount : Sequelize.literal(
+        "reciverCount + 1"
+      ),
+    })
+  }else{
+    await isCheckCreatedBy?.update({
+      senderCount : Sequelize.literal(
+        "senderCount + 1"
+      ),
+    })
+  }
+  if (global.staff_open_staff_chat[userProfile!] == private_chat_id) {
+   
+    if (isSocket) {
+     await message?.update({
+        deliveryStatus: "seen",
+      });
+      
+      isSocket.emit("send_message_compelete", message);
+    }
+  } else {
+    if (isSocket) {
+      io.to(isSocket.id).emit(
+        "notification_new_message",
+        `New Message Received in Staff Chat`
+      );
+     
+     
+    }
+  }
+  socket.emit("send_message_compelete", message);
 }
