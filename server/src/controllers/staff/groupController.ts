@@ -51,7 +51,8 @@ export async function get(req: Request, res: Response): Promise<any> {
         },
       ],
 
-      order: type == "group" ? [["message_count", "DESC"],["last_message_id", "DESC"]] : [["id", "DESC"]],
+      order:
+      type == "group" ? [["message_count", "DESC"]] : [["updatedAt", "DESC"]],
       limit: pageSize,
       offset: offset,
     });

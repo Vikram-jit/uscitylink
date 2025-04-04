@@ -129,9 +129,9 @@ class StaffChatView extends StatelessWidget {
                                       ))),
                               hintText:
                                   _staffchannelController.truckSearch.value ==
-                                          "truck"
+                                          "Search by truck"
                                       ? "truck number"
-                                      : "driver number,name,phone number...",
+                                      : "Search by code,name,phone...",
                               hintStyle: TextStyle(color: Colors.grey),
                               prefixIcon:
                                   Icon(Icons.search, color: Colors.grey),
