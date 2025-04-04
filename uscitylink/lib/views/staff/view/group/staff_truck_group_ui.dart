@@ -97,30 +97,30 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
 
   // Function to send a new message
   void _sendMessage() {
-    String userProfileIds = groupController.group?.value?.groupMembers
-            ?.where((member) {
-              return member.userProfileId!.isNotEmpty &&
-                  member.status == "active";
-            }) // Force non-null assertion for userProfileId
-            .map((member) => member.userProfileId)
-            .join(',') ??
-        ''; // Join and provide default empty string if null
-
-    if (userProfileIds.isEmpty) {
-      showAlert(context);
-    } else {
-      if (_controller.text.isNotEmpty) {
-        if (socketService.isConnected.value) {
-          socketService.sendMessageToTruck(
-              userProfileIds,
-              groupController.truckGroup.value!.group!.id!,
-              _controller.text,
-              groupController.templateurl.value);
-        }
-        _controller.clear();
-        groupController.templateurl.value = "";
+    // String userProfileIds = groupController.group?.value?.groupMembers
+    //         ?.where((member) {
+    //           return member.userProfileId!.isNotEmpty &&
+    //               member.status == "active";
+    //         }) // Force non-null assertion for userProfileId
+    //         .map((member) => member.userProfileId)
+    //         .join(',') ??
+    //     ''; // Join and provide default empty string if null
+    // print(userProfileIds);
+    // if (userProfileIds.isEmpty) {
+    //   showAlert(context);
+    // } else {
+    if (_controller.text.isNotEmpty) {
+      if (socketService.isConnected.value) {
+        socketService.sendMessageToTruck(
+            "",
+            groupController.truckGroup.value!.group!.id!,
+            _controller.text,
+            groupController.templateurl.value);
       }
+      _controller.clear();
+      groupController.templateurl.value = "";
     }
+    // }
   }
 
   void showAlert(BuildContext context) {

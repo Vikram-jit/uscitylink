@@ -2,12 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:socket_io_client/socket_io_client.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
-import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
-import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
