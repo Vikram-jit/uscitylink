@@ -41,7 +41,7 @@ class StaffChatView extends StatelessWidget {
     return Scaffold(
       key: _scaffoldKey,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(120), // Set height for the AppBar
+        preferredSize: const Size.fromHeight(116), // Set height for the AppBar
         child: Column(
           children: [
             AppBar(
@@ -127,11 +127,11 @@ class StaffChatView extends StatelessWidget {
                                             ? Colors.grey
                                             : TColors.buttonPrimary,
                                       ))),
-                              hintText: _staffchannelController
-                                          .truckSearch.value ==
-                                      "truck"
-                                  ? "Search with truck number"
-                                  : "Search with driver number,name,phone number...",
+                              hintText:
+                                  _staffchannelController.truckSearch.value ==
+                                          "truck"
+                                      ? "truck number"
+                                      : "driver number,name,phone number...",
                               hintStyle: TextStyle(color: Colors.grey),
                               prefixIcon:
                                   Icon(Icons.search, color: Colors.grey),

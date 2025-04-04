@@ -546,7 +546,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   }
 
   const formatTimestamp = (timestamp: Date): string => {
-    return moment.utc(timestamp).format('HH:mm');
+    return moment.utc(timestamp).format('hh:mm A');
   };
   const handleIconClick = () => {
     document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
@@ -877,7 +877,8 @@ const ChatInterface = ({ type }: { type: string }) => {
                         
                           {msg.messageDirection == "R" ? (
                             <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <Typography variant="caption">{msg?.sender?.username} {`(${msg.sender.user?.driver_number})`}</Typography>
+                              <Typography variant="caption">{msg?.sender?.username} {`(${msg.sender.user?.driver_number})`} </Typography> 
+                              <Typography variant="caption"> {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
                               <Badge
                                 color={msg?.sender.isOnline ? 'success' : 'default'}
                                 variant={msg?.sender.isOnline ? 'dot' : 'standard'}

@@ -144,6 +144,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: TDeviceUtils.getScreenHeight() * 0.1,
         leading: IconButton(
           onPressed: () {
             socketService.updateStaffActiveUserChat("");

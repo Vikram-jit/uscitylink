@@ -53,6 +53,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
   return (
     <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }}>
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
+        
         <Typography variant="body2">
           {messageDirection === 'S'
             ? sender?.username
@@ -60,7 +61,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
               : '(staff)'
             : `${sender?.username}(${sender?.user?.driver_number})`}
         </Typography>
-        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD HH:mm')}</Typography>
+        
+        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD hh:mm A')}</Typography>
       </Stack>
       {url ? (
         <Paper
@@ -121,7 +123,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       : `${r_message.sender?.username}(${r_message?.sender?.user?.driver_number})`}
                   </Typography>
                   <Typography variant="caption">
-                    {moment(r_message.messageTimestampUtc).format('YYYY-MM-DD HH:mm')}
+                    {moment(r_message.messageTimestampUtc).format('YYYY-MM-DD HH:mm A')}
                   </Typography>
                 </Stack>
                 {r_message.url ? (

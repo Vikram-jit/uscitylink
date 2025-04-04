@@ -455,13 +455,13 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(
-      alignment: message.messageDirection == "R"
+      alignment: message.messageDirection == "S"
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
-          crossAxisAlignment: message.senderId != senderId
+          crossAxisAlignment: message.messageDirection == "S"
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
@@ -469,13 +469,13 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
               width: TDeviceUtils.getScreenWidth(context) * 0.7,
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
-                color: message.senderId != senderId
+                color: message.messageDirection == "S"
                     ? Colors.blue[200]
                     : Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
-                crossAxisAlignment: message.senderId != senderId
+                crossAxisAlignment: message.messageDirection == "S"
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
@@ -504,6 +504,26 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                 ],
               ),
             ),
+            if (message.messageDirection == "S")
+              Container(
+                  child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  Text(
+                    message?.sender?.username ?? 'Unknown User',
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    child: Badge(
+                      backgroundColor: message?.sender?.isOnline ?? false
+                          ? Colors.green
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                ],
+              )),
             if (message.messageDirection == "S")
               if (message.deliveryStatus == "sent")
                 Icon(
