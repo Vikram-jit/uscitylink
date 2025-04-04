@@ -67,6 +67,7 @@ class UserChannels {
   UserProfile? userProfile;
   LastMessage? lastMessage;
   int? unreadCount;
+  String? assginTrucks;
   UserChannels(
       {this.id,
       this.userProfileId,
@@ -80,11 +81,13 @@ class UserChannels {
       this.updatedAt,
       this.userProfile,
       this.lastMessage,
-      this.unreadCount});
+      this.unreadCount,
+      this.assginTrucks});
 
   UserChannels.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     userProfileId = json['userProfileId'];
+    assginTrucks = json['assginTrucks'];
     unreadCount = json['unreadCount'];
     channelId = json['channelId'];
     lastMessageId = json['last_message_id'];
@@ -106,6 +109,7 @@ class UserChannels {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
     data['unreadCount'] = this.unreadCount;
+    data['assginTrucks'] = this.assginTrucks;
     data['userProfileId'] = this.userProfileId;
     data['channelId'] = this.channelId;
     data['last_message_id'] = this.lastMessageId;

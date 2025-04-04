@@ -132,47 +132,118 @@ export async function getChatMessageUser(
         id: req.activeChannel,
       },
     });
+    let userChannels:any
+    if(req.query.type == "truck"){
+      const groupFilter = await Group.findAll({
+        where:{
+          name:`${search}`,
+          type:"truck"
+        },
+        include:[{
+          model:GroupUser,
+          as:"group_users",
+          attributes:["userProfileId"]
+        }]
+      })
 
-    const userChannels = await UserChannel.findAndCountAll({
-      where: {
-        channelId: req.activeChannel,
-        status: "active",
-      },
-      include: [
-        {
-          model: UserProfile,
-          attributes: {
-            exclude: ["password"],
-          },
-          where: {
-            username: {
-              [Op.like]: `%${search}%`,
+  
+      const getUserIds = await Promise.all(groupFilter.map((e:any)=>e?.group_users?.map((el:any)=>el.userProfileId)))
+     
+      let uniqueArray = [...new Set(getUserIds.flat())];
+      if(search == ""){
+        uniqueArray=[]
+      }
+      userChannels = await  UserChannel.findAndCountAll({
+      
+        include: [
+          {
+            model: UserProfile,
+            attributes: {
+              exclude: ["password"],
             },
+            include: [
+              {
+                model: User,
+                as: "user",
+               
+              },
+              
+            ],
+            
           },
-          include: [
-            {
-              model: User,
-              as: "user",
-            },
+          {
+            model: Message,
+            as: "last_message",
+          },
+        ],
+        where: {
+          channelId:req.activeChannel,
+          status:"active",
+          userProfileId:{[Op.in]:uniqueArray}
+        },
+        order: [
+          [
+            
+            "sent_message_count",
+            "DESC",
           ],
+        
+          [
+           
+            "last_message_utc",
+            "DESC",
+          ],
+        ],
+        limit: pageSize,
+        offset: offset,
+      })
+    }else{
+       userChannels = await UserChannel.findAndCountAll({
+      
+        include: [
+          {
+            model: UserProfile,
+            attributes: {
+              exclude: ["password"],
+            },
+          
+            include: [
+              {
+                model: User,
+                as: "user",
+              },
+            ],
+          },
+          {
+            model: Message,
+            as: "last_message",
+          },
+        ],
+        where: {
+          channelId: req.activeChannel,
+          status: "active",
+          
+            [Op.or]: [
+              { "$UserProfile.username$": { [Op.like]: `%${search}%` } }, 
+              { "$UserProfile.user.driver_number$": { [Op.like]: `%${search}%` } }, 
+              { "$UserProfile.user.phone_number$": { [Op.like]: `%${search}%` } }, 
+            ],
+        
         },
-        {
-          model: Message,
-          as: "last_message",
-        },
-      ],
-      order: [
-        ["sent_message_count", "DESC"],
-
-        ["last_message_utc", "DESC"],
-      ],
-      limit: pageSize,
-      offset: offset,
-    });
-
+        order: [
+          ["sent_message_count", "DESC"],
+  
+          ["last_message_utc", "DESC"],
+        ],
+        limit: pageSize,
+        offset: offset,
+      });
+  
+    }
+   
     const total = userChannels.count;
     const totalPages = Math.ceil(total / pageSize);
-    const modifiedData = await Promise.all(userChannels.rows.map(async(e)=>{
+    const modifiedData = await Promise.all(userChannels.rows.map(async(e:any)=>{
       const unreadCount = await MessageStaff.count({
         where:{
           driverId:e.userProfileId,
@@ -181,7 +252,21 @@ export async function getChatMessageUser(
           staffId:req.user?.id
         }
       })
-      return {...e.dataValues,unreadCount:unreadCount}
+      const groupUsers:any = await GroupUser.findAll({
+        where:{
+          userProfileId:e.userProfileId,
+          status:"active"
+        },
+        include:[{
+          model:Group,
+          where:{
+            type:"truck",
+
+          }
+        }]
+      })
+      const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
+      return {...e.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
     }))
    
     const newData = {
@@ -217,7 +302,7 @@ export const getMessagesByUserId = async (
 
     const offset = (page - 1) * pageSize;
 
-    const userProfile = await UserProfile.findByPk(id);
+    const userProfile = await UserProfile.findByPk(id,{include:[{model:User,as:"user"}]});
 
     const messages = await Message.findAndCountAll({
       where: {
@@ -238,12 +323,14 @@ export const getMessagesByUserId = async (
             model: UserProfile,
             as: "sender",
             attributes: ["id", "username", "isOnline"],
+            include:[{model:User,as:"user"}]
           },
         ],
       },{
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
+        include:[{model:User,as:"user"}]
       }],
       order: [["messageTimestampUtc", "DESC"]],
       limit: pageSize,
@@ -294,7 +381,7 @@ export const getMessagesByUserId = async (
       data: {
         userProfile,
         messages: modifiedMessage,
-        truckNumbers: truckNumbers ? truckNumbers?.join(",") : null,
+        truckNumbers: truckNumbers ? truckNumbers?.join(",") : "",
         pagination: {
           currentPage: page,
           pageSize: pageSize,

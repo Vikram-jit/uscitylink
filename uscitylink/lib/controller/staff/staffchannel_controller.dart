@@ -7,9 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
-import 'package:uscitylink/model/group_members_model.dart';
-import 'package:uscitylink/model/group_model.dart';
-import 'package:uscitylink/model/message_model.dart';
+
 import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/model/staff/channel_model.dart';
@@ -28,6 +26,7 @@ class StaffchannelController extends GetxController {
   var selectedDriversIds = <String>[].obs;
   var channelChatUser = ChannelChatUserModel().obs;
   final __channelService = ChannelService();
+  var truckSearch = "normal".obs;
   StaffgroupController _staffgroupController = Get.put(StaffgroupController());
   var currentPage = 1.obs;
   var totalPages = 1.obs;
@@ -132,7 +131,7 @@ class StaffchannelController extends GetxController {
 
     try {
       var response = await __channelService.getChatUserChannel(
-          page, searchController.text);
+          page, searchController.text, truckSearch.value);
 
       if (response.data != null) {
         if (page > 1) {

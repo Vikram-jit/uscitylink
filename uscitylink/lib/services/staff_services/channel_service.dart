@@ -45,10 +45,10 @@ class ChannelService {
   }
 
   Future<ApiResponse<ChannelChatUserModel>> getChatUserChannel(
-      int page, String search) async {
+      int page, String search, String type) async {
     try {
       dynamic response = await _apiService.getApi(
-          '${Constant.url}/staff/channel/chatUsers?page=$page&search=$search');
+          '${Constant.url}/staff/channel/chatUsers?page=$page&search=$search&type=$type');
 
       if (response != null && response is Map<String, dynamic>) {
         var data = response['data'];

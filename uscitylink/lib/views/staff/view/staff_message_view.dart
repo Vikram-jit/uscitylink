@@ -90,7 +90,6 @@ class _StaffMessageViewState extends State<StaffMessageView>
       _staffchatController.getChannelMembers(_staffchatController.userId.value,
           1, _staffchatController.channelId.value);
 
-      print("App is in the foreground");
       // socketService
       //     .connectSocket(); // Reconnect the socket when the app comes back to foreground
     }
@@ -178,21 +177,43 @@ class _StaffMessageViewState extends State<StaffMessageView>
             children: [
               Obx(() {
                 return Text(
-                  _staffchatController.userName.value,
+                  "${_staffchatController.userName.value} (${_staffchatController.message?.value?.userProfile?.user?.driverNumber})",
                   style: Theme.of(context)
                       .textTheme
                       .headlineMedium
+                      ?.copyWith(color: Colors.white, fontSize: 14),
+                );
+              }),
+              Obx(() {
+                return Text(
+                  "${_staffchatController.message.value.userProfile?.user?.phoneNumber ?? ""}",
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
                       ?.copyWith(color: Colors.white),
                 );
+              }),
+              Obx(() {
+                return _staffchatController.message.value.truckNumbers != ""
+                    ? Text(
+                        "Assgin trucks: ${_staffchatController.message.value.truckNumbers ?? ""}",
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: Colors.white),
+                      )
+                    : SizedBox();
               }),
               Obx(() {
                 return Text(
                   _staffchatController.message.value.userProfile?.isOnline ??
                           false
                       ? "online"
-                      : Utils.formatUtcDateTime(_staffchatController
-                              .message.value.userProfile?.lastLogin) ??
-                          "",
+                      : _staffchatController
+                                  .message.value.userProfile?.lastLogin !=
+                              null
+                          ? "Last login: ${Utils.formatUtcDateTime(_staffchatController.message.value.userProfile?.lastLogin)}"
+                          : "",
                   style: Theme.of(context)
                       .textTheme
                       .labelSmall

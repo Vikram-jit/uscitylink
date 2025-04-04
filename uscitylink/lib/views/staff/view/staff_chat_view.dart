@@ -77,27 +77,75 @@ class StaffChatView extends StatelessWidget {
                   // Search bar
                   Expanded(
                     child: Container(
-                      height: 40,
-                      child: TextField(
-                        onChanged: (value) {
-                          _staffchannelController.onSearchChanged(value);
-                        },
-                        controller: _staffchannelController.searchController,
-                        decoration: InputDecoration(
-                          hintText: "Search user...",
-                          hintStyle: TextStyle(color: Colors.grey),
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                          isDense: true,
-                          contentPadding: EdgeInsets.all(0),
-                        ),
-                      ),
-                    ),
+                        height: 40,
+                        child: Obx(() {
+                          return TextField(
+                            onChanged: (value) {
+                              _staffchannelController.onSearchChanged(value);
+                            },
+                            controller:
+                                _staffchannelController.searchController,
+                            decoration: InputDecoration(
+                              suffixIcon: InkWell(
+                                  onTap: () => {
+                                        if (_staffchannelController
+                                                .truckSearch.value ==
+                                            "truck")
+                                          {
+                                            _staffchannelController
+                                                .searchController.text = "",
+                                            _staffchannelController
+                                                .truckSearch.value = "normal",
+                                            _staffchannelController
+                                                .getChnnelChatUser(
+                                                    _staffchannelController
+                                                            .currentPage.value +
+                                                        1,
+                                                    _staffchannelController
+                                                        .searchController.text)
+                                          }
+                                        else
+                                          {
+                                            _staffchannelController
+                                                .searchController.text = "",
+                                            _staffchannelController
+                                                .truckSearch.value = "truck",
+                                            _staffchannelController
+                                                .getChnnelChatUser(
+                                                    _staffchannelController
+                                                            .currentPage.value +
+                                                        1,
+                                                    _staffchannelController
+                                                        .searchController.text)
+                                          }
+                                      },
+                                  child: Obx(() => Icon(
+                                        Icons.fire_truck,
+                                        color: _staffchannelController
+                                                    .truckSearch.value ==
+                                                "normal"
+                                            ? Colors.grey
+                                            : TColors.buttonPrimary,
+                                      ))),
+                              hintText: _staffchannelController
+                                          .truckSearch.value ==
+                                      "truck"
+                                  ? "Search with truck number"
+                                  : "Search with driver number,name,phone number...",
+                              hintStyle: TextStyle(color: Colors.grey),
+                              prefixIcon:
+                                  Icon(Icons.search, color: Colors.grey),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              isDense: true,
+                              contentPadding: EdgeInsets.all(0),
+                            ),
+                          );
+                        })),
                   ),
                 ],
               ),
@@ -206,12 +254,29 @@ class StaffChatView extends StatelessWidget {
                               children: [
                                 // Channel name
                                 Expanded(
-                                  child: Text(
-                                    channel?.userProfile?.username ??
-                                        'Unnamed Channel',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                    overflow: TextOverflow.ellipsis,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "${channel?.userProfile?.username} (${channel?.userProfile?.user?.driverNumber})" ??
+                                            'Unnamed User',
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      channel?.assginTrucks != ""
+                                          ? Text(
+                                              "Assgin trucks: ${channel?.assginTrucks}" ??
+                                                  'Unnamed User',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500),
+                                              overflow: TextOverflow.ellipsis,
+                                            )
+                                          : SizedBox(),
+                                    ],
                                   ),
                                 ),
                                 // Time and Badge column

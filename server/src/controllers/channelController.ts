@@ -332,7 +332,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
       // if(search == ""){
       //   uniqueArray=[]
       // }
-     console.log(uniqueArray,"unreadMessageuniqueArray")
+     
       userChannels = await  UserChannel.findAndCountAll({
       
         include: [
