@@ -835,9 +835,9 @@ const ChatInterface = ({ type }: { type: string }) => {
                       { type == "group" ? messages.map((msg) => (
                         <>
                         
-                          {msg.senderId != senderId && msg.sender ? (
+                          {msg.senderId != senderId && msg.sender ? (<>
                             <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <Typography variant="caption">{msg?.sender?.username} </Typography>
+                              <Typography variant="caption">{msg?.sender?.username} { moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A') }</Typography>
                               <Badge
                                 color={msg?.sender.isOnline ? 'success' : 'default'}
                                 variant={msg?.sender.isOnline ? 'dot' : 'standard'}
@@ -845,8 +845,10 @@ const ChatInterface = ({ type }: { type: string }) => {
                                 overlap="circular"
                               />
                             </Box>
+                           
+                            </>
                           ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{msg?.sender?.username} {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
+                          <Typography variant="caption">{msg?.sender?.username} { moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A') }</Typography>
                           {msg.deliveryStatus === 'sent' && <BsCheckAll />}
                         </Box>}
                           <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
@@ -872,7 +874,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                           </MessageBubble>
                         
                         </>
-                      )):messages.map((msg) => (
+                      )): messages.map((msg) => (
                         <>
                         
                           {msg.messageDirection == "R" ? (
