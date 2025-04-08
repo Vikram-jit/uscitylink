@@ -21,7 +21,6 @@ import { ChannelPopover } from './channel-popover';
 import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
 import { Chip, CircularProgress } from '@mui/material';
 import { useSocket } from '@/lib/socketProvider';
-import moment from 'moment';
 import { ChannelModel } from '@/redux/models/ChannelModel';
 
 export function SideNav(): React.JSX.Element {
@@ -106,7 +105,7 @@ export function SideNav(): React.JSX.Element {
   );
 }
 
-function renderNavItems({ items = [], pathname ,data}: { items?: NavItemConfig[]; pathname: string,data?: {channel:ChannelModel,messages:number,group:number} }): React.JSX.Element {
+function renderNavItems({ items = [], pathname ,data}: { items?: NavItemConfig[]; pathname: string,data?: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number} }): React.JSX.Element {
   // const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
   //   const { key, ...item } = curr;
 
@@ -164,7 +163,7 @@ function reduceChildRoutes({
 interface NavItemProps extends Omit<NavItemConfig, 'items'> {
   pathname: string;
   children?:NavItemConfig[]
-  data: {channel:ChannelModel,messages:number,group:number}
+  data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number}
 }
 
 function NavItem({ disabled, external, href, icon, matcher, pathname, title,badge,data,key}: NavItemProps): React.JSX.Element {
@@ -233,6 +232,10 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title,badg
             background:"#fff",
             borderRadius:"10px!important"
           }} label={data?.group}></Chip> }  
+          {badge && title == "Staff Chat" &&  data?.staffcountUnRead > 0 && <Chip sx={{
+            background:"#fff",
+            borderRadius:"10px!important"
+          }} label={data?.staffcountUnRead}></Chip> }  
         </Box>
       </Box>
     </li>

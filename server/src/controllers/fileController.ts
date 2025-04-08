@@ -98,7 +98,7 @@ export const fileUploadAWS = async (
     const channelId = req.body.channelId || req.activeChannel;
     const groupId = req.query.groupId || null;
     const userId = req.query.userId || req.user?.id;
-
+    const private_chat_id = req.query.private_chat_id as string;
 
   
 
@@ -138,7 +138,8 @@ export const fileUploadAWS = async (
         groupId: groupId == "null" ? null : groupId,
         upload_source: req.query.source || "message",
         thumbnail: thumbnail_data?.Key,
-           upload_type:"server"
+           upload_type:"server",
+           private_chat_id:private_chat_id
       });
     
       }

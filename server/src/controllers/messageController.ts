@@ -30,7 +30,9 @@ import {
   notifiyFileUploadDriverToStaff,
   notifiyFileUploadDriverToStaffGroup,
   notifiyFileUploadStaffToDriver,
+  notifiyFileUploadStaffToStaff,
   notifiyFileUploadTruckGroupMembers,
+  sendMessageToStaffMember,
 } from "../sockets/messageHandler";
 import GroupMessage from "../models/GroupMessage";
 
@@ -85,6 +87,7 @@ export const processFileUpload = async (
     groupId?: string;
     userId: string;
     location: string;
+    private_chat_id?:string
   }>
 ): Promise<void> => {
   const {
@@ -96,6 +99,7 @@ export const processFileUpload = async (
     groupId,
     userId,
     location,
+    private_chat_id
   } = job.data;
 
   const fileStream = fs.createReadStream(filePath);
@@ -151,7 +155,7 @@ export const processFileUpload = async (
               { where: { id: existingGroupMessage.id } }
             );
           }
-    
+
           await notifiyFileUploadTruckGroupMembers(
             getSocketInstance(),
             socket,
@@ -159,7 +163,8 @@ export const processFileUpload = async (
             groupId!,
             existingMessage!.id,
             "server",
-            userId,existingGroupMessage!.id
+            userId,
+            existingGroupMessage!.id
           );
         } else {
           await notifiyFileUploadStaffToDriver(
@@ -171,6 +176,16 @@ export const processFileUpload = async (
             userId
           );
         }
+      } else if(source == "staff_group"){
+        await notifiyFileUploadStaffToStaff(
+          getSocketInstance(),
+          socket,
+          channelId,
+          existingMessage!.id,
+          "server",
+          userId,
+          private_chat_id
+        );
       } else {
         if (location == "group") {
           await notifiyFileUploadDriverToStaffGroup(
@@ -410,7 +425,7 @@ export const getMessagesByUserId = async (
     const { id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    
+
     const offset = (page - 1) * pageSize;
 
     const userProfile = await UserProfile.findByPk(id, {
@@ -598,6 +613,7 @@ export const fileUploadWeb = async (
     const channelId = req.activeChannel;
     const userId = req.body.userId?.length > 0 ? req.body.userId : req.user?.id;
     const groupId = req.body.groupId as string;
+    const private_chat_id = req.query.private_chat_id as string;
     const source = req.body.source || "message";
     if (req.file) {
       const file = req.file as any;
@@ -613,6 +629,7 @@ export const fileUploadWeb = async (
         file_type: req.body.type,
         upload_source: source,
         upload_type: "server",
+        private_chat_id:private_chat_id || null
       });
     }
 
@@ -631,7 +648,7 @@ export const fileUploadWeb = async (
 export const getMedia = async (req: Request, res: Response): Promise<any> => {
   try {
     const page = parseInt(req.query.page + "") || 1;
-    const limit = parseInt(req.query.limit + "") || 10;
+    const limit = parseInt(req.query.limit + "") || 20;
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
 
@@ -969,7 +986,6 @@ export const fileUploadByQueue = async (
   res: Response
 ): Promise<any> => {
   try {
-   
     if (!req.files || !Array.isArray(req.files)) {
       return res.status(400).send("No files uploaded.");
     }
@@ -977,6 +993,7 @@ export const fileUploadByQueue = async (
     const groupId = req.query.groupId || null;
     const body = req.body.body;
     const userId = req.query.userId || req.user?.id;
+    const private_chat_id = req.query.private_chat_id as string;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
 
@@ -987,7 +1004,7 @@ export const fileUploadByQueue = async (
       const source = req.query.location;
       const location = req.query.source;
       const uploadBy = req.query.uploadBy as string;
-     
+
       // for staff
       if (uploadBy == "staff") {
         const socket = global.userSockets[req.user?.id];
@@ -1004,7 +1021,6 @@ export const fileUploadByQueue = async (
             "not-upload"
           );
         } else if (location == "truck") {
-          
           await messageToDriverByTruckGroup(
             getSocketInstance(),
             socket,
@@ -1029,6 +1045,20 @@ export const fileUploadByQueue = async (
             "not-upload"
           );
         }
+      } else if (uploadBy == "staff_group") {
+        const socket = global.userSockets[req.user?.id];
+        await sendMessageToStaffMember(
+          getSocketInstance(),
+          socket,
+          body,
+          "S",
+          "",
+          private_chat_id,
+          `uscitylink/${fileNameS3}`,
+          "",
+          "",
+          "not-upload"
+        );
       } else {
         const socket = global.userSockets[req.user?.id];
         if (location == "group") {
@@ -1064,10 +1094,12 @@ export const fileUploadByQueue = async (
         file_size: file.size,
         mime_type: file.mimetype,
         key: `uscitylink/${fileNameS3}`,
-        file_type: req.body.type || file.mimetype.startsWith('image/') ? 'media' : 'doc',
+        file_type:
+          req.body.type || file.mimetype.startsWith("image/") ? "media" : "doc",
         groupId: groupId,
         upload_source: source || "message",
         upload_type: "local",
+        private_chat_id:private_chat_id
       });
 
       // Add job to the queue for the current file
@@ -1077,9 +1109,10 @@ export const fileUploadByQueue = async (
         mediaId: media.id,
         channelId,
         groupId,
-        userId,
+        userId : uploadBy == "staff_group" ? req.user?.id:userId,
         source: uploadBy,
         location: req.query.source,
+        private_chat_id:private_chat_id
       });
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });

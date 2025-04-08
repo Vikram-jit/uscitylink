@@ -992,19 +992,67 @@ export async function unreadAllMessage(
       }
     );
 
-    // Object.entries(global.staffOpenChat).map(([key,value])=>{
-
-    //     if(value.channelId == channelId && value.userId == socket?.user?.id){
-    //       const isStaffSocket = userSockets[key]
-    //       if(isStaffSocket)
-    //       io.to(isStaffSocket?.id).emit("update_channel_sent_message_count", {
-    //         channelId,
-    //         userId:socket?.user?.id,
-    //       });
-    //     }
-    // })
-
     io.to(socket.id).emit("update_channel_message_count", channelId);
+  }
+}
+
+export async function unreadAllStaffMessage(
+  io: Server,
+  socket: CustomSocket,
+  chat_id: string,
+  user_id: string,
+  type: string
+) {
+  // console.log(chat_id, user_id, type, "staff_message");
+  if (chat_id) {
+    const isPrivateChat = await PrivateChatMember.findOne({
+      where: {
+        id: chat_id,
+      },
+    });
+
+    if (type == "reciverCount") {
+      await isPrivateChat?.update({
+        reciverCount: 0,
+      });
+    }
+
+    if (type == "senderCount") {
+      await isPrivateChat?.update({
+        senderCount: 0,
+      });
+    }
+
+    global.userSockets[socket.user?.id!].emit("staff_chat_count_decrement", {
+      type: type,
+      userId: user_id,
+      chat_id: chat_id,
+    });
+
+    await Message.update(
+      {
+        deliveryStatus: "seen",
+      },
+      {
+        where: {
+          private_chat_id: chat_id,
+          userProfileId: socket.user?.id,
+        },
+      }
+    );
+
+    const staffChatOpen = global.staff_open_staff_chat[user_id];
+    if (staffChatOpen) {
+      const staffSocket = global.userSockets[user_id];
+      if (staffSocket) {
+        staffSocket.emit("mark_all_message_seen", {
+          user_id: socket?.user?.id,
+          chat_id: chat_id,
+        });
+      }
+    }
+
+    // io.to(socket.id).emit("update_channel_message_count", channelId);
   }
 }
 
@@ -1335,6 +1383,85 @@ export async function notifiyFileUploadStaffToDriver(
   await Promise.all(promises);
 }
 
+export async function notifiyFileUploadStaffToStaff(
+  io: Server,
+  socket: CustomSocket,
+  channelId: string,
+  messageId: string,
+  type: string,
+  userId: string,
+  private_chat_id?: string
+) {
+  const privateChatMember = await PrivateChatMember.findOne({
+    where: {
+      id: private_chat_id,
+    },
+  });
+  if (privateChatMember) {
+    const staff1 = global.staff_open_staff_chat[privateChatMember.createdBy!];
+    const staff2 =
+      global.staff_open_staff_chat[privateChatMember.userProfileId!];
+
+    if (staff1 == private_chat_id) {
+      const staff1Socket = global.userSockets[privateChatMember.createdBy!];
+
+      if (staff1Socket) {
+        staff1Socket.emit("update_file_sent_status_staff", {
+          status: type,
+          messageId: messageId,
+        });
+      } else {
+        if (privateChatMember.createdBy == userId) {
+          const userProfile = await UserProfile.findOne({
+            where: {
+              id: privateChatMember.createdBy!,
+            },
+          });
+          if (userProfile) {
+            if (userProfile.device_token) {
+              await sendNotificationToDevice(userProfile.device_token, {
+                badge: 0,
+                title: "Upload Media",
+                body: "Send media successfully",
+                data: {},
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (staff2 == private_chat_id) {
+      const staff2Socket = global.userSockets[privateChatMember.userProfileId!];
+
+      if (staff2Socket) {
+        staff2Socket.emit("update_file_sent_status_staff", {
+          status: type,
+          messageId: messageId,
+        });
+      } else {
+        if (privateChatMember.userProfileId == userId) {
+          const userProfile = await UserProfile.findOne({
+            where: {
+              id: privateChatMember.userProfileId!,
+            },
+          });
+          if (userProfile) {
+            if (userProfile.device_token) {
+              await sendNotificationToDevice(userProfile.device_token, {
+                badge: 0,
+                title: "Upload Media",
+                body: "Send media successfully",
+                data: {},
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 export async function notifiyFileUploadDriverToStaffGroup(
   io: Server,
   socket: CustomSocket,
@@ -1485,7 +1612,11 @@ export async function sendMessageToStaffMember(
   body: string,
   messageDirection: string,
   type: string,
-  private_chat_id: string
+  private_chat_id: string,
+  url: string,
+  thumbnail: string,
+  r_message_id?: string,
+  url_upload_type?: string
 ) {
   const onlineUserId = socket.user?.id as string;
 
@@ -1513,10 +1644,10 @@ export async function sendMessageToStaffMember(
     senderId: onlineUserId,
     isRead: false,
     status: "sent",
-    url: null,
-    thumbnail: null,
-    reply_message_id: null,
-    url_upload_type: "server",
+    url: url || null,
+    thumbnail: thumbnail || null,
+    reply_message_id: r_message_id || null,
+    url_upload_type: url_upload_type || "server",
     private_chat_id: private_chat_id,
     type: "staff_message",
   });
@@ -1561,33 +1692,47 @@ export async function sendMessageToStaffMember(
     }
   );
 
- 
   const isSocket = global.userSockets[userProfile!];
   const isCheckCreatedBy = await PrivateChatMember.findOne({
-    where:{
-      id:private_chat_id
+    where: {
+      id: private_chat_id,
+    },
+  });
+  let notifiFactionId:string = "";
+  if (isCheckCreatedBy?.createdBy == socket.user?.id) {
+    const socketU = global.userSockets[isCheckCreatedBy?.userProfileId!];
+    if (socketU) {
+      socketU.emit("staff_chat_count_increment", {
+        type: "reciverCount",
+        userId: isCheckCreatedBy?.userProfileId,
+        chat_id: private_chat_id,
+      });
+      notifiFactionId = isCheckCreatedBy?.userProfileId!
     }
-  })
-  if(isCheckCreatedBy?.createdBy == socket.user?.id){
     await isCheckCreatedBy?.update({
-      reciverCount : Sequelize.literal(
-        "reciverCount + 1"
-      ),
-    })
-  }else{
+      reciverCount: Sequelize.literal("reciverCount + 1"),
+    });
+  } else {
+    const socketL = global.userSockets[isCheckCreatedBy?.createdBy!];
+    if (socketL) {
+      socketL.emit("staff_chat_count_increment", {
+        type: "senderCount",
+        userId: isCheckCreatedBy?.createdBy,
+        chat_id: private_chat_id,
+      });
+      notifiFactionId = isCheckCreatedBy?.createdBy!
+    }
     await isCheckCreatedBy?.update({
-      senderCount : Sequelize.literal(
-        "senderCount + 1"
-      ),
-    })
+      senderCount: Sequelize.literal("senderCount + 1"),
+    });
   }
-  if (global.staff_open_staff_chat[userProfile!] == private_chat_id) {
-   
+  
+  if (global.staff_open_staff_chat[notifiFactionId] == private_chat_id) {
     if (isSocket) {
-     await message?.update({
+      await message?.update({
         deliveryStatus: "seen",
       });
-      
+
       isSocket.emit("send_message_compelete", message);
     }
   } else {
@@ -1596,8 +1741,6 @@ export async function sendMessageToStaffMember(
         "notification_new_message",
         `New Message Received in Staff Chat`
       );
-     
-     
     }
   }
   socket.emit("send_message_compelete", message);

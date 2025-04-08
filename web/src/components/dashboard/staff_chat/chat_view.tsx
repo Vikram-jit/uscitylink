@@ -4,21 +4,29 @@ import React, { useEffect, useState } from 'react';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { StaffChatModel } from '@/redux/models/StaffChatModel';
 import { useGetMessagesByPrivateChatIdQuery, useGetStaffChatUsersQuery } from '@/redux/StaffChatApiSlice';
-import { Done, DoneAll } from '@mui/icons-material';
+import { Attachment, Done, DoneAll } from '@mui/icons-material';
 import SendIcon from '@mui/icons-material/Send';
+import ReactImageGallery from 'react-image-gallery';
 import {
   Avatar,
   Badge,
   Box,
   Button,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
   List,
   ListItem,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
   Paper,
+  Popover,
   styled,
   TextField,
   Typography,
@@ -32,6 +40,12 @@ import MediaComponent from '@/components/messages/MediaComment';
 import { formatDate } from '@/components/messages/utils';
 
 import AddMemberDialog from './add_member_dialog';
+import { File, Video } from '@phosphor-icons/react';
+import ReactPlayer from 'react-player';
+import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
+import { useDispatch } from 'react-redux';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import { apiSlice } from '@/redux/apiSlice';
 
 interface Contact {
   id: number;
@@ -76,6 +90,26 @@ const ChatView: React.FC = () => {
   const [typingStartTime, setTypingStartTime] = React.useState<number>(0);
   const [userTypingMessage, setUserTypingMessage] = React.useState<string>('');
   const [userTyping, setUserTyping] = React.useState<boolean>(false);
+  const [file, setFile] = React.useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  const [caption, setCaption] = React.useState('');
+
+  const [fileUpload] = useFileUploadMutation();
+  const [videoUpload] = useVideoUploadMutation();
+  const dispatch = useDispatch();
+ const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
+
+
+  const [anchorElPopOver, setAnchorElPopOver] = React.useState<HTMLButtonElement | null>(null);
+  
+    const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
+      setAnchorElPopOver(event.currentTarget);
+    };
+  
+    const handleClosePopOver = () => {
+      setAnchorElPopOver(null);
+    };
+    const openPopOver = Boolean(anchorElPopOver);
 
   const {
     data: messagesStaff,
@@ -150,9 +184,63 @@ const ChatView: React.FC = () => {
           }
         }
       });
+      socket.on("update_file_sent_status_staff",(data:any)=>{
+        setMessages((prev) =>
+           prev.map((e) =>
+             e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
+           )
+         );
+        })
+
+        socket.on("staff_chat_count_increment",(data:any)=>{
+          setChatUsers((prev)=>{
+            return prev.map((e)=>{
+              if(e.chat_id == data.chat_id){
+                 if(data.type == "reciverCount"){
+                   return {...e,reciverCount : e.reciverCount +1}
+                 }else{
+                  return {...e,senderCount : e.senderCount +1}
+                 }
+              }
+              return e
+            })
+          })
+         
+        })
+
+        socket.on("mark_all_message_seen",(data:any)=>{
+          
+          if(selectedContact?.chat_id == data.chat_id){
+            setMessages((prev)=> prev.map((e)=>{
+              return {...e,deliveryStatus:"seen"}
+            }))
+          }
+        })
+        socket.on("staff_chat_count_decrement",(data:any)=>{
+         
+          setChatUsers((prev)=>{
+            return prev.map((e)=>{
+              if(e.chat_id == data.chat_id){
+                 if(data.type == "reciverCount"){
+                   return {...e,reciverCount : 0}
+                 }else{
+                  return {...e,senderCount : 0}
+                 }
+              }
+              return e
+            })
+          })
+           
+        })
+      
       return () => {
+      
+        socket.off('staff_chat_count_decrement');
+        socket.off('staff_chat_count_increment');
+        socket.off('mark_all_message_seen');
         socket.off('send_message_compelete');
         socket.off('typingUser');
+        socket.off('update_file_sent_status_staff');
       };
     }
   }, [socket, isConnected, selectedContact?.chat_id]);
@@ -212,6 +300,146 @@ const ChatView: React.FC = () => {
       isTyping,
     });
   };
+  const handleCancel = () => {
+    setPreviewDialogOpen(false); // Close the preview dialog without sending
+    setFile(null);
+  };
+
+   const handleIconClick = () => {
+      document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
+    };
+    const [files, setFiles] = React.useState<any>([]);
+  
+    const handleFileChange = (event: any) => {
+      //console.log(event.target.files)
+      const selectedFile = event.target.files[0];
+      if (selectedFile) {
+        //setFile(selectedFile);
+        const selectedFiles = Array.from(event.target.files);
+        setFiles(selectedFiles);
+        setPreviewDialogOpen(true);
+      }
+    };
+  
+    const handleVedioClick = () => {
+      document?.getElementById('file-input-vedio')?.click();
+    };
+    const handleFileChangeVedio = (event: any) => {
+      //console.log(event.target.files)
+      const selectedFile = event.target.files[0];
+      if (selectedFile) {
+        setFile(selectedFile);
+        //   const selectedFiles = Array.from(event.target.files);
+        //  setFiles(selectedFiles);
+        setPreviewDialogOpen(true);
+      }
+    };
+async function sendFiles() {
+    try {
+
+    
+      dispatch(showLoader());
+
+      let formData = new FormData();
+
+      formData.append('body', caption);
+      formData.append('type', '');
+      formData.append('channelId', '');
+      //  formData.append("files",files)
+
+      for (const file of files) {
+        formData.append('files', file, file.name);
+      }
+
+      const res = await uploadMultipleFiles({
+        formData: formData,
+        userId: selectedContact?.id,
+        groupId: "",
+        location: 'message',
+        source: 'message',
+        uploadBy: 'staff_group',
+        private_chat_id:selectedContact?.chat_id
+      }).unwrap();
+      if (res?.status) {
+
+        setFiles([]);
+        setCaption('');
+        setPreviewDialogOpen(false);
+        dispatch(hideLoader());
+      }
+      dispatch(hideLoader());
+      console.log(res);
+    } catch (error) {
+      dispatch(hideLoader());
+      console.log(error);
+    }
+  }
+ async function sendMessage() {
+    try {
+      const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+
+      const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+      dispatch(showLoader());
+      if (selectedContact) {
+       
+        let formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', selectedContact.id);
+        formData.append('source', "message");
+        formData.append('groupId','');
+        formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
+        const res = videoExtensions.includes(extension)
+          ? await videoUpload({ formData, userId: selectedContact.id, groupId: '', private_chat_id:selectedContact?.chat_id }).unwrap()
+          : await fileUpload({formData, private_chat_id:selectedContact?.chat_id}).unwrap();
+        if (res.status) {
+          if (isConnected) {
+            socket.emit('staff_message_send', {
+              body: caption,
+              messageDirection: 'S',
+              type: 'active',
+              private_chat_id: selectedContact?.chat_id,
+              url: res?.data?.key,
+              thumbnail: res?.data?.thumbnail,
+            });
+            
+          }
+
+        
+          setFile(null);
+          setCaption('');
+          setPreviewDialogOpen(false);
+          dispatch(hideLoader());
+        }
+      }
+    } catch (error) {
+      dispatch(hideLoader());
+      console.log(error);
+    }
+  }
+
+  const renderFilePreview = () => {
+    const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+
+    const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+
+    if (file && file.type.startsWith('image/')) {
+      // Display image preview for images
+      return (
+        <img
+          src={URL.createObjectURL(file)}
+          alt="Preview"
+          style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
+        />
+      );
+    } else if (file && file.type === 'application/pdf') {
+      // Display placeholder for PDF files
+      return <div>PDF Preview (placeholder)</div>;
+    } else if (videoExtensions.includes(extension)) {
+      return <ReactPlayer height={200} width={500} url={URL.createObjectURL(file)} controls={true} />;
+    } else {
+      return <div>File Preview Not Available</div>;
+    }
+  };
 
   return (
     <Box display="flex" height="90vh">
@@ -231,6 +459,7 @@ const ChatView: React.FC = () => {
             <>
               <ListItem key={`${index}-staff-chat`} sx={{ padding: 0 }}>
                 <ListItemButton
+                disabled={selectedContact?.chat_id == contact.chat_id}
                   selected={selectedContact?.chat_id == contact.chat_id}
                   sx={{
                     alignItems: 'initial',
@@ -247,6 +476,20 @@ const ChatView: React.FC = () => {
                   onClick={() => {
                     if (socket) {
                       socket.emit('update_staff_open_staff_chat', contact.chat_id);
+                      socket.emit("unread_staff_message",{chat_id:contact.chat_id,user_id:contact.id,type:contact.isCreatedBy == false ? "reciverCount":"senderCount"})
+                      setChatUsers((prev)=>{
+                        return prev.map((e)=>{
+                          if(e.chat_id == contact.chat_id){
+                             if(contact.isCreatedBy == false){
+                               return {...e,reciverCount : 0}
+                             }else{
+                              return {...e,senderCount : 0}
+                             }
+                          }
+                          return e
+                        })
+                      })
+                       dispatch(apiSlice.util.invalidateTags(['dashboard', 'channels']));
                     }
                     setMessages([]);
                     setPage(1);
@@ -298,12 +541,24 @@ const ChatView: React.FC = () => {
                           </Typography>
                         </Box>
                         <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
-                        {contact.isCreatedBy == false && contact?.reciverCount > 0 && (
-                <Chip variant="filled" color="primary" size="small" label={ contact?.reciverCount} sx={{ ml: 1 }} />
-              )}
-              {contact.isCreatedBy && contact?.senderCount > 0 && (
-                <Chip variant="filled" color="primary" size="small" label={ contact?.senderCount} sx={{ ml: 1 }} />
-              )}
+                          {contact.isCreatedBy == false && contact?.reciverCount > 0 && (
+                            <Chip
+                              variant="filled"
+                              color="primary"
+                              size="small"
+                              label={contact?.reciverCount}
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                          {contact.isCreatedBy && contact?.senderCount > 0 && (
+                            <Chip
+                              variant="filled"
+                              color="primary"
+                              size="small"
+                              label={contact?.senderCount}
+                              sx={{ ml: 1 }}
+                            />
+                          )}
                           {contact.last_message && (
                             <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
                               {formatDate(contact?.last_message?.messageTimestampUtc)}
@@ -453,6 +708,54 @@ const ChatView: React.FC = () => {
               </div>
             )}
             <Box display="flex" p={2} borderTop="1px solid #ccc">
+               <input
+                                    id="file-input-vedio"
+                                    type="file"
+                                    accept="video/*"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileChangeVedio}
+                                  />
+                                  <input
+                                    multiple
+                                    id="file-input"
+                                    type="file"
+                                    style={{ display: 'none' }} // Hide the input element
+                                    onChange={handleFileChange} // Handle file selection
+                                  />
+                                  <IconButton onClick={attachmenPopOver}>
+                                    <Attachment />
+                                  </IconButton>
+                                  <Popover
+                                    id={`attachment-popover`}
+                                    open={openPopOver}
+                                    anchorEl={anchorElPopOver}
+                                    onClose={handleClosePopOver}
+                                    // anchorOrigin={{
+                                    //   vertical: 'bottom',
+                                    //   horizontal: 'left',
+                                    // }}
+                                  >
+                                    <List disablePadding>
+                                      <ListItem disablePadding>
+                                        <ListItemButton onClick={handleIconClick}>
+                                          <ListItemIcon>
+                                            <File />
+                                          </ListItemIcon>
+                                          <ListItemText primary="Media/Docs" />
+                                        </ListItemButton>
+                                      </ListItem>
+                                      <Divider />
+                                      <ListItem disablePadding>
+                                        <ListItemButton onClick={handleVedioClick}>
+                                          <ListItemIcon>
+                                            <Video />
+                                          </ListItemIcon>
+                                          <ListItemText primary={'Video'} />
+                                        </ListItemButton>
+                                      </ListItem>
+                                      <Divider />
+                                    </List>
+                                  </Popover>
               <TextField
                 onKeyDown={(event) => {
                   handleKeyDown();
@@ -474,8 +777,65 @@ const ChatView: React.FC = () => {
           </Typography>
         )}
       </Box>
+       {previewDialogOpen && (
+              <Dialog open={previewDialogOpen} onClose={handleCancel} fullWidth>
+                <DialogTitle>Selected File</DialogTitle>
+                <DialogContent>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
+                    {/* Render file preview */}
+                    {files.length > 0 ? <MediaGallery mediaFiles={files} /> : renderFilePreview()}
+      
+                    {/* Input for file description */}
+                    <TextField
+                      fullWidth
+                      placeholder="Enter file description..."
+                      multiline
+                      value={caption}
+                      onChange={(event) => setCaption(event.target.value)}
+                      sx={{ marginTop: 2 }}
+                    />
+                  </div>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCancel} color="secondary">
+                    Cancel
+                  </Button>
+                  <Button disabled={isLoading||multipleLoader} onClick={files.length ? sendFiles : sendMessage} color="primary">
+                    Send {(isLoading||multipleLoader) && <CircularProgress />}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+            )}
     </Box>
   );
 };
 
 export default ChatView;
+
+
+const MediaGallery = ({ mediaFiles }: any) => {
+  const galleryItems = mediaFiles.map((file: any) => {
+    const objectUrl = URL.createObjectURL(file);
+    const extension = file.name.split('.').pop().toLowerCase();
+    const isVideo = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'].includes(extension);
+    const isPDF = extension === 'pdf';
+
+    return {
+      original: objectUrl,
+      thumbnail: objectUrl,
+      renderItem: () =>
+        isVideo ? (
+          <video controls style={{ width: '100%', height: '75vh' }}>
+            <source src={objectUrl} type={file.type} />
+            Your browser does not support the video tag.
+          </video>
+        ) : isPDF ? (
+          <iframe src={objectUrl} title={file.name} style={{ width: '100%', height: '75vh' }} />
+        ) : (
+          <img src={objectUrl} alt={file.name} style={{ height: '75vh' }} />
+        ),
+    };
+  });
+
+  return <ReactImageGallery items={galleryItems} showThumbnails={false} />;
+};

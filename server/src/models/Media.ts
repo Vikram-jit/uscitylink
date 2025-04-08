@@ -14,7 +14,7 @@ export class Media extends Model {
   public thumbnail?: string;
   public upload_type?: string;
   public upload_source?: string;
-
+  public private_chat_id?:string;
   public key?: string;
 
   public readonly createdAt!: Date;
@@ -31,6 +31,10 @@ Media.init(
       primaryKey: true,
     },
     channelId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    private_chat_id: {
       type: DataTypes.UUID,
       allowNull: true,
     },

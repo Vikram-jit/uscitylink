@@ -8,4 +8,5 @@ export interface DashboardModel {
     userUnMessage:  number;
     lastFiveDriver: User[];
     userUnReadMessage:MessageModel[]
+    staffcountUnRead:number
 }

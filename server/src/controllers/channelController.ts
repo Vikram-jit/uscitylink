@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { getUnrepliedMessagesCount } from "./userController";
 import GroupUser from "../models/GroupUser";
 import { MessageStaff } from "../models/MessageStaff";
+import PrivateChatMember from "../models/PrivateChatMember";
 
 export async function create(req: Request, res: Response): Promise<any> {
   try {
@@ -505,10 +506,30 @@ export async function getActiveChannel(
       }
     });
     const groupCount = await Group.sum('message_count');
+
+    let  countUnRead = 0;
+    const staffUnReadCount1 = await PrivateChatMember.findAll({
+      where:{
+        createdBy:req.user?.id
+      }
+    })
+    const staffUnReadCount2 = await PrivateChatMember.findAll({
+      where:{
+        userProfileId:req.user?.id
+      }
+    })
+
+    await Promise.all(staffUnReadCount1.map((e)=>{
+      countUnRead = countUnRead + Number(e.senderCount)
+    }))
+    await Promise.all(staffUnReadCount2.map((e)=>{
+      countUnRead = countUnRead + Number(e.reciverCount)
+    }))
+
     return res.status(200).json({
       status: true,
       message: `Active channel Fetch Successfully.`,
-      data: {channel,messages:userUnMessage,group:groupCount},
+      data: {channel,messages:userUnMessage,group:groupCount,staffcountUnRead:countUnRead},
     });
   } catch (err: any) {
     return res

@@ -13,7 +13,7 @@ export const navItems = [
   { key: 'channels', title: 'Channels', href: paths.dashboard.channels, icon: 'channels',badge:false },
   { key: 'channel Members', title: 'Channel Members', href: paths.channel.members, icon: 'users-four',badge:false },
   { key: 'training', title: 'Training Section', href: paths.dashboard.trainings, icon: 'users-four',badge:false },
-  { key: 'staff chat', title: 'Staff Chat', href: paths.dashboard.staff_chat, icon: 'chat',badge:false },
+  { key: 'staff chat', title: 'Staff Chat', href: paths.dashboard.staff_chat, icon: 'chat',badge:true },
 
 
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },

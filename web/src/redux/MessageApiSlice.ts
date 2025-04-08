@@ -64,12 +64,12 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: any;
       },
-      FormData
+      {formData:FormData, private_chat_id?:string}
     >({
       query: (formData) => ({
-        url: 'message/fileUploadWeb',
+        url: `message/fileUploadWeb?private_chat_id=${formData.private_chat_id}`,
         method: 'POST',
-        body: formData,
+        body: formData.formData,
         formData: true,
         // headers: {
 
@@ -86,10 +86,10 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       message: string;
       data: any;
     },
-    {formData:FormData,groupId?:string|null,userId?:string}
+    {formData:FormData,groupId?:string|null,userId?:string,private_chat_id?:string}
   >({
     query: (formData) => ({
-      url: `message/fileAwsUpload?groupId=${formData.groupId}&userId=${formData.userId}`,
+      url: `message/fileAwsUpload?groupId=${formData.groupId}&userId=${formData.userId}&private_chat_id=${formData.private_chat_id}`,
       method: 'POST',
       body: formData.formData,
       formData: true,
@@ -122,10 +122,10 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       message: string;
       data: any;
     },
-    {formData:FormData,groupId?:string|null,userId?:string,location?:string,source?:string,uploadBy?:string}
+    {formData:FormData,groupId?:string|null,userId?:string,location?:string,source?:string,uploadBy?:string,private_chat_id?:string}
   >({
     query: (formData) => ({
-      url: `media/uploadFileQueue?groupId=${formData.groupId}&userId=${formData.userId}&source=${formData.source}&location=${formData.location}&uploadBy=${formData.uploadBy}`,
+      url: `media/uploadFileQueue?groupId=${formData.groupId}&userId=${formData.userId}&source=${formData.source}&location=${formData.location}&uploadBy=${formData.uploadBy}&private_chat_id=${formData.private_chat_id}`,
       method: 'POST',
       body: formData.formData,
       formData: true,

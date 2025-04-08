@@ -23,7 +23,7 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: {channel:ChannelModel,messages:number,group:number};
+        data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number};
       },
       Partial<void>
     >({

@@ -21,6 +21,7 @@ import {
   unreadAllGroupMessageByStaffGroup,
   unreadAllGroupMessageByUser,
   unreadAllMessage,
+  unreadAllStaffMessage,
   unreadAllUserMessage,
 } from "./messageHandler";
 import moment from "moment";
@@ -374,14 +375,25 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       "staff_message_send",
-      async ({ body, messageDirection, type, private_chat_id }) =>
+      async ({
+        body,
+        messageDirection,
+        type,
+        private_chat_id,
+        url,
+        thumbnail,
+        r_message_id,
+      }) =>
         await sendMessageToStaffMember(
           io,
           socket,
           body,
           messageDirection,
           type,
-          private_chat_id
+          private_chat_id,
+          url,
+          thumbnail,
+          r_message_id
         )
     );
 
@@ -428,6 +440,8 @@ export const initSocket = (httpServer: any) => {
           r_message_id
         )
     );
+
+    socket.on("unread_staff_message",async({chat_id,user_id,type})=>unreadAllStaffMessage(io,socket,chat_id,user_id,type))
 
     socket.on(
       "UPDATE_APP_VERSION",
@@ -568,7 +582,7 @@ export const initSocket = (httpServer: any) => {
           const isSocket = global.userSockets[user_id];
           if (isSocket) {
             io.to(isSocket.id).emit("typingStaffChat", {
-              chat_id:chat_id,
+              chat_id: chat_id,
               typing: isTyping,
               message: `${staff.name} is typing...`,
             });
