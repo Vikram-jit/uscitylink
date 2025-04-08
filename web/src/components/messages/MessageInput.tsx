@@ -183,7 +183,7 @@ export default function MessageInput(props: MessageInputProps) {
       formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
       const res = videoExtensions.includes(extension)
         ? await videoUpload({ formData, userId: props.userId, groupId: null }).unwrap()
-        : await fileUpload(formData).unwrap();
+        : await fileUpload({formData}).unwrap();
       if (res.status) {
         socket.emit('send_message_to_user', {
           body: caption,

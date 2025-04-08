@@ -600,7 +600,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
         const res = videoExtensions.includes(extension)
           ? await videoUpload({ formData, userId: '', groupId: group.data.group.id }).unwrap()
-          : await fileUpload(formData).unwrap();
+          : await fileUpload({formData}).unwrap();
         if (res.status) {
           if (type == 'group') {
             socket?.emit('send_group_message', {

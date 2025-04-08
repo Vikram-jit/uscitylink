@@ -72,7 +72,7 @@ export default function Template() {
         formData.append('file', file);
         formData.append('userId', '');
         formData.append('type', file.type.startsWith('image/') ? "media" : "doc");
-        const res = await fileUpload(formData).unwrap();
+        const res = await fileUpload({formData,}).unwrap();
         if (res.status) {
           const template = query.get('id') ? await updateTemplate({ id: query.get('id') || '', ...state, url: res?.data?.key }) : await createTemplate({ ...state, url: res?.data?.key });
           if (template.data) {
