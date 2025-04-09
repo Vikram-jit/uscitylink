@@ -1,22 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGetMediaQuery } from '@/redux/MessageApiSlice';
 import { Divider } from '@mui/joy';
-import { Box, ImageList, ImageListItem, Typography } from '@mui/material';
+import { Box, CircularProgress, ImageList, ImageListItem, Pagination, Typography } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import MediaComponent from './MediaComment';
 
-export default function MediaPane({ userId,channelId,source }: { userId?: string,channelId?:string,source?:string }) {
+export default function MediaPane({ userId,channelId,source,private_chat_id, }: { userId?: string,channelId?:string,source?:string ,private_chat_id?:string}) {
   const [alignment, setAlignment] = React.useState('media');
-
-  const { data } = useGetMediaQuery({ channelId: channelId, type: alignment, userId:userId,source:source });
+  const [page,setPage] = React.useState<number>(1)
+  const { data ,isLoading,isFetching} = useGetMediaQuery({ channelId: channelId, type: alignment, userId:userId,source:source,private_chat_id,page });
 
   const handleChange = (event: React.MouseEvent<HTMLElement>, newAlignment: string) => {
     setAlignment(newAlignment);
   };
+  useEffect(()=>{
 
+  },[isLoading])
+  if(isLoading)
+    return <CircularProgress/>
   return (
     <>
     <Box sx={{ display: 'flex', justifyItems: 'center', justifyContent: 'center' ,}}>
@@ -36,14 +40,14 @@ export default function MediaPane({ userId,channelId,source }: { userId?: string
 
 
     </Box>
-    <Box paddingLeft={8} paddingRight={8} display={"flex"}>
+    <Box paddingLeft={8} paddingRight={8} display={"flex"} height={"80vh"} overflow={"scroll"}>
     {/* {alignment == 'media' && ( */}
-       <ImageList cols={3}  >
+       <ImageList cols={4} gap={10} >
          {data && data?.data?.media?.length > 0 ? (
 
              data.data.media.map((item) => (
                <ImageListItem key={item.key} style={{border:"1px solid #d9d9d9"}}>
-                 <MediaComponent url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${item.key}`} name={item.key} file_name={item.file_name}/>
+                 <MediaComponent height={100} thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${item.thumbnail}`} url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${item.key}`} name={item.key} file_name={item.file_name}/>
                </ImageListItem>
              ))
 
@@ -52,7 +56,11 @@ export default function MediaPane({ userId,channelId,source }: { userId?: string
          )}
        </ImageList>
      {/* )} */}
+   
     </Box>
+    <Pagination count={data?.data?.totalPages} page={page} sx={{alignSelf:"center"}} onChange={(page,v)=>{
+      setPage(v)
+    }}/>
     </>
   );
 }

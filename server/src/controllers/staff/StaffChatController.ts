@@ -66,8 +66,9 @@ export async function getStaffMembers(
 export async function getChatUsers(req: Request, res: Response): Promise<any> {
   try {
     const onlineUserId = req?.user?.id;
-
-    const chatMemberships:any = await PrivateChatMember.findAll({
+    const search = req.query.search || "" as string
+   
+    const chatMemberships: any = await PrivateChatMember.findAll({
       where: {
         [Op.or]: [{ createdBy: onlineUserId }, { userProfileId: onlineUserId }],
       },
@@ -79,10 +80,9 @@ export async function getChatUsers(req: Request, res: Response): Promise<any> {
       ],
     });
 
-   
     const userIdsSet = new Set();
 
-    chatMemberships.forEach(({ createdBy, userProfileId }:any) => {
+    chatMemberships.forEach(({ createdBy, userProfileId }: any) => {
       if (createdBy !== onlineUserId) userIdsSet.add(createdBy);
       if (userProfileId !== onlineUserId) userIdsSet.add(userProfileId);
     });
@@ -97,24 +97,25 @@ export async function getChatUsers(req: Request, res: Response): Promise<any> {
       where: {
         role_id: staffRole!.id,
         id: { [Op.in]: uniqueUserIds },
+        username: {[Op.like]: `%${search}%` }
       },
-      attributes: ["id", "username"],
+      attributes: ["id", "username","isOnline","last_login"],
     });
 
     const usersWithChatIds = userProfiles.map((user) => {
       const chat = chatMemberships.find(
-        (chat:any) =>
+        (chat: any) =>
           (chat.createdBy === onlineUserId && chat.userProfileId === user.id) ||
           (chat.userProfileId === onlineUserId && chat.createdBy === user.id)
       );
-       const isCreatedBy =chat.createdBy === onlineUserId
+      const isCreatedBy = chat.createdBy === onlineUserId;
       return {
         ...user.get({ plain: true }),
         chat_id: chat ? chat.id : null,
         senderCount: chat ? chat.senderCount : 0,
         reciverCount: chat ? chat.reciverCount : 0,
-        last_message:chat ? chat?.last_message :null,
-        isCreatedBy
+        last_message: chat ? chat?.last_message : null,
+        isCreatedBy,
       };
     });
 
@@ -231,10 +232,16 @@ export async function getAllMessageByPrivateChatId(
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const offset = (page - 1) * pageSize;
+    const pintType = req.query.pin_type as string;
+    const pinMessage = req.query.pinMessage as string;
 
     const messages = await Message.findAndCountAll({
       where: {
         private_chat_id: req.params.id,
+        ...(pinMessage === "1" &&
+          (pintType === "driver"
+            ? { driverPin: pinMessage }
+            : { staffPin: pinMessage })),
       },
       include: [
         {

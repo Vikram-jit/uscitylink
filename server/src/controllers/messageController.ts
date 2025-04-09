@@ -87,7 +87,7 @@ export const processFileUpload = async (
     groupId?: string;
     userId: string;
     location: string;
-    private_chat_id?:string
+    private_chat_id?: string;
   }>
 ): Promise<void> => {
   const {
@@ -99,7 +99,7 @@ export const processFileUpload = async (
     groupId,
     userId,
     location,
-    private_chat_id
+    private_chat_id,
   } = job.data;
 
   const fileStream = fs.createReadStream(filePath);
@@ -176,7 +176,7 @@ export const processFileUpload = async (
             userId
           );
         }
-      } else if(source == "staff_group"){
+      } else if (source == "staff_group") {
         await notifiyFileUploadStaffToStaff(
           getSocketInstance(),
           socket,
@@ -629,7 +629,7 @@ export const fileUploadWeb = async (
         file_type: req.body.type,
         upload_source: source,
         upload_type: "server",
-        private_chat_id:private_chat_id || null
+        private_chat_id: private_chat_id || null,
       });
     }
 
@@ -651,7 +651,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const limit = parseInt(req.query.limit + "") || 20;
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
-
+    const private_chat_id = req.query.private_chat_id as string;
     if (source == "staff") {
       const userProfile = await UserProfile.findByPk(req.params.channelId);
       const media = await Media.findAndCountAll({
@@ -711,6 +711,35 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
           totalPages: Math.ceil(media.count / limit),
         },
       });
+    }
+  
+    if(private_chat_id != "undefined"){
+    
+
+    const channel =
+       await Channel.findByPk(req.activeChannel)
+    const media = await Media.findAndCountAll({
+      where: {
+        private_chat_id:private_chat_id,
+        file_type: req.query.type || "media",
+      },
+      limit: limit,
+      offset: offset,
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Get media successfully`,
+      data: {
+        channel,
+        media: media.rows,
+        page,
+        limit,
+        totalItems: media.count,
+        totalPages: Math.ceil(media.count / limit),
+      },
+    });
     }
 
     const channelId =
@@ -1099,7 +1128,7 @@ export const fileUploadByQueue = async (
         groupId: groupId,
         upload_source: source || "message",
         upload_type: "local",
-        private_chat_id:private_chat_id
+        private_chat_id: private_chat_id,
       });
 
       // Add job to the queue for the current file
@@ -1109,10 +1138,10 @@ export const fileUploadByQueue = async (
         mediaId: media.id,
         channelId,
         groupId,
-        userId : uploadBy == "staff_group" ? req.user?.id:userId,
+        userId: uploadBy == "staff_group" ? req.user?.id : userId,
         source: uploadBy,
         location: req.query.source,
-        private_chat_id:private_chat_id
+        private_chat_id: private_chat_id,
       });
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });

@@ -8,6 +8,7 @@ import { Box } from '@mui/system';
 import { FilePdf, PlayCircle } from '@phosphor-icons/react';
 
 import DocumentDialog from '../DocumentDialog';
+import moment from 'moment';
 
 interface MediaComponent {
   url: string;
@@ -18,6 +19,7 @@ interface MediaComponent {
   name: string;
   type?: string;
   messageDirection?: string;
+  dateTime?:Date
 }
 
 export default function MediaComponent({
@@ -29,6 +31,7 @@ export default function MediaComponent({
   thumbnail,
   type,
   messageDirection,
+  dateTime
 }: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
@@ -137,7 +140,7 @@ export default function MediaComponent({
               )}
             </Box>
           ) : (
-            <IconButton onClick={() => setOpenDocument(true)}>
+            <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
               <Image
                 height={height || 60}
                 src={url}
@@ -146,6 +149,7 @@ export default function MediaComponent({
                 style={{ height: 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
+               <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
             </IconButton>
           )}
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
@@ -176,8 +180,18 @@ export default function MediaComponent({
               )}
             </Box>
           ) : (
-            <IconButton onClick={() => setOpenDocument(true)}>
-              <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+            <IconButton onClick={() => setOpenDocument(true)} sx={{
+              display:"flex",flexDirection:"column"
+            }}>
+             <Image
+                height={height || 60}
+                src={url}
+                alt=""
+                width={181}
+                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                objectFit="contain"
+              />
+              <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
             </IconButton>
           )}
 
@@ -229,8 +243,16 @@ export default function MediaComponent({
               )}
                 </Box>
               ) : (
-                <IconButton onClick={() => setOpenDocument(true)}>
-                  <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+                <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
+                   <Image
+                height={height || 60}
+                src={url}
+                alt=""
+                width={181}
+                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                objectFit="contain"
+              />
+                <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
                 </IconButton>
               )}
 
@@ -262,8 +284,16 @@ export default function MediaComponent({
               )}
                 </Box>
               ) : (
-                <IconButton onClick={() => setOpenDocument(true)}>
-                  <img height={height || 60} src={url} alt="" style={{ objectFit: 'contain' }} />
+                <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
+                  <Image
+                height={height || 60}
+                src={url}
+                alt=""
+                width={181}
+                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                objectFit="contain"
+              />
+               <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
                 </IconButton>
               )}
 

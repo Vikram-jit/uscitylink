@@ -27,11 +27,11 @@ export const StaffChatApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: StaffChatModel[];
       },
-      void
+      {search:string}
     >({
       providesTags: ['staffChatusers'],
-      query: () => ({
-        url: `staff/private/chat/staffChatUsers`,
+      query: (payload) => ({
+        url: `staff/private/chat/staffChatUsers?search=${payload.search}`,
         method: 'GET',
       }),
     }),
@@ -50,10 +50,10 @@ export const StaffChatApiSlice = apiSlice.injectEndpoints({
           truckNumbers?: string;
         };
       },
-      { id: string; page: number }
+      { id: string; page: number; pinMessage?: string; pin_type?: string }
     >({
       query: (payload) => ({
-        url: `staff/private/chat/messages/${payload.id}?page=${payload.page}`,
+        url: `staff/private/chat/messages/${payload.id}?page=${payload.page}&pin_type=${payload.pin_type}&pinMessage=${payload.pinMessage}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,
@@ -76,4 +76,9 @@ export const StaffChatApiSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetStaffUsersQuery,useGetMessagesByPrivateChatIdQuery, useGetStaffChatUsersQuery, useAddStaffMemberMutation } = StaffChatApiSlice;
+export const {
+  useGetStaffUsersQuery,
+  useGetMessagesByPrivateChatIdQuery,
+  useGetStaffChatUsersQuery,
+  useAddStaffMemberMutation,
+} = StaffChatApiSlice;

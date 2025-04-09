@@ -29,5 +29,5 @@ export interface MessageModel {
   sender: SenderModel;
   r_message:MessageModel
   url_upload_type:string,
-  private_chat_id:string|null
+  private_chat_id:string|null,driverPin:string|null
 }

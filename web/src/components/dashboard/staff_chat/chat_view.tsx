@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { apiSlice } from '@/redux/apiSlice';
+import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { StaffChatModel } from '@/redux/models/StaffChatModel';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { useGetMessagesByPrivateChatIdQuery, useGetStaffChatUsersQuery } from '@/redux/StaffChatApiSlice';
-import { Attachment, Done, DoneAll } from '@mui/icons-material';
+import { Attachment, Close, SearchRounded } from '@mui/icons-material';
 import SendIcon from '@mui/icons-material/Send';
-import ReactImageGallery from 'react-image-gallery';
 import {
   Avatar,
   Badge,
@@ -20,6 +22,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  Input,
   List,
   ListItem,
   ListItemButton,
@@ -32,20 +35,22 @@ import {
   Typography,
 } from '@mui/material';
 import { Stack } from '@mui/system';
-import { BsCheckAll } from 'react-icons/bs';
+import { File, Video } from '@phosphor-icons/react';
+import moment from 'moment';
+import ReactImageGallery from 'react-image-gallery';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import ReactPlayer from 'react-player';
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
 
 import { useSocket } from '@/lib/socketProvider';
+import useDebounce from '@/hooks/useDebounce';
 import MediaComponent from '@/components/messages/MediaComment';
+import MediaPane from '@/components/messages/MediaPane';
 import { formatDate } from '@/components/messages/utils';
 
 import AddMemberDialog from './add_member_dialog';
-import { File, Video } from '@phosphor-icons/react';
-import ReactPlayer from 'react-player';
-import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
-import { useDispatch } from 'react-redux';
-import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
-import { apiSlice } from '@/redux/apiSlice';
+import MessageView from './messge_view';
 
 interface Contact {
   id: number;
@@ -62,24 +67,11 @@ const MessagesContainer = styled(Box)({
   backgroundColor: '#fff',
 });
 
-const MessageBubble = styled(Paper)(({ isOwn }: { isOwn: boolean }) => ({
-  padding: '10px 15px',
-  maxWidth: '65%',
-  wordBreak: 'break-word',
-  backgroundColor: isOwn ? '#635bff' : '#e4e4e4',
-  color: isOwn ? '#fff' : '#111b21',
-  alignSelf: isOwn ? 'flex-end' : 'flex-start',
-  borderRadius: '7.5px',
-  position: 'relative',
-  boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
-}));
-
 const ChatView: React.FC = () => {
   const [selectedContact, setSelectedContact] = useState<StaffChatModel | null>(null);
   const [messages, setMessages] = useState<MessageModel[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
   const [chatUsers, setChatUsers] = useState<StaffChatModel[]>([]);
-  const { data, isLoading, isFetching } = useGetStaffChatUsersQuery();
   const [open, setOpen] = useState<boolean>(false);
   const { socket, isConnected } = useSocket();
   const [page, setPage] = useState<number>(1);
@@ -93,31 +85,45 @@ const ChatView: React.FC = () => {
   const [file, setFile] = React.useState<any>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [caption, setCaption] = React.useState('');
-
+  const [mediaPanel, setMediaPanel] = React.useState<boolean>(false);
+  const [pinMessage, setPinMessage] = React.useState<string>('0');
+  const [search, setSearch] = useState<string>('');
   const [fileUpload] = useFileUploadMutation();
   const [videoUpload] = useVideoUploadMutation();
   const dispatch = useDispatch();
- const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
-
+  const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
+  const [selectedMessageToReply, setSelectedMessageToReply] = React.useState<MessageModel | null>(null);
 
   const [anchorElPopOver, setAnchorElPopOver] = React.useState<HTMLButtonElement | null>(null);
-  
-    const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
-      setAnchorElPopOver(event.currentTarget);
-    };
-  
-    const handleClosePopOver = () => {
-      setAnchorElPopOver(null);
-    };
-    const openPopOver = Boolean(anchorElPopOver);
 
+  const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorElPopOver(event.currentTarget);
+  };
+
+  const handleClosePopOver = () => {
+    setAnchorElPopOver(null);
+  };
+  const openPopOver = Boolean(anchorElPopOver);
+
+  const searchItem = useDebounce(search, 200);
+  const searchParam = searchItem;
+
+  const { data, isLoading, isFetching } = useGetStaffChatUsersQuery(
+    { search: searchParam },
+    { refetchOnMountOrArgChange: true }
+  );
   const {
     data: messagesStaff,
     isLoading: loader,
     isFetching: loadMessages,
     refetch,
   } = useGetMessagesByPrivateChatIdQuery(
-    { id: selectedContact?.chat_id || '', page: page },
+    {
+      id: selectedContact?.chat_id || '',
+      page: page,
+      pin_type: selectedContact?.isCreatedBy ? 'staff' : 'driver',
+      pinMessage,
+    },
     {
       skip: !selectedContact,
     }
@@ -184,57 +190,81 @@ const ChatView: React.FC = () => {
           }
         }
       });
-      socket.on("update_file_sent_status_staff",(data:any)=>{
+      socket.on('update_file_sent_status_staff', (data: any) => {
         setMessages((prev) =>
-           prev.map((e) =>
-             e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-           )
-         );
-        })
+          prev.map((e) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
+        );
+      });
 
-        socket.on("staff_chat_count_increment",(data:any)=>{
-          setChatUsers((prev)=>{
-            return prev.map((e)=>{
-              if(e.chat_id == data.chat_id){
-                 if(data.type == "reciverCount"){
-                   return {...e,reciverCount : e.reciverCount +1}
-                 }else{
-                  return {...e,senderCount : e.senderCount +1}
-                 }
+      socket.on('staff_chat_count_increment', (data: any) => {
+        setChatUsers((prev) => {
+          return prev.map((e) => {
+            if (e.chat_id == data.chat_id) {
+              if (data.type == 'reciverCount') {
+                return { ...e, reciverCount: e.reciverCount + 1 };
+              } else {
+                return { ...e, senderCount: e.senderCount + 1 };
               }
-              return e
-            })
-          })
-         
-        })
+            }
+            return e;
+          });
+        });
+      });
 
-        socket.on("mark_all_message_seen",(data:any)=>{
-          
-          if(selectedContact?.chat_id == data.chat_id){
-            setMessages((prev)=> prev.map((e)=>{
-              return {...e,deliveryStatus:"seen"}
-            }))
-          }
-        })
-        socket.on("staff_chat_count_decrement",(data:any)=>{
-         
-          setChatUsers((prev)=>{
-            return prev.map((e)=>{
-              if(e.chat_id == data.chat_id){
-                 if(data.type == "reciverCount"){
-                   return {...e,reciverCount : 0}
-                 }else{
-                  return {...e,senderCount : 0}
-                 }
-              }
-              return e
+      socket.on('mark_all_message_seen', (data: any) => {
+        if (selectedContact?.chat_id == data.chat_id) {
+          setMessages((prev) =>
+            prev.map((e) => {
+              return { ...e, deliveryStatus: 'seen' };
             })
+          );
+        }
+      });
+      socket.on('staff_chat_count_decrement', (data: any) => {
+        setChatUsers((prev) => {
+          return prev.map((e) => {
+            if (e.chat_id == data.chat_id) {
+              if (data.type == 'reciverCount') {
+                return { ...e, reciverCount: 0 };
+              } else {
+                return { ...e, senderCount: 0 };
+              }
+            }
+            return e;
+          });
+        });
+      });
+      socket.on('delete_message', (data: any) => {
+        setMessages((prev) => prev.filter((e) => e.id != data));
+
+        toast.error('Deleted message successfully');
+      });
+
+      socket.on('pin_done_web', (data: any) => {
+        console.log(data);
+        if (data.value == '0') {
+          toast.success('Un-pin message successfully');
+        } else {
+          toast.success('Pin message successfully');
+        }
+
+        setMessages((prev) =>
+          prev.map((e) => {
+            if (e.id === data?.messageId) {
+              // Determine the property to update based on data.type
+              const updatedField = data?.type === 'driver' ? { driverPin: data?.value } : { staffPin: data?.value };
+
+              // Return the updated message object
+              return { ...e, ...updatedField };
+            }
+            return e;
           })
-           
-        })
-      
+        );
+      });
+
       return () => {
-      
+        socket.off('pin_done_web');
+        socket.off('delete_message');
         socket.off('staff_chat_count_decrement');
         socket.off('staff_chat_count_increment');
         socket.off('mark_all_message_seen');
@@ -244,6 +274,12 @@ const ChatView: React.FC = () => {
       };
     }
   }, [socket, isConnected, selectedContact?.chat_id]);
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+
+    setChatUsers([]);
+    setSelectedContact(null);
+  };
 
   const handleSendMessage = () => {
     if (isConnected) {
@@ -252,7 +288,14 @@ const ChatView: React.FC = () => {
         messageDirection: 'S',
         type: 'active',
         private_chat_id: selectedContact?.chat_id,
+        url:null,
+        thumbnail:null,
+        r_message_id:selectedMessageToReply?.id || null,
+    
       });
+      if(selectedMessageToReply){
+        setSelectedMessageToReply(null)
+      }
       setNewMessage('');
     }
   };
@@ -305,39 +348,37 @@ const ChatView: React.FC = () => {
     setFile(null);
   };
 
-   const handleIconClick = () => {
-      document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
-    };
-    const [files, setFiles] = React.useState<any>([]);
-  
-    const handleFileChange = (event: any) => {
-      //console.log(event.target.files)
-      const selectedFile = event.target.files[0];
-      if (selectedFile) {
-        //setFile(selectedFile);
-        const selectedFiles = Array.from(event.target.files);
-        setFiles(selectedFiles);
-        setPreviewDialogOpen(true);
-      }
-    };
-  
-    const handleVedioClick = () => {
-      document?.getElementById('file-input-vedio')?.click();
-    };
-    const handleFileChangeVedio = (event: any) => {
-      //console.log(event.target.files)
-      const selectedFile = event.target.files[0];
-      if (selectedFile) {
-        setFile(selectedFile);
-        //   const selectedFiles = Array.from(event.target.files);
-        //  setFiles(selectedFiles);
-        setPreviewDialogOpen(true);
-      }
-    };
-async function sendFiles() {
-    try {
+  const handleIconClick = () => {
+    document?.getElementById('file-input')?.click(); // Trigger the click event of the hidden file input
+  };
+  const [files, setFiles] = React.useState<any>([]);
 
-    
+  const handleFileChange = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      //setFile(selectedFile);
+      const selectedFiles = Array.from(event.target.files);
+      setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
+
+  const handleVedioClick = () => {
+    document?.getElementById('file-input-vedio')?.click();
+  };
+  const handleFileChangeVedio = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      //   const selectedFiles = Array.from(event.target.files);
+      //  setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
+  async function sendFiles() {
+    try {
       dispatch(showLoader());
 
       let formData = new FormData();
@@ -354,14 +395,13 @@ async function sendFiles() {
       const res = await uploadMultipleFiles({
         formData: formData,
         userId: selectedContact?.id,
-        groupId: "",
+        groupId: '',
         location: 'message',
         source: 'message',
         uploadBy: 'staff_group',
-        private_chat_id:selectedContact?.chat_id
+        private_chat_id: selectedContact?.chat_id,
       }).unwrap();
       if (res?.status) {
-
         setFiles([]);
         setCaption('');
         setPreviewDialogOpen(false);
@@ -374,23 +414,30 @@ async function sendFiles() {
       console.log(error);
     }
   }
- async function sendMessage() {
+  async function sendMessage() {
     try {
       const extension = file.name?.split('.')[file.name?.split('.').length - 1];
 
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
       dispatch(showLoader());
       if (selectedContact) {
-       
         let formData = new FormData();
         formData.append('file', file);
         formData.append('userId', selectedContact.id);
-        formData.append('source', "message");
-        formData.append('groupId','');
-        formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
+        formData.append('source', 'message');
+        formData.append('groupId', '');
+        formData.append(
+          'type',
+          file.type.startsWith('image/') ? 'media' : videoExtensions.includes(extension) ? 'media' : 'doc'
+        );
         const res = videoExtensions.includes(extension)
-          ? await videoUpload({ formData, userId: selectedContact.id, groupId: '', private_chat_id:selectedContact?.chat_id }).unwrap()
-          : await fileUpload({formData, private_chat_id:selectedContact?.chat_id}).unwrap();
+          ? await videoUpload({
+              formData,
+              userId: selectedContact.id,
+              groupId: '',
+              private_chat_id: selectedContact?.chat_id,
+            }).unwrap()
+          : await fileUpload({ formData, private_chat_id: selectedContact?.chat_id }).unwrap();
         if (res.status) {
           if (isConnected) {
             socket.emit('staff_message_send', {
@@ -401,10 +448,8 @@ async function sendFiles() {
               url: res?.data?.key,
               thumbnail: res?.data?.thumbnail,
             });
-            
           }
 
-        
           setFile(null);
           setCaption('');
           setPreviewDialogOpen(false);
@@ -440,7 +485,9 @@ async function sendFiles() {
       return <div>File Preview Not Available</div>;
     }
   };
-
+  function onHandlePin() {
+    setMessages([]);
+  }
   return (
     <Box display="flex" height="90vh">
       {open && <AddMemberDialog open={open} setOpen={setOpen} />}
@@ -454,12 +501,23 @@ async function sendFiles() {
             + Add member
           </Button>
         </Box>
+        <Box sx={{ mt: 2, pb: 1.5 }}>
+          <Input
+            value={search}
+            onChange={handleSearchChange}
+            size="small"
+            startAdornment={<SearchRounded />}
+            placeholder="Search"
+            aria-label="Search"
+            fullWidth
+          />
+        </Box>
         <List>
           {chatUsers.map((contact, index) => (
             <>
               <ListItem key={`${index}-staff-chat`} sx={{ padding: 0 }}>
                 <ListItemButton
-                disabled={selectedContact?.chat_id == contact.chat_id}
+                  disabled={selectedContact?.chat_id == contact.chat_id}
                   selected={selectedContact?.chat_id == contact.chat_id}
                   sx={{
                     alignItems: 'initial',
@@ -476,20 +534,24 @@ async function sendFiles() {
                   onClick={() => {
                     if (socket) {
                       socket.emit('update_staff_open_staff_chat', contact.chat_id);
-                      socket.emit("unread_staff_message",{chat_id:contact.chat_id,user_id:contact.id,type:contact.isCreatedBy == false ? "reciverCount":"senderCount"})
-                      setChatUsers((prev)=>{
-                        return prev.map((e)=>{
-                          if(e.chat_id == contact.chat_id){
-                             if(contact.isCreatedBy == false){
-                               return {...e,reciverCount : 0}
-                             }else{
-                              return {...e,senderCount : 0}
-                             }
+                      socket.emit('unread_staff_message', {
+                        chat_id: contact.chat_id,
+                        user_id: contact.id,
+                        type: contact.isCreatedBy == false ? 'reciverCount' : 'senderCount',
+                      });
+                      setChatUsers((prev) => {
+                        return prev.map((e) => {
+                          if (e.chat_id == contact.chat_id) {
+                            if (contact.isCreatedBy == false) {
+                              return { ...e, reciverCount: 0 };
+                            } else {
+                              return { ...e, senderCount: 0 };
+                            }
                           }
-                          return e
-                        })
-                      })
-                       dispatch(apiSlice.util.invalidateTags(['dashboard', 'channels']));
+                          return e;
+                        });
+                      });
+                      dispatch(apiSlice.util.invalidateTags(['dashboard', 'channels']));
                     }
                     setMessages([]);
                     setPage(1);
@@ -581,9 +643,15 @@ async function sendFiles() {
       <Box width="75%" display="flex" flexDirection="column">
         {selectedContact ? (
           <>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} padding={2}>
-              <Avatar alt={selectedContact?.username} src={''} />
-              <div>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{ alignItems: 'center', justifyContent: 'space-between' }}
+              padding={2}
+            >
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar alt={selectedContact?.username} src={''} />
+                <div style={{ width: '20px' }}></div>
                 <Typography variant="h6" noWrap sx={{ fontWeight: 'fontWeightBold' }}>
                   {selectedContact?.username}
 
@@ -600,176 +668,221 @@ async function sendFiles() {
 
                 {/* <Typography marginTop={1} variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD HH:mm') :'' }</Typography> */}
               </div>
+              <div>
+                <Button
+                  onClick={() => setMediaPanel((prev) => !prev)}
+                  variant="outlined"
+                  size="small"
+                  sx={{ display: { xs: 'none', md: 'inline-flex', marginRight: 6 } }}
+                >
+                  {mediaPanel ? 'View Messages' : 'View Media'}
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    setPage(1);
+                    setPinMessage((prev) => (prev == '0' ? '1' : '0'));
+                    onHandlePin();
+                  }}
+                  variant={pinMessage == '0' ? 'outlined' : 'contained'}
+                  size="small"
+                  sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                >
+                  {pinMessage == '0' ? 'View Pin Messages' : 'View All Messages'}
+                </Button>
+              </div>
             </Stack>
             <Divider />
-            <Box
-              sx={{
-                display: 'flex',
-                flex: 1,
-                minHeight: 0,
-                px: 2,
-                py: 3,
-                overflowY: 'scroll',
-                flexDirection: 'column-reverse', // Most recent messages at the bottom
-              }}
-              ref={messagesContainerRef}
-            >
-              <MessagesContainer id="scrollable-messages-group-container">
-                {/* <div ref={messagesEndRef} /> */}
-                <InfiniteScroll
-                  style={{
+            {mediaPanel ? (
+              <MediaPane private_chat_id={selectedContact.chat_id} />
+            ) : (
+              <>
+                {' '}
+                <Box
+                  sx={{
                     display: 'flex',
-                    flexDirection: 'column-reverse',
-                    gap: '10px',
-                    padding: '20px',
+                    flex: 1,
+                    minHeight: 0,
+                    px: 2,
+                    py: 3,
+                    overflowY: 'scroll',
+                    flexDirection: 'column-reverse', // Most recent messages at the bottom
                   }}
-                  onScroll={handleScroll}
-                  dataLength={messages.length}
-                  next={loadMoreMessages}
-                  hasMore={hasMore}
-                  loader={<h4>Loading...</h4>}
-                  scrollThreshold={0.95}
-                  scrollableTarget="scrollable-messages-group-container"
-                  inverse={true}
+                  ref={messagesContainerRef}
                 >
-                  {messages.map((msg) => (
-                    <>
-                      {selectedContact.id == msg.senderId ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                          <Typography variant="caption">{msg?.sender?.username}</Typography>
-                          <Badge
-                            color={msg?.sender.isOnline ? 'success' : 'default'}
-                            variant={msg?.sender.isOnline ? 'dot' : 'standard'}
-                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                            overlap="circular"
+                  <MessagesContainer id="scrollable-messages-group-container">
+                    {/* <div ref={messagesEndRef} /> */}
+                    <InfiniteScroll
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column-reverse',
+                        gap: '10px',
+                        padding: '20px',
+                      }}
+                      onScroll={handleScroll}
+                      dataLength={messages.length}
+                      next={loadMoreMessages}
+                      hasMore={hasMore}
+                      loader={<h4>Loading...</h4>}
+                      scrollThreshold={0.95}
+                      scrollableTarget="scrollable-messages-group-container"
+                      inverse={true}
+                    >
+                      {messages.map((msg, index) => {
+                        const currentDate = moment.utc(msg.messageTimestampUtc).format('MM-DD-YYYY');
+                        const previousDate =
+                          index > 0 ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY') : null;
+                        const isDifferentDay = previousDate && currentDate !== previousDate;
+                        const isToday = currentDate === moment.utc().format('MM-DD-YYYY');
+                        const isYou = msg.messageDirection === 'S';
+                        return (
+                          <MessageView
+                            setSelectedMessageToReply={setSelectedMessageToReply}
+                            selectedContact={selectedContact}
+                            msg={msg}
                           />
-                        </Box>
-                      ) : (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{msg?.sender?.username}</Typography>
-                          {msg.deliveryStatus === 'sent' && (
-                            <Done
-                              sx={{
-                                fontSize: 14,
-                              }}
-                            />
-                          )}
-                          {msg.deliveryStatus == 'seen' && (
-                            <DoneAll
-                              sx={{
-                                fontSize: 14,
-                                color: 'blue',
-                              }}
-                            />
-                          )}
-                        </Box>
-                      )}
-                      <MessageBubble key={msg.id} isOwn={selectedContact.id != msg.senderId}>
-                        {msg.url && (
-                          <Paper
-                            variant="outlined"
-                            sx={{
-                              px: 1.75,
-                              py: 1.25,
+                        );
+                      })}
+                    </InfiniteScroll>
+                  </MessagesContainer>
+                </Box>
+                {userTyping && (
+                  <div
+                    style={{
+                      background: 'gray',
+                      borderRadius: '6px',
+                      padding: '10px',
+                      width: '50%',
+                      color: 'white',
+                      display: 'flex',
+                      justifyContent: 'start',
+                      marginLeft: 2,
+                      marginBottom: '5px',
+                      marginRight: '10px',
+                    }}
+                  >
+                    {userTypingMessage ?? 'Typing...'}
+                  </div>
+                )}
+                {selectedMessageToReply && (
+                  <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'white', borderLeft: '6px solid blue' }}>
+                    {selectedMessageToReply?.url ? (
+                      <Paper
+                        variant="outlined"
+                        sx={{
+                          px: 1.75,
+                          py: 1.25,
+                          borderRadius: 'lg',
+                          // borderTopRightRadius: isSent ? 0 : 'lg',
+                          // borderTopLeftRadius: isSent ? 'lg' : 0,
+                        }}
+                      >
+                        <MediaComponent
+                          thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.thumbnail}`}
+                          url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${selectedMessageToReply?.url}`}
+                          name={selectedMessageToReply?.url ? selectedMessageToReply?.url : ' '}
+                        />
+                        {selectedMessageToReply?.body && (
+                          <Typography sx={{ fontSize: 16 }}>{selectedMessageToReply?.body}</Typography>
+                        )}
+                      </Paper>
+                    ) : (
+                      <>
+                        <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
+                          {' '}
+                          <Box sx={{ display: 'flex' }}>
+                            <Typography variant="body2">
+                              {selectedMessageToReply?.messageDirection === 'S'
+                                ? selectedMessageToReply?.sender?.username
+                                  ? `${selectedMessageToReply?.sender?.username}(staff)`
+                                  : '(staff)'
+                                : `${selectedMessageToReply?.sender?.username}(driver)`}
+                            </Typography>
+                            <Box sx={{ width: '20px' }}></Box>
+                            <Typography variant="caption">
+                              {moment(selectedMessageToReply?.messageTimestampUtc).format('YYYY-MM-DD HH:mm')}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            onClick={() => {
+                              setSelectedMessageToReply(null);
                             }}
                           >
-                            <MediaComponent
-                              type={msg.url_upload_type}
-                              messageDirection={msg.messageDirection || 'S'}
-                              url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                              name={msg.url ? msg.url : ' '}
-                              thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
-                            />
-                          </Paper>
-                        )}
-                        <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
-                      </MessageBubble>
-                    </>
-                  ))}
-                </InfiniteScroll>
-              </MessagesContainer>
-            </Box>
-            {userTyping && (
-              <div
-                style={{
-                  background: 'gray',
-                  borderRadius: '6px',
-                  padding: '10px',
-                  width: '50%',
-                  color: 'white',
-                  display: 'flex',
-                  justifyContent: 'start',
-                  marginLeft: 2,
-                  marginBottom: '5px',
-                  marginRight: '10px',
-                }}
-              >
-                {userTypingMessage ?? 'Typing...'}
-              </div>
+                            <Close />
+                          </IconButton>
+                        </Stack>
+                        <Typography sx={{ fontSize: 16, whiteSpace: 'pre-wrap' }}>
+                          {selectedMessageToReply?.body}
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                )}
+                <Box display="flex" p={2} borderTop="1px solid #ccc">
+                  <input
+                    id="file-input-vedio"
+                    type="file"
+                    accept="video/*"
+                    style={{ display: 'none' }}
+                    onChange={handleFileChangeVedio}
+                  />
+                  <input
+                    multiple
+                    id="file-input"
+                    type="file"
+                    style={{ display: 'none' }} // Hide the input element
+                    onChange={handleFileChange} // Handle file selection
+                  />
+                  <IconButton onClick={attachmenPopOver}>
+                    <Attachment />
+                  </IconButton>
+                  <Popover
+                    id={`attachment-popover`}
+                    open={openPopOver}
+                    anchorEl={anchorElPopOver}
+                    onClose={handleClosePopOver}
+                    // anchorOrigin={{
+                    //   vertical: 'bottom',
+                    //   horizontal: 'left',
+                    // }}
+                  >
+                    <List disablePadding>
+                      <ListItem disablePadding>
+                        <ListItemButton onClick={handleIconClick}>
+                          <ListItemIcon>
+                            <File />
+                          </ListItemIcon>
+                          <ListItemText primary="Media/Docs" />
+                        </ListItemButton>
+                      </ListItem>
+                      <Divider />
+                      <ListItem disablePadding>
+                        <ListItemButton onClick={handleVedioClick}>
+                          <ListItemIcon>
+                            <Video />
+                          </ListItemIcon>
+                          <ListItemText primary={'Video'} />
+                        </ListItemButton>
+                      </ListItem>
+                      <Divider />
+                    </List>
+                  </Popover>
+                  <TextField
+                    onKeyDown={(event) => {
+                      handleKeyDown();
+                    }}
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                  />
+                  <IconButton color="primary" onClick={handleSendMessage}>
+                    <SendIcon />
+                  </IconButton>
+                </Box>
+              </>
             )}
-            <Box display="flex" p={2} borderTop="1px solid #ccc">
-               <input
-                                    id="file-input-vedio"
-                                    type="file"
-                                    accept="video/*"
-                                    style={{ display: 'none' }}
-                                    onChange={handleFileChangeVedio}
-                                  />
-                                  <input
-                                    multiple
-                                    id="file-input"
-                                    type="file"
-                                    style={{ display: 'none' }} // Hide the input element
-                                    onChange={handleFileChange} // Handle file selection
-                                  />
-                                  <IconButton onClick={attachmenPopOver}>
-                                    <Attachment />
-                                  </IconButton>
-                                  <Popover
-                                    id={`attachment-popover`}
-                                    open={openPopOver}
-                                    anchorEl={anchorElPopOver}
-                                    onClose={handleClosePopOver}
-                                    // anchorOrigin={{
-                                    //   vertical: 'bottom',
-                                    //   horizontal: 'left',
-                                    // }}
-                                  >
-                                    <List disablePadding>
-                                      <ListItem disablePadding>
-                                        <ListItemButton onClick={handleIconClick}>
-                                          <ListItemIcon>
-                                            <File />
-                                          </ListItemIcon>
-                                          <ListItemText primary="Media/Docs" />
-                                        </ListItemButton>
-                                      </ListItem>
-                                      <Divider />
-                                      <ListItem disablePadding>
-                                        <ListItemButton onClick={handleVedioClick}>
-                                          <ListItemIcon>
-                                            <Video />
-                                          </ListItemIcon>
-                                          <ListItemText primary={'Video'} />
-                                        </ListItemButton>
-                                      </ListItem>
-                                      <Divider />
-                                    </List>
-                                  </Popover>
-              <TextField
-                onKeyDown={(event) => {
-                  handleKeyDown();
-                }}
-                fullWidth
-                variant="outlined"
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-              <IconButton color="primary" onClick={handleSendMessage}>
-                <SendIcon />
-              </IconButton>
-            </Box>
           </>
         ) : (
           <Typography variant="h6" p={2}>
@@ -777,41 +890,44 @@ async function sendFiles() {
           </Typography>
         )}
       </Box>
-       {previewDialogOpen && (
-              <Dialog open={previewDialogOpen} onClose={handleCancel} fullWidth>
-                <DialogTitle>Selected File</DialogTitle>
-                <DialogContent>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
-                    {/* Render file preview */}
-                    {files.length > 0 ? <MediaGallery mediaFiles={files} /> : renderFilePreview()}
-      
-                    {/* Input for file description */}
-                    <TextField
-                      fullWidth
-                      placeholder="Enter file description..."
-                      multiline
-                      value={caption}
-                      onChange={(event) => setCaption(event.target.value)}
-                      sx={{ marginTop: 2 }}
-                    />
-                  </div>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={handleCancel} color="secondary">
-                    Cancel
-                  </Button>
-                  <Button disabled={isLoading||multipleLoader} onClick={files.length ? sendFiles : sendMessage} color="primary">
-                    Send {(isLoading||multipleLoader) && <CircularProgress />}
-                  </Button>
-                </DialogActions>
-              </Dialog>
-            )}
+      {previewDialogOpen && (
+        <Dialog open={previewDialogOpen} onClose={handleCancel} fullWidth>
+          <DialogTitle>Selected File</DialogTitle>
+          <DialogContent>
+            <div style={{ display: 'flex', flexDirection: 'column', alignContent: 'center' }}>
+              {/* Render file preview */}
+              {files.length > 0 ? <MediaGallery mediaFiles={files} /> : renderFilePreview()}
+
+              {/* Input for file description */}
+              <TextField
+                fullWidth
+                placeholder="Enter file description..."
+                multiline
+                value={caption}
+                onChange={(event) => setCaption(event.target.value)}
+                sx={{ marginTop: 2 }}
+              />
+            </div>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancel} color="secondary">
+              Cancel
+            </Button>
+            <Button
+              disabled={isLoading || multipleLoader}
+              onClick={files.length ? sendFiles : sendMessage}
+              color="primary"
+            >
+              Send {(isLoading || multipleLoader) && <CircularProgress />}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 };
 
 export default ChatView;
-
 
 const MediaGallery = ({ mediaFiles }: any) => {
   const galleryItems = mediaFiles.map((file: any) => {

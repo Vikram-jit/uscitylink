@@ -48,11 +48,11 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: MediaModel;
       },
-      { channelId?: string; type: string,userId?: string ,source?:string}
+      { channelId?: string; type: string,userId?: string ,source?:string,private_chat_id?:string,page:number}
     >({
 
       query: (payload) => ({
-        url: `media/${payload.channelId}?type=${payload.type}&userId=${payload.userId}&source=${payload.source}`,
+        url: `media/${payload.channelId}?limit=12&page=${payload.page}&type=${payload.type}&userId=${payload.userId}&source=${payload.source}&private_chat_id=${payload.private_chat_id}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

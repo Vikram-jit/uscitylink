@@ -18,6 +18,7 @@ import Role from "../models/Role";
 import User from "../models/User";
 import { MessageStaff } from "../models/MessageStaff";
 import PrivateChatMember from "../models/PrivateChatMember";
+import { Media } from "../models/Media";
 
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -913,6 +914,18 @@ export async function deleteMessage(
   messageId: string
 ) {
   if (messageId) {
+    const message = await Message.findByPk(messageId);
+    if(message){
+      // if(message.url){
+
+      //   await Media.destroy({
+      //     where:{
+      //       key:message.url
+      //     }
+      //   })
+      // }
+    }
+
     await Message.destroy({
       where: {
         id: messageId,

@@ -19,6 +19,7 @@ export interface Media {
   key:             string;
   createdAt:       Date;
   updatedAt:       Date;
+  thumbnail:string
 }
 
 export interface Welcome {
