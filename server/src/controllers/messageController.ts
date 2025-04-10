@@ -1132,7 +1132,7 @@ export const fileUploadByQueue = async (
       });
 
       // Add job to the queue for the current file
-      await fileUploadQueue.add({
+      const job =  await fileUploadQueue.add({
         filePath,
         fileName: fileNameS3,
         mediaId: media.id,
@@ -1143,6 +1143,13 @@ export const fileUploadByQueue = async (
         location: req.query.source,
         private_chat_id: private_chat_id,
       });
+      console.log(job,"detail-job")
+      if (!job || !job.id) {
+        media.update({
+          upload_type: "fail_to_add_queue",
+        })
+      }
+
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
@@ -1160,3 +1167,164 @@ export const fileUploadByQueue = async (
 };
 
 export const uploadMultipleMiddleware = upload.array("file");
+
+
+export const uploadFromLocal = async (
+  job: Job<{
+    filePath: string;
+    fileName: string;
+    mediaId: string;
+    source: string;
+    channelId: string;
+    groupId?: string;
+    userId: string;
+    location: string;
+    private_chat_id?: string;
+  }>
+): Promise<void> => {
+  const {
+    filePath,
+    fileName,
+    mediaId,
+    source,
+    channelId,
+    groupId,
+    userId,
+    location,
+    private_chat_id,
+  } = job.data;
+
+  const fileStream = fs.createReadStream(filePath);
+
+  const uploadParams = {
+    Bucket: process.env.BUCKET_NAME!,
+    Key: `uscitylink/${fileName}`,
+    Body: fileStream,
+  };
+  const maxRetries = 3;
+  let attempt = 0;
+  let uploadSuccess = false;
+
+  const existingMessage = await Message.findOne({
+    where: { url: `uscitylink/${fileName}` },
+  });
+
+  while (attempt < maxRetries) {
+    try {
+      await s3.upload(uploadParams).promise();
+
+      await Media.update({ upload_type: "server" }, { where: { id: mediaId } });
+
+      if (existingMessage) {
+        await Message.update(
+          { url_upload_type: "server" },
+          { where: { id: existingMessage.id } }
+        );
+      }
+
+      fs.unlinkSync(filePath);
+      console.log(`File ${fileName} uploaded successfully.`);
+      const socket = global.userSockets[userId];
+      uploadSuccess = true;
+      if (source == "staff") {
+        if (location == "group") {
+          await notifiyFileUploadDriverToStaffGroup(
+            getSocketInstance(),
+            socket,
+            groupId!,
+            channelId,
+            existingMessage!.id,
+            "server",
+            userId
+          );
+        } else if (location == "truck") {
+          const existingGroupMessage = await GroupMessage.findOne({
+            where: { url: `uscitylink/${fileName}` },
+          });
+          if (existingGroupMessage) {
+            await GroupMessage.update(
+              { url_upload_type: "server" },
+              { where: { id: existingGroupMessage.id } }
+            );
+          }
+
+          await notifiyFileUploadTruckGroupMembers(
+            getSocketInstance(),
+            socket,
+            channelId,
+            groupId!,
+            existingMessage!.id,
+            "server",
+            userId,
+            existingGroupMessage!.id
+          );
+        } else {
+          await notifiyFileUploadStaffToDriver(
+            getSocketInstance(),
+            socket,
+            channelId,
+            existingMessage!.id,
+            "server",
+            userId
+          );
+        }
+      } else if (source == "staff_group") {
+        await notifiyFileUploadStaffToStaff(
+          getSocketInstance(),
+          socket,
+          channelId,
+          existingMessage!.id,
+          "server",
+          userId,
+          private_chat_id
+        );
+      } else {
+        if (location == "group") {
+          await notifiyFileUploadDriverToStaffGroup(
+            getSocketInstance(),
+            socket,
+            groupId!,
+            channelId,
+            existingMessage!.id,
+            "server",
+            userId
+          );
+        } else {
+          await notifiyFileUploadDriverToStaff(
+            getSocketInstance(),
+            socket,
+            channelId,
+            existingMessage!.id,
+            "server",
+            userId
+          );
+        }
+      }
+      break; // Exit loop if upload is successful
+    } catch (error) {
+      attempt++;
+      console.error(
+        `Attempt ${attempt} - Error uploading file ${fileName}:`,
+        error
+      );
+
+      if (attempt >= maxRetries) {
+        console.error(
+          `Failed to upload file ${fileName} after ${maxRetries} attempts.`
+        );
+
+        if (existingMessage) {
+          await Message.update(
+            { url_upload_type: "failed" },
+            { where: { id: existingMessage.id } }
+          );
+        }
+
+        throw error;
+      }
+
+      const delay = Math.pow(2, attempt) * 100; // Exponential backoff
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
