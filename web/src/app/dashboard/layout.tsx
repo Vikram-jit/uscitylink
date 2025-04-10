@@ -7,6 +7,7 @@ import { MainNav } from '@/components/dashboard/layout/main-nav';
 import { SideNav } from '@/components/dashboard/layout/side-nav';
 import { SocketProvider } from '@/lib/socketProvider';
 import NotificationGuard from '@/components/auth/notificationguard';
+import MessageDialog from '@/components/MessageDialog';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,6 +45,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           <main>{children}</main>
         </Box>
       </Box>
+      <MessageDialog/>
       </SocketProvider>
       {/* </NotificationGuard> */}
     </AuthGuard>

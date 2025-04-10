@@ -11,7 +11,7 @@ import {
 import { GroupModel, SingleGroupModel } from '@/redux/models/GroupModel';
 import { TruckModel } from '@/redux/models/TruckModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
-import { Delete, MoreVert, Settings } from '@mui/icons-material';
+import { Delete, Message, MoreVert, Settings } from '@mui/icons-material';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import {
@@ -38,6 +38,7 @@ import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 
 import AddMemberDialog from './AddmemberDialog';
+import { openChat } from '@/redux/slices/chatSlice';
 
 interface GroupDetailInterface {
   group: SingleGroupModel;
@@ -270,6 +271,9 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
                     <TableCell>
                       <IconButton onClick={(event) => handleMenuOpen(event, e.id)}>
                         <Settings />
+                      </IconButton>
+                      <IconButton onClick={(event) => dispatch(openChat({ id: e.userProfileId }))}>
+                        <Message />
                       </IconButton>
                       <IconButton
                         disabled={isLoading}

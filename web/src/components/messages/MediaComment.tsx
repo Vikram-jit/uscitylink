@@ -53,6 +53,7 @@ export default function MediaComponent({
         <>
           <IconButton onClick={() => setOpenDocument(true)} style={{ position: 'relative' }}>
             <Image
+            unoptimized={true}
               height={height || 60}
               src={thumbnail || ''}
               alt=""
@@ -184,6 +185,7 @@ export default function MediaComponent({
               display:"flex",flexDirection:"column"
             }}>
              <Image
+               unoptimized={true}
                 height={height || 60}
                 src={url}
                 alt=""
@@ -245,6 +247,7 @@ export default function MediaComponent({
               ) : (
                 <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
                    <Image
+                   unoptimized={true}
                 height={height || 60}
                 src={url}
                 alt=""
@@ -286,6 +289,7 @@ export default function MediaComponent({
               ) : (
                 <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
                   <Image
+                  unoptimized={true}
                 height={height || 60}
                 src={url}
                 alt=""

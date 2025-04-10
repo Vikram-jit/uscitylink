@@ -8,6 +8,7 @@ import { createTheme } from '@/styles/theme/create-theme';
 
 import EmotionCache from './emotion-cache';
 import LoaderDialog from '@/components/LoaderDialog';
+import MessageDialog from '@/components/MessageDialog';
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): React.JSX.Eleme
         <CssBaseline />
         {children}
         <LoaderDialog />
+       
       </CssVarsProvider>
     </EmotionCache>
   );

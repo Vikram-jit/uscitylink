@@ -4,6 +4,7 @@ import { apiSlice } from '../apiSlice';
 import messageReducer from '../slices/messageSlice';
 import userChannelReducer from '../slices/userChannelSlice';
 import loaderReducer from '../slices/loaderSlice';
+import chatReducer from '../slices/chatSlice';
 import searchReducer from '../slices/searchSlice';
 import channelReducer from '../slices/channelSlice';
 
@@ -13,6 +14,7 @@ const store = configureStore({
    UserChannel:userChannelReducer,
    message: messageReducer,
    loader: loaderReducer,
+   chat: chatReducer,
    search:searchReducer,
    channel:channelReducer,
     [apiSlice.reducerPath]: apiSlice.reducer,
