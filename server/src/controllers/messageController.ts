@@ -1027,9 +1027,10 @@ export const fileUploadByQueue = async (
     const fileUpload: any = [];
 
     for (const file of files) {
+      console.log("data,fil",file)
       const filePath = file.path;
       const fileName = file.originalname?.replace(" ", "_");
-      const fileNameS3 = `${Date.now()}-${fileName}`;
+      const fileNameS3 = file?.filename;
       const source = req.query.location;
       const location = req.query.source;
       const uploadBy = req.query.uploadBy as string;
@@ -1143,7 +1144,7 @@ export const fileUploadByQueue = async (
         location: req.query.source,
         private_chat_id: private_chat_id,
       });
-      console.log(job,"detail-job")
+      
       if (!job || !job.id) {
         media.update({
           upload_type: "fail_to_add_queue",

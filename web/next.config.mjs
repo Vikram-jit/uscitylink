@@ -9,6 +9,7 @@ const config = {
   },
   images: {
     domains: [
+      '52.9.12.189',
       'ciity-sms.s3.us-west-1.amazonaws.com', // Add this line to allow images from the AWS S3 domain
       'localhost', // Add this line to allow images from the AWS S3 domain
       // You can add other allowed image domains here if necessary
