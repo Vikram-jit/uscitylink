@@ -25,7 +25,7 @@ class DashboardService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error dashboard: $e');
+      throw Exception('$e');
     }
   }
 

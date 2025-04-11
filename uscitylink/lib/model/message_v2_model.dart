@@ -1,17 +1,15 @@
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/pagination_model.dart';
 
-class GroupMessageModel {
-  String? senderId;
+class MessageV2Model {
   List<MessageModel>? messages;
   PaginationModel? pagination;
 
   // Constructor with named parameters
-  GroupMessageModel({this.senderId, this.messages, this.pagination});
+  MessageV2Model({this.messages, this.pagination});
 
   // From JSON constructor
-  GroupMessageModel.fromJson(Map<String, dynamic> json) {
-    senderId = json['senderId'];
+  MessageV2Model.fromJson(Map<String, dynamic> json) {
     if (json['messages'] != null) {
       messages =
           <MessageModel>[]; // Ensure messages is initialized as an empty list
@@ -28,7 +26,7 @@ class GroupMessageModel {
   // To JSON method
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
-    data['senderId'] = senderId;
+
     if (messages != null) {
       data['messages'] = messages?.map((v) => v.toJson()).toList();
     }

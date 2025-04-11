@@ -1,6 +1,8 @@
+import 'package:uscitylink/model/pagination_model.dart';
+
 class TruckModel {
   List<Truck>? data;
-  Pagination? pagination;
+  PaginationModel? pagination;
 
   TruckModel({this.data, this.pagination});
 
@@ -12,7 +14,7 @@ class TruckModel {
       });
     }
     pagination = json['pagination'] != null
-        ? new Pagination.fromJson(json['pagination'])
+        ? new PaginationModel.fromJson(json['pagination'])
         : null;
   }
 
@@ -50,32 +52,6 @@ class Truck {
 
     data['number'] = this.number;
 
-    return data;
-  }
-}
-
-class Pagination {
-  int? currentPage;
-  int? pageSize;
-  int? totalPages;
-  int? totalItems;
-
-  Pagination(
-      {this.currentPage, this.pageSize, this.totalPages, this.totalItems});
-
-  Pagination.fromJson(Map<String, dynamic> json) {
-    currentPage = json['currentPage'];
-    pageSize = json['pageSize'];
-    totalPages = json['totalPages'];
-    totalItems = json['totalItems'];
-  }
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['currentPage'] = this.currentPage;
-    data['pageSize'] = this.pageSize;
-    data['totalPages'] = this.totalPages;
-    data['totalItems'] = this.totalItems;
     return data;
   }
 }

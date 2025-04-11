@@ -299,6 +299,9 @@ export const getMessages = async (
   res: Response
 ): Promise<any> => {
   try {
+
+
+
     const { channelId } = req.params;
     const driverPin = req.query.driverPin;
     const messages = await Message.findAll({
@@ -1329,3 +1332,5 @@ export const uploadFromLocal = async (
     }
   }
 };
+
+

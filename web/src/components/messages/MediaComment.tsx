@@ -150,7 +150,7 @@ export default function MediaComponent({
                 style={{ height: 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
-               <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
+               {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
             </IconButton>
           )}
           {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
@@ -193,7 +193,7 @@ export default function MediaComponent({
                 style={{ height: 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
-              <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
+              {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
             </IconButton>
           )}
 
@@ -255,7 +255,7 @@ export default function MediaComponent({
                 style={{ height: 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
-                <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
+                {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
                 </IconButton>
               )}
 
@@ -297,7 +297,7 @@ export default function MediaComponent({
                 style={{ height: 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
-               <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography>
+               {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
                 </IconButton>
               )}
 

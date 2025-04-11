@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/message_service.dart';
@@ -21,6 +23,9 @@ class MessageController extends GetxController {
   // Timer for typing timeout
   Timer? typingTimer;
   late DateTime typingStartTime;
+  var currentPage = 1.obs;
+  var totalPages = 1.obs;
+  var loading = false.obs;
 
   @override
   void onInit() {
@@ -30,7 +35,7 @@ class MessageController extends GetxController {
 
     channelId.value = args['channelId'] ?? '';
     if (channelId.isNotEmpty) {
-      getChannelMessages(channelId.value);
+      getChannelMessages(channelId.value, currentPage.value);
     } else {
       print("Error: channelId is empty or invalid.");
     }
@@ -73,13 +78,59 @@ class MessageController extends GetxController {
         .emit('driverTyping', {'isTyping': false, "channelId": channelId});
   }
 
-  void getChannelMessages(String channelId, [String? driverPin]) {
-    __messageService.getChannelMessages(channelId, driverPin).then((response) {
-      messages.value = response.data;
+  void getChannelMessages(String channelId, int page,
+      [String? driverPin]) async {
+    Box channelMessagesBox = await Hive.openBox(HiveBoxes.channelMessages);
+
+    // Prevent refresh if already loading
+    if (loading.value) return;
+
+    // Set loading state to true
+    loading.value = true;
+
+    __messageService
+        .getChannelMessagesV2(channelId, page, driverPin)
+        .then((response) async {
+      if (page > 1) {
+        if (response.data.messages != null) {
+          messages.addAll(response.data.messages ?? []);
+        }
+      } else {
+        if (response.data.messages != null) {
+          messages.value = response.data.messages ?? [];
+          await channelMessagesBox.put(
+              HiveBoxes.channelMessages, response.data.messages);
+        }
+      }
+
+      if (response.data.pagination != null) {
+        currentPage.value = response.data.pagination!.currentPage!;
+        totalPages.value = response.data.pagination!.totalPages!;
+      } else {
+        print("Pagination data is missing in the response!");
+      }
+
       socketService.updateActiveChannel(channelId);
+      // Set loading state to true
+      loading.value = false;
     }).onError((error, stackTrace) {
-      print('Error: $error');
-      Utils.snackBar('Error', error.toString());
+      if (error.toString() == "Exception: No Internet Connection") {
+        final cachedList = channelMessagesBox.get(HiveBoxes.channelMessages);
+
+        // Convert safely
+        List<MessageModel>? cachedMessages =
+            (cachedList as List?)?.cast<MessageModel>();
+
+        if (cachedMessages != null) {
+          messages.value = cachedMessages;
+        }
+
+        loading.value = false;
+      } else {
+        loading.value = false;
+        print("Error: $error");
+        Utils.snackBar('Error', error.toString());
+      }
     });
   }
 

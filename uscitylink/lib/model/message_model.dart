@@ -1,7 +1,5 @@
-import 'dart:ffi';
-
 import 'package:uscitylink/model/group_model.dart';
-import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
+import 'package:uscitylink/model/sender_model.dart';
 
 class MessageModel {
   String? id;
@@ -18,7 +16,7 @@ class MessageModel {
   String? url;
   String? createdAt;
   String? updatedAt;
-  Sender? sender;
+  SenderModel? sender;
   Group? group;
   String? type;
   String? thumbnail;
@@ -74,7 +72,8 @@ class MessageModel {
     r_message = json['r_message'] != null
         ? MessageModel.fromJson(json['r_message'])
         : null;
-    sender = json['sender'] != null ? Sender.fromJson(json['sender']) : null;
+    sender =
+        json['sender'] != null ? SenderModel.fromJson(json['sender']) : null;
     group = json['group'] != null ? Group.fromJson(json['group']) : null;
   }
 
@@ -107,32 +106,6 @@ class MessageModel {
     }
     if (group != null) {
       data['group'] = group?.toJson();
-    }
-    return data;
-  }
-}
-
-class Sender {
-  String? id;
-  String? username;
-  bool? isOnline;
-  User? user;
-  Sender({this.id, this.username, this.isOnline, this.user});
-
-  Sender.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    username = json['username'];
-    isOnline = json['isOnline'];
-    user = json['user'] != null ? new User.fromJson(json['user']) : null;
-  }
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    data['id'] = id;
-    data['username'] = username;
-    data['isOnline'] = isOnline;
-    if (this.user != null) {
-      data['user'] = this.user?.toJson();
     }
     return data;
   }

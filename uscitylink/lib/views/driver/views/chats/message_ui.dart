@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
@@ -58,11 +57,28 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     messageController.channelId.value = widget.channelId;
     messageController.name.value = widget.name;
     messageController.getChannelMessages(
-        widget.channelId); // Fetch the messages for the given channelId
+        widget.channelId,
+        messageController
+            .currentPage.value); // Fetch the messages for the given channelId
 
     if (widget.channelId.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
     }
+    _scrollController.addListener(() {
+      // Check if the user has scrolled to the bottom of the list
+      // If so, fetch more messages if available
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        if (!messageController.loading.value &&
+            messageController.currentPage.value <
+                messageController.totalPages.value) {
+          messageController.getChannelMessages(
+            widget.channelId,
+            messageController.currentPage.value + 1,
+          );
+        }
+      }
+    });
     _startChannelUpdateTimer();
   }
 
@@ -88,7 +104,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       if (messageController.channelId.value.isNotEmpty) {
         socketService.updateActiveChannel(messageController.channelId.value);
       }
-      messageController.getChannelMessages(messageController.channelId.value);
+      messageController.getChannelMessages(messageController.channelId.value,
+          messageController.currentPage.value);
       _startChannelUpdateTimer();
       print("App is in the foreground");
     }
@@ -174,10 +191,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             ?.copyWith(color: Colors.white),
                       );
                     })
-                    // Text(
-                    //   lastLogin, // Display the last login info
-                    //   style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                    // ),
+                    //
                   ],
                 ),
               ),
@@ -185,9 +199,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 icon: const Icon(
                   Icons.arrow_back,
                   color: Colors.white,
-                ), // Back icon
+                ),
                 onPressed: () {
-                  // Trigger the socket event when the back icon is clicked
                   socketService.updateActiveChannel("");
                   if (_channelController.initialized) {
                     _channelController.getCount();
@@ -223,7 +236,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           pinMessage = pinMessage == "0" ? "1" : "0";
                         });
                         messageController.getChannelMessages(
-                            widget.channelId, pinMessage);
+                            widget.channelId, 1, pinMessage);
                       },
                       child: Icon(
                         Icons.push_pin,
@@ -252,8 +265,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    messageController
-                        .getChannelMessages(messageController.channelId.value);
+                    messageController.getChannelMessages(
+                        messageController.channelId.value,
+                        messageController.currentPage.value);
                   },
                   child: Obx(() {
                     if (messageController.messages.isEmpty) {
@@ -292,6 +306,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       reverse: true,
                       itemCount: messageController.messages.length,
                       itemBuilder: (context, index) {
+                        if (index == messageController.messages.length - 1) {
+                          if (messageController.loading.value) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          } else {
+                            return SizedBox.shrink();
+                          }
+                        }
                         return _buildChatMessage(
                             messageController.messages[index],
                             messageController,

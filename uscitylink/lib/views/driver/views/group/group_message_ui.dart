@@ -61,9 +61,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
       // Ensure the current page is less than the total pages
       if (_scrollController.position.pixels ==
           _scrollController.position.maxScrollExtent) {
-        // print(groupController.isLoading.value &&
-        //     groupController.currentPage.value <
-        //         groupController.totalPages.value);
         // When scrolled to the bottom, load next page
         if (!groupController.isLoading.value &&
             groupController.currentPage.value <
@@ -84,10 +81,6 @@ class _GroupMessageuiState extends State<GroupMessageui>
         widget.groupId,
         groupController
             .currentPage.value); // Fetch the messages for the given channelId
-
-    // if (widget.channelId.isNotEmpty) {
-    //   socketService.updateActiveChannel(widget.channelId);
-    // }
   }
 
   @override

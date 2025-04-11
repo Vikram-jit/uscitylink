@@ -1,4 +1,5 @@
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/sender_model.dart';
 
 class GroupMembers {
   String? id;
@@ -10,7 +11,7 @@ class GroupMembers {
   String? lastMessageUtc;
   String? createdAt;
   String? updatedAt;
-  Sender? userProfile;
+  SenderModel? userProfile;
 
   GroupMembers(
       {this.id,
@@ -35,7 +36,7 @@ class GroupMembers {
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
     userProfile = json['UserProfile'] != null
-        ? Sender.fromJson(json['UserProfile'])
+        ? SenderModel.fromJson(json['UserProfile'])
         : null;
   }
 

@@ -11,13 +11,14 @@ class AppExceptions implements Exception {
 }
 
 class InternetException extends AppExceptions {
-  InternetException([String? message]) : super(message, 'No internet');
+  InternetException([String message = ""])
+      : super(message, 'No Internet Connection');
 }
 
 class RequestTimeout extends AppExceptions {
-  RequestTimeout([String? message]) : super(message, 'Request Time out');
+  RequestTimeout([String message = ""]) : super(message, 'Request Time out: ');
 }
 
 class ServerException extends AppExceptions {
-  ServerException([String? message]) : super(message, 'Request Time out');
+  ServerException([String message = ""]) : super(message, 'Server Error: ');
 }

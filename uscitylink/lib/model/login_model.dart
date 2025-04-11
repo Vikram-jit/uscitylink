@@ -1,4 +1,5 @@
 import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
+import 'package:uscitylink/model/user_model.dart';
 
 class LoginModel {
   String? id;
@@ -68,7 +69,7 @@ class Profiles {
   String? buildNumber;
   String? appUpdate;
   Role? role;
-  User? user;
+  UserModel? user;
 
   Profiles(
       {this.id,
@@ -112,7 +113,7 @@ class Profiles {
       version: json['version'],
       appUpdate: json['appUpdate'],
       role: json['role'] != null ? Role.fromJson(json['role']) : null,
-      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
     );
   }
 

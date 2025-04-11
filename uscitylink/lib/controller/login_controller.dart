@@ -244,6 +244,8 @@ class LoginController extends GetxController {
               await fcmService.updateDeviceToken(token);
             }
             await socketService.connectSocket();
+            await userPreferenceController
+                .storeRole(value.data.profiles!.role!.name!);
             if (value.data.profiles?.role?.name == "staff") {
               Get.offAllNamed(AppRoutes.staff_dashboard);
             } else {
@@ -326,6 +328,8 @@ class LoginController extends GetxController {
   void checkRole() {
     __authService.getProfile().then((value) async {
       if (value.status == true) {
+        await userPreferenceController.storeRole(value?.data?.role?.name ?? "");
+
         var buildInfo = await getAppVersion();
 
         if (buildInfo != null) {
@@ -335,7 +339,7 @@ class LoginController extends GetxController {
               platform: Platform.operatingSystem);
 
           var result = await __authService.updateAppVersion(appData);
-          print(result);
+
           if (result.data == "NewVersion") {
             Get.offAll(() => UpdateView());
           } else {
@@ -381,9 +385,21 @@ class LoginController extends GetxController {
           }
         }
       }
-      // print(buildInfo.buildNumber);
-      // print(buildInfo.version);
-    }).onError((error, stackTrace) {
+    }).onError((error, stackTrace) async {
+      print('Error: $error');
+
+      if (error.toString() == "No Internet Connection") {
+        String role = await userPreferenceController.getRole();
+        if (role == "driver") {
+          Timer(const Duration(seconds: 1),
+              () => Get.offAllNamed(AppRoutes.driverDashboard));
+        }
+        if (role == "Staff") {
+          Timer(const Duration(seconds: 1),
+              () => Get.offAllNamed(AppRoutes.staff_dashboard));
+        }
+      }
+      // Utils.snackBar('Error', error.toString());
       Utils.snackBar('Error', error.toString());
     });
   }

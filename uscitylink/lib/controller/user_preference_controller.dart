@@ -11,10 +11,10 @@ class UserPreferenceController extends GetxController {
     return true;
   }
 
-  Future<bool> storeRole(LoginWithPasswordModel loginModel) async {
+  Future<bool> storeRole(String role) async {
     SharedPreferences sp = await SharedPreferences.getInstance();
 
-    sp.setString('role', loginModel.profiles!.role!.name!);
+    sp.setString('role', role);
 
     return true;
   }

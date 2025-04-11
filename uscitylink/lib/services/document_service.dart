@@ -1,12 +1,13 @@
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
+import 'package:uscitylink/model/pagination_model.dart';
 import 'package:uscitylink/model/truck_model.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
 
 class PayModel {
   List<Pay>? data;
-  Pagination? pagination;
+  PaginationModel? pagination;
   double? totalAmount;
   PayModel({this.data, this.pagination, this.totalAmount});
 
@@ -19,7 +20,7 @@ class PayModel {
     }
 
     pagination = json['pagination'] != null
-        ? Pagination.fromJson(json['pagination'])
+        ? PaginationModel.fromJson(json['pagination'])
         : null;
     totalAmount = (json['totalAmount'] as num?)?.toDouble();
   }

@@ -4,6 +4,7 @@ import 'package:uscitylink/data/response/api_response.dart';
 import 'package:uscitylink/model/group_message_model.dart';
 import 'package:uscitylink/model/media_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/message_v2_model.dart';
 import 'package:uscitylink/model/staff/truck_group_model.dart';
 
 class MessageService {
@@ -36,6 +37,31 @@ class MessageService {
       }
     } catch (e) {
       throw Exception('Error fetching getChannelMessages: $e');
+    }
+  }
+
+  Future<ApiResponse<MessageV2Model>> getChannelMessagesV2(
+      String channelId, int page,
+      [String? driverPin]) async {
+    try {
+      dynamic response = await _apiService.getApi(
+          '${Constant.url}/messageV2/$channelId?page=$page&driverPin=$driverPin');
+
+      if (response != null) {
+        var data = response['data'];
+
+        MessageV2Model userChannels = MessageV2Model.fromJson(data);
+
+        return ApiResponse<MessageV2Model>(
+          data: userChannels,
+          message: response['message'] ?? 'Get Messages Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('$e');
     }
   }
 

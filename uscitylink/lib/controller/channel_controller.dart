@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:get/get.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
+import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/services/channel_service.dart';
@@ -62,16 +64,38 @@ class ChannelController extends GetxController {
     });
   }
 
-  void getUserChannels() {
+  void getUserChannels() async {
     getCount();
+
+    Box userChannelBox = await Hive.openBox(HiveBoxes.userChannel);
     loading.value = true;
     totalUnReadMessage.value = 0;
-    __channelService.getUserChannels().then((response) {
+
+    __channelService.getUserChannels().then((response) async {
+      // Save list to Hive
+      await userChannelBox.put(HiveBoxes.userChannel, response.data);
+
+      // Assign to controller/state
       channels.value = response.data;
+
       loading.value = false;
-    }).onError((error, stackTrace) {
-      loading.value = false;
-      Utils.snackBar('Error', error.toString());
+    }).onError((error, stackTrace) async {
+      if (error.toString() == "Exception: No Internet Connection") {
+        final cachedList = userChannelBox.get(HiveBoxes.userChannel);
+
+        // Convert safely
+        List<UserChannelModel>? cachedChannels =
+            (cachedList as List?)?.cast<UserChannelModel>();
+
+        if (cachedChannels != null) {
+          channels.value = cachedChannels;
+        }
+
+        loading.value = false;
+      } else {
+        loading.value = false;
+        Utils.snackBar('Error', error.toString());
+      }
     });
   }
 

@@ -259,7 +259,7 @@ class AppUpdateInfo {
   }
 }
 
-class UserModel {
+class UserModelAuth {
   String id;
   dynamic phoneNumber;
   String email;
@@ -268,7 +268,7 @@ class UserModel {
   DateTime updatedAt;
   List<UserProfileModel> profiles;
 
-  UserModel({
+  UserModelAuth({
     required this.id,
     required this.phoneNumber,
     required this.email,

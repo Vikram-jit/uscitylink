@@ -1,3 +1,5 @@
+import 'package:uscitylink/model/sender_model.dart';
+
 class DashboardModel {
   Channel? channel;
   String? trucks;
@@ -90,7 +92,7 @@ class LatestMessage {
   String? type;
   String? createdAt;
   String? updatedAt;
-  Sender? sender;
+  SenderModel? sender;
   Channel? channel;
 
   LatestMessage(
@@ -128,8 +130,9 @@ class LatestMessage {
     type = json['type'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
-    sender =
-        json['sender'] != null ? new Sender.fromJson(json['sender']) : null;
+    sender = json['sender'] != null
+        ? new SenderModel.fromJson(json['sender'])
+        : null;
     channel =
         json['channel'] != null ? new Channel.fromJson(json['channel']) : null;
   }
@@ -157,28 +160,6 @@ class LatestMessage {
     if (this.channel != null) {
       data['channel'] = this.channel!.toJson();
     }
-    return data;
-  }
-}
-
-class Sender {
-  String? id;
-  String? username;
-  bool? isOnline;
-
-  Sender({this.id, this.username, this.isOnline});
-
-  Sender.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    username = json['username'];
-    isOnline = json['isOnline'];
-  }
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['username'] = this.username;
-    data['isOnline'] = this.isOnline;
     return data;
   }
 }
@@ -228,9 +209,9 @@ class LatestGroupMessage {
   String? type;
   String? createdAt;
   String? updatedAt;
-  Sender? sender;
+  SenderModel? sender;
   Channel? channel;
-  Group? group;
+  GroupDashboard? group;
 
   LatestGroupMessage(
       {this.id,
@@ -268,11 +249,14 @@ class LatestGroupMessage {
     type = json['type'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
-    sender =
-        json['sender'] != null ? new Sender.fromJson(json['sender']) : null;
+    sender = json['sender'] != null
+        ? new SenderModel.fromJson(json['sender'])
+        : null;
     channel =
         json['channel'] != null ? new Channel.fromJson(json['channel']) : null;
-    group = json['group'] != null ? new Group.fromJson(json['group']) : null;
+    group = json['group'] != null
+        ? new GroupDashboard.fromJson(json['group'])
+        : null;
   }
 
   Map<String, dynamic> toJson() {
@@ -305,7 +289,7 @@ class LatestGroupMessage {
   }
 }
 
-class Group {
+class GroupDashboard {
   String? id;
   String? name;
   String? description;
@@ -315,7 +299,7 @@ class Group {
   String? createdAt;
   String? updatedAt;
 
-  Group(
+  GroupDashboard(
       {this.id,
       this.name,
       this.description,
@@ -325,7 +309,7 @@ class Group {
       this.createdAt,
       this.updatedAt});
 
-  Group.fromJson(Map<String, dynamic> json) {
+  GroupDashboard.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     name = json['name'];
     description = json['description'];

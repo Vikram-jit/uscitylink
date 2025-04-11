@@ -2,15 +2,35 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
+import 'package:uscitylink/hive/hive_adapters.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+
+  Hive
+    ..registerAdapter(DashboardModelAdapter())
+    ..registerAdapter(ChannelAdapter())
+    ..registerAdapter(LatestGroupMessageAdapter())
+    ..registerAdapter(GroupDashboardAdapter())
+    ..registerAdapter(SenderModelAdapter())
+    ..registerAdapter(LatestMessageAdapter())
+    ..registerAdapter(MessageModelAdapter())
+    ..registerAdapter(GroupAdapter())
+    ..registerAdapter(GroupChannelAdapter())
+    ..registerAdapter(ChannelModelAdapter())
+    ..registerAdapter(UserModelAdapter())
+    ..registerAdapter(CountModelAdapter())
+    ..registerAdapter(GroupModelAdapter())
+    ..registerAdapter(UserChannelModelAdapter());
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final socketService = Get.put(SocketService());

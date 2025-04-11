@@ -1,11 +1,8 @@
-import 'dart:convert';
-
 import 'package:get/get.dart';
-import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/staff/staff_dashboard_model.dart';
 import 'package:uscitylink/services/dashboard_service.dart';
-import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class DashboardController extends GetxController {
@@ -20,14 +17,24 @@ class DashboardController extends GetxController {
     super.onInit();
   }
 
-  void getDashboard() {
+  void getDashboard() async {
+    Box<DashboardModel> dashboardBox =
+        await Hive.openBox<DashboardModel>('dashboardBox');
+
     loading.value = true;
     _dashboardService.getDashboard().then((response) {
       dashboard.value = response.data;
+      dashboardBox.put('dashboard', response.data);
       loading.value = false;
     }).onError((error, stackTrace) {
-      loading.value = false;
-      print('Error: $error');
+      DashboardModel? cachedDashboard = dashboardBox.get('dashboard');
+      if (error.toString() == "Exception: No Internet Connection") {
+        if (cachedDashboard != null) {
+          dashboard.value = cachedDashboard;
+        }
+        loading.value = false;
+      }
+
       Utils.snackBar('Error', error.toString());
     });
   }
