@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { authMiddleware } from '../middleware/authMiddleware';
 import { getById, getTruckList, getTrucks } from '../controllers/truckController';
-import pdfGernate, { getPays, sendInvoiceEmail } from '../controllers/yardController';
+import pdfGernate, { getPays, queueData, sendInvoiceEmail } from '../controllers/yardController';
 
 const router = Router();
 
@@ -12,6 +12,7 @@ router.get('/truckList',authMiddleware, getTruckList);
 router.get('/pays',authMiddleware, getPays);
 router.get("/pdfGernate/:id",pdfGernate)
 router.get("/send-invoice/:id",sendInvoiceEmail)
+router.get('/queue-data', queueData);
 router.get('/:id',authMiddleware, getById);
 
 

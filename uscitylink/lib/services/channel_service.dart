@@ -57,7 +57,7 @@ class ChannelService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching getCount: $e');
+      throw Exception('$e');
     }
   }
 }

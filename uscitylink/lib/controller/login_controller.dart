@@ -386,7 +386,7 @@ class LoginController extends GetxController {
         }
       }
     }).onError((error, stackTrace) async {
-      print('Error: $error');
+      // print('Error: $error');
 
       if (error.toString() == "No Internet Connection") {
         String role = await userPreferenceController.getRole();
@@ -400,7 +400,7 @@ class LoginController extends GetxController {
         }
       }
       // Utils.snackBar('Error', error.toString());
-      Utils.snackBar('Error', error.toString());
+      // Utils.snackBar('Error', error.toString());
     });
   }
 

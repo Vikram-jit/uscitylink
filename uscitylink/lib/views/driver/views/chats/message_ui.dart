@@ -15,12 +15,14 @@ import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 import 'package:uscitylink/views/widgets/audio_record_widget.dart';
+import 'package:uuid/uuid.dart';
 
 class Messageui extends StatefulWidget {
   final String channelId;
@@ -37,12 +39,17 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   Timer? _channelUpdateTimer; // Timer for updating channelId
   DashboardController _dashboardController = Get.find<DashboardController>();
   AudioController _audioController = Get.put(AudioController());
+
   late MessageController messageController;
   final FocusNode _focusNode = FocusNode();
+
   SocketService socketService = Get.find<SocketService>();
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
+  NetworkService _networkService = Get.find<NetworkService>();
 
+  final FilePickerController filePickerController =
+      Get.put(FilePickerController());
   final ScrollController _scrollController = ScrollController();
 
   String pinMessage = "0";
@@ -50,8 +57,11 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-
+    ever(_networkService.connected, (_) {
+      print("Network changed: ${_networkService.connected.value}");
+    });
     WidgetsBinding.instance.addObserver(this);
+
     // Initialize the MessageController and fetch messages for the given channelId
     messageController = Get.put(MessageController());
     messageController.channelId.value = widget.channelId;
@@ -67,15 +77,17 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     _scrollController.addListener(() {
       // Check if the user has scrolled to the bottom of the list
       // If so, fetch more messages if available
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        if (!messageController.loading.value &&
-            messageController.currentPage.value <
-                messageController.totalPages.value) {
-          messageController.getChannelMessages(
-            widget.channelId,
-            messageController.currentPage.value + 1,
-          );
+      if (socketService.isConnected.value) {
+        if (_scrollController.position.pixels ==
+            _scrollController.position.maxScrollExtent) {
+          if (!messageController.loading.value &&
+              messageController.currentPage.value <
+                  messageController.totalPages.value) {
+            messageController.getChannelMessages(
+              widget.channelId,
+              messageController.currentPage.value + 1,
+            );
+          }
         }
       }
     });
@@ -145,17 +157,49 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
   // Function to send a new message
   void _sendMessage() {
+    final uuid = Uuid();
+
     if (_controller.text.isNotEmpty) {
-      socketService.updateActiveChannel(messageController.channelId.value);
-      socketService.sendMessage(
-          _controller.text,
-          null,
-          messageController.channelId.value,
-          null,
-          messageController.selectedRplyMessage.value.id);
-      if (messageController.selectedRplyMessage.value.id != null) {
-        messageController.selectedRplyMessage.value = MessageModel();
+      if (_networkService.connected == false) {
+        print("internet not connect");
+        MessageModel messageOffline = MessageModel(
+            id: uuid.v4(),
+            body: _controller.text,
+            channelId: messageController.channelId.value,
+            messageDirection: "R",
+            deliveryStatus: "sent",
+            status: "queue",
+            messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
+        messageController.messages.insert(0, messageOffline);
+        messageController.messages.refresh();
+        messageController.queueMessage(messageOffline);
+      } else if (socketService.isConnected.value == false) {
+        print("socket not connect");
+        MessageModel messageOffline = MessageModel(
+            id: uuid.v4(),
+            body: _controller.text,
+            channelId: messageController.channelId.value,
+            messageDirection: "R",
+            status: "queue",
+            deliveryStatus: "sent",
+            messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
+        messageController.messages.insert(0, messageOffline);
+        messageController.messages.refresh();
+        messageController.queueMessage(messageOffline);
+      } else {
+        print("hello");
+        socketService.updateActiveChannel(messageController.channelId.value);
+        socketService.sendMessage(
+            _controller.text,
+            null,
+            messageController.channelId.value,
+            null,
+            messageController.selectedRplyMessage.value.id);
+        if (messageController.selectedRplyMessage.value.id != null) {
+          messageController.selectedRplyMessage.value = MessageModel();
+        }
       }
+
       _scrollToBottom();
       _controller.clear();
     }
@@ -178,22 +222,15 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     arguments: {'channelId': messageController.channelId.value},
                   );
                 },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Obx(() {
-                      return Text(
-                        messageController
-                            .name.value, // Display the channel name
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(color: Colors.white),
-                      );
-                    })
-                    //
-                  ],
-                ),
+                child: Obx(() {
+                  return Text(
+                    messageController.name.value, // Display the channel name
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineMedium
+                        ?.copyWith(color: Colors.white),
+                  );
+                }),
               ),
               leading: IconButton(
                 icon: const Icon(
@@ -265,9 +302,11 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    messageController.getChannelMessages(
-                        messageController.channelId.value,
-                        messageController.currentPage.value);
+                    if (socketService.isConnected.value) {
+                      messageController.getChannelMessages(
+                          messageController.channelId.value,
+                          messageController.currentPage.value);
+                    }
                   },
                   child: Obx(() {
                     if (messageController.messages.isEmpty) {
@@ -306,16 +345,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       reverse: true,
                       itemCount: messageController.messages.length,
                       itemBuilder: (context, index) {
-                        if (index == messageController.messages.length - 1) {
-                          if (messageController.loading.value) {
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          } else {
-                            return SizedBox.shrink();
-                          }
-                        }
+                        // if (index == messageController.messages.length - 1) {
+                        //   if (messageController.loading.value) {
+                        //     return Padding(
+                        //       padding: const EdgeInsets.all(8.0),
+                        //       child: Center(child: CircularProgressIndicator()),
+                        //     );
+                        //   } else {
+                        //     return SizedBox.shrink();
+                        //   }
+                        // }
                         return _buildChatMessage(
                             messageController.messages[index],
                             messageController,

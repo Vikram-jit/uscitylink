@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
@@ -27,10 +28,14 @@ class _ChatViewState extends State<ChatView>
   GroupController groupController = Get.put(GroupController());
   DashboardController _dashboardController = Get.find<DashboardController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  NetworkService _networkService = Get.find<NetworkService>();
 
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
+    ever(_networkService.connected, (_) {
+      print("Network changed: ${_networkService.connected.value}");
+    });
     super.initState();
 
     _tabController = TabController(length: 2, vsync: this);
@@ -95,16 +100,41 @@ class _ChatViewState extends State<ChatView>
           onPressed: () {
             _dashboardController.getDashboard();
             Get.back();
-
-            // Open the drawer using the scaffold key
-            // _scaffoldKey.currentState?.openDrawer();
           },
         ),
-        title: Text("Chats",
-            style: Theme.of(context)
-                .textTheme
-                .headlineMedium
-                ?.copyWith(color: Colors.white)),
+        title: Obx(() {
+          if (_networkService.connected.value == false) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                SizedBox(
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      )),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Text(
+                  "waiting for network",
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(color: Colors.white),
+                )
+              ],
+            );
+          }
+          return Text("Chats",
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(color: Colors.white));
+        }),
         bottom: TabBar(
           labelColor: Colors.white,
           unselectedLabelColor: Colors.grey.shade500,

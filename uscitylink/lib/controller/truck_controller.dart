@@ -79,7 +79,7 @@ class TruckController extends GetxController
       detailLoader.value = false;
     } catch (e) {
       detailLoader.value = false;
-      Utils.snackBar('Error', e.toString());
+      //  Utils.snackBar('Error', e.toString());
     } finally {
       detailLoader.value = false;
     }

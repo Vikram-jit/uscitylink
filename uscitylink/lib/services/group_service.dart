@@ -31,7 +31,7 @@ class GroupService {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      throw Exception('Error fetching group: $e');
+      throw Exception('$e');
     }
   }
 

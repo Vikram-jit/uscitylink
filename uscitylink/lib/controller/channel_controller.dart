@@ -94,7 +94,7 @@ class ChannelController extends GetxController {
         loading.value = false;
       } else {
         loading.value = false;
-        Utils.snackBar('Error', error.toString());
+        //Utils.snackBar('Error', error.toString());
       }
     });
   }
@@ -114,7 +114,7 @@ class ChannelController extends GetxController {
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
-      Utils.snackBar('Error', error.toString());
+      //Utils.snackBar('Error', error.toString());
     });
   }
 

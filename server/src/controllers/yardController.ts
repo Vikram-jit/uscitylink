@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 
 import * as path from "path";
 import ejs from "ejs"; // Import EJS
+import Queue, { Job } from 'bull';
 
 import { Request, Response } from "express";
 import { generatePdf } from "../utils/pdf";
@@ -127,20 +128,7 @@ export default async function pdfGernate(
                           }
                         });
 
-                        // return generatePdf(
-                        //   html,
-                        //   { landscape: false, printBackground: true, format: "A4" },
-                        //   outputPdfPath
-                        // ).then(() => {
-                        //   res.setHeader("Content-Disposition", "attachment; filename=dlfile.pdf");
-                        //   res.setHeader("Content-Type", "application/pdf");
-                        //   return fs.readFile(outputPdfPath);
-                        // })
-                        // .then((pdfBuffer) => {
-                        //   res.send(pdfBuffer).end(() => {
-                        //     fs.unlink(outputPdfPath);
-                        //   });
-                        // });
+                   
                       });
                   } else {
                     throw new Error("Address not found.");
@@ -358,5 +346,72 @@ export async function getPays(req: Request, res: Response): Promise<any> {
     });
   } catch (err: any) {
     return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+interface JobProgress {
+  jobId: string; 
+  progress: number;
+}
+
+// Define the structure of the queue progress data
+interface QueueProgress {
+  waiting: JobProgress[];
+  active: JobProgress[];
+  delayed: JobProgress[];
+  completed: JobProgress[];
+  failed: JobProgress[];
+}
+
+// Function to get the progress of all queues
+async function getProgressOfAllQueues(): Promise<{ [queueName: string]: QueueProgress }> {
+  const queues = ['fileUploadQueue', 'jobQueue']; // Add your queues here
+  const result: { [queueName: string]: QueueProgress } = {};
+
+  // Loop through all queues
+  for (let queueName of queues) {
+    const queue = new Queue(queueName);
+    const states: ('waiting' | 'active' | 'delayed' | 'completed' | 'failed')[] = ['waiting', 'active', 'delayed', 'completed', 'failed'];
+    
+    result[queueName] = {
+      waiting: [],
+      active: [],
+      delayed: [],
+      completed: [],
+      failed: []
+    };
+
+    // Loop through each state
+    for (let state of states) {
+      const jobs: Job[] = await queue.getJobs([state]); // Pass the state as an array
+
+      // Get the progress of each job
+      for (let job of jobs) {
+        const progress = await job.progress();
+        result[queueName][state].push({
+          jobId: job.id.toString(),  // Convert jobId to string
+          progress
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+
+export async function queueData(req: Request, res: Response): Promise<any> {
+  try {
+    const progressData = await getProgressOfAllQueues();
+    return res.status(200).json({
+      status: true,
+      message: `Get queue Successfully.`,
+      data: progressData,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }

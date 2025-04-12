@@ -24,18 +24,18 @@ class DashboardController extends GetxController {
     loading.value = true;
     _dashboardService.getDashboard().then((response) {
       dashboard.value = response.data;
-      dashboardBox.put('dashboard', response.data);
+      dashboardBox.put('dashboardBox', response.data);
       loading.value = false;
     }).onError((error, stackTrace) {
-      DashboardModel? cachedDashboard = dashboardBox.get('dashboard');
       if (error.toString() == "Exception: No Internet Connection") {
+        DashboardModel? cachedDashboard = dashboardBox.get('dashboardBox');
         if (cachedDashboard != null) {
           dashboard.value = cachedDashboard;
         }
         loading.value = false;
       }
-
-      Utils.snackBar('Error', error.toString());
+      loading.value = false;
+      // Utils.snackBar('Error', error.toString());
     });
   }
 

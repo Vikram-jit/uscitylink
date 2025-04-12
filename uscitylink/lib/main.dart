@@ -8,6 +8,7 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
 import 'package:uscitylink/hive/hive_adapters.dart';
 import 'package:uscitylink/routes/app_routes.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 
@@ -53,6 +54,8 @@ void main() async {
     statusBarColor: Colors.blue, // Set your color here
     statusBarIconBrightness: Brightness.light,
   ));
+  Get.put(NetworkService());
+
   runApp(const MyApp());
 }
 

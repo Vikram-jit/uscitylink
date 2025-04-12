@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -33,9 +34,12 @@ class _DriverDashboardState extends State<DriverDashboard>
   ChannelController channelController = Get.find<ChannelController>();
   TruckController truckController = Get.put(TruckController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
+  NetworkService _networkService = Get.find<NetworkService>();
   @override
   void initState() {
+    ever(_networkService.connected, (_) {
+      print("Network changed: ${_networkService.connected.value}");
+    });
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
     super.initState();
@@ -85,13 +89,41 @@ class _DriverDashboardState extends State<DriverDashboard>
                 },
               ),
               backgroundColor: TColors.primary,
-              title: Text(
-                "Dashboard",
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: Colors.white),
-              ),
+              title: Obx(() {
+                if (_networkService.connected.value == false) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        child: Container(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            )),
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      Text(
+                        "waiting for network",
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(color: Colors.white),
+                      )
+                    ],
+                  );
+                }
+                return Text(
+                  "${"Dashboard"}",
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(color: Colors.white),
+                );
+              }),
               actions: const [
                 Padding(
                   padding: EdgeInsets.only(right: 16.0),
@@ -147,7 +179,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.3,
                   ),
-
                   SizedBox(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -155,15 +186,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                         InkWell(
                           onTap: () {
                             Get.to(() => ChatView());
-                            // Get.toNamed(
-                            //   AppRoutes.driverMessage,
-                            //   arguments: {
-                            //     'channelId': _dashboardController
-                            //         .dashboard.value.channel?.id,
-                            //     'name': _dashboardController
-                            //         .dashboard.value.channel?.name,
-                            //   },
-                            // );
                           },
                           child: StatCard(
                             title: "UNREAD MESSAGE",
@@ -197,7 +219,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ],
                     ),
                   ),
-
                   SizedBox(
                     height: TDeviceUtils.getAppBarHeight() * 0.3,
                   ),
@@ -288,212 +309,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ],
                     ),
                   ),
-                  // SizedBox(
-                  //   height: TDeviceUtils.getAppBarHeight() * 0.1,
-                  // ),
-
-                  // SizedBox(
-                  //   height: TDeviceUtils.getAppBarHeight() * 0.30,
-                  // ),
-                  // Display Latest Messages
-                  // if (_dashboardController
-                  //         .dashboard.value.latestMessage!.length >
-                  //     0)
-                  //   Row(
-                  //     children: [
-                  //       Text(
-                  //         "Channel Message",
-                  //         style: Theme.of(context)
-                  //             .textTheme
-                  //             .titleLarge
-                  //             ?.copyWith(color: TColors.darkGrey),
-                  //       )
-                  //     ],
-                  //   ),
-
-                  // List of Latest Messages
-                  // ListView.builder(
-                  //   shrinkWrap:
-                  //       true, // To make it scrollable inside the SingleChildScrollView
-                  //   physics:
-                  //       NeverScrollableScrollPhysics(), // Disable scrolling in the ListView itself
-                  //   itemCount: _dashboardController
-                  //       .dashboard.value.latestMessage?.length,
-                  //   itemBuilder: (context, index) {
-                  //     var message = _dashboardController
-                  //         .dashboard.value.latestMessage?[index];
-                  //     return InkWell(
-                  //       onTap: () {
-                  //         Get.toNamed(
-                  //           AppRoutes.driverMessage,
-                  //           arguments: {
-                  //             'channelId': message?.channelId,
-                  //             'name': message?.channel?.name,
-                  //           },
-                  //         );
-                  //       },
-                  //       child: Card(
-                  //         color: Colors.white,
-                  //         elevation: 2.0,
-                  //         shape: RoundedRectangleBorder(
-                  //           borderRadius: BorderRadius.circular(6.0),
-                  //         ),
-                  //         child: Column(
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.2),
-                  //             Padding(
-                  //               padding:
-                  //                   const EdgeInsets.symmetric(horizontal: 8),
-                  //               child: Text(
-                  //                 '${message?.channel?.name ?? 'No Channel'}',
-                  //                 style:
-                  //                     Theme.of(context).textTheme.headlineSmall,
-                  //               ),
-                  //             ),
-                  //             Divider(),
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.1),
-                  //             Padding(
-                  //               padding: const EdgeInsets.symmetric(
-                  //                   horizontal: 8.0, vertical: 2.0),
-                  //               child: Text(
-                  //                 '${message?.body ?? 'No Message'}',
-                  //                 style: Theme.of(context).textTheme.bodySmall,
-                  //               ),
-                  //             ),
-                  //             Divider(),
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.1),
-                  //             Padding(
-                  //               padding: const EdgeInsets.symmetric(
-                  //                   horizontal: 8.0, vertical: 2.0),
-                  //               child: Row(
-                  //                 mainAxisAlignment:
-                  //                     MainAxisAlignment.spaceBetween,
-                  //                 children: [
-                  //                   Text(
-                  //                     'by:${message?.sender?.username ?? ""}',
-                  //                     style:
-                  //                         Theme.of(context).textTheme.bodySmall,
-                  //                   ),
-                  //                   Text(
-                  //                     '${Utils.formatUtcDateTime(message?.messageTimestampUtc) ?? ""}',
-                  //                     style:
-                  //                         Theme.of(context).textTheme.bodySmall,
-                  //                   ),
-                  //                 ],
-                  //               ),
-                  //             ),
-                  //           ],
-                  //         ),
-                  //       ),
-                  //     );
-                  //   },
-                  // ),
-                  // if ((_dashboardController
-                  //             .dashboard.value.latestGroupMessage?.length ??
-                  //         0) >
-                  //     0)
-                  // SizedBox(height: TDeviceUtils.getAppBarHeight() * 0.2),
-                  // Display Latest Group Messages
-                  // if ((_dashboardController
-                  //             .dashboard.value.latestGroupMessage?.length ??
-                  //         0) >
-                  //     0)
-                  //   Row(
-                  //     children: [
-                  //       Text(
-                  //         "Group Message",
-                  //         style: Theme.of(context)
-                  //             .textTheme
-                  //             .titleLarge
-                  //             ?.copyWith(color: TColors.darkGrey),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // List of Latest Group Messages
-
-                  // ListView.builder(
-                  //   shrinkWrap: true,
-                  //   physics: NeverScrollableScrollPhysics(),
-                  //   itemCount: _dashboardController
-                  //       .dashboard.value.latestGroupMessage?.length,
-                  //   itemBuilder: (context, index) {
-                  //     var groupMessage = _dashboardController
-                  //         .dashboard.value.latestGroupMessage?[index];
-                  //     return InkWell(
-                  //       onTap: () {
-                  //         Get.toNamed(
-                  //           AppRoutes.driverGroupMessage,
-                  //           arguments: {
-                  //             'channelId': groupMessage?.channelId,
-                  //             'name': groupMessage?.group?.name,
-                  //             'groupId': groupMessage?.group?.id,
-                  //           },
-                  //         );
-                  //       },
-                  //       child: Card(
-                  //         color: Colors.white,
-                  //         elevation: 2.0,
-                  //         shape: RoundedRectangleBorder(
-                  //           borderRadius: BorderRadius.circular(6.0),
-                  //         ),
-                  //         child: Column(
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.2),
-                  //             Padding(
-                  //               padding:
-                  //                   const EdgeInsets.symmetric(horizontal: 8),
-                  //               child: Text(
-                  //                 '${groupMessage?.group?.name ?? 'No Group'}',
-                  //                 style:
-                  //                     Theme.of(context).textTheme.headlineSmall,
-                  //               ),
-                  //             ),
-                  //             Divider(),
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.1),
-                  //             Padding(
-                  //               padding: const EdgeInsets.symmetric(
-                  //                   horizontal: 8.0, vertical: 3.0),
-                  //               child: Text(
-                  //                 '${groupMessage?.body ?? 'No Group Message'}',
-                  //                 style: Theme.of(context).textTheme.bodySmall,
-                  //               ),
-                  //             ),
-                  //             Divider(),
-                  //             SizedBox(
-                  //                 height: TDeviceUtils.getAppBarHeight() * 0.1),
-                  //             Padding(
-                  //               padding: const EdgeInsets.symmetric(
-                  //                   horizontal: 8.0, vertical: 2.0),
-                  //               child: Row(
-                  //                 mainAxisAlignment:
-                  //                     MainAxisAlignment.spaceBetween,
-                  //                 children: [
-                  //                   Text(
-                  //                     'by:${groupMessage?.sender?.username ?? ""}',
-                  //                     style:
-                  //                         Theme.of(context).textTheme.bodySmall,
-                  //                   ),
-                  //                   Text(
-                  //                     '${Utils.formatUtcDateTime(groupMessage?.messageTimestampUtc) ?? ""}',
-                  //                     style:
-                  //                         Theme.of(context).textTheme.bodySmall,
-                  //                   ),
-                  //                 ],
-                  //               ),
-                  //             ),
-                  //           ],
-                  //         ),
-                  //       ),
-                  //     );
-                  //   },
-                  // ),
                 ],
               );
             })),

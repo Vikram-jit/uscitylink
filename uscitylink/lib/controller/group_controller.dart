@@ -283,7 +283,7 @@ class GroupController extends GetxController {
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
-      Utils.snackBar('Error', error.toString());
+      //Utils.snackBar('Error', error.toString());
     });
   }
 

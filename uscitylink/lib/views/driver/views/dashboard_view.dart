@@ -5,13 +5,9 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
-import 'package:uscitylink/services/fcm_service.dart';
-import 'package:uscitylink/views/driver/views/chat_view.dart';
-import 'package:uscitylink/views/driver/views/document_view.dart';
+
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
-import 'package:badges/badges.dart' as badges;
-import 'package:uscitylink/views/driver/views/training_view.dart';
 
 class DashboardView extends StatefulWidget {
   int? currentStep = 0;
@@ -28,8 +24,7 @@ class _DashboardViewState extends State<DashboardView>
 
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
-  final CustomDrawerController _customDrawerController =
-      Get.put(CustomDrawerController());
+
   TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
@@ -91,24 +86,6 @@ class _DashboardViewState extends State<DashboardView>
         items: [
           SalomonBottomBarItem(
               icon: const Icon(Icons.home), title: const Text("Home")),
-          // SalomonBottomBarItem(
-          //   icon: Obx(() {
-          //     return channelController.totalUnReadMessage.value > 0
-          //         ? badges.Badge(
-          //             position: badges.BadgePosition.topEnd(top: -15, end: -9),
-          //             badgeContent: channelController.totalUnReadMessage.value >
-          //                     0
-          //                 ? Text(
-          //                     '${channelController.totalUnReadMessage.value}',
-          //                     style: TextStyle(color: Colors.white),
-          //                   )
-          //                 : null, // Hide the badge if unread message count is 0
-          //             child: const Icon(Icons.chat), // Icon for the chat
-          //           )
-          //         : const Icon(Icons.chat);
-          //   }),
-          //   title: const Text("Chat"),
-          // ),
           SalomonBottomBarItem(
               icon: const Icon(Icons.settings), title: const Text("Settings")),
         ],

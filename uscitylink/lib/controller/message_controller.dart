@@ -43,12 +43,18 @@ class MessageController extends GetxController {
 
   @override
   void dispose() {
-    print("GroupController is being disposed. Disconnecting socket...");
     if (socketService.isConnected.value) {
       socketService.socket.disconnect();
       socketService.isConnected.value = false;
     }
     super.dispose();
+  }
+
+  Future<void> queueMessage(MessageModel message) async {
+    Box<MessageModel> box =
+        await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
+
+    await box.add(message); // Stores message with auto key
   }
 
 // Start typing event
@@ -82,54 +88,65 @@ class MessageController extends GetxController {
       [String? driverPin]) async {
     Box channelMessagesBox = await Hive.openBox(HiveBoxes.channelMessages);
 
-    // Prevent refresh if already loading
     if (loading.value) return;
-
-    // Set loading state to true
     loading.value = true;
 
     __messageService
         .getChannelMessagesV2(channelId, page, driverPin)
         .then((response) async {
-      if (page > 1) {
-        if (response.data.messages != null) {
+      if (response.data.messages != null) {
+        if (page > 1) {
           messages.addAll(response.data.messages ?? []);
-        }
-      } else {
-        if (response.data.messages != null) {
+        } else {
           messages.value = response.data.messages ?? [];
-          await channelMessagesBox.put(
-              HiveBoxes.channelMessages, response.data.messages);
+        }
+
+        // Store messages under key like "channelId_1"
+        String pageKey = '${channelId}_$page';
+        await channelMessagesBox.put(pageKey, response.data.messages);
+
+        // Track cached pages for this channel
+        String metaKey = '${channelId}_pages';
+        List<int> cachedPages =
+            (channelMessagesBox.get(metaKey) as List?)?.cast<int>() ?? [];
+
+        if (!cachedPages.contains(page)) {
+          cachedPages.add(page);
+          // Keep only the last 10 pages
+          if (cachedPages.length > 10) {
+            int removedPage = cachedPages.removeAt(0);
+            await channelMessagesBox.delete('${channelId}_$removedPage');
+          }
+          await channelMessagesBox.put(metaKey, cachedPages);
         }
       }
 
       if (response.data.pagination != null) {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
-      } else {
-        print("Pagination data is missing in the response!");
       }
 
       socketService.updateActiveChannel(channelId);
-      // Set loading state to true
       loading.value = false;
     }).onError((error, stackTrace) {
       if (error.toString() == "Exception: No Internet Connection") {
-        final cachedList = channelMessagesBox.get(HiveBoxes.channelMessages);
+        List<MessageModel> offlineMessages = [];
 
-        // Convert safely
-        List<MessageModel>? cachedMessages =
-            (cachedList as List?)?.cast<MessageModel>();
-
-        if (cachedMessages != null) {
-          messages.value = cachedMessages;
+        // Load cached messages up to 10 pages
+        for (int i = 1; i <= 10; i++) {
+          String key = '${channelId}_$i';
+          final cachedList = channelMessagesBox.get(key);
+          List<MessageModel>? cachedPage =
+              (cachedList as List?)?.cast<MessageModel>();
+          if (cachedPage != null) {
+            offlineMessages.addAll(cachedPage);
+          }
         }
 
+        messages.value = offlineMessages;
         loading.value = false;
       } else {
         loading.value = false;
-        print("Error: $error");
-        Utils.snackBar('Error', error.toString());
       }
     });
   }
