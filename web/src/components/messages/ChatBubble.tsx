@@ -13,6 +13,7 @@ import moment from 'moment';
 import { useSocket } from '@/lib/socketProvider';
 
 import MediaComponent from './MediaComment';
+import { Eye } from '@phosphor-icons/react';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -248,6 +249,22 @@ export default function ChatBubble(props: ChatBubbleProps) {
                   </ListItemButton>
                 </ListItem>
               )}
+              {
+                props.url_upload_type == "not-upload" &&
+                <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => {
+                    window.open(`http://52.9.12.189:4300/${props.url}`, '_blank');
+                    handleClose();
+                  }}
+                >
+                  <ListItemIcon>
+                    <Eye  />
+                  </ListItemIcon>
+                  <ListItemText primary="View Document" sx={{ color: 'green' }} />
+                </ListItemButton>
+              </ListItem>
+              }
             </List>
           </Popover>
         </Stack>
