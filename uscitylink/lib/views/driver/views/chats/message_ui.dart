@@ -77,19 +77,19 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     _scrollController.addListener(() {
       // Check if the user has scrolled to the bottom of the list
       // If so, fetch more messages if available
-      if (socketService.isConnected.value) {
-        if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent) {
-          if (!messageController.loading.value &&
-              messageController.currentPage.value <
-                  messageController.totalPages.value) {
-            messageController.getChannelMessages(
-              widget.channelId,
-              messageController.currentPage.value + 1,
-            );
-          }
+      // if (socketService.isConnected.value) {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        if (!messageController.loading.value &&
+            messageController.currentPage.value <
+                messageController.totalPages.value) {
+          messageController.getChannelMessages(
+            widget.channelId,
+            messageController.currentPage.value + 1,
+          );
         }
       }
+      // }
     });
     _startChannelUpdateTimer();
   }
@@ -170,7 +170,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
             deliveryStatus: "sent",
             status: "queue",
             messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
-        messageController.messages.insert(0, messageOffline);
+        messageController.insertNewMessageCache(messageOffline);
         messageController.messages.refresh();
         messageController.queueMessage(messageOffline);
       } else if (socketService.isConnected.value == false) {
@@ -183,7 +183,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
             status: "queue",
             deliveryStatus: "sent",
             messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
-        messageController.messages.insert(0, messageOffline);
+        messageController.insertNewMessageCache(messageOffline);
         messageController.messages.refresh();
         messageController.queueMessage(messageOffline);
       } else {
@@ -880,15 +880,22 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           SizedBox(
                             height: 5,
                           ),
-                          Text(
-                            message.messageDirection == "R"
-                                ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
-                                : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
-                            style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black54,
-                                fontWeight: FontWeight.w500),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                message.messageDirection == "R"
+                                    ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
+                                    : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
                           ),
+
                           if (message.messageDirection == "S" &&
                               message.type == "truck_group")
                             Text("From Truck Group : ${message?.group?.name}",
@@ -934,9 +941,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (message.messageDirection == "R")
-                      if (message.deliveryStatus == "sent")
+                      if (message.deliveryStatus == "sent" &&
+                          message.status != "queue")
                         Icon(
                           Icons.done,
+                          color: Colors.grey.shade500,
+                          size: 16,
+                        )
+                      else if (message.status == "queue")
+                        Icon(
+                          Icons.access_time_outlined,
                           color: Colors.grey.shade500,
                           size: 16,
                         )

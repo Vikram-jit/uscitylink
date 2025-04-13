@@ -11,6 +11,7 @@ import {
 import { driverActiveChannelUpdate } from "./driverHandler";
 import {
   deleteMessage,
+  driverMessageQueueProcess,
   messageToChannelToUser,
   messageToDriver,
   messageToDriverByTruckGroup,
@@ -597,6 +598,21 @@ export const initSocket = (httpServer: any) => {
         await messageToChannelToUser(
           io,
           socket,
+          body,
+          url,
+          channelId,
+          thumbnail,
+          r_message_id
+        )
+    );
+
+    socket.on(
+      "driver_message_queue",
+      async ({messageId, body, url = null, channelId, thumbnail, r_message_id }) =>
+        await driverMessageQueueProcess(
+          io,
+          socket,
+          messageId,
           body,
           url,
           channelId,

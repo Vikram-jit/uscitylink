@@ -35,7 +35,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300?token=$token';
+    return 'http://52.9.12.189:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -76,6 +76,81 @@ class SocketService extends GetxController {
 
     socket.on('message', (data) {
       message.value = data; // Update message when new data is received
+    });
+
+    socket.on('update_queue_message_driver', (data) async {
+      final String channelId = data["channelId"];
+      final String oldMessageId = data["oldMessageId"];
+
+      // Open the box as untyped
+      final box = await Hive.openBox(HiveBoxes.channelMessages);
+
+      // Filter page keys like channelId_1, channelId_2 etc., skip channelId_pages
+      final keys = box.keys
+          .where((key) =>
+              key.toString().startsWith('$channelId\_') &&
+              !key.toString().endsWith('_pages'))
+          .toList();
+
+      bool messageReplaced = false;
+
+      for (final key in keys) {
+        final raw = box.get(key);
+        if (raw is List) {
+          List<MessageModel> cachedPage = raw
+              .whereType<MessageModel>()
+              .toList(); // Safely convert to MessageModel list
+
+          for (int i = 0; i < cachedPage.length; i++) {
+            if (cachedPage[i].id == oldMessageId) {
+              final newMessage = MessageModel.fromJson(data["message"]);
+              cachedPage[i] = newMessage;
+
+              await box.put(key, cachedPage);
+              print(
+                  '✅ Message with id $oldMessageId replaced in cache key: $key');
+
+              messageReplaced = true;
+
+              // 🗑️ Remove from queue box
+              final queueBox =
+                  await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
+              final matchingKey = queueBox.keys.firstWhere(
+                  (k) => queueBox.get(k)?.id == oldMessageId,
+                  orElse: () => null);
+
+              if (matchingKey != null) {
+                await queueBox.delete(matchingKey);
+                print('🗑️ Removed message $oldMessageId from queue');
+              }
+
+              break;
+            }
+          }
+        }
+
+        if (messageReplaced) break;
+      }
+      if (Get.isRegistered<MessageController>()) {
+        final messageController = Get.find<MessageController>();
+
+        // final oldMessageId = data["oldMessageId"];
+        final newMessage = MessageModel.fromJson(data["message"]);
+
+        // Replace message in the in-memory list
+        final index = messageController.messages
+            .indexWhere((msg) => msg.id == oldMessageId);
+        if (index != -1) {
+          messageController.messages[index] = newMessage;
+          messageController.messages.refresh(); // 🔁 Notify UI
+          messageController.refresh(); // 🔁 Notify UI
+        } else {
+          print('⚠️ Message with id $oldMessageId not found in memory list');
+        }
+      }
+      if (!messageReplaced) {
+        print('⚠️ Message with id $oldMessageId was not found in cache.');
+      }
     });
 
     socket.on('receive_message_channel', (data) {
@@ -297,7 +372,14 @@ class SocketService extends GetxController {
       Box<MessageModel> box =
           await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
       for (var message in box.values) {
-        print(message.body); // if MessageModel has toJson()
+        socket.emit("driver_message_queue", {
+          "messageId": message.id,
+          "body": message.body,
+          "url": null,
+          "channelId": message.channelId,
+          "thumbnail": null,
+          "r_message_id": "",
+        });
       }
     }
   }

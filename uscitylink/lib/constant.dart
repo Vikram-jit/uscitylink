@@ -1,5 +1,5 @@
 class Constant {
-  static const String baseUrl = 'http://localhost:4300/api';
+  static const String baseUrl = 'http://52.9.12.189:4300/api';
 
   static const String versionApi = "v1";
 
