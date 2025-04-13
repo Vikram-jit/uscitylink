@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
@@ -229,37 +230,22 @@ class _AttachementUiState extends State<AttachementUi> {
               file: imageUrl,
             ));
       },
-      child: Image.network(
-        imageUrl,
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
         width: double.infinity,
         height: 200.0,
         fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) {
-            return child; // Image loaded
-          } else {
-            return SizedBox(
-              width: double.infinity,
-              height: 200.0,
-              child: Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          (loadingProgress.expectedTotalBytes ?? 1)
-                      : null,
-                ),
-              ),
-            );
-          }
-        },
-        errorBuilder: (context, error, stackTrace) {
-          // Handle error when loading the image
-          return const Icon(
-            Icons.error,
-            size: 40,
-            color: Colors.red,
-          );
-        },
+        placeholder: (context, url) => const SizedBox(
+          height: 200,
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(
+          Icons.error,
+          size: 40,
+          color: Colors.red,
+        ),
       ),
     );
   }
