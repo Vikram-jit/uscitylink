@@ -604,12 +604,12 @@ export async function messageToChannelToUser(
               }
             } else {
               if (isSocket) {
-                io.to(isSocket.id).emit("new_message_count_update_staff", {
-                  channelId: message?.channelId,
-                  userId: message?.userProfileId,
-                  message,
-                  sent_message_count: 1,
-                });
+                // io.to(isSocket.id).emit("new_message_count_update_staff", {
+                //   channelId: message?.channelId,
+                //   userId: message?.userProfileId,
+                //   message,
+                //   sent_message_count: 1,
+                // });
                 await UserChannel.update(
                   {
                     sent_message_count: Sequelize.literal(
@@ -672,16 +672,16 @@ export async function messageToChannelToUser(
               el.channelId == findUserChannel.channelId
             ) {
               if (isSocket) {
-                io.to(isSocket?.id).emit("new_message_count_update_staff", {
-                  channelId: message?.channelId,
-                  userId: message?.userProfileId,
-                  message,
-                });
+                // io.to(isSocket?.id).emit("new_message_count_update_staff", {
+                //   channelId: message?.channelId,
+                //   userId: message?.userProfileId,
+                //   message,
+                // });
 
-                io.to(isSocket?.id).emit(
-                  "notification_new_message",
-                  `New Message received `
-                );
+                // io.to(isSocket?.id).emit(
+                //   "notification_new_message",
+                //   `New Message received `
+                // );
               }
             } else {
               if (

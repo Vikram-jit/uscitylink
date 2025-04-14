@@ -121,6 +121,7 @@ export default function MyMessage() {
       }) => {
         // Check if the current channel matches the one receiving the socket update
         if (data?.data?.id === channelId) {
+          
           // Update the user list with the new message count
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList; // Return if no user list exists
@@ -177,8 +178,8 @@ export default function MyMessage() {
         }
       });
       return () => {
-        // socket.off('update_channel_sent_message_count');
-        //  socket.off('new_message_count_update_staff');
+         socket.off('update_channel_sent_message_count');
+         socket.off('new_message_count_update_staff');
       };
     }
   }, [socket,isFetching]);
