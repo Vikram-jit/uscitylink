@@ -470,8 +470,7 @@ export async function driverMessageQueueProcess(
 
    
     const isDriverSocket = global.userSockets[socket?.user?.id!];
-    console.log("Driver Socket", isDriverSocket);
-    console.log("Driver Socket",  {channelId:channelId, oldMessageId:messageId,message:message});
+   
     io.to(isDriverSocket?.id).emit("update_queue_message_driver", {channelId:channelId, oldMessageId:messageId,message:message});
   
 
@@ -772,7 +771,7 @@ export async function messageToDriver(
     messageTimestampUtc: new Date(),
     senderId: socket?.user?.id,
     isRead: false,
-    status: "sent",
+    status: "queue",
     url: url || null,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
@@ -818,6 +817,7 @@ export async function messageToDriver(
       await message?.update(
         {
           deliveryStatus: "seen",
+          status: "sent",
         },
         {
           where: {

@@ -39,6 +39,9 @@ class _DriverDashboardState extends State<DriverDashboard>
   void initState() {
     ever(_networkService.connected, (_) {
       print("Network changed: ${_networkService.connected.value}");
+      if (_networkService.connected.value) {
+        socketService.sendQueueMessage();
+      }
     });
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
@@ -57,6 +60,7 @@ class _DriverDashboardState extends State<DriverDashboard>
         socketService.connectSocket();
         Timer(Duration(seconds: 2), () {
           socketService.checkVersion();
+          socketService.sendQueueMessage();
         });
       }
       _dashboardController.getDashboard();

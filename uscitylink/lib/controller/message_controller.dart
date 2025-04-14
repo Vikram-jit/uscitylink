@@ -239,10 +239,18 @@ class MessageController extends GetxController {
 
   void onNewMessage(dynamic data) {
     MessageModel newMessage = MessageModel.fromJson(data);
-    // messages.insert(0, newMessage);
+    print(newMessage.status);
+    insertNewMessageCache(newMessage);
+  }
+
+  void addQueueNewMessage(dynamic data) {
+    MessageModel newMessage = MessageModel.fromJson(data);
 
     insertNewMessageCache(newMessage);
-    messages.refresh();
+    if (socketService.isConnected.value) {
+      socketService.socket
+          .emit("update_message_status_queue", {"messageId": newMessage.id});
+    }
   }
 
   void pinMessage(dynamic data) {
@@ -291,7 +299,7 @@ class MessageController extends GetxController {
 
   Future<void> insertNewMessageCache(MessageModel message) async {
     final box = await Hive.openBox(HiveBoxes.channelMessages);
-    const int messagesPerPage = 10;
+    const int messagesPerPage = 50;
 
     int currentPage = 1;
     String currentKey = '${channelId}_$currentPage';
@@ -313,7 +321,13 @@ class MessageController extends GetxController {
 
     await box.put(currentKey, currentPageMessages);
 
-    // Propagate overflow to subsequent pages
+    // Update messages in UI for page 1
+    if (currentPage == 1) {
+      messages.value = currentPageMessages;
+      messages.refresh();
+    }
+
+    // Propagate overflow to next pages
     while (overflow.isNotEmpty) {
       currentPage++;
       currentKey = '${channelId}_$currentPage';
@@ -321,7 +335,6 @@ class MessageController extends GetxController {
       List<MessageModel> nextPageMessages =
           (box.get(currentKey) as List?)?.cast<MessageModel>() ?? [];
 
-      // Add overflow to the front
       nextPageMessages.insertAll(0, overflow);
 
       if (nextPageMessages.length > messagesPerPage) {
@@ -334,7 +347,7 @@ class MessageController extends GetxController {
       await box.put(currentKey, nextPageMessages);
     }
 
-    // Optionally update total pages if needed
+    // Update total pages
     totalPages.value = currentPage;
   }
 

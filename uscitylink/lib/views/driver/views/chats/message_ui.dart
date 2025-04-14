@@ -59,6 +59,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     super.initState();
     ever(_networkService.connected, (_) {
       print("Network changed: ${_networkService.connected.value}");
+      if (_networkService.connected.value) {
+        socketService.getQueueMessage(widget.channelId);
+        socketService.sendQueueMessage();
+      }
     });
     WidgetsBinding.instance.addObserver(this);
 
@@ -73,6 +77,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
     if (widget.channelId.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
+      socketService.getQueueMessage(widget.channelId);
+      socketService.sendQueueMessage();
     }
     _scrollController.addListener(() {
       // Check if the user has scrolled to the bottom of the list
@@ -109,7 +115,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       // App is in the foreground
       if (!socketService.isConnected.value) {
         socketService.connectSocket();
+
         Timer(Duration(seconds: 2), () {
+          socketService.sendQueueMessage();
           socketService.checkVersion();
         });
       }
@@ -187,7 +195,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         messageController.messages.refresh();
         messageController.queueMessage(messageOffline);
       } else {
-        print("hello");
+        //   print("hello");
         socketService.updateActiveChannel(messageController.channelId.value);
         socketService.sendMessage(
             _controller.text,

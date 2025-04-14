@@ -16,7 +16,7 @@ export const getMessagesV2 = async (
 
 
     const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const pageSize = parseInt(req.query.pageSize as string) || 50;
 
     const offset = (page - 1) * pageSize;
 

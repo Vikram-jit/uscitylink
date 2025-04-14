@@ -21,6 +21,7 @@ class NetworkService extends GetxController {
     super.onInit();
     _initConnectivity();
     _streamSubscription = _connectivity.onConnectivityChanged.listen((results) {
+      print("Netwrok Value ${results.first}");
       _updateState(
           results.isNotEmpty ? results.first : ConnectivityResult.none);
     });

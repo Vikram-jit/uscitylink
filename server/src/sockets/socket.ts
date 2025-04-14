@@ -30,6 +30,8 @@ import { AppVersions } from "../models/AppVersions";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import PrivateChatMember from "../models/PrivateChatMember";
+import { Message } from "../models/Message";
+import { Op } from "sequelize";
 
 let io: Server;
 interface User {
@@ -410,6 +412,49 @@ export const initSocket = (httpServer: any) => {
       async (channelId) => await driverActiveChannelUpdate(socket, channelId)
     );
 
+    socket.on("get_driver_message_queue", async (data) => {
+      const { channelId } = data;
+      const messages = await Message.findAll({
+        where: {
+          channelId: channelId,
+          userProfileId: socket.user?.id,
+          type: {
+            [Op.ne]: "group",
+          },
+          status: "queue",
+        },
+        include: [
+          {
+            model: Message,
+            as: "r_message",
+            include: [
+              {
+                model: UserProfile,
+                as: "sender",
+                attributes: ["id", "username", "isOnline"],
+              },
+            ],
+          },
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+          },
+        ],
+        order: [["messageTimestampUtc", "DESC"]],
+      });
+
+      socket.emit("get_driver_messages_queues", messages);
+    });
+
+    socket.on("update_message_status_queue", async (data) => {
+      const { messageId } = data;
+      const message = await Message.findByPk(messageId);
+      if (message) {
+        await message.update({ status: "sent" });
+      }
+    });
+    
     socket.on(
       "update_channel_message_count",
       async (channelId) => await unreadAllMessage(io, socket, channelId)
@@ -442,7 +487,9 @@ export const initSocket = (httpServer: any) => {
         )
     );
 
-    socket.on("unread_staff_message",async({chat_id,user_id,type})=>unreadAllStaffMessage(io,socket,chat_id,user_id,type))
+    socket.on("unread_staff_message", async ({ chat_id, user_id, type }) =>
+      unreadAllStaffMessage(io, socket, chat_id, user_id, type)
+    );
 
     socket.on(
       "UPDATE_APP_VERSION",
@@ -608,7 +655,14 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       "driver_message_queue",
-      async ({messageId, body, url = null, channelId, thumbnail, r_message_id }) =>
+      async ({
+        messageId,
+        body,
+        url = null,
+        channelId,
+        thumbnail,
+        r_message_id,
+      }) =>
         await driverMessageQueueProcess(
           io,
           socket,

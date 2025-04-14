@@ -152,7 +152,22 @@ class SocketService extends GetxController {
         print('⚠️ Message with id $oldMessageId was not found in cache.');
       }
     });
+    socket.on('get_driver_messages_queues', (data) {
+      print("📨 Queued messages received: $data");
 
+      // Make sure data is a List
+      if (data is List) {
+        for (var item in data) {
+          // Convert each message from JSON and push to UI
+          if (Get.isRegistered<MessageController>()) {
+            final message = MessageModel.fromJson(item);
+            Get.find<MessageController>().addQueueNewMessage(message.toJson());
+          }
+        }
+      } else {
+        print("⚠️ Expected a List of messages but got: ${data.runtimeType}");
+      }
+    });
     socket.on('receive_message_channel', (data) {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().onNewMessage(data);
@@ -384,6 +399,12 @@ class SocketService extends GetxController {
     }
   }
 
+  void getQueueMessage(String channelId) async {
+    if (isConnected.value) {
+      socket.emit("get_driver_message_queue", {"channelId": channelId});
+    }
+  }
+
   // Method to send a message to the server
   void sendMessage(String body, String? url, String? channelId,
       [String? thumbnail, String? r_message_id]) {
@@ -461,7 +482,7 @@ class SocketService extends GetxController {
         socket.emit("update_channel_message_count", channelId);
       }
     } else {
-      connectSocket();
+      //connectSocket();
       print("Not connected to socket 1.");
     }
   }

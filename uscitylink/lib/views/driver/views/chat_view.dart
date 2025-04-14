@@ -35,6 +35,9 @@ class _ChatViewState extends State<ChatView>
     WidgetsBinding.instance.addObserver(this);
     ever(_networkService.connected, (_) {
       print("Network changed: ${_networkService.connected.value}");
+      if (_networkService.connected.value) {
+        socketService.sendQueueMessage();
+      }
     });
     super.initState();
 
@@ -69,6 +72,7 @@ class _ChatViewState extends State<ChatView>
         socketService.connectSocket();
         Timer(Duration(seconds: 2), () {
           socketService.checkVersion();
+          socketService.sendQueueMessage();
         });
       }
     }
