@@ -778,6 +778,12 @@ export async function messageToChannelToUser(
                 "notification_new_message",
                 `New Message received on ${channel?.name} channel`
               );
+              io.to(isSocket.id).emit("new_message_count_update_staff", {
+                channelId: message?.channelId,
+                userId: message?.userProfileId,
+                message,
+                sent_message_count: 1,
+              });
             }
           }
         }
