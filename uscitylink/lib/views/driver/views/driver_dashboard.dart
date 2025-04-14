@@ -181,9 +181,10 @@ class _DriverDashboardState extends State<DriverDashboard>
                     ),
                   ),
                   SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.3,
+                    height: TDeviceUtils.getScreenHeight() * 0.00,
                   ),
                   SizedBox(
+                    height: TDeviceUtils.getScreenHeight() * 0.2,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [

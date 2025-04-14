@@ -84,7 +84,8 @@ export const SocketProvider = ({
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
       document.title = "New Message";
-      dispatch(apiSlice.util.invalidateTags(['channelUsers','dashboard', 'channels', 'members', 'messages']));
+      //dispatch(apiSlice.util.invalidateTags(['channelUsers','dashboard', 'channels', 'members', 'messages']));
+      dispatch(apiSlice.util.invalidateTags(['dashboard','channels']));
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
 
       audio.addEventListener('canplaythrough', () => {
@@ -101,7 +102,7 @@ export const SocketProvider = ({
         audio.play()
       })
      // 
-     dispatch(apiSlice.util.invalidateTags(['channels']));
+     dispatch(apiSlice.util.invalidateTags(['channels','dashboard']));
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
 
@@ -128,7 +129,7 @@ export const SocketProvider = ({
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
     socketServer.on('typingUser', (data: any) => {
-      console.log(data.userId);
+      
       // if(data.userId == props.userId){
       //   setUserTyping(data?.isTyping)
       // }

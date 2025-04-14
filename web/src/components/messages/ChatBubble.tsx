@@ -14,6 +14,7 @@ import { useSocket } from '@/lib/socketProvider';
 
 import MediaComponent from './MediaComment';
 import { Eye } from '@phosphor-icons/react';
+import LinkifyText from '../LinkifyText';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -83,7 +84,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`}
             name={url ? url : ' '}
           />
-          {body && <Typography sx={{ fontSize: 16 ,whiteSpace: 'pre-wrap' }}>{body}</Typography>}
+          {body && <LinkifyText text={body} />}
         </Paper>
       ) : (
         <Box
@@ -95,7 +96,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             sx={{
               p: 1.25,
               borderRadius: 'lg',
-              bgcolor: isSent ? 'primary.main' : 'background.paper',
+              bgcolor: isSent ? '#343344' : 'background.paper',
               color: isSent ? 'white' : 'text.primary',
               borderTopRightRadius: isSent ? 0 : 'lg',
               borderTopLeftRadius: isSent ? 'lg' : 0,
@@ -144,7 +145,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
                       name={r_message.url ? r_message.url : ' '}
                     />
-                    {r_message.body && <Typography sx={{ fontSize: 16 }}>{r_message.body}</Typography>}
+                    {r_message.body && <LinkifyText text={r_message.body} />}
                   </Paper>
                 ) : (
                   <Box sx={{ position: 'relative', mb: 2 }}>
@@ -157,13 +158,13 @@ export default function ChatBubble(props: ChatBubbleProps) {
                         borderLeft: '4px solid #ffbf00',
                       }}
                     >
-                      <Typography sx={{ fontSize: 16,whiteSpace: 'pre-wrap'  }}>{r_message.body}</Typography>
+                   <LinkifyText text={r_message.body} />
                     </Paper>
                   </Box>
                 )}
               </Box>
             )}
-            <Typography sx={{ fontSize: 16 ,whiteSpace: 'pre-wrap' }}>{body}</Typography>
+            <LinkifyText text={body}/>
           </Paper>
           
         </Box>

@@ -127,7 +127,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
       socket.emit('staff_active_channel_user_update', userId);
       
       socket.on('receive_message_channel', (message: MessageModel) => {
-        setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
+     
+        if(message?.userProfileId == userId){
+          setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
+        }
+      
         if (showScrollToBottomButton) {
           setButtonTitle('New Message');
         }
