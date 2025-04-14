@@ -433,7 +433,7 @@ export async function driverMessageQueueProcess(
         },
       }
     );
-    
+
     if (socket?.user?.truck_group_id) {
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (
@@ -449,8 +449,6 @@ export async function driverMessageQueueProcess(
       });
     }
   }
-
-
 
   const findChannel = await Channel.findOne({
     where: {
@@ -468,12 +466,13 @@ export async function driverMessageQueueProcess(
     messageId: messageSave.id,
   });
 
-   
-    const isDriverSocket = global.userSockets[socket?.user?.id!];
-   
-    io.to(isDriverSocket?.id).emit("update_queue_message_driver", {channelId:channelId, oldMessageId:messageId,message:message});
-  
+  const isDriverSocket = global.userSockets[socket?.user?.id!];
 
+  io.to(isDriverSocket?.id).emit("update_queue_message_driver", {
+    channelId: channelId,
+    oldMessageId: messageId,
+    message: message,
+  });
 }
 
 export async function messageToChannelToUser(
@@ -740,6 +739,50 @@ export async function messageToChannelToUser(
       staffId: socket?.user?.id,
       messageId: messageSave.id,
     });
+
+    const roleId = await Role.findOne({
+      where: {
+        name: "staff",
+      },
+    });
+
+    const staffIds = Object.entries(global.staffOpenChat).map(
+      ([key, value]) => {
+        if (
+          value.channelId == channelId &&
+          value.userId == findUserChannel.driverId
+        ) {
+          return key;
+        }
+      }
+    );
+
+    const channel = await Channel.findByPk(channelId);
+
+    const users = await UserProfile.findAll({
+      where: {
+        role_id: roleId?.id,
+        // device_token: {
+        //   [Op.ne]: null,
+        // },
+      },
+    });
+
+    await Promise.all(
+      users.map(async (user) => {
+        if (user) {
+          if (!staffIds.includes(user.id)) {
+            const isSocket = global.userSockets[user.id];
+            if (isSocket) {
+              io.to(isSocket.id).emit(
+                "notification_new_message",
+                `New Message received on ${channel?.name} channel`
+              );
+            }
+          }
+        }
+      })
+    );
   }
 }
 
