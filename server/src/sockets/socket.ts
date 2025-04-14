@@ -441,7 +441,7 @@ export const initSocket = (httpServer: any) => {
             attributes: ["id", "username", "isOnline"],
           },
         ],
-        order: [["messageTimestampUtc", "DESC"]],
+        order: [["messageTimestampUtc", "ASC"]],
       });
 
       socket.emit("get_driver_messages_queues", messages);
@@ -454,7 +454,7 @@ export const initSocket = (httpServer: any) => {
         await message.update({ status: "sent" });
       }
     });
-    
+
     socket.on(
       "update_channel_message_count",
       async (channelId) => await unreadAllMessage(io, socket, channelId)
