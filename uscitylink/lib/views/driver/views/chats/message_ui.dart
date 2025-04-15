@@ -44,8 +44,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final FocusNode _focusNode = FocusNode();
 
   SocketService socketService = Get.find<SocketService>();
-  final ImagePickerController imagePickerController =
-      Get.put(ImagePickerController());
+  late ImagePickerController imagePickerController;
+
   NetworkService _networkService = Get.find<NetworkService>();
 
   final FilePickerController filePickerController =
@@ -58,16 +58,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     ever(_networkService.connected, (_) {
-      print("Network changed: ${_networkService.connected.value}");
+      // print("Network changed: ${_networkService.connected.value}");
       if (_networkService.connected.value) {
         socketService.getQueueMessage(widget.channelId);
-        socketService.sendQueueMessage();
       }
     });
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize the MessageController and fetch messages for the given channelId
     messageController = Get.put(MessageController());
+    imagePickerController = Get.put(ImagePickerController());
     messageController.channelId.value = widget.channelId;
     messageController.name.value = widget.name;
     messageController.getChannelMessages(
@@ -78,7 +78,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     if (widget.channelId.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
       socketService.getQueueMessage(widget.channelId);
-      socketService.sendQueueMessage();
+      // imagePickerController.uploadQueeueMedia();
+      // socketService.sendQueueMessage();
     }
     _scrollController.addListener(() {
       // Check if the user has scrolled to the bottom of the list
@@ -117,7 +118,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         socketService.connectSocket();
 
         Timer(Duration(seconds: 2), () {
-          socketService.sendQueueMessage();
+          // socketService.sendQueueMessage();
           socketService.checkVersion();
         });
       }
@@ -144,11 +145,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   void dispose() {
     _channelUpdateTimer?.cancel();
     // messageController.dispose();
+
     WidgetsBinding.instance.removeObserver(this);
+    imagePickerController.dispose();
+    filePickerController.dispose();
+    _audioController.dispose();
     socketService.updateActiveChannel("");
     _focusNode.dispose();
     _scrollController.dispose();
     Get.delete<AudioController>();
+
     super.dispose();
   }
 
@@ -879,6 +885,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                               thumbnail: "${Constant.aws}/${message.thumbnail}",
                               url_upload_type:
                                   message?.url_upload_type ?? "server",
+                              localFilePath: message.url ?? "",
                             ),
                           const SizedBox(height: 5),
                           SelectableText(

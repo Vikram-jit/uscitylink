@@ -273,6 +273,8 @@ class NetworkApiService extends BaseApiServices {
       List<File> files, String url, String channelId, String body,
       [bool isLoader = true]) async {
     try {
+      print(files);
+      print(url);
       // Show the loader while the files are uploading
       if (isLoader) {
         Utils.showLoader();
@@ -302,10 +304,9 @@ class NetworkApiService extends BaseApiServices {
         );
         request.files.add(multipartFile);
       }
-      print(request.fields);
       final response = await request.send().timeout(const Duration(hours: 1));
       final responseString = await response.stream.bytesToString();
-
+      print(response.statusCode);
       if (response.statusCode == 201) {
         Map<String, dynamic> responseJson = jsonDecode(responseString);
         List<FileModel> fileModels = (responseJson['data'] as List)

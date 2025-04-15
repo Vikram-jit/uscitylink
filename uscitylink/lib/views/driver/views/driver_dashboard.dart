@@ -12,7 +12,6 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
-import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
@@ -37,14 +36,11 @@ class _DriverDashboardState extends State<DriverDashboard>
   NetworkService _networkService = Get.find<NetworkService>();
   @override
   void initState() {
-    ever(_networkService.connected, (_) {
-      print("Network changed: ${_networkService.connected.value}");
-      if (_networkService.connected.value) {
-        socketService.sendQueueMessage();
-      }
-    });
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
+    if (socketService.isConnected.value) {
+      socketService.sendQueueMessage();
+    }
     super.initState();
   }
 
@@ -60,7 +56,7 @@ class _DriverDashboardState extends State<DriverDashboard>
         socketService.connectSocket();
         Timer(Duration(seconds: 2), () {
           socketService.checkVersion();
-          socketService.sendQueueMessage();
+          //socketService.sendQueueMessage();
         });
       }
       _dashboardController.getDashboard();
@@ -82,16 +78,16 @@ class _DriverDashboardState extends State<DriverDashboard>
         child: Column(
           children: [
             AppBar(
-              leading: IconButton(
-                icon: Icon(
-                  Icons.menu,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  // Open the drawer using the scaffold key
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
+              // leading: IconButton(
+              //   icon: Icon(
+              //     Icons.menu,
+              //     color: Colors.white,
+              //   ),
+              //   onPressed: () {
+              //     // Open the drawer using the scaffold key
+              //     _scaffoldKey.currentState?.openDrawer();
+              //   },
+              // ),
               backgroundColor: TColors.primary,
               title: Obx(() {
                 if (_networkService.connected.value == false) {
@@ -318,7 +314,6 @@ class _DriverDashboardState extends State<DriverDashboard>
               );
             })),
       ),
-      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }

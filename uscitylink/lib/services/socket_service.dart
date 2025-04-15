@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
@@ -35,7 +36,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300?token=$token';
+    return 'http://52.9.12.189:3004?token=$token';
   }
 
   // Method to connect to the socket server
@@ -71,7 +72,7 @@ class SocketService extends GetxController {
       reconnectAttempts.value = 0; // Reset reconnection attempts
       isConnected.value = true;
       startPing();
-      sendQueueMessage();
+      // sendQueueMessage();
     });
 
     socket.on('message', (data) {
@@ -121,6 +122,7 @@ class SocketService extends GetxController {
 
               if (matchingKey != null) {
                 await queueBox.delete(matchingKey);
+                await queueBox.close();
                 print('🗑️ Removed message $oldMessageId from queue');
               }
 
@@ -384,8 +386,8 @@ class SocketService extends GetxController {
 
   void sendQueueMessage() async {
     if (isConnected.value) {
-      Box<MessageModel> box =
-          await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
+      final box = await Constant.getQueueMessageBox();
+
       for (var message in box.values) {
         socket.emit("driver_message_queue", {
           "messageId": message.id,
@@ -396,6 +398,9 @@ class SocketService extends GetxController {
           "r_message_id": "",
         });
       }
+
+      // Don't close the box immediately if you're using it elsewhere
+      await box.close(); // Only close if you're sure you won't use it again
     }
   }
 
@@ -576,6 +581,8 @@ class SocketService extends GetxController {
           version: packageInfo.version,
           platform: Platform.operatingSystem);
       socket.emit("UPDATE_APP_VERSION", appData);
+    } else {
+      socket.connect();
     }
   }
   // void staffListeningDriverTyping(String userId, bool isTyping) {

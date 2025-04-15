@@ -64,16 +64,16 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
         child: Column(
           children: [
             AppBar(
-              leading: IconButton(
-                icon: Icon(
-                  Icons.menu,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  // Open the drawer using the scaffold key
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
+              // leading: IconButton(
+              //   icon: Icon(
+              //     Icons.menu,
+              //     color: Colors.white,
+              //   ),
+              //   onPressed: () {
+              //     // Open the drawer using the scaffold key
+              //     _scaffoldKey.currentState?.openDrawer();
+              //   },
+              // ),
               backgroundColor: TColors.primary,
               title: Text(
                 "Settings",
@@ -176,7 +176,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
           ),
         ],
       ),
-      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
+      //drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
     );
   }
 }

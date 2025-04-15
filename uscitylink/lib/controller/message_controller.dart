@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
@@ -51,10 +52,10 @@ class MessageController extends GetxController {
   }
 
   Future<void> queueMessage(MessageModel message) async {
-    Box<MessageModel> box =
-        await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
+    final box = await Constant.getQueueMessageBox();
 
     await box.add(message); // Stores message with auto key
+    await box.close();
   }
 
 // Start typing event
@@ -239,7 +240,7 @@ class MessageController extends GetxController {
 
   void onNewMessage(dynamic data) {
     MessageModel newMessage = MessageModel.fromJson(data);
-    print(newMessage.status);
+
     insertNewMessageCache(newMessage);
   }
 
@@ -264,11 +265,18 @@ class MessageController extends GetxController {
     messages.refresh();
   }
 
-  void updateUrlStatus(dynamic data) {
+  void updateUrlStatus(dynamic data) async {
     final messageId = data["messageId"];
+    final channelId = data["channelId"];
+    final tempId = data["tempId"];
+
     messages
         .where((message) => message.id == messageId)
         .forEach((message) => message.url_upload_type = data["status"]);
+
+    if (tempId != "" || tempId != null) {
+      await markUpdateMessageUrlStatus(channelId, messageId, data["status"]);
+    }
 
     messages.refresh();
   }
@@ -393,5 +401,27 @@ class MessageController extends GetxController {
     if (!messageReplaced) {
       print('Message with id $messageId was not found in cache.');
     }
+  }
+
+  Future<void> markUpdateMessageUrlStatus(
+      String channelId, String messageId, String status) async {
+    final box = await Hive.openBox(HiveBoxes.channelMessages);
+
+    for (var key in box.keys) {
+      if (key.toString().startsWith(channelId)) {
+        final messages = (box.get(key) as List?)?.cast<MessageModel>() ?? [];
+
+        for (int i = 0; i < messages.length; i++) {
+          if (messages[i].id == messageId) {
+            messages[i].url_upload_type = status; // Update directly
+            await box.put(key, messages); // Save updated list
+            print('Marked message $messageId as seen in $key');
+            return;
+          }
+        }
+      }
+    }
+
+    print('Message $messageId not found in cache.');
   }
 }

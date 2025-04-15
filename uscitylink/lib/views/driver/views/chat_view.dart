@@ -33,12 +33,12 @@ class _ChatViewState extends State<ChatView>
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
-    ever(_networkService.connected, (_) {
-      print("Network changed: ${_networkService.connected.value}");
-      if (_networkService.connected.value) {
-        socketService.sendQueueMessage();
-      }
-    });
+    // ever(_networkService.connected, (_) {
+    //   print("Network changed: ${_networkService.connected.value}");
+    //   if (_networkService.connected.value) {
+    //     socketService.connectSocket();
+    //   }
+    // });
     super.initState();
 
     _tabController = TabController(length: 2, vsync: this);
@@ -72,7 +72,7 @@ class _ChatViewState extends State<ChatView>
         socketService.connectSocket();
         Timer(Duration(seconds: 2), () {
           socketService.checkVersion();
-          socketService.sendQueueMessage();
+          //socketService.sendQueueMessage();
         });
       }
     }

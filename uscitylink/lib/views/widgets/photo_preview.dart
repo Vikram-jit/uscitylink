@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/services/network_service.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class PhotoPreviewScreen extends StatelessWidget {
@@ -13,6 +17,8 @@ class PhotoPreviewScreen extends StatelessWidget {
   final String? userId;
   // Access the controller instance
   final ImagePickerController controller = Get.find();
+  SocketService _socketService = Get.find<SocketService>();
+  NetworkService _networkService = Get.find<NetworkService>();
 
   PhotoPreviewScreen(
       {super.key,
@@ -84,8 +90,17 @@ class PhotoPreviewScreen extends StatelessWidget {
                             vertical: 12, horizontal: 16),
                         suffixIcon: InkWell(
                           onTap: () {
-                            controller.uploadFile(channelId, type, location,
-                                groupId, source, userId);
+                            if (_networkService.connected == false) {
+                              controller.uploadMultiFileOffline(channelId, type,
+                                  location, groupId, source, userId, "");
+                            } else if (_socketService.isConnected.value ==
+                                false) {
+                              controller.uploadMultiFileOffline(channelId, type,
+                                  location, groupId, source, userId, "");
+                            } else {
+                              controller.uploadFile(channelId, type, location,
+                                  groupId, source, userId);
+                            }
                           },
                           child: const Icon(
                             Icons.send,

@@ -1843,7 +1843,8 @@ export async function notifiyFileUploadDriverToStaff(
   channelId: string,
   messageId: string,
   type: string,
-  userId: string
+  userId: string,
+  tempId?:string
 ) {
   const findUserChannel = global.driverOpenChat.find(
     (e) => e.driverId == socket?.user?.id && e.channelId == channelId
@@ -1853,6 +1854,8 @@ export async function notifiyFileUploadDriverToStaff(
     socket.emit("update_file_upload_status", {
       status: type,
       messageId: messageId,
+      tempId: tempId,
+      channelId
     });
   } else {
     const userProfile = await UserProfile.findOne({

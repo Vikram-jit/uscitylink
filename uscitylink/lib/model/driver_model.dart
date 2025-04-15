@@ -80,7 +80,9 @@ class Driver {
   String? eld_password;
   String? phoneNumber;
   String? name;
-
+  String? pre_pass_id;
+  String? driver_fuel_id;
+  String? fuel_card_number;
   String? email;
 
   Driver(
@@ -89,13 +91,19 @@ class Driver {
       this.phoneNumber,
       this.name,
       this.email,
+      this.pre_pass_id,
+      this.driver_fuel_id,
+      this.fuel_card_number,
       this.eld_password});
 
   Driver.fromJson(Map<String, dynamic> json) {
     id = json['id'];
 
     driverNumber = json['driver_number'];
+    pre_pass_id = json['pre_pass_id'];
+    driver_fuel_id = json['driver_fuel_id'];
 
+    fuel_card_number = json['fuel_card_number'];
     phoneNumber = json['phone_number'];
     eld_password = json['eld_password'];
     name = json['name'];
@@ -109,6 +117,9 @@ class Driver {
 
     data['driver_number'] = this.driverNumber;
     data['eld_password'] = this.eld_password;
+    data['pre_pass_id'] = this.pre_pass_id;
+    data['driver_fuel_id'] = this.driver_fuel_id;
+    data['fuel_card_number'] = this.fuel_card_number;
 
     data['phone_number'] = this.phoneNumber;
     data['name'] = this.name;

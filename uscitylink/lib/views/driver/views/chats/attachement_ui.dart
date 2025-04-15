@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -14,6 +16,7 @@ class AttachementUi extends StatefulWidget {
   final bool direction;
   final String directionType;
   final String location;
+  final String localFilePath;
   AttachementUi(
       {super.key,
       required this.fileUrl,
@@ -21,7 +24,8 @@ class AttachementUi extends StatefulWidget {
       this.thumbnail = "",
       this.url_upload_type = "server",
       this.direction = false,
-      this.location = "driver"});
+      this.location = "driver",
+      this.localFilePath = ""});
 
   @override
   State<AttachementUi> createState() => _AttachementUiState();
@@ -144,6 +148,19 @@ class _AttachementUiState extends State<AttachementUi> {
 
   // Widget to show the image preview (network image)
   Widget _buildImagePreview(String imageUrl, String url_upload_type) {
+    if (url_upload_type == "local-file") {
+      return Image.file(
+        File(widget.localFilePath),
+        width: double.infinity,
+        height: 200.0,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.error,
+          size: 40,
+          color: Colors.red,
+        ),
+      );
+    }
     if (url_upload_type == "not-upload") {
       return widget.direction &&
               widget.location == "driver" &&

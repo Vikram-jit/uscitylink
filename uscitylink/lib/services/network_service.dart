@@ -1,8 +1,12 @@
 import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/services/socket_service.dart';
 
 enum UConnectivityResult { none, wifi, mobile }
 
@@ -12,10 +16,14 @@ class NetworkService extends GetxController {
   late StreamSubscription _streamSubscription;
 
   UConnectivityResult get connectionType => _connectionType.value;
+  UserPreferenceController userPreferenceController =
+      Get.put(UserPreferenceController());
 
   bool get isConnected => _connectionType.value != UConnectivityResult.none;
   RxBool connected = true.obs;
 
+  SocketService socketService = Get.find<SocketService>();
+  HiveController hiveController = Get.put(HiveController());
   @override
   void onInit() {
     super.onInit();
@@ -24,6 +32,31 @@ class NetworkService extends GetxController {
       print("Netwrok Value ${results.first}");
       _updateState(
           results.isNotEmpty ? results.first : ConnectivityResult.none);
+    });
+    ever(connected, (bool isConnected) {
+      print("Network changed controller: $isConnected");
+      if (isConnected) {
+        userPreferenceController.getToken().then((value) {
+          if (value != null) {
+            if (socketService.socket.disconnected) {
+              socketService.socket.connect();
+              Timer(Duration(seconds: 2), () {
+                socketService.sendQueueMessage();
+                hiveController.uploadQueeueMedia();
+              });
+            }
+          }
+        });
+        // Check if the socket is disconnected and reconnect if necessary
+      } else {
+        userPreferenceController.getToken().then((value) {
+          if (value != null) {
+            if (socketService.socket.connected) {
+              socketService.socket.disconnect();
+            }
+          }
+        });
+      }
     });
   }
 

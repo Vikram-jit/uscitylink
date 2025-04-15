@@ -3,8 +3,11 @@ import 'dart:io';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
+import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/driver_model.dart';
 import 'package:uscitylink/model/login_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
@@ -426,7 +429,18 @@ class LoginController extends GetxController {
 
   void logOut() async {
     Get.find<SocketService>().logout();
-    __authService.logout().then((value) {
+    await Future.wait([
+      Hive.openBox(HiveBoxes.userChannel).then((box) => box.clear()),
+      Hive.openBox(HiveBoxes.channelMessages).then((box) => box.clear()),
+      Hive.openBox(HiveBoxes.driverDashboard).then((box) => box.clear()),
+    ]);
+    final box = await Constant.getQueueMessageBox();
+    final mediaQueue = await Constant.getMediaQueueBox();
+    box.clear();
+    box.close();
+    mediaQueue.clear();
+    mediaQueue.close();
+    __authService.logout().then((value) async {
       // if (value.status == true) {
       //   Utils.toastMessage("Logout Successfully");
 

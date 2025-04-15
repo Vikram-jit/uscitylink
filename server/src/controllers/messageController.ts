@@ -23,6 +23,7 @@ import fs from "fs";
 import AWS from "aws-sdk";
 import path from "path";
 import {
+  driverMessageQueueProcess,
   messageToChannelToUser,
   messageToDriver,
   messageToDriverByTruckGroup,
@@ -88,6 +89,7 @@ export const processFileUpload = async (
     userId: string;
     location: string;
     private_chat_id?: string;
+    tempId?:string
   }>
 ): Promise<void> => {
   const {
@@ -100,6 +102,7 @@ export const processFileUpload = async (
     userId,
     location,
     private_chat_id,
+    tempId
   } = job.data;
 
   const fileStream = fs.createReadStream(filePath);
@@ -204,7 +207,8 @@ export const processFileUpload = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
+            tempId
           );
         }
       }
@@ -1025,12 +1029,13 @@ export const fileUploadByQueue = async (
     const groupId = req.query.groupId || null;
     const body = req.body.body;
     const userId = req.query.userId || req.user?.id;
+    const tempId = req.query.tempId as string;
     const private_chat_id = req.query.private_chat_id as string;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
 
     for (const file of files) {
-      console.log("data,fil",file)
+     
       const filePath = file.path;
       const fileName = file.originalname?.replace(" ", "_");
       const fileNameS3 = file?.filename;
@@ -1107,16 +1112,31 @@ export const fileUploadByQueue = async (
             "not-upload"
           );
         } else {
-          await messageToChannelToUser(
-            getSocketInstance(),
-            socket,
-            body,
-            `uscitylink/${fileNameS3}`,
-            channelId,
-            null,
-            null,
-            "not-upload"
-          );
+          if(tempId){
+            await driverMessageQueueProcess(
+              getSocketInstance(),
+              socket,
+              tempId,
+              body,
+              `uscitylink/${fileNameS3}`,
+              channelId,
+              null,
+              null,
+              "not-upload"
+            );
+          }else{
+            await messageToChannelToUser(
+              getSocketInstance(),
+              socket,
+              body,
+              `uscitylink/${fileNameS3}`,
+              channelId,
+              null,
+              null,
+              "not-upload"
+            );
+          }
+          
         }
       }
       // Create media record in the database
@@ -1146,6 +1166,7 @@ export const fileUploadByQueue = async (
         source: uploadBy,
         location: req.query.source,
         private_chat_id: private_chat_id,
+        tempId: tempId,
       });
       
       if (!job || !job.id) {

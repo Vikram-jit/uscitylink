@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/services/network_service.dart';
+import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
@@ -36,6 +38,9 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
   final CarouselSliderController _carouselController =
       CarouselSliderController();
   ScrollController _scrollController = ScrollController();
+  SocketService _socketService = Get.find<SocketService>();
+  NetworkService _networkService = Get.find<NetworkService>();
+
   int _currentIndex = 0;
   @override
   Widget build(BuildContext context) {
@@ -155,14 +160,35 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                           vertical: 12, horizontal: 16),
                       suffixIcon: InkWell(
                         onTap: () {
-                          controller.uploadMultiFile(
-                              widget.channelId,
-                              widget.type,
-                              widget.location,
-                              widget.groupId,
-                              widget.source,
-                              widget.userId,
-                              widget.uploadBy);
+                          if (_networkService.connected == false) {
+                            controller.uploadMultiFileOffline(
+                                widget.channelId,
+                                widget.type,
+                                widget.location,
+                                widget.groupId,
+                                widget.source,
+                                widget.userId,
+                                widget.uploadBy);
+                          } else if (_socketService.isConnected.value ==
+                              false) {
+                            controller.uploadMultiFileOffline(
+                                widget.channelId,
+                                widget.type,
+                                widget.location,
+                                widget.groupId,
+                                widget.source,
+                                widget.userId,
+                                widget.uploadBy);
+                          } else {
+                            controller.uploadMultiFile(
+                                widget.channelId,
+                                widget.type,
+                                widget.location,
+                                widget.groupId,
+                                widget.source,
+                                widget.userId,
+                                widget.uploadBy);
+                          }
                         },
                         child: const Icon(
                           Icons.send,

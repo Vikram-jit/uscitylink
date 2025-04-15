@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
-import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 
