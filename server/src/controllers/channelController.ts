@@ -462,8 +462,6 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
 
     const newData ={
       ...data?.dataValues,
-     
-     
       user_channels:modifiedData,
       pagination: {
         currentPage: page,

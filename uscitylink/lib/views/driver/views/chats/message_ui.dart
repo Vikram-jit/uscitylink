@@ -639,7 +639,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       FocusNode _focusNode,
       SocketService socketService) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
-
+    if (hasImageUrl) {
+      print(message.url);
+      print(message.url_upload_type);
+    }
     return Slidable(
       key: Key(message.id.toString()),
       startActionPane: message.messageDirection == "S"

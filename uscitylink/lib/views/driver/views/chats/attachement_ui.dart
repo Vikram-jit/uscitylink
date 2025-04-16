@@ -149,17 +149,17 @@ class _AttachementUiState extends State<AttachementUi> {
   // Widget to show the image preview (network image)
   Widget _buildImagePreview(String imageUrl, String url_upload_type) {
     if (url_upload_type == "local-file") {
-      return Image.file(
-        File(widget.localFilePath),
-        width: double.infinity,
-        height: 200.0,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => const Icon(
+      return Image.file(File(widget.localFilePath),
+          width: double.infinity,
+          height: 200.0,
+          fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
+        print(error.toString());
+        return const Icon(
           Icons.error,
           size: 40,
           color: Colors.red,
-        ),
-      );
+        );
+      });
     }
     if (url_upload_type == "not-upload") {
       return widget.direction &&

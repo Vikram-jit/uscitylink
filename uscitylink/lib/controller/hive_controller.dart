@@ -10,6 +10,8 @@ import 'package:path_provider/path_provider.dart';
 class HiveController extends GetxController {
   final _apiService = NetworkApiService();
   void uploadQueeueMedia() async {
+    print("starting upload media");
+    // Check if the device is connected to the internet
     final mediaQueueBox = await Constant.getMediaQueueBox();
 
     for (int i = 0; i < mediaQueueBox.length; i++) {

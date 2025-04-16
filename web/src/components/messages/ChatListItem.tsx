@@ -44,10 +44,10 @@ export default function ChatListItem(props: ChatListItemProps) {
             toggleMessagesPane();
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
-            if (user.unreadCount > 0) {
+            //if (user.unreadCount > 0) {
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
               dispatch(apiSlice.util.invalidateTags(['channels']));
-            }
+            //}
           }}
           selected={selected}
           sx={{
