@@ -186,7 +186,7 @@ class ImagePickerController extends GetxController {
     }
 
     selectedImages.value.clear();
-
+    caption.value = '';
     if (networkService.isConnected) {
       _hiveController.uploadQueeueMedia();
       print("internet,${networkService.isConnected}");
@@ -299,6 +299,7 @@ class ImagePickerController extends GetxController {
 
   void clearSelectedImage() {
     selectedImages.value.clear();
+
     selectedSource.value = selectedSource.value;
     selectedImage.value = null;
     caption.value = ''; // Clear caption too

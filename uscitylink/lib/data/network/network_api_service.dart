@@ -273,12 +273,10 @@ class NetworkApiService extends BaseApiServices {
       List<File> files, String url, String channelId, String body,
       [bool isLoader = true]) async {
     try {
-      print(files);
-      print(url);
       // Show the loader while the files are uploading
-      if (isLoader) {
-        Utils.showLoader();
-      }
+      // if (isLoader) {
+      //   Utils.showLoader();
+      // }
 
       // Prepare headers
       final headers = {
@@ -306,15 +304,12 @@ class NetworkApiService extends BaseApiServices {
       }
       final response = await request.send().timeout(const Duration(hours: 1));
       final responseString = await response.stream.bytesToString();
-      print(response.statusCode);
+
       if (response.statusCode == 201) {
         Map<String, dynamic> responseJson = jsonDecode(responseString);
         List<FileModel> fileModels = (responseJson['data'] as List)
             .map((data) => FileModel.fromJson(data))
             .toList();
-        if (isLoader) {
-          Utils.hideLoader();
-        }
 
         return ApiResponse<List<FileModel>>(
           data: fileModels,
@@ -323,24 +318,24 @@ class NetworkApiService extends BaseApiServices {
         );
       }
 
-      if (isLoader) {
-        Utils.hideLoader();
-      }
+      // if (isLoader) {
+      //   Utils.hideLoader();
+      // }
 
       throw Exception("Unable to upload files");
     } on SocketException {
       if (isLoader) {
-        Utils.hideLoader();
+        //Utils.hideLoader();
       }
       throw InternetException(); // Handle no internet connection
     } on TimeoutException {
       if (isLoader) {
-        Utils.hideLoader();
+        //Utils.hideLoader();
       }
       throw RequestTimeout(); // Handle timeout errors
     } catch (e) {
       if (isLoader) {
-        Utils.hideLoader();
+        //Utils.hideLoader();
       }
       throw Exception("An unexpected error occurred: $e");
     }

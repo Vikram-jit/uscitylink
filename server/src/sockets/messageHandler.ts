@@ -618,8 +618,8 @@ export async function messageToChannelToUser(
                   },
                   {
                     where: {
-                      userProfileId: socket?.user?.id, // The user you want to update
-                      channelId: findUserChannel.channelId, // The channel to target
+                      userProfileId: socket?.user?.id, 
+                      channelId: findUserChannel.channelId, 
                     },
                   }
                 );
@@ -746,16 +746,16 @@ export async function messageToChannelToUser(
       },
     });
 
-    const staffIds = Object.entries(global.staffOpenChat).map(
-      ([key, value]) => {
-        if (
-          value.channelId == channelId &&
-          value.userId == findUserChannel.driverId
-        ) {
-          return key;
-        }
-      }
-    );
+    // const staffIds = Object.entries(global.staffOpenChat).map(
+    //   ([key, value]) => {
+    //     if (
+    //       value.channelId == channelId &&
+    //       value.userId == findUserChannel.driverId
+    //     ) {
+    //       return key;
+    //     }
+    //   }
+    // );
 
     const channel = await Channel.findByPk(channelId);
 
@@ -771,7 +771,7 @@ export async function messageToChannelToUser(
     await Promise.all(
       users.map(async (user) => {
         if (user) {
-          if (!staffIds.includes(user.id)) {
+         
             const isSocket = global.userSockets[user.id];
             if (isSocket) {
               io.to(isSocket.id).emit(
@@ -785,7 +785,7 @@ export async function messageToChannelToUser(
                 sent_message_count: 1,
               });
             }
-          }
+          
         }
       })
     );
@@ -824,7 +824,7 @@ export async function messageToDriver(
     url: url || null,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
-    url_upload_type: url_upload_type || "server",
+    url_upload_type: url_upload_type || "with-out-media",
   });
   const message = await Message.findOne({
     where: {

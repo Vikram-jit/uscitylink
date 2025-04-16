@@ -894,6 +894,21 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             ),
                           // If there's an image URL, show the image with a loading indicator
                           if (hasImageUrl)
+                            if (message.url_upload_type == "local-file")
+                              AttachementUi(
+                                direction:
+                                    message.senderId == message.userProfileId,
+                                location: "driver",
+                                directionType: message.messageDirection!,
+                                fileUrl: "${Constant.aws}/${message.url}",
+                                thumbnail:
+                                    "${Constant.aws}/${message.thumbnail}",
+                                url_upload_type:
+                                    message?.url_upload_type ?? "server",
+                                localFilePath: message.url ?? "",
+                              ),
+
+                          if (hasImageUrl)
                             if (message.url_upload_type == "not-upload")
                               AttachementUi(
                                 direction:
@@ -907,18 +922,20 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                 url_upload_type: "server",
                                 localFilePath: message.url ?? "",
                               ),
-                          if (message.url_upload_type == "server")
-                            AttachementUi(
-                              direction:
-                                  message.senderId == message.userProfileId,
-                              location: "driver",
-                              directionType: message.messageDirection!,
-                              fileUrl: "${Constant.aws}/${message.url}",
-                              thumbnail: "${Constant.aws}/${message.thumbnail}",
-                              url_upload_type:
-                                  message?.url_upload_type ?? "server",
-                              localFilePath: message.url ?? "",
-                            ),
+                          if (hasImageUrl)
+                            if (message.url_upload_type == "server")
+                              AttachementUi(
+                                direction:
+                                    message.senderId == message.userProfileId,
+                                location: "driver",
+                                directionType: message.messageDirection!,
+                                fileUrl: "${Constant.aws}/${message.url}",
+                                thumbnail:
+                                    "${Constant.aws}/${message.thumbnail}",
+                                url_upload_type:
+                                    message?.url_upload_type ?? "server",
+                                localFilePath: message.url ?? "",
+                              ),
 
                           const SizedBox(height: 5),
                           SelectableText(

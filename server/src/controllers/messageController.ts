@@ -60,7 +60,7 @@ export const uploadLocal = multer({ storage });
 
 export const fileUploadQueue = new Queue("fileUploadQueue", {
   redis: {
-    host: "127.0.0.1",
+    host: process.env.DB_SERVER == "local" ?  "127.0.0.1": process.env.REDIS_HOST,
     port: 6379,
   },
 });
