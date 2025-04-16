@@ -77,13 +77,20 @@ export default function ChatBubble(props: ChatBubbleProps) {
             borderTopLeftRadius: isSent ? 'lg' : 0,
           }}
         >
+          {props.url_upload_type == "not-upload" ? 
           <MediaComponent
+          messageDirection={props.messageDirection}
+          type={"server"}
+            thumbnail={`http://52.9.12.189:4300/${props.url}`}
+            url={`http://52.9.12.189:4300/${props.url}`}
+            name={url ? url : ' '}
+          /> :  <MediaComponent
           messageDirection={props.messageDirection}
           type={props.url_upload_type}
             thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${thumbnail}`}
             url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${url}`}
             name={url ? url : ' '}
-          />
+          /> } 
           {body && <LinkifyText text={body} />}
         </Paper>
       ) : (
@@ -140,11 +147,19 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       mb: 2,
                     }}
                   >
-                    <MediaComponent
-                      thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.thumbnail}`}
-                      url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
-                      name={r_message.url ? r_message.url : ' '}
-                    />
+                    {r_message.url_upload_type == "not-upload" ? 
+          <MediaComponent
+          messageDirection={props.messageDirection}
+          type={"server"}
+            thumbnail={`http://52.9.12.189:4300/${r_message.url}`}
+            url={`http://52.9.12.189:4300/${r_message.url}`}
+            name={r_message.url ? r_message.url : ' '}
+          /> :    <MediaComponent
+          thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.thumbnail}`}
+          url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
+          name={r_message.url ? r_message.url : ' '}
+        /> } 
+                  
                     {r_message.body && <LinkifyText text={r_message.body} />}
                   </Paper>
                 ) : (

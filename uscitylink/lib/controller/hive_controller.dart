@@ -32,6 +32,6 @@ class HiveController extends GetxController {
         await mediaQueueBox.deleteAt(i);
       }
     }
-    mediaQueueBox.close();
+    // mediaQueueBox.close();
   }
 }

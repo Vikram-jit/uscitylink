@@ -290,14 +290,29 @@ class MessageController extends GetxController {
     messages.refresh();
   }
 
-  void updateSeenStatus(dynamic data) {
+  void updateSeenStatus(dynamic data) async {
     for (var message in messages) {
       if (message.senderId == data['userId']) {
         message.deliveryStatus = 'seen';
       }
     }
-
     messages.refresh();
+    final box = await Hive.openBox(HiveBoxes.channelMessages);
+
+    for (var key in box.keys) {
+      if (key.toString().startsWith(data["channelId"])) {
+        final messages = (box.get(key) as List?)?.cast<MessageModel>() ?? [];
+
+        for (int i = 0; i < messages.length; i++) {
+          if (messages[i].senderId == data['userId']) {
+            messages[i].deliveryStatus = "seen"; // Update directly
+            await box.put(key, messages); // Save updated list
+
+            return;
+          }
+        }
+      }
+    }
   }
 
   void updateTypingStatus(dynamic data) {

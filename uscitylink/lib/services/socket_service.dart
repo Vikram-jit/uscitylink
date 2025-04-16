@@ -36,7 +36,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://52.9.12.189:3004?token=$token';
+    return 'http://localhost:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -400,7 +400,7 @@ class SocketService extends GetxController {
       }
 
       // Don't close the box immediately if you're using it elsewhere
-      await box.close(); // Only close if you're sure you won't use it again
+      // await box.close(); // Only close if you're sure you won't use it again
     }
   }
 
