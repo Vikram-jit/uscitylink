@@ -3,7 +3,8 @@ import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 
 class Constant {
-  static const String baseUrl = 'http://localhost:4300/api';
+  static const String baseUrl = 'http://52.9.12.189:4300/api';
+  static const String tempImageUrl = 'http://52.9.12.189:4300/';
 
   static const String versionApi = "v1";
 
@@ -27,18 +28,11 @@ class Constant {
     const boxName = HiveBoxes.mediaQueueBox;
 
     if (Hive.isBoxOpen(boxName)) {
-      var box = Hive.box(boxName);
-
-      // Ensure the type is correct
-      if (box is Box<dynamic>) {
-        return box;
-      } else {
-        // Mismatch found, close and reopen with correct type
-        await box.close();
-        return await Hive.openBox<dynamic>(boxName);
-      }
+      // Access the box with the correct type
+      return Hive.box<dynamic>(boxName);
+    } else {
+      // Open the box with the specified type
+      return await Hive.openBox<dynamic>(boxName);
     }
-
-    return await Hive.openBox<dynamic>(boxName);
   }
 }

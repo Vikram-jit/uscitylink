@@ -1,11 +1,12 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/widgets/photo_preview.dart';
@@ -23,7 +24,8 @@ class ImagePickerController extends GetxController {
   Rx<File?> selectedVideo = Rx<File?>(null);
   RxString caption = ''.obs;
   RxString selectedSource = ''.obs;
-
+  NetworkService networkService = Get.find<NetworkService>();
+  HiveController _hiveController = Get.find<HiveController>();
   final ImagePicker _picker = ImagePicker();
   var isLoading = false.obs; // Loading state for image
   Future<void> pickImageFromCamera(String channelId, String location,
@@ -184,7 +186,11 @@ class ImagePickerController extends GetxController {
     }
 
     selectedImages.value.clear();
-    mediaQueueBox.close();
+
+    if (networkService.isConnected) {
+      _hiveController.uploadQueeueMedia();
+      print("internet,${networkService.isConnected}");
+    }
     Get.back();
     while (Get.isBottomSheetOpen == true) {
       Get.back();

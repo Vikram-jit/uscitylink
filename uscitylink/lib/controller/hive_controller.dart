@@ -8,30 +8,47 @@ class HiveController extends GetxController {
   final _apiService = NetworkApiService();
   void uploadQueeueMedia() async {
     final mediaQueueBox = await Constant.getMediaQueueBox();
-    int i = 0;
-    for (var media in mediaQueueBox.values) {
+    final List<int> successIndexes = [];
+
+    for (int i = 0; i < mediaQueueBox.length; i++) {
+      final media = mediaQueueBox.getAt(i);
+      if (media == null) continue;
+
       final file = File(media["file"]);
 
       if (await file.exists()) {
         try {
-          var res = await _apiService.multiFileUpload([
-            file
-          ], "${Constant.url}/media/uploadFileQueue?groupId=${media["groupId"]}&userId=${media["userId"]}&source=${media["location"]}&location=${media["type"]}&uploadBy=${media["uploadBy"]}&tempId=${media["tempId"]}",
-              media["channelId"], media["body"]);
+          final res = await _apiService.multiFileUpload(
+            [file],
+            "${Constant.url}/media/uploadFileQueue"
+            "?groupId=${media["groupId"]}"
+            "&userId=${media["userId"]}"
+            "&source=${media["location"]}"
+            "&location=${media["type"]}"
+            "&uploadBy=${media["uploadBy"]}"
+            "&tempId=${media["tempId"]}",
+            media["channelId"],
+            media["body"],
+          );
 
           if (res.status) {
-            await mediaQueueBox.deleteAt(i);
-            i = i + 1;
+            successIndexes.add(i); // Mark for deletion later
+          } else {
+            media["status"] = "failed";
+            await mediaQueueBox.putAt(i, media);
           }
         } catch (e) {
-          print(e.toString());
-          // Utils.snackBar("File Upload Error", e.toString());
-          //await mediaQueueBox.deleteAt(i);
+          print("Upload error at index $i: $e");
         }
       } else {
-        await mediaQueueBox.deleteAt(i);
+        // File no longer exists — mark for deletion
+        successIndexes.add(i);
       }
     }
-    // mediaQueueBox.close();
+
+    // 🔄 Delete successful uploads (in reverse to avoid index shift)
+    for (int index in successIndexes.reversed) {
+      await mediaQueueBox.deleteAt(index);
+    }
   }
 }

@@ -160,35 +160,35 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                           vertical: 12, horizontal: 16),
                       suffixIcon: InkWell(
                         onTap: () {
-                          if (_networkService.connected == false) {
-                            controller.uploadMultiFileOffline(
-                                widget.channelId,
-                                widget.type,
-                                widget.location,
-                                widget.groupId,
-                                widget.source,
-                                widget.userId,
-                                widget.uploadBy);
-                          } else if (_socketService.isConnected.value ==
-                              false) {
-                            controller.uploadMultiFileOffline(
-                                widget.channelId,
-                                widget.type,
-                                widget.location,
-                                widget.groupId,
-                                widget.source,
-                                widget.userId,
-                                widget.uploadBy);
-                          } else {
-                            controller.uploadMultiFile(
-                                widget.channelId,
-                                widget.type,
-                                widget.location,
-                                widget.groupId,
-                                widget.source,
-                                widget.userId,
-                                widget.uploadBy);
-                          }
+                          // if (_networkService.connected == false) {
+                          //   controller.uploadMultiFileOffline(
+                          //       widget.channelId,
+                          //       widget.type,
+                          //       widget.location,
+                          //       widget.groupId,
+                          //       widget.source,
+                          //       widget.userId,
+                          //       widget.uploadBy);
+                          // } else if (_socketService.isConnected.value ==
+                          //     false) {
+                          controller.uploadMultiFileOffline(
+                              widget.channelId,
+                              widget.type,
+                              widget.location,
+                              widget.groupId,
+                              widget.source,
+                              widget.userId,
+                              widget.uploadBy);
+                          // } else {
+                          //   controller.uploadMultiFile(
+                          //       widget.channelId,
+                          //       widget.type,
+                          //       widget.location,
+                          //       widget.groupId,
+                          //       widget.source,
+                          //       widget.userId,
+                          //       widget.uploadBy);
+                          // }
                         },
                         child: const Icon(
                           Icons.send,

@@ -40,11 +40,12 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   DashboardController _dashboardController = Get.find<DashboardController>();
   AudioController _audioController = Get.put(AudioController());
 
-  late MessageController messageController;
+  MessageController messageController = Get.put(MessageController());
   final FocusNode _focusNode = FocusNode();
 
   SocketService socketService = Get.find<SocketService>();
-  late ImagePickerController imagePickerController;
+  ImagePickerController imagePickerController =
+      Get.put(ImagePickerController());
 
   NetworkService _networkService = Get.find<NetworkService>();
 
@@ -67,7 +68,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
     // Initialize the MessageController and fetch messages for the given channelId
     messageController = Get.put(MessageController());
-    imagePickerController = Get.put(ImagePickerController());
+
     messageController.channelId.value = widget.channelId;
     messageController.name.value = widget.name;
     messageController.getChannelMessages(
@@ -852,6 +853,23 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                       ],
                                     ),
                                     if (message.r_message?.url != null)
+                                      if (message.r_message?.url_upload_type ==
+                                          "not-upload")
+                                        Container(
+                                          width: TDeviceUtils.getScreenWidth(
+                                                  context) *
+                                              0.8,
+                                          child: AttachementUi(
+                                            directionType:
+                                                message.messageDirection!,
+                                            fileUrl:
+                                                "${Constant.tempImageUrl}/${message.r_message?.url}",
+                                            thumbnail:
+                                                "${Constant.tempImageUrl}/${message.r_message?.thumbnail}",
+                                          ),
+                                        ),
+                                    if (message.r_message?.url_upload_type ==
+                                        "server")
                                       Container(
                                         width: TDeviceUtils.getScreenWidth(
                                                 context) *
@@ -876,6 +894,20 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             ),
                           // If there's an image URL, show the image with a loading indicator
                           if (hasImageUrl)
+                            if (message.url_upload_type == "not-upload")
+                              AttachementUi(
+                                direction:
+                                    message.senderId == message.userProfileId,
+                                location: "driver",
+                                directionType: message.messageDirection!,
+                                fileUrl:
+                                    "${Constant.tempImageUrl}/${message.url}",
+                                thumbnail:
+                                    "${Constant.tempImageUrl}/${message.thumbnail}",
+                                url_upload_type: "server",
+                                localFilePath: message.url ?? "",
+                              ),
+                          if (message.url_upload_type == "server")
                             AttachementUi(
                               direction:
                                   message.senderId == message.userProfileId,
@@ -887,6 +919,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                   message?.url_upload_type ?? "server",
                               localFilePath: message.url ?? "",
                             ),
+
                           const SizedBox(height: 5),
                           SelectableText(
                             message.body!,

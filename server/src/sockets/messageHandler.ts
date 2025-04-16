@@ -231,7 +231,7 @@ export async function driverMessageQueueProcess(
     url: url,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
-    url_upload_type: url_upload_type || "server",
+    url_upload_type: url_upload_type || "with-out-media",
   });
   const message = await Message.findOne({
     where: {
@@ -503,7 +503,7 @@ export async function messageToChannelToUser(
       url: url,
       thumbnail: thumbnail || null,
       reply_message_id: r_message_id || null,
-      url_upload_type: url_upload_type || "server",
+      url_upload_type: url_upload_type || "with-out-media",
     });
     const message = await Message.findOne({
       where: {
