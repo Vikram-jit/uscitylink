@@ -641,7 +641,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null, channelId, thumbnail, r_message_id }) =>
+      async ({ body, url = null, channelId, thumbnail, r_message_id,url_upload_type }) =>
         await messageToChannelToUser(
           io,
           socket,
@@ -649,7 +649,8 @@ export const initSocket = (httpServer: any) => {
           url,
           channelId,
           thumbnail,
-          r_message_id
+          r_message_id,
+          url_upload_type
         )
     );
 

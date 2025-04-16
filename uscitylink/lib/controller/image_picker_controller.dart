@@ -90,10 +90,11 @@ class ImagePickerController extends GetxController {
           await _picker.pickMultiImage(imageQuality: 25);
 
       if (images!.length > 0) {
-        for (var item in images!) {
-          selectedImages.value.add(File(item.path));
+        if (images != null && images.isNotEmpty) {
+          for (var item in images) {
+            selectedImages.value.add(File(item.path)); // XFile → File via .path
+          }
         }
-
         isLoading.value = false;
         Get.to(() => PhotoPreviewMultiple(
             channelId: channelId,
@@ -135,7 +136,8 @@ class ImagePickerController extends GetxController {
             socketService.sendGroupMessage(
                 groupId!, channelId, caption.value, res.data.key!);
           } else {
-            socketService.sendMessage(caption.value, res.data.key!, channelId);
+            socketService.sendMessage(
+                caption.value, res.data.key!, channelId, "", "", "server");
           }
         }
 

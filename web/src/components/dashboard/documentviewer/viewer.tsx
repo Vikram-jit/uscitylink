@@ -183,6 +183,7 @@ export default function Viewer({ documentKey }: Viewer) {
                   objectFit="contain"
                   style={{ objectFit: 'contain' }}
                   onLoadingComplete={handleLoadingComplete}
+                  unoptimized={true}
                 />
               </TransformComponent>
              </Box>

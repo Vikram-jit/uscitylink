@@ -102,7 +102,6 @@ class FilePickerController extends GetxController {
         type,
       );
       if (res.status) {
-        print("$source,$userId");
         if (source == "staff") {
           if (location == "group") {
             socketService.sendGroupMessage(
@@ -121,7 +120,8 @@ class FilePickerController extends GetxController {
                 groupId!, channelId, caption.value, res.data.key!);
           } else {
             socketService.updateActiveChannel(channelId);
-            socketService.sendMessage(caption.value, res.data.key!, channelId);
+            socketService.sendMessage(
+                caption.value, res.data.key!, channelId, "", "", "server");
           }
         }
 
@@ -165,7 +165,8 @@ class FilePickerController extends GetxController {
                 groupId!, channelId, caption.value, res.data.key!);
           } else {
             socketService.updateActiveChannel(channelId);
-            socketService.sendMessage(caption.value, res.data.key!, channelId);
+            socketService.sendMessage(
+                caption.value, res.data.key!, channelId, "", "", "server");
           }
         }
 

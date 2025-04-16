@@ -18,18 +18,18 @@ import Role from "../models/Role";
 import User from "../models/User";
 import { MessageStaff } from "../models/MessageStaff";
 import PrivateChatMember from "../models/PrivateChatMember";
-import { Media } from "../models/Media";
-
+import dotenv from "dotenv";
+dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
-    host: "127.0.0.1", // Redis host
+    host: process.env.DB_SERVER == "local" ?  "127.0.0.1": process.env.REDIS_HOST,
     port: 6379, // Custom Redis port
   },
 });
 
 export const groupMessageQueue = new Queue("groupMessageQueue", {
   redis: {
-    host: "127.0.0.1",
+    host: process.env.DB_SERVER == "local" ?  "127.0.0.1": process.env.REDIS_HOST,
     port: 6379,
   },
 });
@@ -38,7 +38,7 @@ export const groupNotificationStaffQueue = new Queue(
   "groupNotificationStaffQueue",
   {
     redis: {
-      host: "127.0.0.1",
+      host: process.env.DB_SERVER == "local" ?  "127.0.0.1": process.env.REDIS_HOST,
       port: 6379,
     },
   }

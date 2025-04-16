@@ -90,17 +90,8 @@ class PhotoPreviewScreen extends StatelessWidget {
                             vertical: 12, horizontal: 16),
                         suffixIcon: InkWell(
                           onTap: () {
-                            if (_networkService.connected == false) {
-                              controller.uploadMultiFileOffline(channelId, type,
-                                  location, groupId, source, userId, "");
-                            } else if (_socketService.isConnected.value ==
-                                false) {
-                              controller.uploadMultiFileOffline(channelId, type,
-                                  location, groupId, source, userId, "");
-                            } else {
-                              controller.uploadFile(channelId, type, location,
-                                  groupId, source, userId);
-                            }
+                            controller.uploadFile(channelId, type, location,
+                                groupId, source, userId);
                           },
                           child: const Icon(
                             Icons.send,
