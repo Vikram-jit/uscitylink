@@ -451,7 +451,7 @@ export const initSocket = (httpServer: any) => {
       const { messageId } = data;
       const message = await Message.findByPk(messageId);
       if (message) {
-        await message.update({ status: "sent" });
+        await message.update({ status: "sent", groupId: socket?.user?.truck_group_id || null });
       }
     });
 

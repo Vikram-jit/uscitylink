@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
@@ -29,7 +30,7 @@ class _ChatViewState extends State<ChatView>
   DashboardController _dashboardController = Get.find<DashboardController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   NetworkService _networkService = Get.find<NetworkService>();
-
+  HiveController _hiveController = Get.find<HiveController>();
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
@@ -64,7 +65,9 @@ class _ChatViewState extends State<ChatView>
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       if (socketService.isConnected.value) {
+        //   if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();
+        //  }
       }
       print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {

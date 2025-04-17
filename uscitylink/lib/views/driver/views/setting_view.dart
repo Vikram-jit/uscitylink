@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -21,6 +22,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
   final loginController = Get.put(LoginController());
   SocketService socketService = Get.find<SocketService>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  HiveController _hiveController = Get.find<HiveController>();
 
   @override
   void initState() {
@@ -35,7 +37,9 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       if (socketService.isConnected.value) {
+        //if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();
+//}
       }
       print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {

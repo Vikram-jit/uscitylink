@@ -11,6 +11,7 @@ import 'package:uscitylink/controller/audio_controller.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
@@ -52,7 +53,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   final FilePickerController filePickerController =
       Get.put(FilePickerController());
   final ScrollController _scrollController = ScrollController();
-
+  HiveController _hiveController = Get.find<HiveController>();
   String pinMessage = "0";
 
   @override
@@ -79,7 +80,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     if (widget.channelId.isNotEmpty) {
       socketService.updateActiveChannel(widget.channelId);
       socketService.getQueueMessage(widget.channelId);
-      // imagePickerController.uploadQueeueMedia();
+      _hiveController.uploadQueeueMedia();
       // socketService.sendQueueMessage();
     }
     _scrollController.addListener(() {
@@ -110,7 +111,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       socketService.updateActiveChannel("");
 
       if (socketService.isConnected.value) {
+        // if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();
+        // }
       }
       print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {
@@ -122,6 +125,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
           // socketService.sendQueueMessage();
           socketService.checkVersion();
         });
+        _hiveController.uploadQueeueMedia();
       }
       if (messageController.channelId.value.isNotEmpty) {
         socketService.updateActiveChannel(messageController.channelId.value);
@@ -640,8 +644,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       SocketService socketService) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
     if (hasImageUrl) {
+      // print(message.url);
       print(message.url);
-      print(message.url_upload_type);
+      print(message.url);
     }
     return Slidable(
       key: Key(message.id.toString()),
@@ -909,8 +914,21 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                 url_upload_type:
                                     message?.url_upload_type ?? "server",
                                 localFilePath: message.url ?? "",
+                                messageId: message.id ?? "",
                               ),
-
+                          if (hasImageUrl)
+                            if (message.url_upload_type == "failed")
+                              AttachementUi(
+                                direction:
+                                    message.senderId == message.userProfileId,
+                                location: "driver",
+                                directionType: message.messageDirection!,
+                                fileUrl: "${Constant.aws}/${message.url}",
+                                thumbnail:
+                                    "${Constant.aws}/${message.thumbnail}",
+                                url_upload_type: "failed",
+                                localFilePath: message.url ?? "",
+                              ),
                           if (hasImageUrl)
                             if (message.url_upload_type == "not-upload")
                               AttachementUi(
@@ -942,7 +960,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
                           const SizedBox(height: 5),
                           SelectableText(
-                            message.body!,
+                            "${message.body}",
                             style: const TextStyle(fontSize: 16),
                           ),
                           SizedBox(

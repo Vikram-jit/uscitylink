@@ -439,7 +439,7 @@ class LoginController extends GetxController {
     box.clear();
     box.close();
     mediaQueue.clear();
-    mediaQueue.close();
+    //  mediaQueue.close();
     __authService.logout().then((value) async {
       // if (value.status == true) {
       //   Utils.toastMessage("Logout Successfully");

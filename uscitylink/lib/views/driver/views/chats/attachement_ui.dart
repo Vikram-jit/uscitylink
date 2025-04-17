@@ -17,6 +17,7 @@ class AttachementUi extends StatefulWidget {
   final String directionType;
   final String location;
   final String localFilePath;
+  final String messageId;
   AttachementUi(
       {super.key,
       required this.fileUrl,
@@ -25,7 +26,8 @@ class AttachementUi extends StatefulWidget {
       this.url_upload_type = "server",
       this.direction = false,
       this.location = "driver",
-      this.localFilePath = ""});
+      this.localFilePath = "",
+      this.messageId = ""});
 
   @override
   State<AttachementUi> createState() => _AttachementUiState();
@@ -148,12 +150,24 @@ class _AttachementUiState extends State<AttachementUi> {
 
   // Widget to show the image preview (network image)
   Widget _buildImagePreview(String imageUrl, String url_upload_type) {
+    if (url_upload_type == "failed") {
+      return Image.file(File(widget.localFilePath),
+          width: double.infinity,
+          height: 300.0,
+          fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
+        print(error.toString());
+        return const Icon(
+          Icons.error,
+          size: 40,
+          color: Colors.red,
+        );
+      });
+    }
     if (url_upload_type == "local-file") {
       return Image.file(File(widget.localFilePath),
           width: double.infinity,
           height: 200.0,
           fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
-        print(error.toString());
         return const Icon(
           Icons.error,
           size: 40,

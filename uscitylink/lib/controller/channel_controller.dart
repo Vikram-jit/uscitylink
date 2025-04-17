@@ -68,6 +68,7 @@ class ChannelController extends GetxController {
     getCount();
 
     Box userChannelBox = await Hive.openBox(HiveBoxes.userChannel);
+
     loading.value = true;
     totalUnReadMessage.value = 0;
 

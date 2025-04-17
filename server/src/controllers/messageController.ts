@@ -24,6 +24,7 @@ import AWS from "aws-sdk";
 import path from "path";
 import {
   driverMessageQueueProcess,
+  driverMessageQueueProcessWithoutSocket,
   messageToChannelToUser,
   messageToDriver,
   messageToDriverByTruckGroup,
@@ -1113,17 +1114,34 @@ export const fileUploadByQueue = async (
           );
         } else {
           if(tempId){
-            await driverMessageQueueProcess(
-              getSocketInstance(),
-              socket,
-              tempId,
-              body,
-              `uscitylink/${fileNameS3}`,
-              channelId,
-              null,
-              null,
-              "not-upload"
-            );
+            if(socket){
+              await driverMessageQueueProcess(
+                getSocketInstance(),
+                socket,
+                tempId,
+                body,
+                `uscitylink/${fileNameS3}`,
+                channelId,
+                null,
+                null,
+                "not-upload",
+                
+              );
+            }else{
+              await driverMessageQueueProcessWithoutSocket(
+                getSocketInstance(),
+                tempId,
+                body,
+                `uscitylink/${fileNameS3}`,
+                channelId,
+                null,
+                null,
+                "not-upload",
+                userId,
+                null
+              );
+            }
+           
           }else{
             await messageToChannelToUser(
               getSocketInstance(),

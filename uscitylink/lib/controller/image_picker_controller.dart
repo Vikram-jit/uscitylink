@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
@@ -14,6 +15,8 @@ import 'package:uscitylink/views/widgets/photo_preview_multiple.dart';
 import 'package:uscitylink/views/widgets/video_preview_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_compress/video_compress.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class ImagePickerController extends GetxController {
   final _apiService = NetworkApiService();
@@ -21,6 +24,7 @@ class ImagePickerController extends GetxController {
   MessageController _messageController = Get.find<MessageController>();
   Rx<File?> selectedImage = Rx<File?>(null);
   Rx<List<File>> selectedImages = Rx<List<File>>([]);
+  Rx<List<XFile>> selectedXImages = Rx<List<XFile>>([]);
   Rx<File?> selectedVideo = Rx<File?>(null);
   RxString caption = ''.obs;
   RxString selectedSource = ''.obs;
@@ -93,6 +97,7 @@ class ImagePickerController extends GetxController {
         if (images != null && images.isNotEmpty) {
           for (var item in images) {
             selectedImages.value.add(File(item.path)); // XFile → File via .path
+            selectedXImages.value.add(item); // XFile → File via .path
           }
         }
         isLoading.value = false;
@@ -158,36 +163,75 @@ class ImagePickerController extends GetxController {
     final uuid = Uuid();
 
     final mediaQueueBox = await Constant.getMediaQueueBox();
-    for (File file in selectedImages.value) {
-      String tempId = uuid.v4();
+
+    Map<String, dynamic> setRes = {
+      "body": caption.value,
+      "channelId": channelId,
+      "groupId": groupId,
+      "userId": userId,
+      "source": location,
+      "location": type,
+      "uploadBy": uploadBy,
+      "status": "pending",
+      "media": []
+    };
+
+    for (XFile file in selectedXImages.value) {
+      final savedFile = await saveToPermanentDirectory(file);
+
+      String uuidPart = uuid.v4(); // Generate UUID (v4)
+      String timestamp =
+          DateTime.now().millisecondsSinceEpoch.toString(); // Current timestamp
+      final random = Random();
+      final randomNumber = random.nextInt(999999);
+      // If the timestamp length exceeds, trim it down to fit within limits
+      String trimmedTimestamp =
+          timestamp.length > 6 ? timestamp.substring(0, 6) : timestamp;
+
+      // Combine UUID and timestamp but ensure UUID is intact and within length limits
+      String tempId = '$uuidPart-$trimmedTimestamp-$randomNumber';
+
       MessageModel messageOffline = MessageModel(
           id: tempId,
           body: caption.value,
           channelId: channelId,
           groupId: groupId,
           userProfileId: userId,
-          url: file.path,
+          url: savedFile.path,
           url_upload_type: "local-file",
           messageDirection: "R",
           status: "queue",
           deliveryStatus: "sent",
           messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
+
       _messageController.insertNewMessageCache(messageOffline);
       _messageController.messages.refresh();
-      mediaQueueBox.add({
+      // mediaQueueBox.add({
+      //   "tempId": tempId,
+      //   "body": caption.value,
+      //   "channelId": channelId,
+      //   "groupId": groupId,
+      //   "userId": userId,
+      //   "file": savedFile.path,
+      //   "source": location,
+      //   "location": type,
+      //   "uploadBy": uploadBy,
+      //   "status": "processing",
+      // });
+      (setRes["media"] as List).add({
         "tempId": tempId,
-        "body": caption.value,
-        "channelId": channelId,
-        "groupId": groupId,
-        "userId": userId,
-        "file": file.path,
-        "source": location,
-        "location": type,
-        "uploadBy": uploadBy
+        "file": savedFile.path,
       });
     }
+    int newKey = 0;
+    while (mediaQueueBox.containsKey(newKey)) {
+      newKey++;
+    }
 
-    selectedImages.value.clear();
+// Step 4: Save the full set to Hive
+    await mediaQueueBox.put(newKey, setRes);
+
+    selectedXImages.value.clear();
     caption.value = '';
     if (networkService.isConnected) {
       _hiveController.uploadQueeueMedia();
@@ -310,5 +354,16 @@ class ImagePickerController extends GetxController {
   // Method to set the caption for the selected image
   void setCaption(String newCaption) {
     caption.value = newCaption;
+  }
+
+  Future<File> saveToPermanentDirectory(XFile xfile) async {
+    final appDir = await getApplicationDocumentsDirectory();
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final fileExtension = p.extension(xfile.path);
+    final uniqueName = 'media_$timestamp$fileExtension';
+    final savedImage =
+        await File(xfile.path).copy('${appDir.path}/$uniqueName');
+    return savedImage;
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -34,12 +35,16 @@ class _DriverDashboardState extends State<DriverDashboard>
   TruckController truckController = Get.put(TruckController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   NetworkService _networkService = Get.find<NetworkService>();
+  HiveController _hiveController = Get.find<HiveController>();
+
   @override
   void initState() {
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
     if (socketService.isConnected.value) {
-      socketService.sendQueueMessage();
+      if (_hiveController.isProcessing.value == false) {
+        socketService.socket.disconnect();
+      }
     }
     super.initState();
   }
@@ -49,7 +54,9 @@ class _DriverDashboardState extends State<DriverDashboard>
     // Handle app lifecycle changes (background/foreground)
     if (state == AppLifecycleState.paused) {
       if (socketService.isConnected.value) {
+        // if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();
+        //}
       }
     } else if (state == AppLifecycleState.resumed) {
       if (!socketService.isConnected.value) {

@@ -27,6 +27,7 @@ export class Message extends Model {
   public staffPin?: string;
   public url_upload_type?: string;
   public private_chat_id?: string;
+  public temp_id?:string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -43,6 +44,11 @@ Message.init(
     channelId: {
       type: DataTypes.UUID,
       allowNull: false,
+    },
+    temp_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      defaultValue: null,
     },
     userProfileId: {
       type: DataTypes.UUID,

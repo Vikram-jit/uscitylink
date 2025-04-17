@@ -244,7 +244,7 @@ class MessageController extends GetxController {
     insertNewMessageCache(newMessage);
   }
 
-  void addQueueNewMessage(dynamic data) {
+  void addQueueNewMessage(dynamic data) async {
     MessageModel newMessage = MessageModel.fromJson(data);
 
     insertNewMessageCache(newMessage);

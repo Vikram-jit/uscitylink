@@ -83,6 +83,17 @@ class SocketService extends GetxController {
       final String channelId = data["channelId"];
       final String oldMessageId = data["oldMessageId"];
 
+      // final mediaQueueBox = await Constant.getMediaQueueBox();
+
+      // for (int i = 0; i < mediaQueueBox.length; i++) {
+      //   final media = mediaQueueBox.getAt(i);
+
+      //   if (media != null && media["tempId"] == oldMessageId) {
+      //     await mediaQueueBox.deleteAt(i);
+      //     print("Removed media with empid: $oldMessageId");
+      //     break; // Exit loop after removing (optional if only one match expected)
+      //   }
+      // }
       // Open the box as untyped
       final box = await Hive.openBox(HiveBoxes.channelMessages);
 
