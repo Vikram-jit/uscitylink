@@ -41,7 +41,7 @@ class NetworkService extends GetxController {
             if (socketService.socket.disconnected) {
               socketService.socket.connect();
               Timer(Duration(seconds: 2), () {
-                socketService.sendQueueMessage();
+                //socketService.sendQueueMessage();
                 hiveController.uploadQueeueMedia();
               });
             }

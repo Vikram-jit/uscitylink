@@ -12,6 +12,8 @@ import { driverActiveChannelUpdate } from "./driverHandler";
 import {
   deleteMessage,
   driverMessageQueueProcess,
+  driverMessageQueueProcessResend,
+  getMessageByTempId,
   messageToChannelToUser,
   messageToDriver,
   messageToDriverByTruckGroup,
@@ -452,7 +454,11 @@ export const initSocket = (httpServer: any) => {
       const message = await Message.findByPk(messageId);
       if (message) {
         await message.update({ status: "sent", groupId: socket?.user?.truck_group_id || null });
+
       }
+
+        
+
     });
 
     socket.on(
@@ -663,8 +669,36 @@ export const initSocket = (httpServer: any) => {
         channelId,
         thumbnail,
         r_message_id,
+        messageTimestampUtc
       }) =>
         await driverMessageQueueProcess(
+          io,
+          socket,
+          messageId,
+          body,
+          url,
+          channelId,
+          thumbnail,
+          r_message_id,
+          "",
+          messageTimestampUtc
+        )
+    );
+
+  socket.on("check_message_store", async ({ messageId,channelId }) => await getMessageByTempId(io,socket,messageId,channelId));
+
+
+    socket.on(
+      "driver_message_queue_resend",
+      async ({
+        messageId,
+        body,
+        url = null,
+        channelId,
+        thumbnail,
+        r_message_id,
+      }) =>
+        await driverMessageQueueProcessResend(
           io,
           socket,
           messageId,
@@ -675,7 +709,6 @@ export const initSocket = (httpServer: any) => {
           r_message_id
         )
     );
-
     //Typing Staff Event
 
     socket.on("typing", (data) => {

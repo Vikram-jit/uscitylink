@@ -43,7 +43,7 @@ class _DriverDashboardState extends State<DriverDashboard>
     _dashboardController.getDashboard();
     if (socketService.isConnected.value) {
       if (_hiveController.isProcessing.value == false) {
-        socketService.socket.disconnect();
+        // socketService.socket.disconnect();
       }
     }
     super.initState();

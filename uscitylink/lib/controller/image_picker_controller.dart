@@ -232,6 +232,8 @@ class ImagePickerController extends GetxController {
     await mediaQueueBox.put(newKey, setRes);
 
     selectedXImages.value.clear();
+    selectedImages.value.clear();
+    ;
     caption.value = '';
     if (networkService.isConnected) {
       _hiveController.uploadQueeueMedia();

@@ -175,6 +175,18 @@ class _AttachementUiState extends State<AttachementUi> {
         );
       });
     }
+    if (url_upload_type == "queue") {
+      return Image.file(File(widget.localFilePath),
+          width: double.infinity,
+          height: 200.0,
+          fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
+        return const Icon(
+          Icons.error,
+          size: 40,
+          color: Colors.red,
+        );
+      });
+    }
     if (url_upload_type == "not-upload") {
       return widget.direction &&
               widget.location == "driver" &&

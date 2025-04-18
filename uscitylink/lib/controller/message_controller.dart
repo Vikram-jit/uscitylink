@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+
 import 'package:uscitylink/constant.dart';
-import 'package:uscitylink/hive_boxes.dart';
+
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/message_service.dart';
@@ -129,8 +129,7 @@ class MessageController extends GetxController {
 
   void getChannelMessages(String channelId, int page,
       [String? driverPin]) async {
-    final box = await Hive.openBox(HiveBoxes.channelMessages);
-
+    final box = await Constant.getChannelMessagesBox();
     // Prevent refresh if already loading
     if (loading.value) return;
 
@@ -244,7 +243,7 @@ class MessageController extends GetxController {
     insertNewMessageCache(newMessage);
   }
 
-  void addQueueNewMessage(dynamic data) async {
+  void addQueueNewMessage(dynamic data) {
     MessageModel newMessage = MessageModel.fromJson(data);
 
     insertNewMessageCache(newMessage);
@@ -290,29 +289,14 @@ class MessageController extends GetxController {
     messages.refresh();
   }
 
-  void updateSeenStatus(dynamic data) async {
+  void updateSeenStatus(dynamic data) {
     for (var message in messages) {
       if (message.senderId == data['userId']) {
         message.deliveryStatus = 'seen';
       }
     }
+
     messages.refresh();
-    final box = await Hive.openBox(HiveBoxes.channelMessages);
-
-    for (var key in box.keys) {
-      if (key.toString().startsWith(data["channelId"])) {
-        final messages = (box.get(key) as List?)?.cast<MessageModel>() ?? [];
-
-        for (int i = 0; i < messages.length; i++) {
-          if (messages[i].senderId == data['userId']) {
-            messages[i].deliveryStatus = "seen"; // Update directly
-            await box.put(key, messages); // Save updated list
-
-            return;
-          }
-        }
-      }
-    }
   }
 
   void updateTypingStatus(dynamic data) {
@@ -321,18 +305,34 @@ class MessageController extends GetxController {
   }
 
   Future<void> insertNewMessageCache(MessageModel message) async {
-    final box = await Hive.openBox(HiveBoxes.channelMessages);
+    final box = await Constant.getChannelMessagesBox();
     const int messagesPerPage = 50;
 
     int currentPage = 1;
-    String currentKey = '${channelId}_$currentPage';
+    String currentKey = '${message.channelId}_$currentPage';
 
     // Load or initialize page 1
     List<MessageModel> currentPageMessages =
         (box.get(currentKey) as List?)?.cast<MessageModel>() ?? [];
 
-    // Insert the new message at the start
-    currentPageMessages.insert(0, message);
+    // Check for existing message with the same temp_id and replace it
+    bool isReplaced = false;
+
+    for (int i = 0; i < currentPageMessages.length; i++) {
+      final existingMessage = currentPageMessages[i];
+
+      if (existingMessage.id == message.temp_id) {
+        currentPageMessages[i] =
+            message; // Replace existing message with temp_id match
+        isReplaced = true;
+        break;
+      }
+    }
+
+    // If no replacement happened, add the new message at the start
+    if (!isReplaced) {
+      currentPageMessages.insert(0, message);
+    }
 
     // Handle overflow
     List<MessageModel> overflow = [];
@@ -353,7 +353,7 @@ class MessageController extends GetxController {
     // Propagate overflow to next pages
     while (overflow.isNotEmpty) {
       currentPage++;
-      currentKey = '${channelId}_$currentPage';
+      currentKey = '${message.channelId}_$currentPage';
 
       List<MessageModel> nextPageMessages =
           (box.get(currentKey) as List?)?.cast<MessageModel>() ?? [];
@@ -374,10 +374,59 @@ class MessageController extends GetxController {
     totalPages.value = currentPage;
   }
 
+  Future<void> statusUpdateMessageInCache(
+      String channelId, String messageId, String status) async {
+    final box = await Constant.getChannelMessagesBox();
+
+    // Get all relevant keys for this channel
+    final keys =
+        box.keys.where((key) => key.toString().startsWith(channelId)).toList();
+
+    bool messageUpdated = false;
+
+    for (final key in keys) {
+      final cachedPage = (box.get(key) as List?)?.cast<MessageModel>() ?? [];
+
+      for (int i = 0; i < cachedPage.length; i++) {
+        if (cachedPage[i].id == messageId) {
+          // ✅ Update only the status
+          cachedPage[i].status = status;
+          cachedPage[i].deliveryStatus = "failed";
+
+          // Save back to Hive
+          await box.put(key, cachedPage);
+          print(
+              '✅ Updated deliveryStatus for message $messageId on page ${key.toString().split('_').last}');
+          messageUpdated = true;
+
+          // Optionally update in-memory list
+          if (Get.isRegistered<MessageController>()) {
+            final messageController = Get.find<MessageController>();
+            final index = messageController.messages
+                .indexWhere((msg) => msg.id == messageId);
+            if (index != -1) {
+              messageController.messages[index].deliveryStatus = status;
+              messageController.messages.refresh();
+              print('🔄 In-memory message status updated');
+            }
+          }
+
+          break;
+        }
+      }
+
+      if (messageUpdated) break;
+    }
+
+    if (!messageUpdated) {
+      print('❌ Message with id $messageId not found in cache.');
+    }
+  }
+
   Future<void> replaceMessageInCache(
       String channelId, String messageId, MessageModel newMessage) async {
-    final box = await Hive.openBox<List<MessageModel>>(
-        HiveBoxes.channelMessages); // Correct the type to List<MessageModel>
+    final box = await Constant
+        .getChannelMessagesBox(); // Correct the type to List<MessageModel>
 
     // Retrieve all keys in the box that belong to this channel
     final keys =
@@ -418,9 +467,117 @@ class MessageController extends GetxController {
     }
   }
 
+  Future<void> replaceMessageInCacheWithTempId(
+      String channelId,
+      String messageId,
+      MessageModel newMessage,
+      String type,
+      String temp_id) async {
+    final box = await Constant
+        .getChannelMessagesBox(); // Correct the type to List<MessageModel>
+
+    // Retrieve all keys in the box that belong to this channel
+    final keys =
+        box.keys.where((key) => key.toString().startsWith(channelId)).toList();
+
+    bool messageReplaced = false;
+
+    // Iterate through all the pages in cache
+    for (final key in keys) {
+      final cachedPage = box.get(key) ?? [];
+
+      if (cachedPage.isNotEmpty) {
+        // Find the message by its ID
+        for (int i = 0; i < cachedPage.length; i++) {
+          if (type == "msg") {
+            if (cachedPage[i].id == messageId) {
+              // Replace the message
+              cachedPage[i] = newMessage;
+
+              // Save the updated page back to the cache
+              await box.put(key,
+                  cachedPage); // Now this correctly stores the updated list of messages
+              print(
+                  'Message with id $messageId replaced on page ${key.toString().split('_').last}.');
+              messageReplaced = true;
+              break; // Stop searching once the message is replaced
+            }
+          }
+
+          if (type == "temp") {
+            if (cachedPage[i].temp_id == temp_id) {
+              // Replace the message
+              cachedPage[i] = newMessage;
+
+              // Save the updated page back to the cache
+              await box.put(key,
+                  cachedPage); // Now this correctly stores the updated list of messages
+              print(
+                  'Message with id $messageId replaced on page ${key.toString().split('_').last}.');
+              messageReplaced = true;
+              break; // Stop searching once the message is replaced
+            }
+          }
+        }
+      }
+
+      if (messageReplaced) {
+        break; // Exit the loop once the message has been replaced
+      }
+    }
+
+    for (final key in keys) {
+      final cachedPage = box.get(key) ?? [];
+
+      if (cachedPage.isNotEmpty) {
+        // Find the message by its ID
+        for (int i = 0; i < cachedPage.length; i++) {
+          if (type == "msg") {
+            if (cachedPage[i].id == messageId) {
+              // Replace the message
+              cachedPage[i] = newMessage;
+
+              // Save the updated page back to the cache
+              await box.put(key,
+                  cachedPage); // Now this correctly stores the updated list of messages
+              print(
+                  'Message with id $messageId replaced on page ${key.toString().split('_').last}.');
+              messageReplaced = true;
+              break; // Stop searching once the message is replaced
+            }
+          }
+
+          if (type == "temp") {
+            if (cachedPage[i].id == temp_id) {
+              // Replace the message
+              cachedPage[i] = newMessage;
+
+              // Save the updated page back to the cache
+              await box.put(key,
+                  cachedPage); // Now this correctly stores the updated list of messages
+              print(
+                  'Message with id $messageId replaced on page ${key.toString().split('_').last}.');
+              messageReplaced = true;
+              break; // Stop searching once the message is replaced
+            }
+          }
+        }
+      }
+
+      if (messageReplaced) {
+        break; // Exit the loop once the message has been replaced
+      }
+    }
+
+    // If the message is not found after searching all pages
+    if (!messageReplaced) {
+      print('Message with id $messageId was not found in cache.');
+    }
+  }
+
   Future<void> markUpdateMessageUrlStatus(
       String channelId, String messageId, String status) async {
-    final box = await Hive.openBox(HiveBoxes.channelMessages);
+    final box = await Constant.getChannelMessagesBox();
 
     for (var key in box.keys) {
       if (key.toString().startsWith(channelId)) {

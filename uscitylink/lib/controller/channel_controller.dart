@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
@@ -65,39 +66,48 @@ class ChannelController extends GetxController {
   }
 
   void getUserChannels() async {
-    getCount();
-
-    Box userChannelBox = await Hive.openBox(HiveBoxes.userChannel);
-
+    Box userChannelBox = await Constant.getUserChannelBox();
     loading.value = true;
     totalUnReadMessage.value = 0;
 
-    __channelService.getUserChannels().then((response) async {
-      // Save list to Hive
-      await userChannelBox.put(HiveBoxes.userChannel, response.data);
+    // 1️⃣ Try loading from cache first
+    if (userChannelBox.isNotEmpty) {
+      // Get all values from the box
+      final cachedList = userChannelBox.values.toList();
 
-      // Assign to controller/state
-      channels.value = response.data;
+      // Ensure type safety
+      List<UserChannelModel> cachedChannels =
+          cachedList.cast<UserChannelModel>();
 
+      channels.value = cachedChannels;
       loading.value = false;
-    }).onError((error, stackTrace) async {
-      if (error.toString() == "Exception: No Internet Connection") {
-        final cachedList = userChannelBox.get(HiveBoxes.userChannel);
+      return; // Already showing cached data, stop further execution
+    }
 
-        // Convert safely
-        List<UserChannelModel>? cachedChannels =
-            (cachedList as List?)?.cast<UserChannelModel>();
+    // 2️⃣ Only load from API if cache is empty
+    try {
+      final response = await __channelService.getUserChannels();
 
-        if (cachedChannels != null) {
-          channels.value = cachedChannels;
-        }
-
-        loading.value = false;
-      } else {
-        loading.value = false;
-        //Utils.snackBar('Error', error.toString());
+      // Save list to Hive
+      await userChannelBox.clear(); // Optional: clear old entries
+      for (var channel in response.data) {
+        await userChannelBox.put(channel.id, channel);
       }
-    });
+
+      // Update observable with data from API
+      channels.value = response.data;
+      loading.value = false;
+    } catch (error, stackTrace) {
+      // Stop loading if error occurs
+      loading.value = false;
+
+      if (channels.isEmpty &&
+          error.toString() == "Exception: No Internet Connection") {
+        Utils.snackBar('Offline', 'No Internet Connection');
+      } else {
+        Utils.snackBar('Error', error.toString());
+      }
+    }
   }
 
   void getCount() {

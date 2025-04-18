@@ -105,7 +105,9 @@ class _ChatViewState extends State<ChatView>
             color: Colors.white,
           ),
           onPressed: () {
-            _dashboardController.getDashboard();
+            if (!socketService.isConnected.value) {
+              socketService.socket.connect();
+            }
             Get.back();
           },
         ),

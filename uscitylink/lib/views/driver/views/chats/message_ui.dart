@@ -113,8 +113,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       if (socketService.isConnected.value) {
         // if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();
+
         // }
       }
+      Get.back();
       print("App is in the background");
     } else if (state == AppLifecycleState.resumed) {
       // App is in the foreground
@@ -175,14 +177,23 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   }
 
   // Function to send a new message
-  void _sendMessage() {
+  void _sendMessage() async {
     final uuid = Uuid();
+    String uuidPart = uuid.v4(); // Generate UUID (v4)
+    String timestamp =
+        DateTime.now().millisecondsSinceEpoch.toString(); // Current timestamp
+    final random = math.Random();
+    final randomNumber = random.nextInt(999999);
+    // If the timestamp length exceeds, trim it down to fit within limits
+    String trimmedTimestamp =
+        timestamp.length > 6 ? timestamp.substring(0, 6) : timestamp;
 
+    // Combine UUID and timestamp but ensure UUID is intact and within length limits
+    String tempId = '$uuidPart-$trimmedTimestamp-$randomNumber';
     if (_controller.text.isNotEmpty) {
       if (_networkService.connected == false) {
-        print("internet not connect");
         MessageModel messageOffline = MessageModel(
-            id: uuid.v4(),
+            id: tempId,
             body: _controller.text,
             channelId: messageController.channelId.value,
             messageDirection: "R",
@@ -193,9 +204,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         messageController.messages.refresh();
         messageController.queueMessage(messageOffline);
       } else if (socketService.isConnected.value == false) {
-        print("socket not connect");
+        final box = await Constant.getQueueMessageBox();
+
         MessageModel messageOffline = MessageModel(
-            id: uuid.v4(),
+            id: tempId,
             body: _controller.text,
             channelId: messageController.channelId.value,
             messageDirection: "R",
@@ -206,7 +218,6 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         messageController.messages.refresh();
         messageController.queueMessage(messageOffline);
       } else {
-        //   print("hello");
         socketService.updateActiveChannel(messageController.channelId.value);
         socketService.sendMessage(
             _controller.text,
@@ -257,11 +268,15 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   color: Colors.white,
                 ),
                 onPressed: () {
-                  socketService.updateActiveChannel("");
-                  if (_channelController.initialized) {
-                    _channelController.getCount();
+                  if (!socketService.isConnected.value) {
+                    socketService.connectSocket();
+                    socketService.updateActiveChannel("");
+                    if (_channelController.initialized) {
+                      _channelController.getCount();
+                    }
+                    _dashboardController.getDashboard();
                   }
-                  _dashboardController.getDashboard();
+
                   Get.back();
                 },
               ),
@@ -643,11 +658,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       FocusNode _focusNode,
       SocketService socketService) {
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
-    if (hasImageUrl) {
-      // print(message.url);
-      print(message.url);
-      print(message.url);
-    }
+
     return Slidable(
       key: Key(message.id.toString()),
       startActionPane: message.messageDirection == "S"
@@ -802,195 +813,298 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: TDeviceUtils.getScreenWidth(context) * 0.7,
-                      padding: const EdgeInsets.all(10.0),
-                      decoration: BoxDecoration(
-                        color: message.messageDirection == "R"
-                            ? Colors.blue[100]
-                            : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: message.messageDirection == "R"
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
-                        children: [
-                          // Display replay message body
-                          if (message.r_message != null)
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border(
-                                    left: BorderSide(
-                                        color: message.r_message
-                                                    ?.messageDirection ==
-                                                "R"
-                                            ? Colors.blue
-                                            : Colors.amber,
-                                        width: 4)),
-                                color: Colors.grey.shade200,
-                              ),
-                              width: TDeviceUtils.getScreenWidth(context) * 1,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: 8.0, right: 8.0, left: 8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: 5,
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                    Row(
+                      mainAxisAlignment: message.messageDirection == "R"
+                          ? MainAxisAlignment.end
+                          : MainAxisAlignment.start,
+                      children: [
+                        if (message.status == "queue" ||
+                            message.url_upload_type == "not-upload")
+                          IconButton(
+                              onPressed: () async {
+                                if (socketService.isConnected.value == false) {
+                                  socketService.connectSocket();
+                                }
+                                if (hasImageUrl) {
+                                  if (socketService.isConnected.value) {
+                                    socketService.socket.emit(
+                                        "check_message_store", {
+                                      "messageId": message.id,
+                                      "channelId": message.channelId
+                                    });
+
+                                    socketService.socket.on(
+                                        "update_queue_message_driver_single",
+                                        (data) async {
+                                      print(data);
+                                      if (data['status']) {
+                                        MessageModel newMessage =
+                                            MessageModel.fromJson(
+                                                data['message']);
+
+                                        messageController
+                                            .replaceMessageInCacheWithTempId(
+                                                newMessage.channelId!,
+                                                data['oldMessageId'],
+                                                newMessage,
+                                                data['type'],
+                                                newMessage.temp_id ?? "");
+                                        messageController.messages.refresh();
+                                      } else {
+                                        await _hiveController.uploadSingleMedia(
+                                            filePath: message.url!,
+                                            channelId: message.channelId!,
+                                            groupId: message.groupId ?? "",
+                                            userId: message.userProfileId ?? "",
+                                            source: "chat",
+                                            location: "media",
+                                            uploadBy: "driver",
+                                            body: message.body!,
+                                            tempId: message.id!);
+                                      }
+                                    });
+                                  } else {
+                                    Get.snackbar(
+                                      "Connection",
+                                      "No Internet Connection",
+                                      backgroundColor: Colors.grey,
+                                      colorText: Colors.white,
+                                    );
+                                  }
+                                } else {
+                                  if (socketService.isConnected.value) {
+                                    socketService
+                                        .sendQueueReMessage(message.id!);
+                                  } else {
+                                    Get.snackbar(
+                                      "Connection",
+                                      "No Internet Connection",
+                                      backgroundColor: Colors.grey,
+                                      colorText: Colors.white,
+                                    );
+                                  }
+                                }
+                              },
+                              icon: Icon(
+                                Icons.replay,
+                                color: Colors.grey.shade500,
+                                size: 20,
+                              )),
+                        Container(
+                          width: TDeviceUtils.getScreenWidth(context) * 0.7,
+                          padding: const EdgeInsets.all(10.0),
+                          decoration: BoxDecoration(
+                            color: message.messageDirection == "R"
+                                ? Colors.blue[100]
+                                : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: message.messageDirection == "R"
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              // Display replay message body
+                              if (message.r_message != null)
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border(
+                                        left: BorderSide(
+                                            color: message.r_message
+                                                        ?.messageDirection ==
+                                                    "R"
+                                                ? Colors.blue
+                                                : Colors.amber,
+                                            width: 4)),
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  width:
+                                      TDeviceUtils.getScreenWidth(context) * 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: 8.0, right: 8.0, left: 8.0),
+                                    child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.center,
+                                          CrossAxisAlignment.start,
                                       children: [
+                                        SizedBox(
+                                          height: 5,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              textAlign: TextAlign.start,
+                                              message.r_message
+                                                          ?.messageDirection ==
+                                                      "R"
+                                                  ? "You"
+                                                  : "${message.r_message?.sender?.username}(staff)",
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.black87,
+                                                  fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                        if (message.r_message?.url != null)
+                                          if (message
+                                                  .r_message?.url_upload_type ==
+                                              "not-upload")
+                                            Container(
+                                              width:
+                                                  TDeviceUtils.getScreenWidth(
+                                                          context) *
+                                                      0.8,
+                                              child: AttachementUi(
+                                                directionType:
+                                                    message.messageDirection!,
+                                                fileUrl:
+                                                    "${Constant.tempImageUrl}/${message.r_message?.url}",
+                                                thumbnail:
+                                                    "${Constant.tempImageUrl}/${message.r_message?.thumbnail}",
+                                              ),
+                                            ),
+                                        if (message
+                                                .r_message?.url_upload_type ==
+                                            "server")
+                                          Container(
+                                            width: TDeviceUtils.getScreenWidth(
+                                                    context) *
+                                                0.8,
+                                            child: AttachementUi(
+                                              directionType:
+                                                  message.messageDirection!,
+                                              fileUrl:
+                                                  "${Constant.aws}/${message.r_message?.url}",
+                                              thumbnail:
+                                                  "${Constant.aws}/${message.r_message?.thumbnail}",
+                                            ),
+                                          ),
+                                        const SizedBox(height: 1),
                                         Text(
-                                          textAlign: TextAlign.start,
-                                          message.r_message?.messageDirection ==
-                                                  "R"
-                                              ? "You"
-                                              : "${message.r_message?.sender?.username}(staff)",
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black87,
-                                              fontWeight: FontWeight.w600),
+                                          message.r_message?.body ?? "-",
+                                          style: const TextStyle(fontSize: 16),
                                         ),
                                       ],
                                     ),
-                                    if (message.r_message?.url != null)
-                                      if (message.r_message?.url_upload_type ==
-                                          "not-upload")
-                                        Container(
-                                          width: TDeviceUtils.getScreenWidth(
-                                                  context) *
-                                              0.8,
-                                          child: AttachementUi(
-                                            directionType:
-                                                message.messageDirection!,
-                                            fileUrl:
-                                                "${Constant.tempImageUrl}/${message.r_message?.url}",
-                                            thumbnail:
-                                                "${Constant.tempImageUrl}/${message.r_message?.thumbnail}",
-                                          ),
-                                        ),
-                                    if (message.r_message?.url_upload_type ==
-                                        "server")
-                                      Container(
-                                        width: TDeviceUtils.getScreenWidth(
-                                                context) *
-                                            0.8,
-                                        child: AttachementUi(
-                                          directionType:
-                                              message.messageDirection!,
-                                          fileUrl:
-                                              "${Constant.aws}/${message.r_message?.url}",
-                                          thumbnail:
-                                              "${Constant.aws}/${message.r_message?.thumbnail}",
-                                        ),
-                                      ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      message.r_message?.body ?? "-",
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ],
+                                  ),
                                 ),
+                              // If there's an image URL, show the image with a loading indicator
+                              if (hasImageUrl)
+                                if (message.url_upload_type == "local-file")
+                                  AttachementUi(
+                                    direction: message.senderId ==
+                                        message.userProfileId,
+                                    location: "driver",
+                                    directionType: message.messageDirection!,
+                                    fileUrl: "${Constant.aws}/${message.url}",
+                                    thumbnail:
+                                        "${Constant.aws}/${message.thumbnail}",
+                                    url_upload_type:
+                                        message?.url_upload_type ?? "server",
+                                    localFilePath: message.url ?? "",
+                                    messageId: message.id ?? "",
+                                  ),
+                              if (hasImageUrl)
+                                if (message.url_upload_type == "queue")
+                                  AttachementUi(
+                                    direction: message.senderId ==
+                                        message.userProfileId,
+                                    location: "driver",
+                                    directionType: message.messageDirection!,
+                                    fileUrl: "${Constant.aws}/${message.url}",
+                                    thumbnail:
+                                        "${Constant.aws}/${message.thumbnail}",
+                                    url_upload_type: "queue",
+                                    localFilePath: message.url ?? "",
+                                    messageId: message.id ?? "",
+                                  ),
+                              if (hasImageUrl)
+                                if (message.url_upload_type == "failed")
+                                  AttachementUi(
+                                    direction: message.senderId ==
+                                        message.userProfileId,
+                                    location: "driver",
+                                    directionType: message.messageDirection!,
+                                    fileUrl: "${Constant.aws}/${message.url}",
+                                    thumbnail:
+                                        "${Constant.aws}/${message.thumbnail}",
+                                    url_upload_type: "failed",
+                                    localFilePath: message.url ?? "",
+                                  ),
+                              if (hasImageUrl)
+                                if (message.url_upload_type == "not-upload")
+                                  AttachementUi(
+                                    direction: message.senderId ==
+                                        message.userProfileId,
+                                    location: "driver",
+                                    directionType: message.messageDirection!,
+                                    fileUrl:
+                                        "${Constant.tempImageUrl}/${message.url}",
+                                    thumbnail:
+                                        "${Constant.tempImageUrl}/${message.thumbnail}",
+                                    url_upload_type: "server",
+                                    localFilePath: message.url ?? "",
+                                  ),
+                              if (hasImageUrl)
+                                if (message.url_upload_type == "server")
+                                  AttachementUi(
+                                    direction: message.senderId ==
+                                        message.userProfileId,
+                                    location: "driver",
+                                    directionType: message.messageDirection!,
+                                    fileUrl: "${Constant.aws}/${message.url}",
+                                    thumbnail:
+                                        "${Constant.aws}/${message.thumbnail}",
+                                    url_upload_type:
+                                        message?.url_upload_type ?? "server",
+                                    localFilePath: message.url ?? "",
+                                  ),
+
+                              const SizedBox(height: 5),
+                              SelectableText(
+                                "${message.body}",
+                                style: const TextStyle(fontSize: 16),
                               ),
-                            ),
-                          // If there's an image URL, show the image with a loading indicator
-                          if (hasImageUrl)
-                            if (message.url_upload_type == "local-file")
-                              AttachementUi(
-                                direction:
-                                    message.senderId == message.userProfileId,
-                                location: "driver",
-                                directionType: message.messageDirection!,
-                                fileUrl: "${Constant.aws}/${message.url}",
-                                thumbnail:
-                                    "${Constant.aws}/${message.thumbnail}",
-                                url_upload_type:
-                                    message?.url_upload_type ?? "server",
-                                localFilePath: message.url ?? "",
-                                messageId: message.id ?? "",
+                              SizedBox(
+                                height: 5,
                               ),
-                          if (hasImageUrl)
-                            if (message.url_upload_type == "failed")
-                              AttachementUi(
-                                direction:
-                                    message.senderId == message.userProfileId,
-                                location: "driver",
-                                directionType: message.messageDirection!,
-                                fileUrl: "${Constant.aws}/${message.url}",
-                                thumbnail:
-                                    "${Constant.aws}/${message.thumbnail}",
-                                url_upload_type: "failed",
-                                localFilePath: message.url ?? "",
-                              ),
-                          if (hasImageUrl)
-                            if (message.url_upload_type == "not-upload")
-                              AttachementUi(
-                                direction:
-                                    message.senderId == message.userProfileId,
-                                location: "driver",
-                                directionType: message.messageDirection!,
-                                fileUrl:
-                                    "${Constant.tempImageUrl}/${message.url}",
-                                thumbnail:
-                                    "${Constant.tempImageUrl}/${message.thumbnail}",
-                                url_upload_type: "server",
-                                localFilePath: message.url ?? "",
-                              ),
-                          if (hasImageUrl)
-                            if (message.url_upload_type == "server")
-                              AttachementUi(
-                                direction:
-                                    message.senderId == message.userProfileId,
-                                location: "driver",
-                                directionType: message.messageDirection!,
-                                fileUrl: "${Constant.aws}/${message.url}",
-                                thumbnail:
-                                    "${Constant.aws}/${message.thumbnail}",
-                                url_upload_type:
-                                    message?.url_upload_type ?? "server",
-                                localFilePath: message.url ?? "",
+                              Row(
+                                mainAxisAlignment:
+                                    message.messageDirection == "R"
+                                        ? MainAxisAlignment.end
+                                        : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    message.messageDirection == "R"
+                                        ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
+                                        : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ],
                               ),
 
-                          const SizedBox(height: 5),
-                          SelectableText(
-                            "${message.body}",
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          SizedBox(
-                            height: 5,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                message.messageDirection == "R"
-                                    ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
-                                    : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black54,
-                                    fontWeight: FontWeight.w500),
-                              ),
+                              if (message.messageDirection == "S" &&
+                                  message.type == "truck_group")
+                                Text(
+                                    "From Truck Group : ${message?.group?.name}",
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.w500)),
                             ],
                           ),
-
-                          if (message.messageDirection == "S" &&
-                              message.type == "truck_group")
-                            Text("From Truck Group : ${message?.group?.name}",
-                                style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black54,
-                                    fontWeight: FontWeight.w500)),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                     if (message.driverPin == "1")
                       Positioned(
@@ -1040,12 +1154,20 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           color: Colors.grey.shade500,
                           size: 16,
                         )
-                      else
+                      else if (message.status == "failed" &&
+                          message.deliveryStatus == "failed")
                         Icon(
-                          Icons.done_all,
-                          color: Colors.blue.shade500,
+                          Icons.error,
+                          color: Colors.red.shade500,
                           size: 16,
                         ),
+                    if (message.status == "sent" &&
+                        message.deliveryStatus == "seen")
+                      Icon(
+                        Icons.done_all,
+                        color: Colors.blue.shade500,
+                        size: 16,
+                      ),
                   ],
                 )
               ],

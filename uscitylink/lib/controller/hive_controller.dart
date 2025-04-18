@@ -4,6 +4,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -13,7 +14,7 @@ import 'package:uscitylink/model/message_model.dart';
 class HiveController extends GetxController {
   final _apiService = NetworkApiService();
   RxBool isProcessing = false.obs;
-
+  MessageController _messageController = Get.find<MessageController>();
   Future<void> uploadQueeueMedia() async {
     if (isProcessing.value) {
       print("Already processing. Skipping new call.");
@@ -131,8 +132,82 @@ class HiveController extends GetxController {
     }
   }
 
+  Future<bool> uploadSingleMedia({
+    required String filePath,
+    required String channelId,
+    String? groupId,
+    String? userId,
+    required String source,
+    required String location,
+    required String uploadBy,
+    required String body,
+    required String tempId,
+  }) async {
+    File file = File(filePath);
+    if (!await file.exists()) {
+      print("File does not exist: $filePath");
+      _messageController.statusUpdateMessageInCache(
+          channelId, tempId, "failed");
+      return false;
+    }
+
+    File? fileToUpload = file;
+    XFile? compressedFile;
+
+    try {
+      final ext = p.extension(file.path).toLowerCase();
+      if (['.jpg', '.jpeg', '.png'].contains(ext)) {
+        final tempDir = await getTemporaryDirectory();
+        final targetPath =
+            "${tempDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+        compressedFile = await FlutterImageCompress.compressAndGetFile(
+          file.absolute.path,
+          targetPath,
+          quality: 50,
+        );
+
+        if (compressedFile != null) {
+          fileToUpload = File(compressedFile.path);
+        }
+      }
+
+      final url = "${Constant.url}/media/uploadFileQueue"
+          "?groupId=$groupId"
+          "&userId=$userId"
+          "&source=$source"
+          "&location=$location"
+          "&uploadBy=$uploadBy"
+          "&tempId=$tempId";
+
+      final res = await _apiService.multiFileUpload(
+        [fileToUpload!],
+        url,
+        channelId,
+        body,
+      );
+
+      if (res.status) {
+        if (compressedFile != null &&
+            await File(compressedFile.path).exists()) {
+          await File(compressedFile.path).delete();
+        }
+        await file.delete();
+        print("Upload succeeded and original file deleted.");
+        return true;
+      } else {
+        print("Upload failed: Server error");
+        return false;
+      }
+    } catch (e) {
+      print("Upload error: $e");
+      return false;
+    }
+  }
+
   void updateSeenStatus(String channelId, String tempId) async {
-    final box = await Hive.openBox(HiveBoxes.channelMessages);
+    final box =
+        await Hive.openBox<List<MessageModel>>(HiveBoxes.channelMessages);
 
     for (var key in box.keys) {
       if (key.toString().startsWith(channelId)) {

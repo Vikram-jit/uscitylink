@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/staff/staff_dashboard_model.dart';
 import 'package:uscitylink/services/dashboard_service.dart';
@@ -18,8 +19,7 @@ class DashboardController extends GetxController {
   }
 
   void getDashboard() async {
-    Box<DashboardModel> dashboardBox =
-        await Hive.openBox<DashboardModel>('dashboardBox');
+    Box<DashboardModel> dashboardBox = await Constant.getDriverDashboardBox();
 
     loading.value = true;
     _dashboardService.getDashboard().then((response) {

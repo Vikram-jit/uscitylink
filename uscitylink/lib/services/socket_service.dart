@@ -36,7 +36,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://52.9.12.189:4300/?token=$token';
+    return 'http://localhost:4300/?token=$token';
   }
 
   // Method to connect to the socket server
@@ -72,7 +72,7 @@ class SocketService extends GetxController {
       reconnectAttempts.value = 0; // Reset reconnection attempts
       isConnected.value = true;
       startPing();
-      // sendQueueMessage();
+      sendQueueMessage();
     });
 
     socket.on('message', (data) {
@@ -83,19 +83,8 @@ class SocketService extends GetxController {
       final String channelId = data["channelId"];
       final String oldMessageId = data["oldMessageId"];
 
-      // final mediaQueueBox = await Constant.getMediaQueueBox();
-
-      // for (int i = 0; i < mediaQueueBox.length; i++) {
-      //   final media = mediaQueueBox.getAt(i);
-
-      //   if (media != null && media["tempId"] == oldMessageId) {
-      //     await mediaQueueBox.deleteAt(i);
-      //     print("Removed media with empid: $oldMessageId");
-      //     break; // Exit loop after removing (optional if only one match expected)
-      //   }
-      // }
       // Open the box as untyped
-      final box = await Hive.openBox(HiveBoxes.channelMessages);
+      final box = await Constant.getChannelMessagesBox();
 
       // Filter page keys like channelId_1, channelId_2 etc., skip channelId_pages
       final keys = box.keys
@@ -125,8 +114,7 @@ class SocketService extends GetxController {
               messageReplaced = true;
 
               // 🗑️ Remove from queue box
-              final queueBox =
-                  await Hive.openBox<MessageModel>(HiveBoxes.queueMessageBox);
+              final queueBox = await Constant.getQueueMessageBox();
               final matchingKey = queueBox.keys.firstWhere(
                   (k) => queueBox.get(k)?.id == oldMessageId,
                   orElse: () => null);
@@ -159,10 +147,30 @@ class SocketService extends GetxController {
           messageController.refresh(); // 🔁 Notify UI
         } else {
           print('⚠️ Message with id $oldMessageId not found in memory list');
+          final queueBox = await Constant.getQueueMessageBox();
+          final matchingKey = queueBox.keys.firstWhere(
+              (k) => queueBox.get(k)?.id == oldMessageId,
+              orElse: () => null);
+
+          if (matchingKey != null) {
+            await queueBox.delete(matchingKey);
+            await queueBox.close();
+            print('🗑️ Removed message $oldMessageId from queue');
+          }
         }
       }
       if (!messageReplaced) {
         print('⚠️ Message with id $oldMessageId was not found in cache.');
+        final queueBox = await Constant.getQueueMessageBox();
+        final matchingKey = queueBox.keys.firstWhere(
+            (k) => queueBox.get(k)?.id == oldMessageId,
+            orElse: () => null);
+
+        if (matchingKey != null) {
+          await queueBox.delete(matchingKey);
+          await queueBox.close();
+          print('🗑️ Removed message $oldMessageId from queue');
+        }
       }
     });
     socket.on('get_driver_messages_queues', (data) {
@@ -396,11 +404,91 @@ class SocketService extends GetxController {
   }
 
   void sendQueueMessage() async {
+    if (!isConnected.value) return;
+    print("⏳ Sending queued messages in order...");
+
+    final queueBox = await Constant.getQueueMessageBox();
+    final channelBox = await Constant.getChannelMessagesBox();
+
+    final List<MapEntry<dynamic, MessageModel>> sortedQueueEntries = queueBox
+        .toMap()
+        .entries
+        .where((entry) => entry.value is MessageModel)
+        .cast<MapEntry<dynamic, MessageModel>>()
+        .toList()
+      ..sort((a, b) => a.value.messageTimestampUtc!
+          .compareTo(b.value.messageTimestampUtc!)); // Oldest first
+
+    final List keysToRemove = [];
+
+    for (var entry in sortedQueueEntries) {
+      final key = entry.key;
+      final queuedMessage = entry.value;
+
+      // Update cached Hive message deliveryStatus
+      final matchingKey = channelBox.keys.firstWhere(
+        (k) =>
+            k.toString().startsWith('${queuedMessage.channelId}_') &&
+            k.toString().endsWith('_${queuedMessage.id}'),
+        orElse: () => null,
+      );
+
+      if (matchingKey != null) {
+        final message = channelBox.get(matchingKey);
+        if (message is MessageModel) {
+          message.deliveryStatus = "sending";
+          await channelBox.put(matchingKey, message);
+        }
+      }
+
+      // Update in-memory message list
+      if (Get.isRegistered<MessageController>()) {
+        final messageController = Get.find<MessageController>();
+        final index = messageController.messages
+            .indexWhere((msg) => msg.id == queuedMessage.id);
+
+        if (index != -1) {
+          messageController.messages[index].deliveryStatus = "sending";
+          messageController.messages.refresh();
+        }
+      }
+
+      // Emit to socket
+      socket.emit("driver_message_queue", {
+        "messageId": queuedMessage.id,
+        "body": queuedMessage.body,
+        "url": null,
+        "channelId": queuedMessage.channelId,
+        "thumbnail": null,
+        "r_message_id": "",
+        "messageTimestampUtc": queuedMessage.messageTimestampUtc
+      });
+
+      print('📤 Sent queued message: ${queuedMessage.id}');
+
+      // Mark key for removal
+      keysToRemove.add(key);
+    }
+
+    // 🗑️ Delete messages from queue after sending
+    for (var key in keysToRemove) {
+      await queueBox.delete(key);
+      print('🗑️ Removed message from queue with key: $key');
+    }
+  }
+
+  void sendQueueReMessage(String messageId) async {
     if (isConnected.value) {
       final box = await Constant.getQueueMessageBox();
 
-      for (var message in box.values) {
-        socket.emit("driver_message_queue", {
+      // Find the first message that matches the messageId
+      final message = box.values.firstWhere(
+        (msg) => msg.id == messageId,
+        orElse: () => MessageModel(), // avoid crash if not found
+      );
+
+      if (message.id != null) {
+        socket.emit("driver_message_queue_resend", {
           "messageId": message.id,
           "body": message.body,
           "url": null,
@@ -408,10 +496,11 @@ class SocketService extends GetxController {
           "thumbnail": null,
           "r_message_id": "",
         });
-      }
 
-      // Don't close the box immediately if you're using it elsewhere
-      // await box.close(); // Only close if you're sure you won't use it again
+        print("Resent message with ID: ${message.id}");
+      } else {
+        print("Message with ID $messageId not found in queue.");
+      }
     }
   }
 

@@ -24,6 +24,7 @@ import AWS from "aws-sdk";
 import path from "path";
 import {
   driverMessageQueueProcess,
+  driverMessageQueueProcessResend,
   driverMessageQueueProcessWithoutSocket,
   messageToChannelToUser,
   messageToDriver,
@@ -1034,7 +1035,28 @@ export const fileUploadByQueue = async (
     const private_chat_id = req.query.private_chat_id as string;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
-
+     if(tempId){
+      const findTempId = await Message.findOne({
+        where: {
+          temp_id: tempId,
+        },
+      });
+      if(findTempId){
+        const socket = global.userSockets[req.user?.id];
+        await driverMessageQueueProcessResend(
+          getSocketInstance(),
+          socket,
+          tempId,
+          body,
+          findTempId.url || "",
+          channelId,
+          null,
+          null,
+          "not-upload",
+          
+        );
+      }
+     }
     for (const file of files) {
      
       const filePath = file.path;
