@@ -1591,7 +1591,7 @@ export async function messageToDriverByTruckGroup(
       messageTimestampUtc: utcTime,
       senderId: socket?.user?.id,
       isRead: false,
-      status: "sent",
+      status: "queue",
       url: url || null,
       type: "truck_group",
       thumbnail: thumbnail || null,
@@ -2233,7 +2233,9 @@ export async function notifiyFileUploadStaffToDriver(
     socket.emit("update_file_upload_status", {
       status: type,
       messageId: messageId,
+      type:"staff"
     });
+    
   }
 
   const promises = Object.entries(global.staffOpenChat).map(
@@ -2410,6 +2412,7 @@ export async function notifiyFileUploadDriverToStaff(
       messageId: messageId,
       tempId: tempId,
       channelId,
+      type: "driver",
     });
   } else {
     const userProfile = await UserProfile.findOne({

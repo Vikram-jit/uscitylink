@@ -5,10 +5,8 @@ import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 
 class Constant {
-  static const String baseUrl =
-      'https://861e-2401-4900-8147-152a-89bb-ec5c-2f59-6df4.ngrok-free.app/api';
-  static const String tempImageUrl =
-      'https://861e-2401-4900-8147-152a-89bb-ec5c-2f59-6df4.ngrok-free.app/';
+  static const String baseUrl = 'http://52.9.12.189:4300/api';
+  static const String tempImageUrl = 'http://52.9.12.189:4300/';
 
   static const String versionApi = "v1";
 

@@ -139,6 +139,30 @@ class MessageController extends GetxController {
     final String cacheKey = '${channelId}_$page';
 
     try {
+      final bool skipCache = driverPin == "1";
+
+      if (skipCache) {
+        final response = await __messageService.getChannelMessagesV2(
+            channelId, page, driverPin);
+
+        if (response.data.messages != null) {
+          if (page == 1) {
+            messages.value = response.data.messages!;
+          } else {
+            messages.addAll(response.data.messages!);
+          }
+
+          // 💾 Cache the fetched messages for this page
+
+          if (response.data.pagination != null) {
+            currentPage.value = response.data.pagination!.currentPage!;
+            totalPages.value = response.data.pagination!.totalPages!;
+          } else {
+            print("Pagination data is missing in the response!");
+          }
+        }
+        return;
+      }
       // ✅ Check if page is cached
       final cachedPage = (box.get(cacheKey) as List?)?.cast<MessageModel>();
 
@@ -246,6 +270,8 @@ class MessageController extends GetxController {
   void addQueueNewMessage(dynamic data) {
     MessageModel newMessage = MessageModel.fromJson(data);
 
+    newMessage.status = "sent";
+
     insertNewMessageCache(newMessage);
     if (socketService.isConnected.value) {
       socketService.socket
@@ -253,29 +279,65 @@ class MessageController extends GetxController {
     }
   }
 
-  void pinMessage(dynamic data) {
+  void pinMessage(dynamic data) async {
     final messageId = data[0];
+    final pinStatus = data[1];
 
+    // 🔹 1. Update in-memory list
     messages
         .where((message) => message.id == messageId)
-        .forEach((message) => message.driverPin = data[1]);
-    Utils.toastMessage(
-        "${data[1] == "1" ? "pin" : "un-pin"} message successfully");
+        .forEach((message) => message.driverPin = pinStatus);
     messages.refresh();
+
+    // 🔹 2. Update in Hive cache
+    final box = await Constant.getChannelMessagesBox();
+    final channelId =
+        messages.firstWhereOrNull((m) => m.id == messageId)?.channelId;
+
+    if (channelId == null) return;
+
+    final keys =
+        box.keys.where((k) => k.toString().startsWith(channelId)).toList();
+
+    for (final key in keys) {
+      final cachedPage = (box.get(key) as List?)?.cast<MessageModel>() ?? [];
+
+      for (int i = 0; i < cachedPage.length; i++) {
+        if (cachedPage[i].id == messageId) {
+          cachedPage[i].driverPin = pinStatus;
+          await box.put(key, cachedPage);
+          print(
+              '📌 Pin status updated in cache for message $messageId on page $key');
+          break;
+        }
+      }
+    }
+
+    // ✅ Toast
+    Utils.toastMessage(
+      "${pinStatus == "1" ? "Pin" : "Un-pin"} message successfully",
+    );
   }
 
   void updateUrlStatus(dynamic data) async {
     final messageId = data["messageId"];
     final channelId = data["channelId"];
-    final tempId = data["tempId"];
-
+    // final tempId = data["tempId"] ?? "";
+    // final type = data["type"];
+    final tempId = data.containsKey("tempId") ? data["tempId"] : "";
+    final type = data.containsKey("type") ? data["type"] : "";
+    print(data);
     messages
         .where((message) => message.id == messageId)
         .forEach((message) => message.url_upload_type = data["status"]);
 
-    if (tempId != "" || tempId != null) {
-      await markUpdateMessageUrlStatus(channelId, messageId, data["status"]);
-    }
+    // if (tempId != "" || tempId != null) {
+    //   await markUpdateMessageUrlStatus(channelId, messageId, data["status"]);
+    // }
+
+    // if (type == "staff") {
+    //   await markUpdateMessageUrlStatus(channelId, messageId, data["status"]);
+    // }
 
     messages.refresh();
   }

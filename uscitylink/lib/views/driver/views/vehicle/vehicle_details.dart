@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
-import 'package:uscitylink/utils/theme/theme.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 
 class VehicleDetails extends StatefulWidget {
@@ -87,7 +86,7 @@ class _VehicleDetailsState extends State<VehicleDetails> {
                         ),
                         color: TColors.white,
                         child: SizedBox(
-                          height: TDeviceUtils.getScreenHeight() * 0.27,
+                          height: TDeviceUtils.getScreenHeight() * 0.35,
                           width: double.infinity,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,6 +460,125 @@ class _VehicleDetailsState extends State<VehicleDetails> {
                                                 ],
                                               ),
                                             ),
+                                            SizedBox(
+                                              width: 20,
+                                            ),
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        "Pre Pass Id",
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontSize: 12),
+                                                      ),
+                                                      Container(
+                                                        height: 1,
+                                                        width: 50,
+                                                        color: Colors.amber,
+                                                      ),
+                                                      Text(
+                                                          "${_truckController.details?.value?.pre_pass_id ?? "-"}",
+                                                          style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w300,
+                                                              fontSize: 14,
+                                                              color:
+                                                                  Colors.grey))
+                                                    ],
+                                                  )
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Divider(),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: 5, left: 16, right: 16),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.all(6),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        "Fuel Id",
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontSize: 12),
+                                                      ),
+                                                      Container(
+                                                        height: 1,
+                                                        width: 50,
+                                                        color: Colors.amber,
+                                                      ),
+                                                      Text(
+                                                          "${_truckController.details?.value?.driver_fuel_id ?? "-"}",
+                                                          style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w300,
+                                                              fontSize: 14,
+                                                              color:
+                                                                  Colors.grey))
+                                                    ],
+                                                  ),
+                                                  SizedBox(
+                                                    width: 20,
+                                                  ),
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        "Fuel Card Number",
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontSize: 12),
+                                                      ),
+                                                      Container(
+                                                        height: 1,
+                                                        width: 50,
+                                                        color: Colors.amber,
+                                                      ),
+                                                      Text(
+                                                          "${_truckController.details?.value?.fuel_card_number ?? "-"}",
+                                                          style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w300,
+                                                              fontSize: 14,
+                                                              color:
+                                                                  Colors.grey))
+                                                    ],
+                                                  )
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       )
@@ -477,7 +595,7 @@ class _VehicleDetailsState extends State<VehicleDetails> {
                 ),
               ),
               SizedBox(
-                height: 20,
+                height: 80,
               ),
               Padding(
                 padding: const EdgeInsets.all(8.0),

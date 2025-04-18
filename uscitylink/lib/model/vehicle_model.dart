@@ -11,6 +11,9 @@ class VehicleModel {
   String? type;
   String? currentPosition;
   String? readyStatus;
+  String? pre_pass_id;
+  String? driver_fuel_id;
+  String? fuel_card_number;
 
   List<Documents>? documents;
 
@@ -26,11 +29,16 @@ class VehicleModel {
       this.type,
       this.currentPosition,
       this.readyStatus,
-      this.documents});
+      this.documents,
+      this.pre_pass_id,
+      this.driver_fuel_id,
+      this.fuel_card_number});
 
   VehicleModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-
+    pre_pass_id = json['pre_pass_id'];
+    driver_fuel_id = json['driver_fuel_id'];
+    fuel_card_number = json['fuel_card_number'];
     number = json['number'];
     year = json['year'];
     make = json['make'];
@@ -53,7 +61,9 @@ class VehicleModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
-
+    data['pre_pass_id'] = this.pre_pass_id;
+    data['driver_fuel_id'] = this.driver_fuel_id;
+    data['fuel_card_number'] = this.fuel_card_number;
     data['number'] = this.number;
     data['year'] = this.year;
     data['make'] = this.make;

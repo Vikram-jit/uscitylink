@@ -47,7 +47,14 @@ void main() async {
     // if (token != null && token.isNotEmpty) {
     //   await fcmService.updateDeviceToken(token);
     // }
-    Get.lazyPut(() => MessageController());
+    if (!Get.isRegistered<MessageController>()) {
+      Get.lazyPut(() => MessageController());
+      print('📡 MessageController registered');
+    }
+    if (!Get.isRegistered<NetworkService>()) {
+      Get.lazyPut(() => NetworkService());
+      print('📡 NetworkService registered');
+    }
   }
   //BackgroundService.start();
 
@@ -55,7 +62,6 @@ void main() async {
     statusBarColor: Colors.blue, // Set your color here
     statusBarIconBrightness: Brightness.light,
   ));
-  Get.put(NetworkService());
 
   runApp(const MyApp());
 }

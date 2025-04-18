@@ -722,34 +722,34 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       });
     }
   
-    if(private_chat_id != "undefined"){
+    // if(private_chat_id != "undefined"){
     
 
-    const channel =
-       await Channel.findByPk(req.activeChannel)
-    const media = await Media.findAndCountAll({
-      where: {
-        private_chat_id:private_chat_id,
-        file_type: req.query.type || "media",
-      },
-      limit: limit,
-      offset: offset,
-      order: [["createdAt", "DESC"]],
-    });
+    // const channel =
+    //    await Channel.findByPk(req.activeChannel)
+    // const media = await Media.findAndCountAll({
+    //   where: {
+    //     private_chat_id:private_chat_id,
+    //     file_type: req.query.type || "media",
+    //   },
+    //   limit: limit,
+    //   offset: offset,
+    //   order: [["createdAt", "DESC"]],
+    // });
 
-    return res.status(200).json({
-      status: true,
-      message: `Get media successfully`,
-      data: {
-        channel,
-        media: media.rows,
-        page,
-        limit,
-        totalItems: media.count,
-        totalPages: Math.ceil(media.count / limit),
-      },
-    });
-    }
+    // return res.status(200).json({
+    //   status: true,
+    //   message: `Get media successfully`,
+    //   data: {
+    //     channel,
+    //     media: media.rows,
+    //     page,
+    //     limit,
+    //     totalItems: media.count,
+    //     totalPages: Math.ceil(media.count / limit),
+    //   },
+    // });
+    // }
 
     const channelId =
       req.params.channelId == "null" ? req.activeChannel : req.params.channelId;

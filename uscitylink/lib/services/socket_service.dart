@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:get/get.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:uscitylink/constant.dart';
@@ -13,7 +12,6 @@ import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
-import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/auth_service.dart';
 import 'package:uscitylink/views/update_view.dart';
@@ -36,7 +34,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://localhost:4300/?token=$token';
+    return 'http://52.9.12.189:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -588,6 +586,9 @@ class SocketService extends GetxController {
         socket.emit("update_channel_message_count", channelId);
       }
     } else {
+      // if (!isConnected.value) {
+      //   socket.connect();
+      // }
       //connectSocket();
       print("Not connected to socket 1.");
     }

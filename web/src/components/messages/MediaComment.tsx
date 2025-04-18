@@ -316,7 +316,7 @@ export default function MediaComponent({
       }
 
     default:
-      return <>not matched format</>;
+      return <>{url}</>;
   }
 }
 
@@ -329,7 +329,7 @@ function getFileExtension(url: string) {
 
   // Extract the file extension
   const extension = pathname.split('.').pop();
-
+       console.log(extension);
   // If the last part is not a dot, return it with a dot
   return extension !== pathname ? `.${extension}` : '';
 }

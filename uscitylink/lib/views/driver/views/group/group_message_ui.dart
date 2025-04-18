@@ -10,6 +10,7 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
@@ -44,9 +45,10 @@ class _GroupMessageuiState extends State<GroupMessageui>
   late GroupController groupController;
   SocketService socketService = Get.find<SocketService>();
   AudioController _audioController = Get.put(AudioController());
-
+  MessageController messageController = Get.put(MessageController());
   final ImagePickerController imagePickerController =
       Get.put(ImagePickerController());
+
   @override
   void initState() {
     if (socketService.isConnected.value) {
@@ -105,6 +107,7 @@ class _GroupMessageuiState extends State<GroupMessageui>
   void dispose() {
     //groupController.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    messageController.dispose();
     // socketService.updateActiveChannel("");
     Get.delete<AudioController>();
     super.dispose();

@@ -329,8 +329,8 @@ class ImagePickerController extends GetxController {
             socketService.sendGroupMessage(groupId!, channelId, caption.value,
                 res.data.key!, res.data.thumbnail);
           } else {
-            socketService.sendMessage(
-                caption.value, res.data.key!, channelId, res.data.thumbnail);
+            socketService.sendMessage(caption.value, res.data.key!, channelId,
+                res.data.thumbnail, "", "server");
           }
         }
         Utils.hideLoader();

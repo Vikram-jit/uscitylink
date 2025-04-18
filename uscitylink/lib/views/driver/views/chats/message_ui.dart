@@ -106,18 +106,21 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes (background/foreground)
-    if (state == AppLifecycleState.paused) {
-      // App is in the background
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // App is minimized or goes to background
       socketService.updateActiveChannel("");
 
       if (socketService.isConnected.value) {
-        // if (_hiveController.isProcessing.value == false) {
-        socketService.socket.disconnect();
-
-        // }
+        try {
+          socketService.socket.disconnect();
+          print("🔌 Socket disconnected due to background state.");
+        } catch (e) {
+          print("⚠️ Error while disconnecting socket: $e");
+        }
       }
-      Get.back();
-      print("App is in the background");
+
+      print("📴 App is in background or minimized");
     } else if (state == AppLifecycleState.resumed) {
       // App is in the foreground
       if (!socketService.isConnected.value) {
@@ -126,14 +129,16 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         Timer(Duration(seconds: 2), () {
           // socketService.sendQueueMessage();
           socketService.checkVersion();
+          socketService.getQueueMessage(messageController.channelId.value);
         });
         _hiveController.uploadQueeueMedia();
+        socketService.getQueueMessage(messageController.channelId.value);
       }
       if (messageController.channelId.value.isNotEmpty) {
         socketService.updateActiveChannel(messageController.channelId.value);
       }
-      messageController.getChannelMessages(messageController.channelId.value,
-          messageController.currentPage.value);
+      // messageController.getChannelMessages(messageController.channelId.value,
+      //     messageController.currentPage.value);
       _startChannelUpdateTimer();
       print("App is in the foreground");
     }
@@ -599,11 +604,24 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                                 ? Colors.red
                                                 : Colors.blue,
                                             onPressed: () {
-                                              _audioController.isRecording.value
-                                                  ? _audioController
-                                                      .stopRecording()
-                                                  : _audioController
-                                                      .startRecording();
+                                              if (socketService
+                                                      .isConnected.value ==
+                                                  false) {
+                                                Get.snackbar(
+                                                  "Connection",
+                                                  "No Internet Connection",
+                                                  backgroundColor: Colors.grey,
+                                                  colorText: Colors.white,
+                                                );
+                                                socketService.connectSocket();
+                                              } else {
+                                                _audioController
+                                                        .isRecording.value
+                                                    ? _audioController
+                                                        .stopRecording()
+                                                    : _audioController
+                                                        .startRecording();
+                                              }
                                             },
                                           ),
                                         ),
@@ -818,78 +836,86 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           ? MainAxisAlignment.end
                           : MainAxisAlignment.start,
                       children: [
-                        if (message.status == "queue" ||
-                            message.url_upload_type == "not-upload")
-                          IconButton(
-                              onPressed: () async {
-                                if (socketService.isConnected.value == false) {
-                                  socketService.connectSocket();
-                                }
-                                if (hasImageUrl) {
-                                  if (socketService.isConnected.value) {
-                                    socketService.socket.emit(
-                                        "check_message_store", {
-                                      "messageId": message.id,
-                                      "channelId": message.channelId
-                                    });
+                        if (_hiveController.isProcessing.value == false)
+                          if (message.messageDirection == "R")
+                            if (message.status == "queue" ||
+                                message.url_upload_type == "not-upload")
+                              IconButton(
+                                  onPressed: () async {
+                                    if (socketService.isConnected.value ==
+                                        false) {
+                                      socketService.connectSocket();
+                                    }
+                                    if (hasImageUrl) {
+                                      if (socketService.isConnected.value) {
+                                        socketService.socket.emit(
+                                            "check_message_store", {
+                                          "messageId": message.id,
+                                          "channelId": message.channelId
+                                        });
 
-                                    socketService.socket.on(
-                                        "update_queue_message_driver_single",
-                                        (data) async {
-                                      print(data);
-                                      if (data['status']) {
-                                        MessageModel newMessage =
-                                            MessageModel.fromJson(
-                                                data['message']);
+                                        socketService.socket.on(
+                                            "update_queue_message_driver_single",
+                                            (data) async {
+                                          if (data['status']) {
+                                            MessageModel newMessage =
+                                                MessageModel.fromJson(
+                                                    data['message']);
 
-                                        messageController
-                                            .replaceMessageInCacheWithTempId(
-                                                newMessage.channelId!,
-                                                data['oldMessageId'],
-                                                newMessage,
-                                                data['type'],
-                                                newMessage.temp_id ?? "");
-                                        messageController.messages.refresh();
+                                            messageController
+                                                .replaceMessageInCacheWithTempId(
+                                                    newMessage.channelId!,
+                                                    data['oldMessageId'],
+                                                    newMessage,
+                                                    data['type'],
+                                                    newMessage.temp_id ?? "");
+                                            messageController.messages
+                                                .refresh();
+                                          } else {
+                                            await _hiveController
+                                                .uploadSingleMedia(
+                                                    filePath: message.url!,
+                                                    channelId:
+                                                        message.channelId!,
+                                                    groupId:
+                                                        message.groupId ?? "",
+                                                    userId:
+                                                        message.userProfileId ??
+                                                            "",
+                                                    source: "chat",
+                                                    location: "media",
+                                                    uploadBy: "driver",
+                                                    body: message.body!,
+                                                    tempId: message.id!);
+                                          }
+                                        });
                                       } else {
-                                        await _hiveController.uploadSingleMedia(
-                                            filePath: message.url!,
-                                            channelId: message.channelId!,
-                                            groupId: message.groupId ?? "",
-                                            userId: message.userProfileId ?? "",
-                                            source: "chat",
-                                            location: "media",
-                                            uploadBy: "driver",
-                                            body: message.body!,
-                                            tempId: message.id!);
+                                        Get.snackbar(
+                                          "Connection",
+                                          "No Internet Connection",
+                                          backgroundColor: Colors.grey,
+                                          colorText: Colors.white,
+                                        );
                                       }
-                                    });
-                                  } else {
-                                    Get.snackbar(
-                                      "Connection",
-                                      "No Internet Connection",
-                                      backgroundColor: Colors.grey,
-                                      colorText: Colors.white,
-                                    );
-                                  }
-                                } else {
-                                  if (socketService.isConnected.value) {
-                                    socketService
-                                        .sendQueueReMessage(message.id!);
-                                  } else {
-                                    Get.snackbar(
-                                      "Connection",
-                                      "No Internet Connection",
-                                      backgroundColor: Colors.grey,
-                                      colorText: Colors.white,
-                                    );
-                                  }
-                                }
-                              },
-                              icon: Icon(
-                                Icons.replay,
-                                color: Colors.grey.shade500,
-                                size: 20,
-                              )),
+                                    } else {
+                                      if (socketService.isConnected.value) {
+                                        socketService
+                                            .sendQueueReMessage(message.id!);
+                                      } else {
+                                        Get.snackbar(
+                                          "Connection",
+                                          "No Internet Connection",
+                                          backgroundColor: Colors.grey,
+                                          colorText: Colors.white,
+                                        );
+                                      }
+                                    }
+                                  },
+                                  icon: Icon(
+                                    Icons.replay,
+                                    color: Colors.grey.shade500,
+                                    size: 20,
+                                  )),
                         Container(
                           width: TDeviceUtils.getScreenWidth(context) * 0.7,
                           padding: const EdgeInsets.all(10.0),
@@ -1068,7 +1094,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
 
                               const SizedBox(height: 5),
                               SelectableText(
-                                "${message.body}",
+                                "${message.body} ",
                                 style: const TextStyle(fontSize: 16),
                               ),
                               SizedBox(
@@ -1111,8 +1137,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         // For messages sent by "R", place the icon at the top left,
                         // otherwise place it at the top right.
                         top: -8,
-                        left: message.messageDirection == "R" ? -10 : null,
-                        right: message.messageDirection != "R" ? 0 : null,
+                        left: message.messageDirection == "R" ? 70 : null,
+                        right: message.messageDirection != "R" ? 70 : null,
                         child: Container(
                           height: 20,
                           width: 20,
@@ -1161,7 +1187,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           color: Colors.red.shade500,
                           size: 16,
                         ),
-                    if (message.status == "sent" &&
+                    if (message.messageDirection == "R" &&
+                        message.status == "sent" &&
                         message.deliveryStatus == "seen")
                       Icon(
                         Icons.done_all,
@@ -1185,7 +1212,7 @@ class AttachmentBottomSheet extends StatelessWidget {
       Get.put(ImagePickerController());
 
   final filePickerController = Get.put(FilePickerController());
-
+  SocketService _socketService = Get.find<SocketService>();
   AttachmentBottomSheet({super.key, required this.channelId});
 
   @override
@@ -1222,8 +1249,20 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromCamera(
-                      channelId, "chat", "", "driver_chat", "");
+                  if (_socketService.isConnected.value == false) {
+                    Get.snackbar(
+                      "Connection",
+                      "No Internet Connection",
+                      backgroundColor: Colors.grey,
+                      colorText: Colors.white,
+                    );
+                    _socketService.connectSocket();
+                  } else {
+                    imagePickerController.pickImageFromGallery(
+                        channelId, "chat", "", "driver_chat", "", "driver");
+                    imagePickerController.pickImageFromCamera(
+                        channelId, "chat", "", "driver_chat", "");
+                  }
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -1241,49 +1280,61 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  showAdaptiveActionSheet(
-                    context: context,
-                    actions: <BottomSheetAction>[
-                      BottomSheetAction(
-                        title: const Text(
-                          'Camera',
-                          style: TextStyle(
-                              color: Colors.blue, fontWeight: FontWeight.w600),
+                  if (_socketService.isConnected.value == false) {
+                    Get.snackbar(
+                      "Connection",
+                      "No Internet Connection",
+                      backgroundColor: Colors.grey,
+                      colorText: Colors.white,
+                    );
+                    _socketService.connectSocket();
+                  } else {
+                    showAdaptiveActionSheet(
+                      context: context,
+                      actions: <BottomSheetAction>[
+                        BottomSheetAction(
+                          title: const Text(
+                            'Camera',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
+                            imagePickerController.recordVedioFromCamera(
+                                ImageSource.camera,
+                                channelId,
+                                "chat",
+                                "",
+                                "driver_chat",
+                                "");
+                            // sendOtp(context, emailController.value.text);
+                          },
                         ),
-                        onPressed: (_) {
-                          Get.back();
-                          imagePickerController.recordVedioFromCamera(
-                              ImageSource.camera,
-                              channelId,
-                              "chat",
-                              "",
-                              "driver_chat",
-                              "");
-                          // sendOtp(context, emailController.value.text);
-                        },
-                      ),
-                      BottomSheetAction(
-                        title: const Text(
-                          'Gallery',
-                          style: TextStyle(
-                              color: Colors.blue, fontWeight: FontWeight.w600),
-                        ),
-                        onPressed: (_) {
-                          Get.back();
+                        BottomSheetAction(
+                          title: const Text(
+                            'Gallery',
+                            style: TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: (_) {
+                            Get.back();
 
-                          imagePickerController.recordVedioFromCamera(
-                              ImageSource.gallery,
-                              channelId,
-                              "chat",
-                              "",
-                              "driver_chat",
-                              "");
-                          //Navigator.of(context).pop();
-                          // Pass email to Password view
-                        },
-                      ),
-                    ],
-                  );
+                            imagePickerController.recordVedioFromCamera(
+                                ImageSource.gallery,
+                                channelId,
+                                "chat",
+                                "",
+                                "driver_chat",
+                                "");
+                            //Navigator.of(context).pop();
+                            // Pass email to Password view
+                          },
+                        ),
+                      ],
+                    );
+                  }
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -1300,8 +1351,18 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  filePickerController.pickFileWithExtension(
-                      channelId, "chat", "", "driver_chat", "");
+                  if (_socketService.isConnected.value) {
+                    Get.snackbar(
+                      "Connection",
+                      "No Internet Connection",
+                      backgroundColor: Colors.grey,
+                      colorText: Colors.white,
+                    );
+                    _socketService.connectSocket();
+                  } else {
+                    filePickerController.pickFileWithExtension(
+                        channelId, "chat", "", "driver_chat", "");
+                  }
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,

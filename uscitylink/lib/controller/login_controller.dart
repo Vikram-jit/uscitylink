@@ -6,6 +6,9 @@ import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/channel_controller.dart';
+import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/driver_model.dart';
@@ -13,6 +16,7 @@ import 'package:uscitylink/model/login_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/auth_service.dart';
 import 'package:uscitylink/services/fcm_service.dart';
+import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
@@ -241,6 +245,16 @@ class LoginController extends GetxController {
               .storeToken(value.data)
               .then((response) async {
             Utils.toastMessage("Login Successfully");
+            if (!Get.isRegistered<MessageController>()) {
+              Get.put(MessageController());
+              print('📡 MessageController registered');
+            }
+            // ✅ Register NetworkService if not already
+            if (!Get.isRegistered<NetworkService>()) {
+              Get.put(NetworkService());
+              print('📡 NetworkService registered');
+            }
+
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
             if (token != null && token.isNotEmpty) {
@@ -270,6 +284,16 @@ class LoginController extends GetxController {
         if (value.data.access_token!.isNotEmpty) {
           userPreferenceController.storeToken(value.data).then((value) async {
             Utils.toastMessage("Login Successfully");
+            if (!Get.isRegistered<MessageController>()) {
+              Get.put(MessageController());
+              print('📡 MessageController registered');
+            }
+            // ✅ Register NetworkService if not already
+            if (!Get.isRegistered<NetworkService>()) {
+              Get.put(NetworkService());
+              print('📡 NetworkService registered');
+            }
+
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
             if (token != null && token.isNotEmpty) {
@@ -429,17 +453,40 @@ class LoginController extends GetxController {
 
   void logOut() async {
     Get.find<SocketService>().logout();
-    await Future.wait([
-      Hive.openBox(HiveBoxes.userChannel).then((box) => box.clear()),
-      Hive.openBox(HiveBoxes.channelMessages).then((box) => box.clear()),
-      Hive.openBox(HiveBoxes.driverDashboard).then((box) => box.clear()),
-    ]);
+
+    final userChannelBox = await Constant.getUserChannelBox();
+    final channelMessagesBox = await Constant.getChannelMessagesBox();
+    final driverDashboardBox = await Constant.getDriverDashboardBox();
+    userChannelBox.clear();
+    // userChannelBox.close();
+    channelMessagesBox.clear();
+    // channelMessagesBox.close();
+    driverDashboardBox.clear();
+    // driverDashboardBox.close();
     final box = await Constant.getQueueMessageBox();
     final mediaQueue = await Constant.getMediaQueueBox();
     box.clear();
-    box.close();
+    // box.close();
     mediaQueue.clear();
     //  mediaQueue.close();
+    // Dispose registered controllers safely
+    if (Get.isRegistered<NetworkService>()) {
+      Get.delete<NetworkService>();
+      print('🧹 NetworkService disposed');
+    }
+
+    if (Get.isRegistered<HiveController>()) {
+      Get.delete<HiveController>();
+      print('🧹 HiveController disposed');
+    }
+    if (Get.isRegistered<MessageController>()) {
+      Get.delete<MessageController>();
+      print('🧹 MessageController disposed');
+    }
+    if (Get.isRegistered<ChannelController>()) {
+      Get.delete<ChannelController>();
+      print('🧹 ChannelController disposed');
+    }
     __authService.logout().then((value) async {
       // if (value.status == true) {
       //   Utils.toastMessage("Logout Successfully");

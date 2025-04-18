@@ -70,7 +70,7 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
-          print(decodedPayload);
+
           if (decodedPayload['type'] == "GROUP MESSAGE") {
             if (AppRoutes.driverGroupMessage.isNotEmpty) {
               if (Get.currentRoute == AppRoutes.driverMessage) {
@@ -185,11 +185,20 @@ class FCMService extends GetxController {
               socketService.updateActiveChannel(decodedPayload['channelId']);
               // If already on the target screen, just update the state or pop the stack
               if (Get.currentRoute == AppRoutes.driverMessage) {
-                _messageController.channelId.value =
-                    decodedPayload['channelId'];
-                _messageController.name.value = decodedPayload['title'];
-                _messageController.updateChannelMessagesByNotification(
-                    decodedPayload['channelId'], decodedPayload['title']);
+                socketService.updateActiveChannel(decodedPayload['channelId']);
+                Get.back();
+                Get.toNamed(
+                  AppRoutes.driverMessage,
+                  arguments: {
+                    'channelId': decodedPayload['channelId'],
+                    'name': decodedPayload['title']
+                  },
+                );
+                // _messageController.channelId.value =
+                //     decodedPayload['channelId'];
+                // _messageController.name.value = decodedPayload['title'];
+                // _messageController.updateChannelMessagesByNotification(
+                //     decodedPayload['channelId'], decodedPayload['title']);
               } else {
                 socketService.updateActiveChannel(decodedPayload['channelId']);
                 Get.back();
@@ -369,6 +378,15 @@ class FCMService extends GetxController {
           socketService.updateActiveChannel(decodedPayload['channelId']);
           // If already on the target screen, just update the state or pop the stack
           if (Get.currentRoute == AppRoutes.driverMessage) {
+            socketService.updateActiveChannel(decodedPayload['channelId']);
+            Get.back();
+            Get.toNamed(
+              AppRoutes.driverMessage,
+              arguments: {
+                'channelId': decodedPayload['channelId'],
+                'name': decodedPayload['title']
+              },
+            );
             _messageController.channelId.value = decodedPayload['channelId'];
             _messageController.name.value = decodedPayload['title'];
             _messageController.updateChannelMessagesByNotification(
@@ -398,7 +416,7 @@ class FCMService extends GetxController {
         socketService.connectSocket();
         // Handle the notification and navigate to the desired screen
         var data = message.data;
-        print(data);
+
         if (data['type'] == "GROUP MESSAGE") {
           Utils.showLoader();
           Timer(const Duration(seconds: 3), () {

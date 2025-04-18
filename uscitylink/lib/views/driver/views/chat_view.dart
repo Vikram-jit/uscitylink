@@ -6,6 +6,7 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
@@ -29,11 +30,35 @@ class _ChatViewState extends State<ChatView>
   GroupController groupController = Get.put(GroupController());
   DashboardController _dashboardController = Get.find<DashboardController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  NetworkService _networkService = Get.find<NetworkService>();
-  HiveController _hiveController = Get.find<HiveController>();
+  late final NetworkService _networkService;
+  late final HiveController _hiveController;
+  late final MessageController _messageController;
   @override
   void initState() {
+    if (Get.isRegistered<MessageController>()) {
+      _messageController = Get.find<MessageController>();
+      print('✅ _messageController found and assigned');
+    } else {
+      _messageController = Get.put(MessageController());
+      print('🆕 _messageController registered and assigned');
+    }
+    if (Get.isRegistered<NetworkService>()) {
+      _networkService = Get.find<NetworkService>();
+      print('✅ NetworkService found and assigned');
+    } else {
+      _networkService = Get.put(NetworkService());
+      print('🆕 NetworkService registered and assigned');
+    }
+    if (Get.isRegistered<HiveController>()) {
+      _hiveController = Get.find<HiveController>();
+      print('✅ NetworkService found and assigned');
+    } else {
+      _hiveController = Get.put(HiveController());
+      print('🆕 NetworkService registered and assigned');
+    }
+
     WidgetsBinding.instance.addObserver(this);
+
     // ever(_networkService.connected, (_) {
     //   print("Network changed: ${_networkService.connected.value}");
     //   if (_networkService.connected.value) {
