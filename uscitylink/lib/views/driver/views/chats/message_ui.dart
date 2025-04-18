@@ -1278,8 +1278,6 @@ class AttachmentBottomSheet extends StatelessWidget {
                     );
                     _socketService.connectSocket();
                   } else {
-                    imagePickerController.pickImageFromGallery(
-                        channelId, "chat", "", "driver_chat", "", "driver");
                     imagePickerController.pickImageFromCamera(
                         channelId, "chat", "", "driver_chat", "");
                   }
@@ -1371,7 +1369,7 @@ class AttachmentBottomSheet extends StatelessWidget {
               ),
               InkWell(
                 onTap: () {
-                  if (_socketService.isConnected.value) {
+                  if (!_socketService.isConnected.value) {
                     Get.snackbar(
                       "Connection",
                       "No Internet Connection",
