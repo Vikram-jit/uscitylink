@@ -242,6 +242,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
     >
       {data?.data && userId && (
         <MessagesPaneHeader
+          handleReset={() => {}}
           onHandlePin={onHandlePin}
           mediaPanel={mediaPanel}
           truckNumbers={data?.data?.truckNumbers}
