@@ -40,7 +40,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [pinMessage, setPinMessage] = React.useState<string>('0');
   const [unreadMessage, setUnReadMessage] = React.useState<string>('0');
- 
+  const [resetCount, setResetCount] = React.useState(0);
+  const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(true);
   const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
@@ -52,7 +53,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
   });
 
   const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
-    { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage },
+    { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage,resetKey },
     {
       
       skip: !userId,
@@ -90,6 +91,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         setButtonTitle('Scroll to Bottom');
       }
     }
+    
   }, [userId]);
 
   React.useEffect(() => {
@@ -120,7 +122,29 @@ export default function MessagesPane(props: MessagesPaneProps) {
       setPage((prevPage) => prevPage + 1);
     }
   };
-
+  const handleReset = () => {
+    setMessages([]);
+    setTextAreaValue('');
+    setPage(1);
+    setHasMore(true);
+    setUnReadMessage('0');
+    setPinMessage('0');
+    setSelectedTemplate({ name: '', body: '', url: '' });
+    setIsTyping(false);
+    setSelectedMessageToReply(null);
+  
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: 1,
+        behavior: 'smooth',
+      });
+      setButtonTitle('Scroll to Bottom');
+    }
+  
+   
+    setResetKey(Date.now());
+   
+  };
   // Socket handling (e.g., new messages)
   React.useEffect(() => {
     if (socket) {
@@ -256,6 +280,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     >
       {data?.data && userId && (
         <MessagesPaneHeader
+        handleReset={handleReset}
           onHandlePin={onHandlePin}
           mediaPanel={mediaPanel}
           truckNumbers={data?.data?.truckNumbers}

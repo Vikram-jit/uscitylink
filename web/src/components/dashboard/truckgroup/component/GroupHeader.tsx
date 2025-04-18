@@ -1,7 +1,7 @@
 'use client';
 
 import React, { SetStateAction, useState } from 'react';
-import { ArrowBackIos } from '@mui/icons-material';
+import { ArrowBackIos, RestorePage } from '@mui/icons-material';
 import { Avatar, Box, Button, IconButton, ListItemIcon, Menu, MenuItem, Typography } from '@mui/material';
 import { styled } from '@mui/system';
 import { Eye } from '@phosphor-icons/react';
@@ -13,6 +13,7 @@ interface GroupHeaderProps {
   isBack: boolean;
   setViewMedia:React.Dispatch<React.SetStateAction<boolean>>
   viewMedia:boolean
+  handleReset:() => void
 }
 
 const HeaderContainer = styled(Box)({
@@ -26,7 +27,7 @@ const HeaderContainer = styled(Box)({
   },
 });
 
-const GroupHeader: React.FC<GroupHeaderProps> = ({ group, setViewDetailGroup, isBack,setViewMedia,viewMedia }) => {
+const GroupHeader: React.FC<GroupHeaderProps> = ({ group, setViewDetailGroup, isBack,setViewMedia,viewMedia ,handleReset}) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openMenu, setOpenMenu] = useState(false);
 
@@ -121,6 +122,17 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({ group, setViewDetailGroup, is
               View Details
             </MenuItem>
           </Menu>
+          <Button
+                    onClick={()=>{
+                   
+                     handleReset()
+                    }}
+                   
+                    size="small"
+                    sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+                  >
+                  <RestorePage/>
+                  </Button>
         </Box>
       )}
     </HeaderContainer>

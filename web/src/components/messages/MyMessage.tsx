@@ -186,6 +186,18 @@ export default function MyMessage() {
   function onChangeUnread(){
     setUserList(null)
   }
+
+  const handleReset = () => {
+    setSearch('');
+    setPage(1);
+    setUserList(null);
+    setSelected(false);
+    setSelectedUserId('');
+    setUnReadMessage('0');
+    refetch();
+    socket.emit('staff_open_chat', '');
+  };
+  
   if (isLoading) {
     return <CircularProgress />;
   }
@@ -216,6 +228,7 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
+          handleReset={handleReset}
          onChangeUnread={onChangeUnread}
            setPage={setPage}
           setUserList={setUserList}

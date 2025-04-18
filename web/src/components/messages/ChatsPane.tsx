@@ -9,6 +9,7 @@ import { Truck } from '@phosphor-icons/react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 
 import ChatListItem from './ChatListItem';
+import { RestartAlt } from '@mui/icons-material';
 
 type ChatsPaneProps = {
   chats: SingleChannelModel;
@@ -30,6 +31,8 @@ type ChatsPaneProps = {
   setUnReadMessage: React.Dispatch<React.SetStateAction<string>>;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   onChangeUnread:()=>void
+  handleReset:()=>void
+  
 };
 
 export default function ChatsPane(props: ChatsPaneProps) {
@@ -82,6 +85,12 @@ export default function ChatsPane(props: ChatsPaneProps) {
         >
           {props.unreadMessage == '1' ? 'Normal' : 'Un-read'}{' '}
         </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            props.handleReset();
+          }}  ><RestartAlt/></Button>
       </Stack>
       <Box sx={{ px: 2, pb: 1.5 }}>
         <Input

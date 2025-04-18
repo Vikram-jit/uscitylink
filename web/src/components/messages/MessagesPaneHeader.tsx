@@ -18,6 +18,7 @@ import { PaperPlane } from '@phosphor-icons/react';
 import TemplateDialog from '../dashboard/template/TemplateDialog';
 import moment from 'moment';
 import { MessageModel } from '@/redux/models/MessageModel';
+import { RestorePage } from '@mui/icons-material';
 
 type MessagesPaneHeaderProps = {
   sender?: UserProfile;
@@ -32,6 +33,7 @@ type MessagesPaneHeaderProps = {
   setMediaPanel:React.Dispatch<React.SetStateAction<boolean>>
   setSelectedTemplate:React.Dispatch<React.SetStateAction<{name:string,body:string,url?:string}>>
   onHandlePin:()=>void
+  handleReset:()=>void
 };
 
 export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
@@ -118,7 +120,17 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
         >
          {props.pinMessage =="0" ? "View Pin Messages"  : "View All Messages"}
         </Button>
-       
+        <Button
+          onClick={()=>{
+         
+           props.handleReset()
+          }}
+         
+          size="small"
+          sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+        >
+        <RestorePage/>
+        </Button>
         <IconButton   onClick={handleClick}
             size="small"
             sx={{ ml: 2 }}

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/services/network_service.dart';
@@ -19,19 +20,50 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 class ImagePickerController extends GetxController {
+  UserPreferenceController _userPreferenceController =
+      Get.put(UserPreferenceController());
+
   final _apiService = NetworkApiService();
   SocketService socketService = Get.find<SocketService>();
-  MessageController _messageController = Get.find<MessageController>();
+
   Rx<File?> selectedImage = Rx<File?>(null);
   Rx<List<File>> selectedImages = Rx<List<File>>([]);
   Rx<List<XFile>> selectedXImages = Rx<List<XFile>>([]);
   Rx<File?> selectedVideo = Rx<File?>(null);
   RxString caption = ''.obs;
   RxString selectedSource = ''.obs;
-  NetworkService networkService = Get.find<NetworkService>();
-  HiveController _hiveController = Get.find<HiveController>();
+
+  late final NetworkService networkService;
+  late final HiveController _hiveController;
   final ImagePicker _picker = ImagePicker();
   var isLoading = false.obs; // Loading state for image
+
+  late final MessageController? _messageController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _initController();
+  }
+
+  Future<void> _initController() async {
+    final role = await _userPreferenceController.getRole();
+
+    if (role == 'driver') {
+      try {
+        _messageController = Get.find<MessageController>();
+        networkService = Get.find<NetworkService>();
+        _hiveController = Get.find<HiveController>();
+      } catch (e) {
+        // Handle the case when MessageController is not yet registered
+        print("MessageController not found: $e");
+        _messageController = null;
+      }
+    } else {
+      _messageController = null;
+    }
+  }
+
   Future<void> pickImageFromCamera(String channelId, String location,
       String? groupId, String? source, String? userId) async {
     try {
@@ -204,8 +236,8 @@ class ImagePickerController extends GetxController {
           deliveryStatus: "sent",
           messageTimestampUtc: DateTime.now().toUtc().toIso8601String());
 
-      _messageController.insertNewMessageCache(messageOffline);
-      _messageController.messages.refresh();
+      _messageController?.insertNewMessageCache(messageOffline);
+      _messageController?.messages.refresh();
       // mediaQueueBox.add({
       //   "tempId": tempId,
       //   "body": caption.value,

@@ -30,13 +30,13 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
           pageSize: number,
           totalMessages:number,
           totalPages:number,
-        },truckNumbers?:string };
+        },truckNumbers?:string};
       },
-      { id: string,page: number; pageSize: number ,pinMessage:string,unreadMessage?:string}
+      { id: string,page: number; pageSize: number ,pinMessage:string,unreadMessage?:string,resetKey?: number }
     >({
 
       query: (payload) => ({
-        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}&pinMessage=${payload.pinMessage}&unreadMessage=${payload.unreadMessage}`,
+        url: `message/byUserId/${payload.id}?page=${payload.page}&pageSize=${payload.pageSize}&pinMessage=${payload.pinMessage}&unreadMessage=${payload.unreadMessage}&resetKey=${payload.resetKey}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,

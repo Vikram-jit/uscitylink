@@ -319,6 +319,19 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         color: pinMessage == "1" ? Colors.amber : Colors.white,
                       ),
                     ),
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    InkWell(
+                      onTap: () {
+                        messageController.getChannelMessages(
+                            widget.channelId, 1, pinMessage, "1");
+                      },
+                      child: Icon(
+                        Icons.restore_page,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(
@@ -348,7 +361,14 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     }
                   },
                   child: Obx(() {
-                    if (messageController.messages.isEmpty) {
+                    if (messageController.messages.isEmpty &&
+                        messageController.loading.value) {
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    if (messageController.messages.isEmpty &&
+                        !messageController.loading.value) {
                       return Center(
                           child: SizedBox(
                         height: 100,

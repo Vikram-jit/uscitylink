@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/image_picker_controller.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -40,7 +41,8 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
   ScrollController _scrollController = ScrollController();
   SocketService _socketService = Get.find<SocketService>();
   NetworkService _networkService = Get.find<NetworkService>();
-
+  UserPreferenceController _userPreferenceController =
+      Get.put(UserPreferenceController());
   int _currentIndex = 0;
   @override
   Widget build(BuildContext context) {
@@ -159,7 +161,7 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                       contentPadding: const EdgeInsets.symmetric(
                           vertical: 12, horizontal: 16),
                       suffixIcon: InkWell(
-                        onTap: () {
+                        onTap: () async {
                           // if (_networkService.connected == false) {
                           //   controller.uploadMultiFileOffline(
                           //       widget.channelId,
@@ -171,14 +173,28 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                           //       widget.uploadBy);
                           // } else if (_socketService.isConnected.value ==
                           //     false) {
-                          controller.uploadMultiFileOffline(
-                              widget.channelId,
-                              widget.type,
-                              widget.location,
-                              widget.groupId,
-                              widget.source,
-                              widget.userId,
-                              widget.uploadBy);
+                          final role =
+                              await _userPreferenceController.getRole();
+
+                          if (role == 'driver') {
+                            controller.uploadMultiFileOffline(
+                                widget.channelId,
+                                widget.type,
+                                widget.location,
+                                widget.groupId,
+                                widget.source,
+                                widget.userId,
+                                widget.uploadBy);
+                          } else {
+                            controller.uploadMultiFile(
+                                widget.channelId,
+                                widget.type,
+                                widget.location,
+                                widget.groupId,
+                                widget.source,
+                                widget.userId,
+                                widget.uploadBy);
+                          }
                           // } else {
                           //   controller.uploadMultiFile(
                           //       widget.channelId,

@@ -128,7 +128,7 @@ class MessageController extends GetxController {
   }
 
   void getChannelMessages(String channelId, int page,
-      [String? driverPin]) async {
+      [String? driverPin, String? reset]) async {
     final box = await Constant.getChannelMessagesBox();
     // Prevent refresh if already loading
     if (loading.value) return;
@@ -140,6 +140,7 @@ class MessageController extends GetxController {
 
     try {
       final bool skipCache = driverPin == "1";
+      final bool is_reset = reset == "1";
 
       if (skipCache) {
         final response = await __messageService.getChannelMessagesV2(
@@ -162,6 +163,10 @@ class MessageController extends GetxController {
           }
         }
         return;
+      }
+      if (is_reset == true) {
+        box.clear();
+        messages.clear();
       }
       // ✅ Check if page is cached
       final cachedPage = (box.get(cacheKey) as List?)?.cast<MessageModel>();

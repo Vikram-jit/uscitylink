@@ -28,9 +28,8 @@ class NetworkApiService extends BaseApiServices {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      final response = await http
-          .get(Uri.parse(url), headers: headers)
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(Uri.parse(url), headers: headers);
+      // .timeout(const Duration(seconds: 10));
 
       responseJson = returnResponse(response);
       return responseJson;

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -14,7 +15,32 @@ import 'package:uscitylink/model/message_model.dart';
 class HiveController extends GetxController {
   final _apiService = NetworkApiService();
   RxBool isProcessing = false.obs;
-  MessageController _messageController = Get.find<MessageController>();
+  UserPreferenceController _userPreferenceController =
+      Get.put(UserPreferenceController());
+  late final MessageController? _messageController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _initController();
+  }
+
+  Future<void> _initController() async {
+    final role = await _userPreferenceController.getRole();
+
+    if (role == 'driver') {
+      try {
+        _messageController = Get.find<MessageController>();
+      } catch (e) {
+        // Handle the case when MessageController is not yet registered
+        print("MessageController not found: $e");
+        _messageController = null;
+      }
+    } else {
+      _messageController = null;
+    }
+  }
+
   Future<void> uploadQueeueMedia() async {
     if (isProcessing.value) {
       print("Already processing. Skipping new call.");
@@ -146,7 +172,7 @@ class HiveController extends GetxController {
     File file = File(filePath);
     if (!await file.exists()) {
       print("File does not exist: $filePath");
-      _messageController.statusUpdateMessageInCache(
+      _messageController?.statusUpdateMessageInCache(
           channelId, tempId, "failed");
       return false;
     }

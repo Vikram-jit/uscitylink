@@ -133,7 +133,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [messages, setMessages] = useState<MessageModel[]>([]);
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
-
+const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
   const [templateDialog, setTemplateDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openTemplate = Boolean(anchorEl);
@@ -184,7 +184,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   );
 
   const { data: groupMessage } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage },
+    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage ,resetKey},
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -633,6 +633,14 @@ const ChatInterface = ({ type }: { type: string }) => {
       console.log(error);
     }
   }
+
+  const handleReset = () => {
+    setMessages([]);
+    setPageMessage(1);
+    setHasMoreMessage(true);
+    setResetKey(Date.now());
+   
+  };
   
   return (
     <Grid container>
@@ -710,6 +718,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                             setTimeout(() => {
                               scrollToBottom();
                             }, 100);
+                            handleReset();
                             setMessages([]);
                             setPageMessage(1);
                             setHasMoreMessage(true);
@@ -778,6 +787,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       {viewDetailGroup ? (
         <Grid item xs={12} md={9}>
           <GroupHeader
+          handleReset={handleReset}
             isBack={true}
             setViewDetailGroup={setViewDetailGroup}
             group={group}
@@ -803,6 +813,7 @@ const ChatInterface = ({ type }: { type: string }) => {
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
                 <GroupHeader
+                handleReset={handleReset}
                   isBack={false}
                   setViewDetailGroup={setViewDetailGroup}
                   group={group}

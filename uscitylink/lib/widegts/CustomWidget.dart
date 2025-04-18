@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
@@ -89,30 +90,48 @@ class CustomWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        '${Constant.aws}/${mediaItem.thumbnail}',
-                        fit: BoxFit.cover, // Ensure image fits within the space
+                      child: CachedNetworkImage(
+                        imageUrl: '${Constant.aws}/${mediaItem.thumbnail}',
                         height: double.infinity,
                         width: double.infinity,
-                        loadingBuilder: (BuildContext context, Widget child,
-                            ImageChunkEvent? loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child; // If image has loaded, return the image
-                          } else {
-                            // Display loading progress
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        (loadingProgress.expectedTotalBytes ??
-                                            1)
-                                    : null,
-                              ),
-                            );
-                          }
-                        },
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const SizedBox(
+                          height: 200,
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.error,
+                          size: 40,
+                          color: Colors.red,
+                        ),
                       ),
+
+                      // Image.network(
+                      //                   '${Constant.aws}/${mediaItem.thumbnail}',
+                      //                   fit: BoxFit.cover, // Ensure image fits within the space
+                      //                   height: double.infinity,
+                      //                   width: double.infinity,
+                      //                   loadingBuilder: (BuildContext context, Widget child,
+                      //                       ImageChunkEvent? loadingProgress) {
+                      //                     if (loadingProgress == null) {
+                      //                       return child; // If image has loaded, return the image
+                      //                     } else {
+                      //                       // Display loading progress
+                      //                       return Center(
+                      //                         child: CircularProgressIndicator(
+                      //                           value: loadingProgress.expectedTotalBytes !=
+                      //                                   null
+                      //                               ? loadingProgress.cumulativeBytesLoaded /
+                      //                                   (loadingProgress.expectedTotalBytes ??
+                      //                                       1)
+                      //                               : null,
+                      //                         ),
+                      //                       );
+                      //                     }
+                      //                   },
+                      //                 ),
                     ),
                     Center(
                       child: Icon(
@@ -125,28 +144,45 @@ class CustomWidget {
                 )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    '${Constant.aws}/${mediaItem.key}',
-                    fit: BoxFit.cover, // Ensure image fits within the space
+                  child: CachedNetworkImage(
+                    imageUrl: '${Constant.aws}/${mediaItem.key}',
                     height: double.infinity,
                     width: double.infinity,
-                    loadingBuilder: (BuildContext context, Widget child,
-                        ImageChunkEvent? loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child; // If image has loaded, return the image
-                      } else {
-                        // Display loading progress
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    (loadingProgress.expectedTotalBytes ?? 1)
-                                : null,
-                          ),
-                        );
-                      }
-                    },
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
+                      Icons.error,
+                      size: 40,
+                      color: Colors.red,
+                    ),
                   ),
+                  // Image.network(
+                  //   '${Constant.aws}/${mediaItem.key}',
+                  //   fit: BoxFit.cover, // Ensure image fits within the space
+                  //   height: double.infinity,
+                  //   width: double.infinity,
+                  //   loadingBuilder: (BuildContext context, Widget child,
+                  //       ImageChunkEvent? loadingProgress) {
+                  //     if (loadingProgress == null) {
+                  //       return child; // If image has loaded, return the image
+                  //     } else {
+                  //       // Display loading progress
+                  //       return Center(
+                  //         child: CircularProgressIndicator(
+                  //           value: loadingProgress.expectedTotalBytes != null
+                  //               ? loadingProgress.cumulativeBytesLoaded /
+                  //                   (loadingProgress.expectedTotalBytes ?? 1)
+                  //               : null,
+                  //         ),
+                  //       );
+                  //     }
+                  //   },
+                  // ),
                 ),
         );
       },
