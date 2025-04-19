@@ -7,7 +7,7 @@ const axiosInstance = axios.create({
   baseURL: `${'https://api.textrequest.com/api/v3/'}`,
   timeout: 5000,
   headers: {
-    'x-api-key': '0921c0584a1a4fa5b55c37e2f44774c4'
+    'x-api-key': process.env.TEXT_REQUEST_API_KEY,
   }
 })
 
