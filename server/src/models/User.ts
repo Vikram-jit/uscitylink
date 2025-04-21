@@ -6,7 +6,7 @@ interface UserAttributes {
   id?: string; 
   email?: string;
   phone_number?: string;
-  status?: 'active' | 'inactive' | 'block';
+  status?: string;
   createdAt?: Date;
   updatedAt?: Date;
   yard_id?:number;
@@ -23,7 +23,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public id!: string; // Assuming you have an auto-incremented primary key
   public email?: string;
   public phone_number?: string;
-  public status?: 'active' | 'inactive' | 'block' = 'active';
+  public status?:string
   public createdAt!: Date;
   public updatedAt!: Date;
   public profiles?: UserProfile[]; // Add this line
@@ -68,7 +68,7 @@ User.init({
     },
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive', 'block'),
+    type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'active',
   },
