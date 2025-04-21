@@ -48,7 +48,13 @@ export default function DocumentDialog({
   movePrev,
   currentIndex,
 }: DocumentDialog) {
-    const [isLoading, setIsLoading] = React.useState(true); // Track loading state
+    const [isLoading, setIsLoading] = React.useState(true); 
+    const [oldCurrebIndex,setOldCurrentIndex] = React.useState<number | null>(null)// Track loading state
+    React.useEffect (() => {
+      if (currentIndex){
+        setOldCurrentIndex(currentIndex);     
+      }}, [currentIndex])
+
   const handleClose = () => {
     setOpen?.(false);
     onClose?.();
@@ -78,12 +84,30 @@ export default function DocumentDialog({
 
         {currentIndex != null &&
         <DialogActions  sx={{ justifyContent: 'center', padding: 2 }}>
-          <IconButton onClick={movePrev} sx={{ mr: 2 }} >
-            <ArrowBackIos sx={{fontSize:42}} />
+          <IconButton onClick={()=>{
+
+            movePrev?.();
+            if(oldCurrebIndex != null){
+              if(oldCurrebIndex != currentIndex){
+                setIsLoading(true)
+              }
+            }
+            
+          }} sx={{ mr: 2 }} >
+            <ArrowBackIos sx={{fontSize:42}}  />
           </IconButton>
 
-          <IconButton onClick={moveNext} sx={{ ml: 2 }}>
+          <IconButton onClick={()=>{
+            
+            moveNext?.(); 
+            if(oldCurrebIndex != null){
+              if(oldCurrebIndex != currentIndex){
+                setIsLoading(true)
+              }
+            }
+          }} sx={{ ml: 2 }}>
             <ArrowForwardIos sx={{fontSize:42}}  />
+            
           </IconButton>
         </DialogActions>}
       </Dialog>
