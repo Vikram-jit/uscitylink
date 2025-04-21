@@ -77,13 +77,13 @@ export default function DocumentDialog({
         </DialogContent>
 
         {currentIndex != null &&
-        <DialogActions>
-          <IconButton onClick={movePrev} sx={{ mr: 2 }}>
-            <ArrowBackIos />
+        <DialogActions  sx={{ justifyContent: 'center', padding: 2 }}>
+          <IconButton onClick={movePrev} sx={{ mr: 2 }} >
+            <ArrowBackIos sx={{fontSize:42}} />
           </IconButton>
 
           <IconButton onClick={moveNext} sx={{ ml: 2 }}>
-            <ArrowForwardIos />
+            <ArrowForwardIos sx={{fontSize:42}}  />
           </IconButton>
         </DialogActions>}
       </Dialog>
