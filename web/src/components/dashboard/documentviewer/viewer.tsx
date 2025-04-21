@@ -15,6 +15,8 @@ const options = {
 };
 interface Viewer {
   documentKey: string;
+  setLoading?: React.Dispatch<React.SetStateAction<boolean>>; 
+
 }
 const Controls = () => {
   const { zoomIn, zoomOut, resetTransform } = useControls();
@@ -27,7 +29,7 @@ const Controls = () => {
     </div>
   );
 };
-export default function Viewer({ documentKey }: Viewer) {
+export default function Viewer({ documentKey ,setLoading}: Viewer) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
@@ -35,6 +37,7 @@ export default function Viewer({ documentKey }: Viewer) {
   const [isLoading, setIsLoading] = useState(true); // Track loading state
   const handleLoadingComplete = () => {
     setIsLoading(false); // Set loading to false once the image is loaded
+    setLoading?.(false);
   };
   // const { key }: { key: string } = useParams();
   const key = documentKey;

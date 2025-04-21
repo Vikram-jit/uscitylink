@@ -5,7 +5,7 @@ import { on } from 'events';
 import * as React from 'react';
 import { ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
-import { Box, DialogActions, DialogContent } from '@mui/material';
+import { Box, CircularProgress, DialogActions, DialogContent } from '@mui/material';
 import AppBar from '@mui/material/AppBar';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -48,6 +48,7 @@ export default function DocumentDialog({
   movePrev,
   currentIndex,
 }: DocumentDialog) {
+    const [isLoading, setIsLoading] = React.useState(true); // Track loading state
   const handleClose = () => {
     setOpen?.(false);
     onClose?.();
@@ -67,7 +68,12 @@ export default function DocumentDialog({
           </Toolbar>
         </AppBar>
         <DialogContent>
-          <Viewer documentKey={documentKey} />
+          <Viewer documentKey={documentKey} setLoading={setIsLoading}/>
+          {isLoading  && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          )}
         </DialogContent>
 
         {currentIndex != null &&
