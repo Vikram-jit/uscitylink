@@ -53,7 +53,8 @@ export default function DocumentDialog({
     React.useEffect (() => {
       if (currentIndex){
          if(currentIndex != oldCurrebIndex){
-          setOldCurrentIndex(currentIndex);     
+          setOldCurrentIndex(currentIndex);    
+          setIsLoading(true) 
          }
         if(oldCurrebIndex != null){
           setOldCurrentIndex(currentIndex);   
