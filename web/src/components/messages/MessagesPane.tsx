@@ -542,7 +542,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           )}
         </>
       )}
-      {currentIndex != null && messages[currentIndex]?.url && <DocumentDialog open={!!currentIndex} onClose={
+      {currentIndex != null && messages[currentIndex]?.url && <DocumentDialog open={currentIndex ? true :false} onClose={
        ()=>{
         setCurrentIndex(null)
        }
