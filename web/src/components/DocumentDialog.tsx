@@ -52,7 +52,12 @@ export default function DocumentDialog({
     const [oldCurrebIndex,setOldCurrentIndex] = React.useState<number | null>(null)// Track loading state
     React.useEffect (() => {
       if (currentIndex){
-        setOldCurrentIndex(currentIndex);     
+         if(currentIndex != oldCurrebIndex){
+          setOldCurrentIndex(currentIndex);     
+         }
+        if(oldCurrebIndex != null){
+          setOldCurrentIndex(currentIndex);   
+        }
       }}, [currentIndex])
 
   const handleClose = () => {
