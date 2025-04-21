@@ -20,6 +20,8 @@ import MediaPane from './MediaPane';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { toast } from 'react-toastify';
+import { set } from 'react-hook-form';
+import DocumentDialog from '../DocumentDialog';
 
 type MessagesPaneProps = {
   userId: string;
@@ -51,8 +53,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     name: '',
     body: '',
   });
-
-  const { data, isLoading, refetch } = useGetMessagesByUserIdQuery(
+  const [currentIndex, setCurrentIndex] = React.useState<number | null>(null);  
+  const { data, isLoading, refetch ,isFetching} = useGetMessagesByUserIdQuery(
     { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage,resetKey },
     {
       
@@ -265,6 +267,50 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setMessages([])
 
   }
+  const moveNext = () => {
+    if(currentIndex != null){
+    // 1. If we’re already at the last possible index, nothing to do
+    if (currentIndex >= messages.length - 1) {
+      console.log('No more messages with media.');
+      return;
+    }
+  
+    // 2. Scan forward for the next message that has a non‐empty URL
+    for (let i = currentIndex + 1; i < messages.length; i++) {
+      const url = messages[i]?.url?.trim();
+      if (url) {
+        setCurrentIndex(i);
+        console.log('Moved to:', messages[i]);
+        return;
+      }
+    }
+  
+    console.log('No more messages with media.');
+  }
+  };
+  
+  
+  // Move to the previous message with a URL
+  const movePrevious = () => {
+    if(currentIndex){
+    // If we're already at 0, nothing to do
+    if (currentIndex <= 0) {
+      console.log('Reached the beginning. No previous messages with media.');
+      return;
+    }
+  
+    // Walk backwards until we find a message.url
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (messages[i].url?.trim()) {
+        setCurrentIndex(i);
+        console.log('Moved to:', messages[i]);
+        return;
+      }
+    }
+  
+    console.log('Reached the beginning. No previous messages with media.');
+  };
+}
   if (isLoading && page === 1) {
     return <CircularProgress />;
   }
@@ -351,7 +397,9 @@ export default function MessagesPane(props: MessagesPaneProps) {
                             {message.messageDirection !== 'S' && (
                               <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
                             )}
-                            <ChatBubble
+                            <ChatBubble onClick={() => {
+                             setCurrentIndex(index)
+                            }}
                               truckNumbers={data?.data?.truckNumbers}
                               variant={isYou ? 'sent' : 'received'}
                               {...message}
@@ -493,6 +541,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
           )}
         </>
       )}
+      {currentIndex != null && messages[currentIndex]?.url && <DocumentDialog open={!!currentIndex} onClose={
+       ()=>{
+        setCurrentIndex(null)
+       }
+      } documentKey={messages[currentIndex]?.url?.split('/')?.[1]} moveNext={movePrevious} movePrev={moveNext} currentIndex={currentIndex}/>}
     </Paper>
   );
 }

@@ -88,6 +88,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
+        status:"active",
       },
 
       include: [
@@ -171,6 +172,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const newUserProfile = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
+        status:"active",
       },
       include: [
         {
@@ -329,6 +331,7 @@ export async function loginWithPassword(
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
+        status:"active",
       },
     });
 
@@ -447,6 +450,7 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: email,
+        status:"active",
       },
     });
 
@@ -491,6 +495,7 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
     const isUser = await User.findAll({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
+        status:"active",
       },
       include: [
         {
@@ -591,6 +596,7 @@ export async function loginWithToken(
     const isUser = await User.findAll({
       where: {
         email: email,
+        status:"active",
       },
       include: [
         {

@@ -224,6 +224,9 @@ export async function getDrivers(
         {
           model: User,
           as: "user",
+          where:{
+            status:"active",
+          }
         },
         {
           model: Role,

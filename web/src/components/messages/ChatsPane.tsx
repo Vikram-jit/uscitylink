@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { SingleChannelModel } from '@/redux/models/ChannelModel';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import { Box, Button, Input, List, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Input, List, Paper, Stack, Typography } from '@mui/material';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { styled } from '@mui/system';
@@ -32,6 +32,7 @@ type ChatsPaneProps = {
   setPage: React.Dispatch<React.SetStateAction<number>>;
   onChangeUnread:()=>void
   handleReset:()=>void
+  isFetching: boolean;
   
 };
 
@@ -119,6 +120,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           overflowY: 'auto',
         }}
       >
+        {props.isFetching && <CircularProgress />}
         {chats?.user_channels && (
           <InfiniteScroll
             dataLength={chats?.user_channels?.length}

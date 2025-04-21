@@ -21,6 +21,8 @@ interface MediaComponent {
   messageDirection?: string;
   dateTime?:Date
 }
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
 
 export default function MediaComponent({
   url,
@@ -63,7 +65,7 @@ export default function MediaComponent({
             />
             <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
           </IconButton>
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
+          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />} */}
         </>
       );
     case '.mp3':
@@ -88,7 +90,7 @@ export default function MediaComponent({
           <IconButton onClick={() => setOpenDocument(true)}>
             <DocumentScanner />
           </IconButton>
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
 
@@ -112,7 +114,7 @@ export default function MediaComponent({
             </IconButton>
           )}
 
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
     case '.jpg':
@@ -153,7 +155,7 @@ export default function MediaComponent({
                {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
             </IconButton>
           )}
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
     case '.png':
@@ -197,7 +199,7 @@ export default function MediaComponent({
             </IconButton>
           )}
 
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
     case '.pdf':
@@ -259,7 +261,7 @@ export default function MediaComponent({
                 </IconButton>
               )}
 
-              {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+              {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
             </>
           );
         case '.png':
@@ -301,7 +303,7 @@ export default function MediaComponent({
                 </IconButton>
               )}
 
-              {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+              {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
             </>
           );
         case '.pdf':
@@ -319,7 +321,10 @@ export default function MediaComponent({
       return <>{url}</>;
   }
 }
-
+function isImageUrl(url: string): boolean {
+  const ext = getFileExtension(url);
+  return IMAGE_EXTS.includes(ext);
+}
 function getFileExtension(url: string) {
   // Create a new URL object
   const parsedUrl = new URL(url);

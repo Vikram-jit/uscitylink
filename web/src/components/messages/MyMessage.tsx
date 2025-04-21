@@ -228,6 +228,7 @@ export default function MyMessage() {
         }}
       >
         <ChatsPane
+        isFetching={isFetching}
           handleReset={handleReset}
          onChangeUnread={onChangeUnread}
            setPage={setPage}

@@ -281,7 +281,9 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
               {
                 model: User,
                 as: "user",
-               
+               where:{
+                status:"active",
+               }
               },
               
             ],
@@ -346,7 +348,9 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
               {
                 model: User,
                 as: "user",
-               
+               where:{
+                status:"active",
+               }
               },
               
             ],
@@ -391,7 +395,9 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
               {
                 model: User,
                 as: "user",
-               
+               where:{
+                status:"active",
+               }
               },
               
             ],
