@@ -70,9 +70,9 @@ export default function DocumentDialog({
           <Viewer documentKey={documentKey} />
         </DialogContent>
 
-        {currentIndex &&
+        {currentIndex != null &&
         <DialogActions>
-          <IconButton onClick={movePrev} disabled={currentIndex === 0} sx={{ mr: 2 }}>
+          <IconButton onClick={movePrev} sx={{ mr: 2 }}>
             <ArrowBackIos />
           </IconButton>
 
