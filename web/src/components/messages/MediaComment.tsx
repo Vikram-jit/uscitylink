@@ -54,7 +54,7 @@ export default function MediaComponent({
     case '.wmv':
       return (
         <>
-          <IconButton onClick={onClick} style={{ position: 'relative' }}>
+          <IconButton  style={{ position: 'relative' }}>
             <Image
             unoptimized={true}
               height={height || 60}
@@ -66,7 +66,7 @@ export default function MediaComponent({
             />
             <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
           </IconButton>
-          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />} */}
+          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
         </>
       );
     case '.mp3':
@@ -88,10 +88,10 @@ export default function MediaComponent({
     case '.3gpp':
       return (
         <>
-          <IconButton onClick={onClick}>
+          <IconButton >
             <DocumentScanner />
           </IconButton>
-          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
+          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
         </>
       );
 
