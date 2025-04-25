@@ -55,7 +55,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
   };
   const open = Boolean(anchorEl);
   return (
-    <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} onClick={props.onClick}>
+    <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} >
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
         <Typography variant="body2">
           {messageDirection === 'S'
@@ -80,6 +80,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
         >
           {props.url_upload_type == 'not-upload' ? (
             <MediaComponent
+            onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={'server'}
               thumbnail={`http://52.9.12.189:4300/${props.url}`}
@@ -88,6 +89,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             />
           ) : (
             <MediaComponent
+            onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={props.url_upload_type}
               thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${thumbnail}`}

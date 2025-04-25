@@ -398,6 +398,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                               <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
                             )}
                             <ChatBubble onClick={() => {
+                           
                              setCurrentIndex(index)
                              console.log("index",index)
                             }}

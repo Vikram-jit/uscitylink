@@ -4,15 +4,16 @@ import { Typography } from '@mui/material';
 
 interface LinkifyTextProps {
   text: string;
+  onClick?:()=>void
 }
 
-const LinkifyText: React.FC<LinkifyTextProps> = ({ text }) => {
+const LinkifyText: React.FC<LinkifyTextProps> = ({ text,onClick }) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
 
   const parts = text.split(urlRegex);
 
   return (
-    <Typography sx={{ fontSize: 16, whiteSpace: 'pre-wrap' }}>
+    <Typography sx={{ fontSize: 16, whiteSpace: 'pre-wrap' }} onClick={onClick}>
       {parts.map((part, index) =>
         urlRegex.test(part) ? (
           <a

@@ -20,6 +20,7 @@ interface MediaComponent {
   type?: string;
   messageDirection?: string;
   dateTime?:Date
+  onClick?:()=>void
 }
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
@@ -33,7 +34,7 @@ export default function MediaComponent({
   thumbnail,
   type,
   messageDirection,
-  dateTime
+  dateTime,onClick
 }: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
@@ -53,7 +54,7 @@ export default function MediaComponent({
     case '.wmv':
       return (
         <>
-          <IconButton onClick={() => setOpenDocument(true)} style={{ position: 'relative' }}>
+          <IconButton onClick={onClick} style={{ position: 'relative' }}>
             <Image
             unoptimized={true}
               height={height || 60}
@@ -87,7 +88,7 @@ export default function MediaComponent({
     case '.3gpp':
       return (
         <>
-          <IconButton onClick={() => setOpenDocument(true)}>
+          <IconButton onClick={onClick}>
             <DocumentScanner />
           </IconButton>
           {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
@@ -109,7 +110,7 @@ export default function MediaComponent({
               <Download /> <Typography>receiving</Typography>
             </Box>
           ) : (
-            <IconButton onClick={() => setOpenDocument(true)}>
+            <IconButton onClick={onClick}>
               <img src={url} alt="" />
             </IconButton>
           )}
@@ -143,7 +144,7 @@ export default function MediaComponent({
               )}
             </Box>
           ) : (
-            <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
+            <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
               <Image
                 height={height || 60}
                 src={url}
@@ -183,7 +184,7 @@ export default function MediaComponent({
               )}
             </Box>
           ) : (
-            <IconButton onClick={() => setOpenDocument(true)} sx={{
+            <IconButton onClick={onClick} sx={{
               display:"flex",flexDirection:"column"
             }}>
              <Image
@@ -209,7 +210,7 @@ export default function MediaComponent({
             // LinkComponent={'a'}
             // href={`/dashboard/document-viewer/${file?.[1]}`}
             // target='_blank'
-            onClick={() => setOpenDocument(true)}
+            onClick={onClick}
           >
             <Box display={'flex'} flexDirection={'column'} alignItems={'center'}>
               <FilePdf style={{ color: 'red' }} size={45} />
@@ -247,7 +248,7 @@ export default function MediaComponent({
               )}
                 </Box>
               ) : (
-                <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
+                <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
                    <Image
                    unoptimized={true}
                 height={height || 60}
@@ -289,7 +290,7 @@ export default function MediaComponent({
               )}
                 </Box>
               ) : (
-                <IconButton onClick={() => setOpenDocument(true)} sx={{display:"flex",flexDirection:"column"}}>
+                <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
                   <Image
                   unoptimized={true}
                 height={height || 60}
