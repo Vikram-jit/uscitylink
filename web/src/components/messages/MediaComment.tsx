@@ -54,7 +54,7 @@ export default function MediaComponent({
     case '.wmv':
       return (
         <>
-          <IconButton  style={{ position: 'relative' }}>
+          <IconButton onClick={()=>setOpenDocument(true)}  style={{ position: 'relative' }}>
             <Image
             unoptimized={true}
               height={height || 60}
