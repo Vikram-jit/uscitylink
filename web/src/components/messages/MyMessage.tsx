@@ -96,17 +96,17 @@ export default function MyMessage() {
     }
   }, [trackChannelState]);
 
-  React.useEffect(() => {
-    const handleFocus = () => {
-      refetch();
-    };
+  // React.useEffect(() => {
+  //   const handleFocus = () => {
+  //     refetch();
+  //   };
 
-    window.addEventListener('focus', handleFocus);
+  //   window.addEventListener('focus', handleFocus);
 
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [refetch]);
+  //   return () => {
+  //     window.removeEventListener('focus', handleFocus);
+  //   };
+  // }, [refetch]);
 
   React.useEffect(() => {
     if (socket) {
