@@ -1016,7 +1016,7 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
 
 
 
-    const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
+     const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
     const driverCount = await User.count({where:{
       user_type:"driver"
     }})
@@ -1059,7 +1059,7 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
         attributes:['username','id']
       }],
       order:[["createdAt","DESC"]],
-      limit:5
+      limit:2
     })
    const staffGroupCount = await Group.findOne({where:{
     name:"Staff"
@@ -1078,10 +1078,10 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
         messageCount: userTotalMessage,
         groupCount: userTotalGroups,
         userUnMessage,
-        lastFiveDriver,
+        lastFiveDriver:lastFiveDriver,
         driverCount,
         channelId:req.activeChannel,
-        userUnReadMessage,
+        userUnReadMessage:userUnReadMessage,
         staffGroupCount:staffGroupCount?.message_count ?? 0,
         alertGroupCount:alertGroupCount?.message_count ?? 0,
         staffcountUnRead:countUnRead
@@ -1167,7 +1167,8 @@ export async function getUnrepliedMessages(channelId:string): Promise<any[]> {
         }]
       },
     
-      order:[['messageTimestampUtc','DESC']]
+      order:[['messageTimestampUtc','DESC']],
+      limit:2
       // attributes: ["id", "userProfileId", "channelId", "createdAt","body"],
     });
 
