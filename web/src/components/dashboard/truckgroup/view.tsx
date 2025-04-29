@@ -756,9 +756,9 @@ const ChatInterface = ({ type }: { type: string }) => {
                               scrollToBottom();
                             }, 100);
                             handleReset();
-                            setMessages([]);
-                            setPageMessage(1);
-                            setHasMoreMessage(true);
+                            // setMessages([]);
+                            // setPageMessage(1);
+                            // setHasMoreMessage(true);
                           }}
                         >
                           <Badge
