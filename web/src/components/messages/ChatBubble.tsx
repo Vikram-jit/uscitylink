@@ -57,7 +57,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
   const open = Boolean(anchorEl);
   return (
     <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} >
-      <p>{props.status}{props.url_upload_type}{props.deliveryStatus}</p>
+     
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
         <Typography variant="body2">
           {messageDirection === 'S'

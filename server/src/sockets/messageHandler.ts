@@ -2472,15 +2472,28 @@ export async function notifiyFileUploadTruckGroupMembers(
   messageId: string,
   type: string,
   userId: string,
-  groupMessageId: string
+  groupMessageId: string,
+  fileName?:string
 ) {
   const users = await GroupUser.findAll({
     where: {
       groupId: groupId,
     },
   });
+
   await Promise.all(
     users.map(async (item) => {
+      const message = await Message.findOne({
+        where:{
+          channelId:channelId,
+          groupId:groupId,
+          url:fileName,
+          userProfileId:item.userProfileId
+        }
+      })
+      if(message){
+        await message.update( { url_upload_type: "server" })
+      }
       const findUserChannel = global.driverOpenChat.find(
         (e) =>
           e.driverId == item.dataValues.userProfileId &&
@@ -2491,7 +2504,7 @@ export async function notifiyFileUploadTruckGroupMembers(
         const driverSocket = global.userSockets[findUserChannel.driverId];
         driverSocket.emit("update_file_upload_status", {
           status: type,
-          messageId: messageId,
+          messageId: message?.id,
         });
       }
     })
@@ -2500,11 +2513,22 @@ export async function notifiyFileUploadTruckGroupMembers(
   const promises = Object.entries(global.staffOpenTruckGroup).map(
     async ([staffId, e]) => {
       const isSocket = global.userSockets[staffId];
+      const message = await Message.findOne({
+        where:{
+          channelId:channelId,
+          groupId:groupId,
+          url:fileName,
+          userProfileId:staffId
+        }
+      })
+      if(message){
+        await message.update( { url_upload_type: "server" })
+      }
       if (e.groupId == groupId && channelId == e.channelId) {
         if (isSocket) {
           isSocket.emit("update_url_status_truck_group", {
             status: type,
-            messageId: groupMessageId,
+            messageId: message?.id,
           });
         }
       }

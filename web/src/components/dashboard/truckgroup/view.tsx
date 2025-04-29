@@ -387,6 +387,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         );
       } else {
         socket.on('update_url_status_truck_group', (data: any) => {
+   
           setMessages((prev: any) =>
             prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
           );

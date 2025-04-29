@@ -169,7 +169,8 @@ export const processFileUpload = async (
             existingMessage!.id,
             "server",
             userId,
-            existingGroupMessage!.id
+            existingGroupMessage!.id,
+            `uscitylink/${fileName}`
           );
         } else {
           await notifiyFileUploadStaffToDriver(
@@ -1321,7 +1322,8 @@ export const uploadFromLocal = async (
             existingMessage!.id,
             "server",
             userId,
-            existingGroupMessage!.id
+            existingGroupMessage!.id,
+             `uscitylink/${fileName}`
           );
         } else {
           await notifiyFileUploadStaffToDriver(

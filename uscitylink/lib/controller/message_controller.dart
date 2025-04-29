@@ -331,7 +331,7 @@ class MessageController extends GetxController {
     // final type = data["type"];
     final tempId = data.containsKey("tempId") ? data["tempId"] : "";
     final type = data.containsKey("type") ? data["type"] : "";
-    print(data);
+
     messages
         .where((message) => message.id == messageId)
         .forEach((message) => message.url_upload_type = data["status"]);
