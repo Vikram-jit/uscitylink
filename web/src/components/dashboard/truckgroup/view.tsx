@@ -8,7 +8,9 @@ import { GroupModel } from '@/redux/models/GroupModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { Add, AttachFile } from '@mui/icons-material';
+
 import 'react-image-gallery/styles/css/image-gallery.css';
+
 import {
   Avatar,
   Badge,
@@ -35,27 +37,30 @@ import {
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import { styled } from '@mui/system';
+import { Stack, styled } from '@mui/system';
 import { Circle, PaperPlane } from '@phosphor-icons/react';
 import { File, Video } from '@phosphor-icons/react/dist/ssr';
 import moment from 'moment';
 import { BsCheckAll } from 'react-icons/bs';
 import { FiSearch, FiSend } from 'react-icons/fi';
+import ReactImageGallery from 'react-image-gallery';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import ReactPlayer from 'react-player';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import useDebounce from '@/hooks/useDebounce';
+import DocumentDialog from '@/components/DocumentDialog';
+import AvatarWithStatus from '@/components/messages/AvatarWithStatus';
+import ChatBubble from '@/components/messages/ChatBubble';
 import MediaComponent from '@/components/messages/MediaComment';
 import MediaPane from '@/components/messages/MediaPane';
-import { formatDate } from '@/components/messages/utils';
+import { formatDate, formatUtcTime } from '@/components/messages/utils';
 
 import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
-import ReactImageGallery from 'react-image-gallery';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -129,11 +134,11 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [currentChannelId, setCurrentChannelId] = useState<string>('');
 
   const { data: groupList } = useGetGroupsQuery({ type: type, page, search: searchItem });
-
+  const [currentIndex, setCurrentIndex] = React.useState<number | null>(null);
   const [messages, setMessages] = useState<MessageModel[]>([]);
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
-const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
+  const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
   const [templateDialog, setTemplateDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openTemplate = Boolean(anchorEl);
@@ -145,7 +150,49 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
   const handleClose = () => {
     setAnchorEl(null);
   };
+  const moveNext = () => {
+    if (currentIndex != null) {
+      // 1. If we’re already at the last possible index, nothing to do
+      if (currentIndex >= messages.length - 1) {
+        console.log('No more messages with media.');
+        return;
+      }
 
+      // 2. Scan forward for the next message that has a non‐empty URL
+      for (let i = currentIndex + 1; i < messages.length; i++) {
+        const url = messages[i]?.url?.trim();
+        if (url) {
+          setCurrentIndex(i);
+          console.log('Moved to:', messages[i]);
+          return;
+        }
+      }
+
+      console.log('No more messages with media.');
+    }
+  };
+
+  // Move to the previous message with a URL
+  const movePrevious = () => {
+    if (currentIndex) {
+      // If we're already at 0, nothing to do
+      if (currentIndex <= 0) {
+        console.log('Reached the beginning. No previous messages with media.');
+        return;
+      }
+
+      // Walk backwards until we find a message.url
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        if (messages[i].url?.trim()) {
+          setCurrentIndex(i);
+          console.log('Moved to:', messages[i]);
+          return;
+        }
+      }
+
+      console.log('Reached the beginning. No previous messages with media.');
+    }
+  };
   const [anchorElPopOver, setAnchorElPopOver] = React.useState<HTMLButtonElement | null>(null);
 
   const attachmenPopOver = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -184,7 +231,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
   );
 
   const { data: groupMessage } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage ,resetKey},
+    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: true,
@@ -250,7 +297,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
 
   const handleReceiveMessage = useCallback(
     (message: any, groupId: string) => {
-      console.log(message,"tyr")
+      console.log(message, 'tyr');
       if (message.groupId !== selectedGroup) {
         return; // Ignore the message if the groupId does not match selectedId
       }
@@ -330,31 +377,24 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
   useEffect(() => {
     if (socket) {
       if (type == 'group') {
-        
-        socket.on('update_file_upload_status_group',(data:any)=>{
-         
-          setMessages((prev:any) =>
-             prev.map((e:any) =>
-               e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-             )
-           );
-        
-      })
+        socket.on('update_file_upload_status_group', (data: any) => {
+          setMessages((prev: any) =>
+            prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
+          );
+        });
         socket.on('new_group_message_received', (message: MessageModel) =>
           handleReceiveMessage(message, selectedGroup)
         );
       } else {
-        socket.on('update_url_status_truck_group',(data:any)=>{
-
-            setMessages((prev:any) =>
-               prev.map((e:any) =>
-                 e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-               )
-             );
-          
-        })
-       // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
-        socket.on('receive_message_group_truck', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
+        socket.on('update_url_status_truck_group', (data: any) => {
+          setMessages((prev: any) =>
+            prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
+          );
+        });
+        // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
+        socket.on('receive_message_group_truck', (message: MessageModel) =>
+          handleReceiveMessage(message, selectedGroup)
+        );
       }
 
       // Cleanup the event listener when the component unmounts or socket changes
@@ -498,17 +538,16 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
       setError('Failed to send message. Please try again.');
     }
   };
- async function sendFiles() {
+  async function sendFiles() {
     try {
-
       const userIds = group!.data.members
-      .filter((e) => e.userProfileId && e.status == 'active')
-      .map((e) => e.userProfileId);
-    if (userIds.length == 0) {
-      alert('Please Add member before send message into group');
-      dispatch(hideLoader());
-      return;
-    }
+        .filter((e) => e.userProfileId && e.status == 'active')
+        .map((e) => e.userProfileId);
+      if (userIds.length == 0) {
+        alert('Please Add member before send message into group');
+        dispatch(hideLoader());
+        return;
+      }
       dispatch(showLoader());
 
       let formData = new FormData();
@@ -524,14 +563,13 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
 
       const res = await uploadMultipleFiles({
         formData: formData,
-        userId: "",
+        userId: '',
         groupId: selectedGroup,
-        location: type =="group" ? 'group': 'truck',
-        source: type =="group" ? 'group': 'truck',
+        location: type == 'group' ? 'group' : 'truck',
+        source: type == 'group' ? 'group' : 'truck',
         uploadBy: 'staff',
       }).unwrap();
       if (res?.status) {
-
         setFiles([]);
         setCaption('');
         setPreviewDialogOpen(false);
@@ -600,7 +638,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
         formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
         const res = videoExtensions.includes(extension)
           ? await videoUpload({ formData, userId: '', groupId: group.data.group.id }).unwrap()
-          : await fileUpload({formData}).unwrap();
+          : await fileUpload({ formData }).unwrap();
         if (res.status) {
           if (type == 'group') {
             socket?.emit('send_group_message', {
@@ -639,9 +677,8 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
     setPageMessage(1);
     setHasMoreMessage(true);
     setResetKey(Date.now());
-   
   };
-  
+
   return (
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
@@ -764,7 +801,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
                                     />
                                   )}
                                   <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
-                                    {formatDate(group?.last_message?.messageTimestampUtc)}
+                                    {moment(group?.last_message?.messageTimestampUtc).format('YYYY-MM-DD HH:mm A')}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -787,7 +824,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
       {viewDetailGroup ? (
         <Grid item xs={12} md={9}>
           <GroupHeader
-          handleReset={handleReset}
+            handleReset={handleReset}
             isBack={true}
             setViewDetailGroup={setViewDetailGroup}
             group={group}
@@ -813,7 +850,7 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
                 <GroupHeader
-                handleReset={handleReset}
+                  handleReset={handleReset}
                   isBack={false}
                   setViewDetailGroup={setViewDetailGroup}
                   group={group}
@@ -842,56 +879,95 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
                       scrollableTarget="scrollable-messages-group-container"
                       inverse={true} // Load older messages on scroll up
                     >
-
-                      { type == "group" ? messages.map((msg) => (
-                        <>
-                        
-                          {msg.senderId != senderId && msg.sender ? (<>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <Typography variant="caption">{msg?.sender?.username} { moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A') }</Typography>
-                              <Badge
-                                color={msg?.sender.isOnline ? 'success' : 'default'}
-                                variant={msg?.sender.isOnline ? 'dot' : 'standard'}
-                                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                                overlap="circular"
-                              />
-                            </Box>
-                           
+                      {type == 'group'
+                        ? messages.map((msg) => (
+                            <>
+                              {msg.senderId != senderId && msg.sender ? (
+                                <>
+                                  <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                    <Typography variant="caption">
+                                      {msg?.sender?.username}{' '}
+                                      {moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A')}
+                                    </Typography>
+                                    <Badge
+                                      color={msg?.sender.isOnline ? 'success' : 'default'}
+                                      variant={msg?.sender.isOnline ? 'dot' : 'standard'}
+                                      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                      overlap="circular"
+                                    />
+                                  </Box>
+                                </>
+                              ) : (
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <Typography variant="caption">
+                                    {msg?.sender?.username}{' '}
+                                    {moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A')}
+                                  </Typography>
+                                  {msg.deliveryStatus === 'sent' && <BsCheckAll />}
+                                </Box>
+                              )}
+                              <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
+                                {msg.url && (
+                                  <Paper
+                                    variant="outlined"
+                                    sx={{
+                                      px: 1.75,
+                                      py: 1.25,
+                                    }}
+                                  >
+                                    <MediaComponent
+                                      type={msg.url_upload_type}
+                                      messageDirection={msg.messageDirection || 'S'}
+                                      url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
+                                      name={msg.url ? msg.url : ' '}
+                                      thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
+                                    />
+                                  </Paper>
+                                )}
+                                <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
+                              </MessageBubble>
                             </>
-                          ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{msg?.sender?.username} { moment.utc(msg.messageTimestampUtc as any).format('YYYY-DD-MM hh:mm A') }</Typography>
-                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                        </Box>}
-                          <MessageBubble key={msg.id} isOwn={msg.senderId == senderId}>
-                            {msg.url && (
-                              <Paper
-                                variant="outlined"
-                                sx={{
-                                  px: 1.75,
-                                  py: 1.25,
-                                }}
-                              >
-                                <MediaComponent
-                                type={msg.url_upload_type}
-                                  messageDirection={msg.messageDirection || 'S'}
-                                  url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                                  name={msg.url ? msg.url : ' '}
-                                  thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
-                                />
-                              </Paper>
-                            )}
-                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
-                          
-                          </MessageBubble>
-                        
-                        </>
-                      )): messages.map((msg) => (
-                        <>
-                        
-                          {msg.messageDirection == "R" ? (
+                          ))
+                        : messages.map((message, index) => {
+                            const currentDate = moment.utc(message.messageTimestampUtc).format('MM-DD-YYYY');
+                            const previousDate =
+                              index > 0
+                                ? moment.utc(messages?.[index - 1].messageTimestampUtc).format('MM-DD-YYYY')
+                                : null;
+                            const isDifferentDay = previousDate && currentDate !== previousDate;
+                            const isToday = currentDate === moment.utc().format('MM-DD-YYYY');
+                            const isYou = message.messageDirection === 'S';
+
+                            return (
+                              <React.Fragment key={message.id}>
+                                <Stack
+                                  direction="row"
+                                  spacing={2}
+                                  sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
+                                >
+                                  {message.messageDirection !== 'S' && (
+                                    <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                                  )}
+                                  <ChatBubble
+                                    onClick={() => {
+                                      setCurrentIndex(index);
+                                    }}
+                                    truckNumbers=""
+                                    variant={isYou ? 'sent' : 'received'}
+                                    {...message}
+                                    attachment={false}
+                                    sender={message?.sender}
+                                  />
+                                </Stack>
+                                {isDifferentDay && <Divider>{isToday ? 'Today' : previousDate}</Divider>}
+                              </React.Fragment>
+                            );
+
+                            {
+                              /* {msg.messageDirection == "R" ? (
                             <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                               <Typography variant="caption">{msg?.sender?.username} {`(${msg.sender.user?.driver_number})`} </Typography> 
-                              <Typography variant="caption"> {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
+                              <Typography variant="caption"> {formatUtcTime(msg.messageTimestampUtc as any)}</Typography>
                               <Badge
                                 color={msg?.sender.isOnline ? 'success' : 'default'}
                                 variant={msg?.sender.isOnline ? 'dot' : 'standard'}
@@ -900,10 +976,12 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
                               />
                             </Box>
                           ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{msg?.sender?.username}(satff) {formatTimestamp(msg.messageTimestampUtc as any)}</Typography>
+                          <Typography variant="caption">{msg?.sender?.username}(satff) {formatUtcTime(msg.messageTimestampUtc as any)}</Typography>
                           {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                        </Box>}
-                          <MessageBubble key={msg.id} isOwn={msg.messageDirection == "S"}>
+                        </Box>} */
+                            }
+                            {
+                              /* <MessageBubble key={msg.id} isOwn={msg.messageDirection == "S"}>
                             {msg.url && (
                               <Paper
                                 variant="outlined"
@@ -923,10 +1001,9 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
                             )}
                             <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
                           
-                          </MessageBubble>
-                        
-                        </>
-                      ))}
+                          </MessageBubble> */
+                            }
+                          })}
                     </InfiniteScroll>
                   </MessagesContainer>
                 )}
@@ -1121,11 +1198,27 @@ const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number eac
             <Button onClick={handleCancel} color="secondary">
               Cancel
             </Button>
-            <Button disabled={isLoading||multipleLoader} onClick={files.length ? sendFiles : sendMessage} color="primary">
-              Send {(isLoading||multipleLoader) && <CircularProgress />}
+            <Button
+              disabled={isLoading || multipleLoader}
+              onClick={files.length ? sendFiles : sendMessage}
+              color="primary"
+            >
+              Send {(isLoading || multipleLoader) && <CircularProgress />}
             </Button>
           </DialogActions>
         </Dialog>
+      )}
+      {currentIndex != null && messages[currentIndex]?.url && (
+        <DocumentDialog
+          open={currentIndex != null ? true : false}
+          onClose={() => {
+            setCurrentIndex(null);
+          }}
+          documentKey={messages[currentIndex]?.url?.split('/')?.[1]}
+          moveNext={movePrevious}
+          movePrev={moveNext}
+          currentIndex={currentIndex}
+        />
       )}
     </Grid>
   );
@@ -1157,6 +1250,5 @@ const MediaGallery = ({ mediaFiles }: any) => {
 
   return <ReactImageGallery items={galleryItems} showThumbnails={false} />;
 };
-
 
 export default ChatInterface;

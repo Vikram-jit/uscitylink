@@ -65,7 +65,7 @@ export function formatUtcTime(utcTimeString: string | null): string {
           const localTime = utcTime.local();
 
 
-          const formattedTime = localTime.format('hh:mm A');
+          const formattedTime = localTime.format("MM-DD-YYYY HH:mm A");
 
           return formattedTime;
       } catch (e) {
@@ -94,7 +94,7 @@ export function formatDate(utcTimeString: string | null): string {
           }
 
           // Step 3: For other dates, format them normally (e.g., YYYY-MM-DD)
-          return date.format('YYYY-MM-DD'); // e.g., '2024-11-13'
+          return date.format('MM-DD-YYYY'); // e.g., '2024-11-13'
 
       } catch (e) {
           // Handle error if the date format is invalid

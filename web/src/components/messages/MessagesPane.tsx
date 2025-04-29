@@ -400,7 +400,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                             <ChatBubble onClick={() => {
                            
                              setCurrentIndex(index)
-                             console.log("index",index)
+                           
                             }}
                               truckNumbers={data?.data?.truckNumbers}
                               variant={isYou ? 'sent' : 'received'}

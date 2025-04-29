@@ -15,13 +15,14 @@ import { useSocket } from '@/lib/socketProvider';
 
 import LinkifyText from '../LinkifyText';
 import MediaComponent from './MediaComment';
+import { formatUtcTime } from './utils';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
   attachment: false;
   sender: SenderModel;
   truckNumbers?: string;
-  setSelectedMessageToReply: React.Dispatch<React.SetStateAction<MessageModel | null>>;
+  setSelectedMessageToReply?: React.Dispatch<React.SetStateAction<MessageModel | null>>;
   onClick?: () => void;
   
 };
@@ -56,6 +57,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
   const open = Boolean(anchorEl);
   return (
     <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} >
+      <p>{props.status}{props.url_upload_type}{props.deliveryStatus}</p>
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
         <Typography variant="body2">
           {messageDirection === 'S'
@@ -65,7 +67,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             : `${sender?.username}(${sender?.user?.driver_number})`}
         </Typography>
 
-        <Typography variant="caption">{moment(messageTimestampUtc).format('YYYY-MM-DD hh:mm A')}</Typography>
+        <Typography variant="caption">{formatUtcTime(messageTimestampUtc)}</Typography>
       </Stack>
       {url ? (
         <Paper
@@ -138,7 +140,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       : `${r_message.sender?.username}(${r_message?.sender?.user?.driver_number})`}
                   </Typography>
                   <Typography variant="caption">
-                    {moment(r_message.messageTimestampUtc).format('YYYY-MM-DD HH:mm A')}
+                    {moment(r_message.messageTimestampUtc).format('MM-DD-YYYY HH:mm A')}
                   </Typography>
                 </Stack>
                 {r_message.url ? (
@@ -189,6 +191,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               </Box>
             )}
             <LinkifyText text={body} />
+            
           </Paper>
         </Box>
       )}
@@ -231,7 +234,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             <ListItem disablePadding>
               <ListItemButton
                 onClick={() => {
-                  props.setSelectedMessageToReply(props);
+                  props.setSelectedMessageToReply?.(props);
                 }}
               >
                 <ListItemIcon>

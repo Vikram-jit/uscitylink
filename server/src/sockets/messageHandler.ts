@@ -20,6 +20,7 @@ import { MessageStaff } from "../models/MessageStaff";
 import PrivateChatMember from "../models/PrivateChatMember";
 import dotenv from "dotenv";
 import { channel } from "diagnostics_channel";
+import GroupChannel from "../models/GroupChannel";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -765,7 +766,7 @@ export async function driverMessageQueueProcess(
   thumbnail: string | null,
   r_message_id: string | null,
   url_upload_type?: string,
-  messageTimestampUtc?:String
+  messageTimestampUtc?: String
 ) {
   const messageSave = await Message.create({
     channelId: channelId,
@@ -1609,17 +1610,32 @@ export async function messageToDriverByTruckGroup(
       },
     });
 
-    const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+    const groupT = await Group.findOne({
+      where: {
+        id: groupId,
+      },
+      include: [
+        {
+          model: GroupChannel,
+          as: "group_channel",
+        },
+      ],
+    });
+    const group = groupT?.dataValues;
 
+    const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+    const modifiedMessage = { ...message?.dataValues, group };
     // Process each driver and emit message or update database sequentially
     if (
       findDriverSocket &&
       findDriverSocket?.channelId == findStaffActiveChannel?.channelId
     ) {
       if (isDriverSocket) {
+      
         await messageSave.update(
           {
             deliveryStatus: "seen",
+            status: "sent",
           },
           {
             where: {
@@ -1629,12 +1645,12 @@ export async function messageToDriverByTruckGroup(
         );
         io.to(isDriverSocket?.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          message
+          modifiedMessage
         );
       }
     } else {
       if (isDriverSocket) {
-        io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
+        io.to(isDriverSocket?.id).emit("update_user_channel_list", modifiedMessage);
         io.to(isDriverSocket?.id).emit(
           "new_message_count_update",
           message?.channelId
@@ -2233,9 +2249,8 @@ export async function notifiyFileUploadStaffToDriver(
     socket.emit("update_file_upload_status", {
       status: type,
       messageId: messageId,
-      type:"staff"
+      type: "staff",
     });
-    
   }
 
   const promises = Object.entries(global.staffOpenChat).map(
@@ -2642,13 +2657,12 @@ export async function getMessageByTempId(
   io: Server,
   socket: CustomSocket,
   messageId: string,
-  channelId:string
+  channelId: string
 ) {
-
   let type = "msg";
-  let message:Message |null = null
-  
-   message = await Message.findOne({
+  let message: Message | null = null;
+
+  message = await Message.findOne({
     where: {
       id: messageId,
     },
@@ -2683,7 +2697,7 @@ export async function getMessageByTempId(
       },
     ],
   });
-  if(message == null){
+  if (message == null) {
     type = "temp";
     message = await Message.findOne({
       where: {
@@ -2724,11 +2738,11 @@ export async function getMessageByTempId(
   const isDriverSocket = global.userSockets[socket?.user?.id!];
   if (isDriverSocket) {
     io.to(isDriverSocket?.id).emit("update_queue_message_driver_single", {
-      channelId: channelId, 
+      channelId: channelId,
       oldMessageId: messageId,
       message: message,
-      status: message ? true :false,
-      type:type
+      status: message ? true : false,
+      type: type,
     });
   }
 }

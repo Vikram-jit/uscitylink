@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import CircleIcon from '@mui/icons-material/Circle';
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import { toggleMessagesPane } from './utils';
+import { formatUtcTime, toggleMessagesPane } from './utils';
 import { UserProfile } from '@/redux/models/ChannelModel';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -94,7 +94,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
           </Typography>
           <Typography variant="h6">{sender?.user?.phone_number}</Typography>
           <Typography variant="body1">Truck Groups: <b>{props.truckNumbers}</b></Typography>
-          <Typography marginTop={1} variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? moment(sender?.last_login).format('YYYY-MM-DD hh:mm A') :'' }</Typography>
+          <Typography marginTop={1} variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? formatUtcTime(sender?.last_login) :'' }</Typography>
         </div>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>

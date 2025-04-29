@@ -34,6 +34,7 @@ import Group from "../models/Group";
 import PrivateChatMember from "../models/PrivateChatMember";
 import { Message } from "../models/Message";
 import { Op } from "sequelize";
+import GroupChannel from "../models/GroupChannel";
 
 let io: Server;
 interface User {
@@ -445,8 +446,26 @@ export const initSocket = (httpServer: any) => {
         ],
         order: [["messageTimestampUtc", "ASC"]],
       });
-
-      socket.emit("get_driver_messages_queues", messages);
+      const modifiedMessage = await Promise.all(
+        messages.map(async (e) => {
+          let group = null;
+          if (e.type == "truck_group") {
+            group = await Group.findOne({
+              where: {
+                id: e?.groupId!,
+              },
+              include: [
+                {
+                  model: GroupChannel,
+                  as: "group_channel",
+                },
+              ],
+            });
+          }
+          return { ...e.dataValues, group:group?.dataValues };
+        })
+      );
+      socket.emit("get_driver_messages_queues", modifiedMessage);
     });
 
     socket.on("update_message_status_queue", async (data) => {
