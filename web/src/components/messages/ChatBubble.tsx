@@ -24,7 +24,7 @@ type ChatBubbleProps = MessageModel & {
   truckNumbers?: string;
   setSelectedMessageToReply?: React.Dispatch<React.SetStateAction<MessageModel | null>>;
   onClick?: () => void;
-  
+  isVisibleThreeDot?:boolean
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
@@ -40,6 +40,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
     thumbnail,
     staffPin,
     r_message,
+
   } = props;
   const isSent = variant === 'sent';
 
@@ -203,9 +204,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
       )}
 
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', mb: 0.25 }}>
-        <IconButton onClick={handleClick} sx={{ padding: 0 }}>
+      {props.isVisibleThreeDot  &&  <IconButton onClick={handleClick} sx={{ padding: 0 }}>
           <DotsThree />
-        </IconButton>
+        </IconButton> }
         {messageDirection === 'S' && deliveryStatus == 'sent' ? (
           <Done
             sx={{

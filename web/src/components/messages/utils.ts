@@ -65,7 +65,7 @@ export function formatUtcTime(utcTimeString: string | null): string {
           const localTime = utcTime.local();
 
 
-          const formattedTime = localTime.format("MM-DD-YYYY HH:mm A");
+          const formattedTime = localTime.format("MM-DD-YYYY hh:mm a");
 
           return formattedTime;
       } catch (e) {

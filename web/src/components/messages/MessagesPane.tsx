@@ -402,6 +402,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                              setCurrentIndex(index)
                            
                             }}
+                            isVisibleThreeDot={true}
                               truckNumbers={data?.data?.truckNumbers}
                               variant={isYou ? 'sent' : 'received'}
                               {...message}

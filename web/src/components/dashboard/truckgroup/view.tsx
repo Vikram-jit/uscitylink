@@ -802,7 +802,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                                     />
                                   )}
                                   <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
-                                    {moment(group?.last_message?.messageTimestampUtc).format('YYYY-MM-DD HH:mm A')}
+                                    {moment(group?.last_message?.messageTimestampUtc).format('MM-DD-YYYY hh:mm A')}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -950,6 +950,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                                     <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
                                   )}
                                   <ChatBubble
+                                  isVisibleThreeDot={false}
                                     onClick={() => {
                                       setCurrentIndex(index);
                                     }}
