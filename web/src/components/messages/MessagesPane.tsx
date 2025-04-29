@@ -60,7 +60,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       
       skip: !userId,
       pollingInterval: 30000,
-      refetchOnFocus: true,
+      refetchOnFocus: false,
       selectFromResult: ({ data, isLoading, isFetching }) => ({
         data,
         isLoading,

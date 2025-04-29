@@ -23,7 +23,7 @@ export default function MyMessage() {
   const { data, isLoading, refetch, isFetching } = useGetChannelMembersQuery(
     { page, pageSize: 12, search: searchItem ,type:selected?"truck":"user",unreadMessage:unreadMessage},
     {
-      refetchOnFocus: true,
+      refetchOnFocus: false,
     }
   );
 
