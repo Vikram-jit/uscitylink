@@ -235,7 +235,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1; 
    
-    const pageSize = 12; 
+    const pageSize = 30; 
 
     const search = req.query.search as string || ''
     const unreadMessage = req.query.unreadMessage  as string || "0"
@@ -300,15 +300,16 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
           userProfileId:{[Op.in]:uniqueArray}
         },
         order: [
-          [
-            
-            "sent_message_count",
-            "DESC",
-          ],
+        
         
           [
            
             "last_message_utc",
+            "DESC",
+          ],
+          [
+            
+            "sent_message_count",
             "DESC",
           ],
         ],

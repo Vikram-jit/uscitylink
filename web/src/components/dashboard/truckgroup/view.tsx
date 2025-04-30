@@ -218,15 +218,15 @@ const ChatInterface = ({ type }: { type: string }) => {
     name: '',
     body: '',
   });
-
+  const [oldGroup,setOldGroup] = useState<string>("")
   const [pageMessage, setPageMessage] = React.useState(1);
   const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
 
   const { data: group, isFetching } = useGetGroupByIdQuery(
-    { id: selectedGroup, page: pageMessage },
+    { id: selectedGroup, page: pageMessage,resetKey },
     {
       skip: !selectedGroup,
-      refetchOnMountOrArgChange: true,
+      refetchOnMountOrArgChange: false,
     }
   );
 
@@ -234,7 +234,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey },
     {
       skip: !selectedGroup,
-      refetchOnMountOrArgChange: true,
+      refetchOnMountOrArgChange: false,
     }
   );
 
@@ -344,8 +344,14 @@ const ChatInterface = ({ type }: { type: string }) => {
   }, [groupList, currentChannelId]);
 
   useEffect(() => {
+      if(oldGroup != ""){
+        if(oldGroup != selectedGroup){
+          setMessages([])
+        }
+      }
     if (type === 'truck') {
       if (group?.status && group?.data?.messages) {
+
         setMessages((prevMessages: any) => {
           // Filter out duplicate messages using a unique identifier (e.g., `id`)
           const newMessages = group.data.messages.filter(
@@ -356,6 +362,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
         setHasMoreMessage(group.data.pagination.currentPage < group.data.pagination.totalPages);
         setSenderId(group?.data?.senderId);
+        setOldGroup(group.data.group.id)
       }
     } else {
       if (groupMessage?.data?.messages) {
@@ -372,7 +379,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         setSenderId(groupMessage?.data?.senderId);
       }
     }
-  }, [group, groupMessage, type]);
+  }, [group, groupMessage, type,selectedGroup]);
 
   useEffect(() => {
     if (socket) {
@@ -679,6 +686,36 @@ const ChatInterface = ({ type }: { type: string }) => {
     setHasMoreMessage(true);
     setResetKey(Date.now());
   };
+  const handleGroupChange = (group: any, type: string) => {
+    if (type === 'group') {
+      socket.emit('group_user_add', {
+        channel_id: group.group_channel.channelId,
+        group_id: group.id,
+      });
+      socket.emit('update_group_staff_message_count', group.id);
+    } else {
+      socket?.emit('staff_open_truck_group', group.id);
+    }
+
+    // Reset messages and pagination state
+    setMessages([]);
+    setPageMessage(1);
+    setHasMoreMessage(true);
+    setSelectedGroup(""); // Optionally clear the old group first to trigger refetch
+
+    // Set new group and channel
+    setSelectedGroup(group.id);
+    setSelectedChannel(group.group_channel.channelId);
+
+    // Invalidate cache for relevant tags
+    //dispatch(apiSlice.util.invalidateTags(['channels', 'group']));
+
+    // Refetch the data for the new group/channel
+    setTimeout(() => {
+      // Ensure the messages container is scrolled to the bottom (if needed)
+      scrollToBottom();
+    }, 100);
+  };
 
   return (
     <Grid container>
@@ -739,29 +776,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                               color: 'black',
                             },
                           }}
-                          onClick={() => {
-                            if (type == 'group') {
-                              socket.emit('group_user_add', {
-                                channel_id: group.group_channel.channelId,
-                                group_id: group.id,
-                              });
-                              socket.emit('update_group_staff_message_count', group.id);
-                            } else {
-                              socket?.emit('staff_open_truck_group', group.id);
-                            }
-                            
-                            handleReset();
-                            setSelectedGroup(group.id);
-                            setSelectedChannel(group.group_channel.channelId);
-                            dispatch(apiSlice.util.invalidateTags(['channels','group']));
-                            setTimeout(() => {
-                              scrollToBottom();
-                            }, 100);
-                            
-                            // setMessages([]);
-                            // setPageMessage(1);
-                            // setHasMoreMessage(true);
-                          }}
+                          onClick={() => handleGroupChange(group,type)}
                         >
                           <Badge
                             overlap="circular"

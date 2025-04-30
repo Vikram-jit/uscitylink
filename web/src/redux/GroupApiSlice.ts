@@ -26,11 +26,11 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: SingleGroupModel;
       },
-      Partial<{ id: string,page:number }>
+      Partial<{ id: string,page:number,resetKey:number }>
     >({
       providesTags: ['group'],
       query: (payload) => ({
-        url: `group/messages/${payload.id}?page=${payload.page}`,
+        url: `group/messages/${payload.id}?page=${payload.page}&resetKey=${payload.resetKey}`,
         method: 'GET',
       }),
     }),
