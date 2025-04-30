@@ -1823,6 +1823,16 @@ export async function messageToDriverByTruckGroup(
     userIds = userId.split(",");
   }
   let idsf: any = "";
+  const group_message = await GroupMessage.create({
+    groupId: groupId,
+    body: body,
+    senderId: socket?.user?.id,
+    deliveryStatus: "sent",
+    messageTimestampUtc: utcTime,
+    url: url || null,
+    thumbnail: thumbnail || null,
+    url_upload_type: url_upload_type || "server",
+  });
   const newSaveStaff = await Message.create({
     channelId: findStaffActiveChannel?.channelId,
     groupId: groupId,
@@ -2032,17 +2042,7 @@ export async function messageToDriverByTruckGroup(
       },
     }
   );
-  const group_message = await GroupMessage.create({
-    groupId: groupId,
-    body: body,
-    senderId: socket?.user?.id,
-    deliveryStatus: "sent",
-    messageTimestampUtc: utcTime,
-    url: url || null,
-    thumbnail: thumbnail || null,
-    url_upload_type: url_upload_type || "server",
-  });
-
+ 
  
 }
 
