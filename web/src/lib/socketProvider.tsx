@@ -38,6 +38,7 @@ export const SocketProvider = ({
   const dispatch = useDispatch();
   useEffect(() => {
     const socketServer = io(process.env.SOCKET_URL, {
+      transports: ['websocket'],
       query: { token: token },
       reconnection: true, // Ensure reconnection is enabled
       reconnectionAttempts: Infinity, // Unlimited attempts

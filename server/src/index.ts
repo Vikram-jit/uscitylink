@@ -33,9 +33,9 @@ import Group from "./models/Group";
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
-import Redis from 'ioredis';
-import { createClient } from 'redis';  // Not needed if you're using ioredis
 
+import cluster from 'cluster';
+import os from 'os';
 
 
 dotenv.config();
