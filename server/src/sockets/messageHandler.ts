@@ -811,10 +811,36 @@ export async function driverMessageQueueProcessResend(
             "notification_new_message",
             `New Message received on ${channel?.name} channel`
           );
-          io.to(isSocket.id).emit(
-            "notification_new_message_with_user",
-            userDriver
-          );
+          if(userDriver){
+            const unreadCount = await MessageStaff.count({
+              where:{
+                driverId:userDriver.userProfileId,
+                status:"un-read",
+                type:"chat",
+                staffId:user.id
+              }
+            })
+            const groupUsers:any = await GroupUser.findAll({
+              where:{
+                userProfileId:userDriver.userProfileId,
+                status:"active"
+              },
+              include:[{
+                model:Group,
+                where:{
+                  type:"truck",
+      
+                }
+              }]
+            })
+            const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
+      
+            const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
+            io.to(isSocket.id).emit(
+              "notification_new_message_with_user",
+              newObj
+            );}
+          
           io.to(isSocket.id).emit("new_message_count_update_staff", {
             channelId: message?.channelId,
             userId: message?.userProfileId,
@@ -1158,10 +1184,37 @@ export async function driverMessageQueueProcess(
             "notification_new_message",
             `New Message received on ${channel?.name} channel`
           );
-          io.to(isSocket.id).emit(
-            "notification_new_message_with_user",
-            userDriver
-          );
+          if(userDriver){
+              const unreadCount = await MessageStaff.count({
+                where:{
+                  driverId:userDriver.userProfileId,
+                  status:"un-read",
+                  type:"chat",
+                  staffId:user.id
+                }
+              })
+              const groupUsers:any = await GroupUser.findAll({
+                where:{
+                  userProfileId:userDriver.userProfileId,
+                  status:"active"
+                },
+                include:[{
+                  model:Group,
+                  where:{
+                    type:"truck",
+        
+                  }
+                }]
+              })
+              const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
+        
+              const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
+              io.to(isSocket.id).emit(
+                "notification_new_message_with_user",
+                newObj
+              );
+            }
+         
           io.to(isSocket.id).emit("new_message_count_update_staff", {
             channelId: message?.channelId,
             userId: message?.userProfileId,
@@ -1484,7 +1537,7 @@ export async function messageToChannelToUser(
 
      
     });
-
+ 
     await Promise.all(
       users.map(async (user) => {
         if (user) {
@@ -1494,10 +1547,38 @@ export async function messageToChannelToUser(
               "notification_new_message",
               `New Message received on ${channel?.name} channel`
             );
-            io.to(isSocket.id).emit(
-              "notification_new_message_with_user",
-              userDriver
-            );
+            if(userDriver){
+              const unreadCount = await MessageStaff.count({
+                where:{
+                  driverId:userDriver.userProfileId,
+                  status:"un-read",
+                  type:"chat",
+                  staffId:user.id
+                }
+              })
+              const groupUsers:any = await GroupUser.findAll({
+                where:{
+                  userProfileId:userDriver.userProfileId,
+                  status:"active"
+                },
+                include:[{
+                  model:Group,
+                  where:{
+                    type:"truck",
+        
+                  }
+                }]
+              })
+              const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
+        
+              const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
+              io.to(isSocket.id).emit(
+                "notification_new_message_with_user",
+                newObj
+              );
+            }
+           
+           
             io.to(isSocket.id).emit("new_message_count_update_staff", {
               channelId: message?.channelId,
               userId: message?.userProfileId,
@@ -1742,6 +1823,39 @@ export async function messageToDriverByTruckGroup(
     userIds = userId.split(",");
   }
   let idsf: any = "";
+  const newSaveStaff = await Message.create({
+    channelId: findStaffActiveChannel?.channelId,
+    groupId: groupId,
+    userProfileId: socket?.user?.id,
+    body,
+    messageDirection: direction,
+    deliveryStatus: "sent",
+    messageTimestampUtc: utcTime,
+    senderId: socket?.user?.id,
+    isRead: false,
+    status: "sent",
+    url: url || null,
+    type: "default",
+    thumbnail: thumbnail || null,
+    url_upload_type: url_upload_type || "server",
+  });
+
+  Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
+    if (
+      e.channelId === findStaffActiveChannel?.channelId &&
+      groupId == e.groupId
+    ) {
+      const isSocket = global.userSockets[staffId];
+
+      if (isSocket) {
+        io.to(isSocket.id).emit(
+          SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
+          group_message
+        );
+        io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
+      }
+    }
+  });
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId
@@ -1929,39 +2043,7 @@ export async function messageToDriverByTruckGroup(
     url_upload_type: url_upload_type || "server",
   });
 
-  const newSaveStaff = await Message.create({
-    channelId: findStaffActiveChannel?.channelId,
-    groupId: groupId,
-    userProfileId: socket?.user?.id,
-    body,
-    messageDirection: direction,
-    deliveryStatus: "sent",
-    messageTimestampUtc: utcTime,
-    senderId: socket?.user?.id,
-    isRead: false,
-    status: "sent",
-    url: url || null,
-    type: "default",
-    thumbnail: thumbnail || null,
-    url_upload_type: url_upload_type || "server",
-  });
-
-  Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
-    if (
-      e.channelId === findStaffActiveChannel?.channelId &&
-      groupId == e.groupId
-    ) {
-      const isSocket = global.userSockets[staffId];
-
-      if (isSocket) {
-        io.to(isSocket.id).emit(
-          SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
-          group_message
-        );
-        io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
-      }
-    }
-  });
+ 
 }
 
 export async function deleteMessage(
