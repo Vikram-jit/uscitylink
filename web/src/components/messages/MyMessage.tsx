@@ -84,6 +84,8 @@ export default function MyMessage() {
     setPage(1);
     setUserList(null);
     setSelectedUserId('');
+    setResetKey(Date.now())
+
   };
 
   React.useEffect(() => {
@@ -325,7 +327,7 @@ export default function MyMessage() {
         />
       </Box>
       {mLoader && <CircularProgress />}
-      {messageData?.status && (
+      {messageData?.status  && selectedUserId && (
         <MessagesPane
           page={mPage}
           setPage={setMPage}

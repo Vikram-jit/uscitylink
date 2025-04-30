@@ -74,36 +74,47 @@ export default function MessagesPane(props: MessagesPaneProps) {
   
 
   React.useEffect(() => {
-    if (userId) {
-      refetch();
+    if (!userId) return; // Skip if userId is falsy
+  
+    // Call refetch only if the query is ready
+    try {
+      refetch?.(); // Use optional chaining to prevent calling undefined
+    } catch (err) {
+      console.warn("Refetch error:", err);
     }
   }, [userId, refetch]);
 
   React.useEffect(() => {
-    if (userId) {
-      // Reset states when `userId` changes
-      setMessages([]);
-      setTextAreaValue('');
-      setPage(1);
-      setHasMore(true);
-      setSender(undefined); // Reset sender info
-      setPinMessage('0');
-      setUnReadMessage('0');
-      setSelectedMessageToReply(null);
-      setResetKey(Date.now()); // Force a new key to reset query data
-
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTo({
-          top: 1,
-          behavior: 'smooth',
-        });
-        setButtonTitle('Scroll to Bottom');
-      }
-
-      // Refetch data for the new userId
-      refetch();
+    if (!userId) return;
+  
+    // Reset states when `userId` changes
+    setMessages([]);
+    setTextAreaValue('');
+    setPage(1);
+    setHasMore(true);
+    setSender(undefined);
+    setPinMessage('0');
+    setUnReadMessage('0');
+    setSelectedMessageToReply(null);
+    setResetKey(Date.now());
+  
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: 1,
+        behavior: 'smooth',
+      });
+      setButtonTitle('Scroll to Bottom');
     }
-  }, [userId, refetch]);
+  
+    // Ensure refetch is available before calling
+    if (typeof refetch === 'function') {
+      try {
+        refetch();
+      } catch (e) {
+        console.warn('Refetch failed:', e);
+      }
+    }
+  }, [userId]);
 
 
   React.useEffect(() => {
