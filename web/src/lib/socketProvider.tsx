@@ -74,9 +74,7 @@ export const SocketProvider = ({
     function onDisconnect() {
       setIsConnected(false);
     }
-    socketServer.on('user_online', () => {
-      dispatch(apiSlice.util.invalidateTags(['channelUsers',  'members']));
-    });
+    
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
     socketServer.on('notification_new_message', (message: string) => {
@@ -85,7 +83,7 @@ export const SocketProvider = ({
       socketServer.on('reconnect_failed', onReconnectFailed);
       toast.success(message);
       document.title = "New Message";
-      dispatch(apiSlice.util.invalidateTags([ 'messages','channels']));
+     // dispatch(apiSlice.util.invalidateTags([ 'messages','channels']));
       //dispatch(apiSlice.util.invalidateTags(['dashboard','channels']));
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
 

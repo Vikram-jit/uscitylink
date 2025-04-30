@@ -297,7 +297,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleReceiveMessage = useCallback(
     (message: any, groupId: string) => {
-      console.log(message, 'tyr');
+      
       if (message.groupId !== selectedGroup) {
         return; // Ignore the message if the groupId does not match selectedId
       }
@@ -424,7 +424,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
   const loadMoreGroupMessages = () => {
-    console.log('hello');
+   
     if (hasMoreMessage && !isLoading) {
       setPageMessage((prevPage) => prevPage + 1);
     }
@@ -749,14 +749,15 @@ const ChatInterface = ({ type }: { type: string }) => {
                             } else {
                               socket?.emit('staff_open_truck_group', group.id);
                             }
-                            dispatch(apiSlice.util.invalidateTags(['channels']));
-
+                            
+                            handleReset();
                             setSelectedGroup(group.id);
                             setSelectedChannel(group.group_channel.channelId);
+                            dispatch(apiSlice.util.invalidateTags(['channels','group']));
                             setTimeout(() => {
                               scrollToBottom();
                             }, 100);
-                            handleReset();
+                            
                             // setMessages([]);
                             // setPageMessage(1);
                             // setHasMoreMessage(true);

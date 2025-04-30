@@ -754,6 +754,77 @@ export async function driverMessageQueueProcessResend(
       message: message,
     });
   }
+
+  const roleId = await Role.findOne({
+    where: {
+      name: "staff",
+    },
+  });
+
+  const channel = await Channel.findByPk(channelId);
+
+  const users = await UserProfile.findAll({
+    where: {
+      role_id: roleId?.id,
+      // device_token: {
+      //   [Op.ne]: null,
+      // },
+    },
+  });
+
+  const userDriver = await UserChannel.findOne( {
+    where:{
+      userProfileId:message?.userProfileId,
+      channelId:message?.channelId
+    },
+    include: [
+      {
+        model: UserProfile,
+        attributes: {
+          exclude: ["password"],
+        },
+        include: [
+          {
+            model: User,
+            as: "user",
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+      {
+        model: Message,
+        as: "last_message",
+      },
+    ],
+
+   
+  });
+
+  await Promise.all(
+    users.map(async (user) => {
+      if (user) {
+        const isSocket = global.userSockets[user.id];
+        if (isSocket) {
+          io.to(isSocket.id).emit(
+            "notification_new_message",
+            `New Message received on ${channel?.name} channel`
+          );
+          io.to(isSocket.id).emit(
+            "notification_new_message_with_user",
+            userDriver
+          );
+          io.to(isSocket.id).emit("new_message_count_update_staff", {
+            channelId: message?.channelId,
+            userId: message?.userProfileId,
+            message,
+            sent_message_count: 1,
+          });
+        }
+      }
+    })
+  );
 }
 
 export async function driverMessageQueueProcess(
@@ -902,7 +973,7 @@ export async function driverMessageQueueProcess(
               );
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received`
+                `New Message received First`
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -912,7 +983,19 @@ export async function driverMessageQueueProcess(
     );
 
     await Promise.all(promises);
-
+    const isDriverSocket = global.userSockets[socket?.user?.id!];
+    if (isDriverSocket) {
+      io.to(isDriverSocket?.id).emit("update_queue_message_driver", {
+        channelId: channelId,
+        oldMessageId: messageId,
+        message: message,
+      });
+    } else {
+      await message?.update({
+        status: "queue",
+        temp_id: messageId,
+      });
+    }
     if (isCheckAnyStaffOpenChat === 0) {
       await UserChannel.update(
         {
@@ -946,6 +1029,7 @@ export async function driverMessageQueueProcess(
           });
           if (el.role == "staff" && el.channelId == channelId) {
             if (isSocket) {
+              
               io.to(isSocket?.id).emit("new_message_count_update_staff", {
                 channelId: message?.channelId,
                 userId: message?.userProfileId,
@@ -954,7 +1038,7 @@ export async function driverMessageQueueProcess(
 
               io.to(isSocket?.id).emit(
                 "notification_new_message",
-                `New Message received `
+                `New Message received second`
               );
             }
           } else {
@@ -1018,19 +1102,76 @@ export async function driverMessageQueueProcess(
     messageId: messageSave.id,
   });
 
-  const isDriverSocket = global.userSockets[socket?.user?.id!];
-  if (isDriverSocket) {
-    io.to(isDriverSocket?.id).emit("update_queue_message_driver", {
-      channelId: channelId,
-      oldMessageId: messageId,
-      message: message,
-    });
-  } else {
-    await message?.update({
-      status: "queue",
-      temp_id: messageId,
-    });
-  }
+  const roleId = await Role.findOne({
+    where: {
+      name: "staff",
+    },
+  });
+
+  const channel = await Channel.findByPk(channelId);
+
+  const users = await UserProfile.findAll({
+    where: {
+      role_id: roleId?.id,
+      // device_token: {
+      //   [Op.ne]: null,
+      // },
+    },
+  });
+
+  const userDriver = await UserChannel.findOne( {
+    where:{
+      userProfileId:message?.userProfileId,
+      channelId:message?.channelId
+    },
+    include: [
+      {
+        model: UserProfile,
+        attributes: {
+          exclude: ["password"],
+        },
+        include: [
+          {
+            model: User,
+            as: "user",
+            where: {
+              status: "active",
+            },
+          },
+        ],
+      },
+      {
+        model: Message,
+        as: "last_message",
+      },
+    ],
+
+   
+  });
+
+  await Promise.all(
+    users.map(async (user) => {
+      if (user) {
+        const isSocket = global.userSockets[user.id];
+        if (isSocket) {
+          io.to(isSocket.id).emit(
+            "notification_new_message",
+            `New Message received on ${channel?.name} channel`
+          );
+          io.to(isSocket.id).emit(
+            "notification_new_message_with_user",
+            userDriver
+          );
+          io.to(isSocket.id).emit("new_message_count_update_staff", {
+            channelId: message?.channelId,
+            userId: message?.userProfileId,
+            message,
+            sent_message_count: 1,
+          });
+        }
+      }
+    })
+  );
 }
 
 export async function messageToChannelToUser(
@@ -1143,7 +1284,7 @@ export async function messageToChannelToUser(
                 const channel = await Channel.findByPk(message?.channelId);
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel`
+                  `New Message received on ${channel?.name} channel 1`
                 );
                 await UserChannel.update(
                   {
@@ -1193,7 +1334,7 @@ export async function messageToChannelToUser(
       );
 
       await Promise.all(promises);
-
+      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
       if (isCheckAnyStaffOpenChat === 0) {
         await UserChannel.update(
           {
@@ -1271,7 +1412,7 @@ export async function messageToChannelToUser(
           },
         }
       );
-      io.to(socket?.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+
       if (socket?.user?.truck_group_id) {
         Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
           if (
@@ -1303,17 +1444,6 @@ export async function messageToChannelToUser(
       },
     });
 
-    // const staffIds = Object.entries(global.staffOpenChat).map(
-    //   ([key, value]) => {
-    //     if (
-    //       value.channelId == channelId &&
-    //       value.userId == findUserChannel.driverId
-    //     ) {
-    //       return key;
-    //     }
-    //   }
-    // );
-
     const channel = await Channel.findByPk(channelId);
 
     const users = await UserProfile.findAll({
@@ -1325,6 +1455,36 @@ export async function messageToChannelToUser(
       },
     });
 
+    const userDriver = await UserChannel.findOne( {
+      where:{
+        userProfileId:message?.userProfileId,
+        channelId:message?.channelId
+      },
+      include: [
+        {
+          model: UserProfile,
+          attributes: {
+            exclude: ["password"],
+          },
+          include: [
+            {
+              model: User,
+              as: "user",
+              where: {
+                status: "active",
+              },
+            },
+          ],
+        },
+        {
+          model: Message,
+          as: "last_message",
+        },
+      ],
+
+     
+    });
+
     await Promise.all(
       users.map(async (user) => {
         if (user) {
@@ -1333,6 +1493,10 @@ export async function messageToChannelToUser(
             io.to(isSocket.id).emit(
               "notification_new_message",
               `New Message received on ${channel?.name} channel`
+            );
+            io.to(isSocket.id).emit(
+              "notification_new_message_with_user",
+              userDriver
             );
             io.to(isSocket.id).emit("new_message_count_update_staff", {
               channelId: message?.channelId,
@@ -1631,7 +1795,6 @@ export async function messageToDriverByTruckGroup(
       findDriverSocket?.channelId == findStaffActiveChannel?.channelId
     ) {
       if (isDriverSocket) {
-      
         await messageSave.update(
           {
             deliveryStatus: "seen",
@@ -1650,7 +1813,10 @@ export async function messageToDriverByTruckGroup(
       }
     } else {
       if (isDriverSocket) {
-        io.to(isDriverSocket?.id).emit("update_user_channel_list", modifiedMessage);
+        io.to(isDriverSocket?.id).emit(
+          "update_user_channel_list",
+          modifiedMessage
+        );
         io.to(isDriverSocket?.id).emit(
           "new_message_count_update",
           message?.channelId
@@ -2473,7 +2639,7 @@ export async function notifiyFileUploadTruckGroupMembers(
   type: string,
   userId: string,
   groupMessageId: string,
-  fileName?:string
+  fileName?: string
 ) {
   const users = await GroupUser.findAll({
     where: {
@@ -2484,15 +2650,15 @@ export async function notifiyFileUploadTruckGroupMembers(
   await Promise.all(
     users.map(async (item) => {
       const message = await Message.findOne({
-        where:{
-          channelId:channelId,
-          groupId:groupId,
-          url:fileName,
-          userProfileId:item.userProfileId
-        }
-      })
-      if(message){
-        await message.update( { url_upload_type: "server" })
+        where: {
+          channelId: channelId,
+          groupId: groupId,
+          url: fileName,
+          userProfileId: item.userProfileId,
+        },
+      });
+      if (message) {
+        await message.update({ url_upload_type: "server" });
       }
       const findUserChannel = global.driverOpenChat.find(
         (e) =>
@@ -2514,15 +2680,15 @@ export async function notifiyFileUploadTruckGroupMembers(
     async ([staffId, e]) => {
       const isSocket = global.userSockets[staffId];
       const message = await Message.findOne({
-        where:{
-          channelId:channelId,
-          groupId:groupId,
-          url:fileName,
-          userProfileId:staffId
-        }
-      })
-      if(message){
-        await message.update( { url_upload_type: "server" })
+        where: {
+          channelId: channelId,
+          groupId: groupId,
+          url: fileName,
+          userProfileId: staffId,
+        },
+      });
+      if (message) {
+        await message.update({ url_upload_type: "server" });
       }
       if (e.groupId == groupId && channelId == e.channelId) {
         if (isSocket) {

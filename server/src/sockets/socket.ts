@@ -270,8 +270,9 @@ export const initSocket = (httpServer: any) => {
                 const isSocket = global.userSockets[key];
                 if (isSocket) {
                   io.to(isSocket.id).emit("user_online", {
-                    userId: key,
+                    userId: userProfile.id,
                     channelId: value.channelId,
+                    isOnline:true
                   });
                   io.to(isSocket.id).emit("user_online_driver", {
                     userId: userProfile?.id,
@@ -838,7 +839,11 @@ export const initSocket = (httpServer: any) => {
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
             const isSocket = global.userSockets[key];
             if (isSocket) {
-              io.to(isSocket.id).emit("user_online", null);
+              io.to(isSocket.id).emit("user_online", {
+                userId: isUser.id,
+                channelId: value.channelId,
+                isOnline:false
+              });
             }
           });
         } else {
@@ -869,7 +874,7 @@ export const initSocket = (httpServer: any) => {
     socket.on("disconnect", async () => {
       console.log("disconnect");
       const userId = socket?.user?.id!;
-
+      
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
 
@@ -888,6 +893,8 @@ export const initSocket = (httpServer: any) => {
         ],
       });
 
+      console.log(isUser?.username)
+
       if (isUser) {
         if (isUser?.role?.name == "driver") {
           await isUser.update({
@@ -899,7 +906,11 @@ export const initSocket = (httpServer: any) => {
           Object.entries(global.staffActiveChannel).map(([key, value]) => {
             const isSocket = global.userSockets[key];
             if (isSocket) {
-              io.to(isSocket.id).emit("user_online", null);
+              io.to(isSocket.id).emit("user_online", {
+                userId: userId,
+                channelId: value.channelId,
+                isOnline:false
+              });
               io.to(isSocket.id).emit("user_online_driver", {
                 userId: socket.user?.id,
                 channelId: value.channelId,

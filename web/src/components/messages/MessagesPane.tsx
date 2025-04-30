@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useGetMessagesByUserIdQuery } from '@/redux/MessageApiSlice';
-import { SingleChannelModel } from '@/redux/models/ChannelModel';
+import { SingleChannelModel, UserProfile } from '@/redux/models/ChannelModel';
 import { MessageModel } from '@/redux/models/MessageModel';
 import { Close, WavingHand } from '@mui/icons-material';
 import { Button, CircularProgress, Divider, IconButton, Typography } from '@mui/material';
@@ -20,17 +20,34 @@ import MediaPane from './MediaPane';
 import MessageInput from './MessageInput';
 import MessagesPaneHeader from './MessagesPaneHeader';
 import { toast } from 'react-toastify';
-import { set } from 'react-hook-form';
+
 import DocumentDialog from '../DocumentDialog';
 
 type MessagesPaneProps = {
   userId: string;
   userList: any | null;
   setUserList: React.Dispatch<React.SetStateAction<SingleChannelModel | null>>;
+  data:{
+
+    userProfile: UserProfile; messages: MessageModel[],pagination:{
+      currentPage: number,
+      pageSize: number,
+      totalMessages:number,
+      totalPages:number,
+    },truckNumbers?:string
+  },
+    isLoading:boolean, refetch:any ,isFetching:boolean
+    pinMessage:string,
+    setPinMessage:React.Dispatch<React.SetStateAction<string>>
+    setResetKey:React.Dispatch<React.SetStateAction<number>>
+    setPage:React.Dispatch<React.SetStateAction<number>>
+    setHasMore:React.Dispatch<React.SetStateAction<boolean>>
+    page:number
+    hasMore:boolean
 };
 
 export default function MessagesPane(props: MessagesPaneProps) {
-  const { userId, setUserList } = props;
+  const { userId, setUserList ,data,isFetching,isLoading,refetch,pinMessage,setPinMessage,setResetKey,hasMore,setHasMore,setPage,page} = props;
   const { trackChannelState } = useSelector((state: any) => state.channel);
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
@@ -40,12 +57,11 @@ export default function MessagesPane(props: MessagesPaneProps) {
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const [pinMessage, setPinMessage] = React.useState<string>('0');
+  
   const [unreadMessage, setUnReadMessage] = React.useState<string>('0');
   const [resetCount, setResetCount] = React.useState(0);
-  const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
-  const [page, setPage] = React.useState(1);
-  const [hasMore, setHasMore] = React.useState<boolean>(true);
+  
+
   const [showScrollToBottomButton, setShowScrollToBottomButton] = React.useState(false);
   const [buttonTitle, setButtonTitle] = React.useState<string>('Scroll to Bottom');
   const [selectedMessageToReply, setSelectedMessageToReply] = React.useState<MessageModel | null>(null);
@@ -54,20 +70,8 @@ export default function MessagesPane(props: MessagesPaneProps) {
     body: '',
   });
   const [currentIndex, setCurrentIndex] = React.useState<number | null>(null);  
-  const { data, isLoading, refetch ,isFetching} = useGetMessagesByUserIdQuery(
-    { id: userId, page, pageSize: 10, pinMessage: pinMessage,unreadMessage:unreadMessage,resetKey },
-    {
-      
-      skip: !userId,
-      pollingInterval: 30000,
-      refetchOnFocus: false,
-      selectFromResult: ({ data, isLoading, isFetching }) => ({
-        data,
-        isLoading,
-        isFetching,
-      }),
-    }
-  );
+  const [sender,setSender] = React.useState<UserProfile|undefined>(undefined)
+  
 
   React.useEffect(() => {
     if (userId) {
@@ -77,14 +81,17 @@ export default function MessagesPane(props: MessagesPaneProps) {
 
   React.useEffect(() => {
     if (userId) {
-      // Resetting all necessary states when userId changes
+      // Reset states when `userId` changes
       setMessages([]);
       setTextAreaValue('');
       setPage(1);
       setHasMore(true);
-      setSelectedTemplate({ name: '', body: '', url: '' });
-      setIsTyping(false);
-      //setShowScrollToBottomButton(false)
+      setSender(undefined); // Reset sender info
+      setPinMessage('0');
+      setUnReadMessage('0');
+      setSelectedMessageToReply(null);
+      setResetKey(Date.now()); // Force a new key to reset query data
+
       if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTo({
           top: 1,
@@ -92,22 +99,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
         });
         setButtonTitle('Scroll to Bottom');
       }
+
+      // Refetch data for the new userId
+      refetch();
     }
-    
-  }, [userId]);
+  }, [userId, refetch]);
+
 
   React.useEffect(() => {
-    if (data && data.status) {
+    if (data) {
+      if(data?.userProfile){
+        setSender(data?.userProfile)
+      }
       if (page == 1) {
         setMessages([]);
       }
       setMessages((prevMessages) => {
-        const newMessages = data.data.messages.filter(
+        const newMessages = data?.messages.filter(
           (message) => !prevMessages.some((prevMessage) => prevMessage.id === message.id)
         );
-        return [...prevMessages, ...newMessages];
+        return newMessages ? [...prevMessages, ...newMessages] : prevMessages;
       });
-      setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
+      setHasMore(data.pagination.currentPage < data.pagination.totalPages);
     }
   }, [data, page]);
 
@@ -133,6 +146,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setPinMessage('0');
     setSelectedTemplate({ name: '', body: '', url: '' });
     setIsTyping(false);
+    setSender(undefined); 
     setSelectedMessageToReply(null);
   
     if (messagesContainerRef.current) {
@@ -173,7 +187,28 @@ export default function MessagesPane(props: MessagesPaneProps) {
           return { ...prevUserList, user_channels: updatedUserChannels };
         });
       });
-
+      socket.on('user_online', (socketData: any) => {
+        // Safeguard: Ensure socketData contains userId and isOnline before proceeding
+        if (!socketData || typeof socketData.userId === 'undefined' || typeof socketData.isOnline === 'undefined') {
+          console.warn('Invalid socket data received:', socketData);
+          return;
+        }
+      
+        const { userId, isOnline } = socketData;
+      
+        // Check if the sender exists and if the userId matches the sender's id
+        if (sender?.id === userId) {
+          setSender((prevSender) => {
+            if (!prevSender) {
+              console.warn('Sender data not found!');
+              return prevSender;  // Prevent updating if sender doesn't exist
+            }
+      
+            // Update the sender's isOnline status
+            return { ...prevSender, isOnline };  // Return updated sender with new isOnline status
+          });
+        }
+      });
       socket.on('typing', (data: any) => {
         setIsTyping(data.isTyping);
       });
@@ -247,7 +282,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         socket.off('pin_done_web');
         socket.off('staff_open_chat', userId);
       }
-      clearInterval(intervalId); // Clear interval to avoid memory leaks
+      clearInterval(intervalId); 
     };
   }, [socket, userId]);
 
@@ -324,13 +359,13 @@ export default function MessagesPane(props: MessagesPaneProps) {
         backgroundColor: '#f0f0f0',
       }}
     >
-      {data?.data && userId && (
+      {data && userId && (
         <MessagesPaneHeader
         handleReset={handleReset}
           onHandlePin={onHandlePin}
           mediaPanel={mediaPanel}
-          truckNumbers={data?.data?.truckNumbers}
-          sender={data?.data?.userProfile}
+          truckNumbers={data?.truckNumbers}
+          sender={sender}
           setMediaPanel={setMediaPanel}
           setSelectedTemplate={setSelectedTemplate}
           pinMessage={pinMessage}
@@ -346,7 +381,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         <MediaPane userId={props.userId} source="channel" channelId={'null'} />
       ) : (
         <>
-          {data?.status && messages.length > 0 ? (
+          {data && messages.length > 0 ? (
             <>
               <Box
                 id="scrollable-messages-container"
@@ -403,7 +438,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                            
                             }}
                             isVisibleThreeDot={true}
-                              truckNumbers={data?.data?.truckNumbers}
+                              truckNumbers={data?.truckNumbers}
                               variant={isYou ? 'sent' : 'received'}
                               {...message}
                               attachment={false}
