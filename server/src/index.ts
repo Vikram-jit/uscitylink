@@ -33,12 +33,17 @@ import Group from "./models/Group";
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
+import Redis from 'ioredis';
+import { createClient } from 'redis';  // Not needed if you're using ioredis
+
 
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+
 app.use(express.static("public"));
 
 app.set("view engine", "ejs");

@@ -35,6 +35,11 @@ import PrivateChatMember from "../models/PrivateChatMember";
 import { Message } from "../models/Message";
 import { Op } from "sequelize";
 import GroupChannel from "../models/GroupChannel";
+import Redis from 'ioredis';
+import { createAdapter } from "@socket.io/redis-adapter";
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 let io: Server;
 interface User {
@@ -86,13 +91,25 @@ export interface CustomSocket extends Socket {
 }
 
 export const initSocket = (httpServer: any) => {
+
+  const pubClient = new Redis({
+    host: process.env.REDIS_HOST,  // Redis host, adjust according to your setup
+    port: 6379,         // Redis port
+  });
+  
+  
+  const subClient = pubClient.duplicate();  // Use the same Redis client for pub/sub
+  
+
   io = new Server(httpServer, {
+    adapter: createAdapter(pubClient, subClient),
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type"],
     },
   });
+
 
   global.userSockets = {};
   global.socketIO = io;
