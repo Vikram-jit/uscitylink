@@ -77,7 +77,20 @@ export const ChannelApiSlice = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
-
+    unReadMessageAll: builder.mutation<
+    {
+      status: boolean;
+      message: string;
+    },
+    void
+  >({
+    invalidatesTags: ['channels', 'messages'],
+    query: (payload) => ({
+      url: 'channel/markAllUnreadMessage',
+      method: 'POST',
+      body: payload,
+    }),
+  }),
     removeChannelMember: builder.mutation<ApiResponse, { id: string }>({
       invalidatesTags: ['members'],
       query: (payload) => ({
@@ -103,5 +116,6 @@ export const {
   useGetChannelMembersQuery,
   useAddMemberToChannelMutation,
   useRemoveChannelMemberMutation,
-  useChangeChannelMemberStatusMutation
+  useChangeChannelMemberStatusMutation,
+  useUnReadMessageAllMutation
 } = ChannelApiSlice;

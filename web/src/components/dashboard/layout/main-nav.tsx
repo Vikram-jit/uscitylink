@@ -15,11 +15,18 @@ import { usePopover } from '@/hooks/use-popover';
 
 import { MobileNav } from './mobile-nav';
 import { UserPopover } from './user-popover';
+import { Button } from '@mui/material';
+import { useUnReadMessageAllMutation } from '@/redux/ChannelApiSlice';
+import MarkMessageDialog from './mark-message-dialog';
+import { toast } from 'react-toastify';
 
 export function MainNav(): React.JSX.Element {
   const [openNav, setOpenNav] = React.useState<boolean>(false);
 
   const userPopover = usePopover<HTMLDivElement>();
+  const [openDialog,setOpenDialog] = React.useState<boolean>(false)
+ 
+  const [unReadMessageAll,{isLoading}] = useUnReadMessageAllMutation()
 
   return (
 
@@ -55,7 +62,9 @@ export function MainNav(): React.JSX.Element {
             </Tooltip> */}
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
-           
+           <Button variant="outlined"   onClick={(): void => {
+                setOpenDialog(true);
+              }}>Un-Read All Messages</Button>
             {/* <Tooltip title="Notifications">
               <Badge badgeContent={4} color="success" variant="dot">
                 <IconButton>
@@ -79,6 +88,17 @@ export function MainNav(): React.JSX.Element {
         }}
         open={openNav}
       />
+      {openDialog && <MarkMessageDialog open={openDialog} loader={isLoading} onClose={()=>{
+        setOpenDialog(false)
+      }} onSendOtp={async()=>{
+        const res = await unReadMessageAll()
+        if(res.data?.status){
+          toast.success(res.data?.message)
+          setOpenDialog(false)
+          return
+        }
+        toast.error("SERVER ERROR")
+      }}/>}
     </React.Fragment>
 
   );

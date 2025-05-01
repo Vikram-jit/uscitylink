@@ -269,3 +269,30 @@ export async function getDrivers(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+export async function markAllUnReadMessage(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+
+    await MessageStaff.update({
+      status:"read"
+    },{
+      where:{
+        staffId:req.user?.id
+      }
+    })
+    return res.status(200).json({
+      status: true,
+      message: `Marked read chat successfully.`,
+    });
+
+   
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
