@@ -587,10 +587,10 @@ export async function driverMessageQueueProcessResend(
         } else {
           if (e.channelId !== channelId) {
             if (isSocket) {
-              const channel = await Channel.findByPk(message?.channelId);
+              // const channel = await Channel.findByPk(message?.channelId);
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received on ${channel?.name} channel`
+                `New Message received by ${message?.dataValues.sender.username}`
               );
               await UserChannel.update(
                 {
@@ -687,11 +687,11 @@ export async function driverMessageQueueProcessResend(
             }
           } else {
             if (el.role == "staff" && el.channelId != channelId) {
-              const channel = await Channel.findByPk(message?.channelId);
+              // const channel = await Channel.findByPk(message?.channelId);
               if (isSocket) {
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel`
+                  `New Message received by  ${message?.dataValues.sender.username}`
                 );
               }
             }
@@ -956,10 +956,10 @@ export async function driverMessageQueueProcess(
         } else {
           if (e.channelId !== channelId) {
             if (isSocket) {
-              const channel = await Channel.findByPk(message?.channelId);
+              // const channel = await Channel.findByPk(message?.channelId);
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received on ${channel?.name} channel`
+                `New Message received by  ${message?.dataValues.sender.username}`
               );
               await UserChannel.update(
                 {
@@ -1069,11 +1069,11 @@ export async function driverMessageQueueProcess(
             }
           } else {
             if (el.role == "staff" && el.channelId != channelId) {
-              const channel = await Channel.findByPk(message?.channelId);
+              // const channel = await Channel.findByPk(message?.channelId);
               if (isSocket) {
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel`
+                  `New Message received by  ${message?.dataValues.sender.username}`
                 );
               }
             }
@@ -1334,10 +1334,10 @@ export async function messageToChannelToUser(
           } else {
             if (e.channelId !== findUserChannel.channelId) {
               if (isSocket) {
-                const channel = await Channel.findByPk(message?.channelId);
+                // const channel = await Channel.findByPk(message?.channelId);
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel 1`
+                  `New Message received on  ${message?.dataValues.sender.username}  channel 1`
                 );
                 await UserChannel.update(
                   {
@@ -1439,11 +1439,11 @@ export async function messageToChannelToUser(
                 el.role == "staff" &&
                 el.channelId != findUserChannel.channelId
               ) {
-                const channel = await Channel.findByPk(message?.channelId);
+                // const channel = await Channel.findByPk(message?.channelId);
                 if (isSocket) {
                   io.to(isSocket?.id).emit(
                     "notification_new_message",
-                    `New Message received on ${channel?.name} channel`
+                    `New Message received by ${message?.dataValues.sender.username} `
                   );
                 }
               }
@@ -1497,7 +1497,7 @@ export async function messageToChannelToUser(
       },
     });
 
-    const channel = await Channel.findByPk(channelId);
+    // const channel = await Channel.findByPk(channelId);
 
     const users = await UserProfile.findAll({
       where: {
@@ -1545,7 +1545,7 @@ export async function messageToChannelToUser(
           if (isSocket) {
             io.to(isSocket.id).emit(
               "notification_new_message",
-              `New Message received on ${channel?.name} channel`
+              `New Message received by ${message?.dataValues.sender.username}`
             );
             if(userDriver){
               const unreadCount = await MessageStaff.count({

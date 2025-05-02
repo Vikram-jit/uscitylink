@@ -139,6 +139,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const [groups, setGroups] = useState<GroupModel[]>([]);
   const [resetKey, setResetKey] = React.useState(Date.now()); // Unique number each time
+  const [mResetKey, setMResetKey] = React.useState(Date.now()); // Unique number each time
   const [templateDialog, setTemplateDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const openTemplate = Boolean(anchorEl);
@@ -222,7 +223,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   const [pageMessage, setPageMessage] = React.useState(1);
   const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
 
-  const { data: group, isFetching } = useGetGroupByIdQuery(
+  const { data: group, isFetching,isLoading:gLoading } = useGetGroupByIdQuery(
     { id: selectedGroup, page: pageMessage,resetKey },
     {
       skip: !selectedGroup,
@@ -230,8 +231,8 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   );
 
-  const { data: groupMessage } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey },
+  const { data: groupMessage,isLoading:mLoading } = useGetGroupMessagesQuery(
+    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey:mResetKey },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: false,
@@ -263,13 +264,6 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
 
-  // const handleFileChange = (event: any) => {
-  //   const selectedFile = event.target.files[0];
-  //   if (selectedFile) {
-  //     setFile(selectedFile);
-  //     setPreviewDialogOpen(true);
-  //   }
-  // };
 
   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -685,15 +679,18 @@ const ChatInterface = ({ type }: { type: string }) => {
     setPageMessage(1);
     setHasMoreMessage(true);
     setResetKey(Date.now());
+    setMResetKey(Date.now());
   };
   const handleGroupChange = (group: any, type: string) => {
     if (type === 'group') {
+      setResetKey(Date.now())
       socket.emit('group_user_add', {
         channel_id: group.group_channel.channelId,
         group_id: group.id,
       });
       socket.emit('update_group_staff_message_count', group.id);
     } else {
+      setMResetKey(Date.now())
       socket?.emit('staff_open_truck_group', group.id);
     }
 
@@ -863,7 +860,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         </Grid>
       ) : (
         <Grid item xs={12} md={9}>
-          {selectedGroup ? (
+          {selectedGroup || mLoading || gLoading ? (
             group && group?.data ? (
               <Box sx={{ height: '90vh', display: 'flex', flexDirection: 'column' }}>
                 <GroupHeader
@@ -878,7 +875,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                 {viewMedia ? (
                   <MediaPane userId={selectedGroup} source="group" channelId={selectedGroup} />
                 ) : (
-                  <MessagesContainer id="scrollable-messages-group-container">
+                 <MessagesContainer id="scrollable-messages-group-container">
                     {/* <div ref={messagesEndRef} /> */}
                     <InfiniteScroll
                       style={{
@@ -1179,7 +1176,7 @@ const ChatInterface = ({ type }: { type: string }) => {
               </Box>
             )
           ) : (
-            <Box
+            mLoading || gLoading  ? <CircularProgress/> : <Box
               sx={{
                 height: '90vh',
                 display: 'flex',

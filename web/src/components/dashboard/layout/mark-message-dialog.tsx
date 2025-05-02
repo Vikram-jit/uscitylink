@@ -73,7 +73,7 @@ const MarkMessageDialog: React.FC<MarkMessageDialogProps> = ({
       <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <EmailIcon color="primary" />
         <Typography variant="h6" component="div" flexGrow={1}>
-          Mark All Message Un-Read
+        Mark all messages as read
         </Typography>
         <IconButton edge="end" onClick={onClose}>
           <CloseIcon />

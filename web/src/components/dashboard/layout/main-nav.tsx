@@ -64,7 +64,7 @@ export function MainNav(): React.JSX.Element {
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
            <Button variant="outlined"   onClick={(): void => {
                 setOpenDialog(true);
-              }}>Un-Read All Messages</Button>
+              }}> Mark all messages as read</Button>
             {/* <Tooltip title="Notifications">
               <Badge badgeContent={4} color="success" variant="dot">
                 <IconButton>
@@ -95,6 +95,7 @@ export function MainNav(): React.JSX.Element {
         if(res.data?.status){
           toast.success(res.data?.message)
           setOpenDialog(false)
+          window.location.reload()
           return
         }
         toast.error("SERVER ERROR")
