@@ -1,3 +1,5 @@
+import './../polyfills';
+
 import { PDFDocument, rgb } from "pdf-lib";
 import puppeteer, { PDFOptions } from "puppeteer";
 import { promises as fs } from "fs";

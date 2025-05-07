@@ -36,7 +36,8 @@
     "sharp": "^0.33.5",
     "socket.io": "^4.8.1",
     "stream": "^0.0.3",
-    "uuid": "^11.0.2"
+    "uuid": "^11.0.2",
+    "web-streams-polyfill": "^4.1.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
