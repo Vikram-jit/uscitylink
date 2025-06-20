@@ -594,7 +594,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
        ()=>{
         setCurrentIndex(null)
        }
-      } documentKey={messages[currentIndex]?.url?.split('/')?.[1]} moveNext={movePrevious} movePrev={moveNext} currentIndex={currentIndex}/>}
+      } uploadType={messages[currentIndex]?.url_upload_type} documentKey={messages[currentIndex]?.url?.split('/')?.[1]} moveNext={movePrevious} movePrev={moveNext} currentIndex={currentIndex}/>}
     </Paper>
   );
 }

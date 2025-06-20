@@ -16,6 +16,7 @@ const options = {
 interface Viewer {
   documentKey: string;
   setLoading?: React.Dispatch<React.SetStateAction<boolean>>; 
+  uploadType?:string
 
 }
 const Controls = () => {
@@ -29,7 +30,9 @@ const Controls = () => {
     </div>
   );
 };
-export default function Viewer({ documentKey ,setLoading}: Viewer) {
+export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
+
+  
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
@@ -179,7 +182,7 @@ export default function Viewer({ documentKey ,setLoading}: Viewer) {
              <Box marginBottom={2}></Box>
               <TransformComponent>
                 <Image
-                  src={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
+                  src={uploadType == "not-upload" ? `http://52.9.12.189:4300/uscitylink/${key}` : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
                   alt="image"
                   width={1020}
                   height={1020}

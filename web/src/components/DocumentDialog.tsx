@@ -38,6 +38,7 @@ interface DocumentDialog {
   moveNext?: () => void;
   movePrev?: () => void;
   currentIndex?: number;
+  uploadType?:string
 }
 export default function DocumentDialog({
   open,
@@ -47,7 +48,11 @@ export default function DocumentDialog({
   moveNext,
   movePrev,
   currentIndex,
+  uploadType
 }: DocumentDialog) {
+
+console.log(uploadType)
+
     const [isLoading, setIsLoading] = React.useState(true); 
     const [oldCurrebIndex,setOldCurrentIndex] = React.useState<number | null>(null)// Track loading state
     React.useEffect (() => {
@@ -80,7 +85,7 @@ export default function DocumentDialog({
           </Toolbar>
         </AppBar>
         <DialogContent>
-          <Viewer documentKey={documentKey} setLoading={setIsLoading}/>
+          <Viewer uploadType={uploadType} documentKey={documentKey} setLoading={setIsLoading}/>
           {isLoading  && (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
               <CircularProgress />

@@ -56,7 +56,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
     setAnchorEl(null);
   };
   const open = Boolean(anchorEl);
-  return (
+    return (
     <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} >
      
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>

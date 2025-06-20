@@ -116,6 +116,8 @@ const HeaderContainer = styled(Box)({
 });
 
 const ChatInterface = ({ type }: { type: string }) => {
+
+
   const { socket } = useSocket();
 
   const [page, setPage] = React.useState(1);
@@ -1225,6 +1227,7 @@ const ChatInterface = ({ type }: { type: string }) => {
       )}
       {currentIndex != null && messages[currentIndex]?.url && (
         <DocumentDialog
+          uploadType={messages[currentIndex].url_upload_type}
           open={currentIndex != null ? true : false}
           onClose={() => {
             setCurrentIndex(null);
