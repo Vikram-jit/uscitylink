@@ -36,7 +36,7 @@ Template.init(
     },
 
     body: {
-      type: DataTypes.TEXT,
+      type: DataTypes.TEXT('long'),
       allowNull: true,
     },
 
