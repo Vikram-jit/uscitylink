@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Add, Download, Replay,Remove } from '@mui/icons-material';
-import { Box, Button, CircularProgress, Grid, IconButton, Paper, Typography } from '@mui/material';
+import { Add, Download, Replay,Remove, RotateRight, Restore } from '@mui/icons-material';
+import { Box, Button, CircularProgress, Grid, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -26,13 +26,24 @@ const Controls = () => {
     <div className="tools">
       <Button variant="contained" onClick={() => zoomIn()}><Add/></Button>
       <Button onClick={() => zoomOut()}><Remove/></Button>
-      <Button color="error" onClick={() => resetTransform()}><Replay/></Button>
+       <Tooltip title={`reset`} arrow>
+      <Button color="error" onClick={() => resetTransform()}><Restore/></Button>
+      </Tooltip>
     </div>
   );
 };
 export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
 
-  
+    const [rotation, setRotation] = useState(0);
+
+  const rotations = [0, 90, 180, 270,360]; // All possible rotation states
+
+  const handleRotate = () => {
+    const currentIndex = rotations.indexOf(rotation);
+    const nextIndex = (currentIndex + 1) % rotations.length;
+    setRotation(rotations[nextIndex]);
+  };
+
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfWidth, setPdfWidth] = useState<number>(600);
@@ -178,6 +189,19 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
             <TransformWrapper initialScale={1}>
              <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
               <Box display={"flex"} justifyContent={"center"}> <Controls />
+             <Tooltip title={`Rotate (${rotation}°)`} arrow>
+                  <IconButton 
+                    color="secondary" 
+                    onClick={handleRotate}
+                    sx={{
+                      transform: `rotate(${rotation}deg)`,
+                      transition: 'transform 0.3s ease',
+                    }}
+                  >
+                    <RotateRight />
+                  </IconButton>
+                </Tooltip>
+
               <DropdownButton btnName='Download' fileName={`uscitylink/${key}`}/></Box>
              <Box marginBottom={2}></Box>
               <TransformComponent>
@@ -187,7 +211,8 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
                   width={1020}
                   height={1020}
                   objectFit="contain"
-                  style={{ objectFit: 'contain' }}
+                  style={{ objectFit: 'contain', transform: `rotate(${rotation}deg)`,
+                  transition: 'transform 0.3s ease', }}
                   onLoadingComplete={handleLoadingComplete}
                   unoptimized={true}
                 />
