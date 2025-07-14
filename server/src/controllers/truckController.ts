@@ -4,6 +4,8 @@ import { secondarySequelize } from "../sequelize";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 
+
+
 export async function getTrucks(req: Request, res: Response): Promise<any> {
   try {
 

@@ -13,6 +13,7 @@ export const paths = {
     groups: '/dashboard/groups',
     messages: '/dashboard/messages',
     truck_group: '/dashboard/truckgroup',
+    truck_chat: '/dashboard/truck-chat',
     templates: '/dashboard/templates',
     trainings: '/dashboard/trainings',
     staff_chat: '/dashboard/staff_chat',

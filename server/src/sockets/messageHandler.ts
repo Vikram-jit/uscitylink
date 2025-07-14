@@ -1808,6 +1808,7 @@ export async function messageToDriverByTruckGroup(
   url_upload_type?: string
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
+
   const utcTime = moment.utc().toDate();
   let userIds: String[] = [];
   if (userId.length == 0) {
@@ -1849,7 +1850,7 @@ export async function messageToDriverByTruckGroup(
     thumbnail: thumbnail || null,
     url_upload_type: url_upload_type || "server",
   });
-
+  let isSendToStaff = false;
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
     if (
       e.channelId === findStaffActiveChannel?.channelId &&
@@ -1863,9 +1864,20 @@ export async function messageToDriverByTruckGroup(
           group_message
         );
         io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
+        isSendToStaff = true;
       }
     }
   });
+  if(isSendToStaff == false){
+    const isSocket = global.userSockets[socket?.user?.id!];
+    if (isSocket) {
+      io.to(isSocket.id).emit(
+        SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
+        group_message
+      );
+      io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
+    } 
+  }
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId

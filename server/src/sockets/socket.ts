@@ -6,6 +6,7 @@ import Role from "../models/Role";
 import {
   staffActiveChannelUpdate,
   staffOpenChatUpdate,
+  staffOpenTruckChat,
   staffOpenTruckGroupUpdate,
 } from "./staffHandler";
 import { driverActiveChannelUpdate } from "./driverHandler";
@@ -362,6 +363,11 @@ export const initSocket = (httpServer: any) => {
       "staff_open_truck_group",
       async (groupId) => await staffOpenTruckGroupUpdate(socket, groupId)
     );
+ socket.on(
+      "staff_open_truck_chat",
+      async (groupId) => await staffOpenTruckChat(socket, groupId)
+    );
+    
     socket.on(
       "staff_channel_update",
       async (channelId) => await staffActiveChannelUpdate(socket, channelId)

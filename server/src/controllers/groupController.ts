@@ -496,6 +496,7 @@ export const getMessagesByGroupId = async (
   res: Response
 ): Promise<any> => {
   try {
+
     const { id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
@@ -518,7 +519,7 @@ export const getMessagesByGroupId = async (
         },
       ],
     });
-    const senderId = req.user?.id;
+  const senderId = req.user?.id;
   const messages = await Message.findAndCountAll({
     where:{
       groupId:isGroup?.id,
@@ -548,19 +549,7 @@ export const getMessagesByGroupId = async (
     limit: pageSize,
     offset: offset,
   })
-    // const messages = await GroupMessage.findAndCountAll({
-    //   where: {
-    //     groupId: isGroup?.id,
-    //   },
-    //   include: {
-    //     model: UserProfile,
-    //     as: "sender",
-    //     attributes: ["id", "username", "isOnline"],
-    //   },
-    //   order: [["messageTimestampUtc", "DESC"]],
-    //   limit: pageSize,
-    //   offset: offset,
-    // });
+   
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
     return res.status(200).json({

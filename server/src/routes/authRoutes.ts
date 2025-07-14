@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { register, login, loginWithPassword, loginWithWeb, sendOtp, validateOtp, resendOtp, logout, loginWithToken, updateAppVersion } from '../controllers/authController';
+import { register, login, loginWithPassword, loginWithWeb, sendOtp, validateOtp, resendOtp, logout, loginWithToken, updateAppVersion, verifyDriver } from '../controllers/authController';
 import { syncDriver, syncUser } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
-
+router.post('/verifyDriver',verifyDriver);
 router.post('/register', register);
 router.post('/sendOtp', sendOtp);
 router.post('/re-sendOtp', resendOtp);

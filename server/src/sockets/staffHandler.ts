@@ -130,3 +130,38 @@ export async function staffOpenTruckGroupUpdate(
   }
   
 }
+
+export async function staffOpenTruckChat(
+  socket: CustomSocket,
+  groupId: string | null | undefined
+) {
+  const staffId = socket?.user?.id;
+   
+  if (!staffId) {
+    console.warn("staffOpenTruckGroupUpdate: Missing socket.user.id");
+    return;
+  }
+
+  // Case: groupId is null → remove open group
+  if (!groupId) {
+    delete global.staffOpenTruckGroup[staffId];
+    console.log(`Removed open group for staff ${staffId}`);
+    return;
+  }
+
+  const isActiveChannel = global.staffActiveChannel?.[staffId];
+
+  if (!isActiveChannel) {
+    console.warn(`No active channel for staff ${staffId}`);
+    return;
+  }
+
+  const entry = global.staffOpenTruckGroup?.[staffId];
+
+  global.staffOpenTruckGroup[staffId] = {
+    channelId: isActiveChannel.channelId,
+    groupId,
+  };
+
+  console.log(`Set open group for staff ${staffId}`, global.staffOpenTruckGroup[staffId]);
+}

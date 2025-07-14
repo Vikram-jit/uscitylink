@@ -21,6 +21,66 @@ function isValidEmail(email: string) {
   return emailPattern.test(email);
 }
 
+export const verifyDriver = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { email, phone_number, driver_number } = req.body;
+
+    if (!email || !phone_number  || !driver_number) {
+      return res.status(400).json({
+        status: false,
+        message: "All fields are required.",
+      });
+    }
+
+    const existingEmail = await User.findOne({
+      where: { email: email },
+    });
+
+    if (existingEmail) {
+      return res.status(200).json({
+        status: false,
+        message: "Email already exists.",
+        data: existingEmail,
+      });
+    }
+
+    const existingPhoneNumber = await User.findOne({
+      where: { phone_number: phone_number },
+    });
+
+    if (existingPhoneNumber) {
+      return res.status(200).json({
+        status: false,
+        message: "Phone number already exists.",
+        data: existingPhoneNumber,
+      });
+    }
+
+    const existingDriverNumber = await User.findOne({
+      where: { driver_number: driver_number },
+    });
+
+    if (existingDriverNumber) {
+      return res.status(200).json({
+        status: false,
+        message: "Driver number already exists.",
+        data: existingDriverNumber,
+      });
+    }
+
+  
+
+    return res.status(201).json({
+      status: true,
+      message: "Driver available successful.",
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: false, message: error?.message });
+  }
+};
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
     const {
@@ -88,7 +148,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
-        status:"active",
+        status: "active",
       },
 
       include: [
@@ -172,7 +232,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const newUserProfile = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
-        status:"active",
+        status: "active",
       },
       include: [
         {
@@ -205,35 +265,33 @@ export async function updateAppVersion(
 ): Promise<any> {
   try {
     const { version, buildNumber, platform } = req.body;
-   
+
     const appLiveVersion = await AppVersions.findOne({
       where: {
-        version:version,
-        buildNumber:buildNumber,
+        version: version,
+        buildNumber: buildNumber,
         status: "active",
         platform: platform,
       },
     });
     const userProfile = await UserProfile.findByPk(req.user?.id);
-    if(appLiveVersion == null){
+    if (appLiveVersion == null) {
       await UserProfile.update(
         {
-         
           appUpdate: "0",
         },
         {
           where: {
             id: req.user?.id,
           },
-        })
+        }
+      );
       return res.status(200).json({
         status: true,
         data: "NewVersion",
         message: `App Update Version Successfully.`,
       });
     }
-
-  
 
     if (userProfile?.buildNumber == null && userProfile?.version == null) {
       await UserProfile.update(
@@ -331,7 +389,7 @@ export async function loginWithPassword(
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
-        status:"active",
+        status: "active",
       },
     });
 
@@ -373,7 +431,6 @@ export async function loginWithPassword(
 //Send OTP
 export async function sendOtp(req: Request, res: Response): Promise<any> {
   try {
-   
     const expiresAt = moment().add(10, "minutes").toDate();
     const otp = generateOTP(6);
     await Otp.create({
@@ -450,7 +507,7 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
     const isUser = await User.findOne({
       where: {
         [isEmailValid ? "email" : "phone_number"]: email,
-        status:"active",
+        status: "active",
       },
     });
 
@@ -495,7 +552,7 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
     const isUser = await User.findAll({
       where: {
         [isEmailValid ? "email" : "phone_number"]: queryValue,
-        status:"active",
+        status: "active",
       },
       include: [
         {
@@ -596,7 +653,7 @@ export async function loginWithToken(
     const isUser = await User.findAll({
       where: {
         email: email,
-        status:"active",
+        status: "active",
       },
       include: [
         {

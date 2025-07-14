@@ -116,8 +116,6 @@ const HeaderContainer = styled(Box)({
 });
 
 const ChatInterface = ({ type }: { type: string }) => {
-
-
   const { socket } = useSocket();
 
   const [page, setPage] = React.useState(1);
@@ -221,20 +219,24 @@ const ChatInterface = ({ type }: { type: string }) => {
     name: '',
     body: '',
   });
-  const [oldGroup,setOldGroup] = useState<string>("")
+  const [oldGroup, setOldGroup] = useState<string>('');
   const [pageMessage, setPageMessage] = React.useState(1);
   const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
 
-  const { data: group, isFetching,isLoading:gLoading } = useGetGroupByIdQuery(
-    { id: selectedGroup, page: pageMessage,resetKey },
+  const {
+    data: group,
+    isFetching,
+    isLoading: gLoading,
+  } = useGetGroupByIdQuery(
+    { id: selectedGroup, page: pageMessage, resetKey },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: false,
     }
   );
 
-  const { data: groupMessage,isLoading:mLoading } = useGetGroupMessagesQuery(
-    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey:mResetKey },
+  const { data: groupMessage, isLoading: mLoading } = useGetGroupMessagesQuery(
+    { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey: mResetKey },
     {
       skip: !selectedGroup,
       refetchOnMountOrArgChange: false,
@@ -266,8 +268,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
 
-
-  const renderFilePreview = () => {
+   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
 
     const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
@@ -293,7 +294,6 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleReceiveMessage = useCallback(
     (message: any, groupId: string) => {
-      
       if (message.groupId !== selectedGroup) {
         return; // Ignore the message if the groupId does not match selectedId
       }
@@ -340,14 +340,13 @@ const ChatInterface = ({ type }: { type: string }) => {
   }, [groupList, currentChannelId]);
 
   useEffect(() => {
-      if(oldGroup != ""){
-        if(oldGroup != selectedGroup){
-          setMessages([])
-        }
+    if (oldGroup != '') {
+      if (oldGroup != selectedGroup) {
+        setMessages([]);
       }
+    }
     if (type === 'truck') {
       if (group?.status && group?.data?.messages) {
-
         setMessages((prevMessages: any) => {
           // Filter out duplicate messages using a unique identifier (e.g., `id`)
           const newMessages = group.data.messages.filter(
@@ -358,7 +357,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
         setHasMoreMessage(group.data.pagination.currentPage < group.data.pagination.totalPages);
         setSenderId(group?.data?.senderId);
-        setOldGroup(group.data.group.id)
+        setOldGroup(group.data.group.id);
       }
     } else {
       if (groupMessage?.data?.messages) {
@@ -375,7 +374,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         setSenderId(groupMessage?.data?.senderId);
       }
     }
-  }, [group, groupMessage, type,selectedGroup]);
+  }, [group, groupMessage, type, selectedGroup]);
 
   useEffect(() => {
     if (socket) {
@@ -390,7 +389,6 @@ const ChatInterface = ({ type }: { type: string }) => {
         );
       } else {
         socket.on('update_url_status_truck_group', (data: any) => {
-   
           setMessages((prev: any) =>
             prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
           );
@@ -427,7 +425,6 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
   const loadMoreGroupMessages = () => {
-   
     if (hasMoreMessage && !isLoading) {
       setPageMessage((prevPage) => prevPage + 1);
     }
@@ -685,14 +682,14 @@ const ChatInterface = ({ type }: { type: string }) => {
   };
   const handleGroupChange = (group: any, type: string) => {
     if (type === 'group') {
-      setResetKey(Date.now())
+      setResetKey(Date.now());
       socket.emit('group_user_add', {
         channel_id: group.group_channel.channelId,
         group_id: group.id,
       });
       socket.emit('update_group_staff_message_count', group.id);
     } else {
-      setMResetKey(Date.now())
+      setMResetKey(Date.now());
       socket?.emit('staff_open_truck_group', group.id);
     }
 
@@ -700,7 +697,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     setMessages([]);
     setPageMessage(1);
     setHasMoreMessage(true);
-    setSelectedGroup(""); // Optionally clear the old group first to trigger refetch
+    setSelectedGroup(''); // Optionally clear the old group first to trigger refetch
 
     // Set new group and channel
     setSelectedGroup(group.id);
@@ -775,7 +772,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                               color: 'black',
                             },
                           }}
-                          onClick={() => handleGroupChange(group,type)}
+                          onClick={() => handleGroupChange(group, type)}
                         >
                           <Badge
                             overlap="circular"
@@ -877,7 +874,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                 {viewMedia ? (
                   <MediaPane userId={selectedGroup} source="group" channelId={selectedGroup} />
                 ) : (
-                 <MessagesContainer id="scrollable-messages-group-container">
+                  <MessagesContainer id="scrollable-messages-group-container">
                     {/* <div ref={messagesEndRef} /> */}
                     <InfiniteScroll
                       style={{
@@ -965,7 +962,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                                     <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
                                   )}
                                   <ChatBubble
-                                  isVisibleThreeDot={false}
+                                    isVisibleThreeDot={false}
                                     onClick={() => {
                                       setCurrentIndex(index);
                                     }}
@@ -979,47 +976,6 @@ const ChatInterface = ({ type }: { type: string }) => {
                                 {isDifferentDay && <Divider>{isToday ? 'Today' : previousDate}</Divider>}
                               </React.Fragment>
                             );
-
-                            {
-                              /* {msg.messageDirection == "R" ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <Typography variant="caption">{msg?.sender?.username} {`(${msg.sender.user?.driver_number})`} </Typography> 
-                              <Typography variant="caption"> {formatUtcTime(msg.messageTimestampUtc as any)}</Typography>
-                              <Badge
-                                color={msg?.sender.isOnline ? 'success' : 'default'}
-                                variant={msg?.sender.isOnline ? 'dot' : 'standard'}
-                                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                                overlap="circular"
-                              />
-                            </Box>
-                          ):  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <Typography variant="caption">{msg?.sender?.username}(satff) {formatUtcTime(msg.messageTimestampUtc as any)}</Typography>
-                          {msg.deliveryStatus === 'sent' && <BsCheckAll />}
-                        </Box>} */
-                            }
-                            {
-                              /* <MessageBubble key={msg.id} isOwn={msg.messageDirection == "S"}>
-                            {msg.url && (
-                              <Paper
-                                variant="outlined"
-                                sx={{
-                                  px: 1.75,
-                                  py: 1.25,
-                                }}
-                              >
-                                <MediaComponent
-                                type={msg.url_upload_type}
-                                  messageDirection={msg.messageDirection || 'S'}
-                                  url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.url}`}
-                                  name={msg.url ? msg.url : ' '}
-                                  thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${msg.thumbnail}`}
-                                />
-                              </Paper>
-                            )}
-                            <p style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</p>
-                          
-                          </MessageBubble> */
-                            }
                           })}
                     </InfiniteScroll>
                   </MessagesContainer>
@@ -1177,8 +1133,10 @@ const ChatInterface = ({ type }: { type: string }) => {
                 <CircularProgress />
               </Box>
             )
+          ) : mLoading || gLoading ? (
+            <CircularProgress />
           ) : (
-            mLoading || gLoading  ? <CircularProgress/> : <Box
+            <Box
               sx={{
                 height: '90vh',
                 display: 'flex',
@@ -1242,7 +1200,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   );
 };
 
-const MediaGallery = ({ mediaFiles }: any) => {
+export const MediaGallery = ({ mediaFiles }: any) => {
   const galleryItems = mediaFiles.map((file: any) => {
     const objectUrl = URL.createObjectURL(file);
     const extension = file.name.split('.').pop().toLowerCase();
