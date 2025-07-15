@@ -1851,6 +1851,7 @@ export async function messageToDriverByTruckGroup(
     url_upload_type: url_upload_type || "server",
   });
   let isSendToStaff = false;
+ 
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
     if (
       e.channelId === findStaffActiveChannel?.channelId &&
@@ -1870,14 +1871,18 @@ export async function messageToDriverByTruckGroup(
   });
   if(isSendToStaff == false){
     const isSocket = global.userSockets[socket?.user?.id!];
+    console.log("isSocket",socket?.user);
     if (isSocket) {
       io.to(isSocket.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
         group_message
       );
       io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
+    io.sockets.emit("receive_message_group_truck", newSaveStaff);
+isSendToStaff = true;
     } 
   }
+  console.log("Channel_testing", isSendToStaff);
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
       (driver) => driver?.driverId === driverId

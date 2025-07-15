@@ -2,7 +2,7 @@
 
 import { type } from 'os';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetGroupByIdQuery } from '@/redux/GroupApiSlice';
 import { useFileUploadMutation, useUploadMultipleFilesMutation, useVideoUploadMutation } from '@/redux/MessageApiSlice';
 import { GroupModel } from '@/redux/models/GroupModel';
@@ -14,14 +14,14 @@ import ReactPlayer from 'react-player';
 import { useDispatch } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import useDebounce from '@/hooks/useDebounce';
 
 import { MediaGallery } from '../truckgroup/view';
 import { ChatView } from './ChatView';
 import { Chat, Message, User } from './types';
-import useDebounce from '@/hooks/useDebounce';
 
 const ChatPage = () => {
-     const [search, setSearch] = React.useState<string>('');
+  const [search, setSearch] = React.useState<string>('');
 
   const searchItem = useDebounce(search, 200);
   const [pageMessage, setPageMessage] = React.useState(1);
@@ -45,10 +45,16 @@ const ChatPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [files, setFiles] = React.useState<any>([]);
   const [selectedTemplate, setSelectedTemplate] = React.useState<{ name: string; body: string; url?: string }>({
-        name: '',
-        body: '',
-      });
-       
+    name: '',
+    body: '',
+  });
+const currentChatIdRef = useRef<string | undefined>();
+
+// Keep the ref updated
+useEffect(() => {
+  currentChatIdRef.current = currentChatId;
+}, [currentChatId]);
+
   const {
     data: messages,
     isLoading: messageLoader,
@@ -69,12 +75,26 @@ const ChatPage = () => {
       setPageMessage((prevPage) => prevPage + 1);
     }
   };
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  
 
   useEffect(() => {
-    if (truckGroups?.data?.data) {
-      setGroups(truckGroups.data.data);
+     const newGroups = truckGroups?.data?.data || [];
+
+    if (newGroups?.length > 0) {
+     setHasMore((truckGroups?.data?.pagination.currentPage || 0 )< (truckGroups?.data?.pagination.totalPages || 0));
+
+      if ((truckGroups?.data?.pagination?.currentPage || 1) > 1) {
+        // Append to existing messages
+        setGroups((prev) => [...prev, ...newGroups]);
+      } else {
+        // Replace existing messages
+         setGroups(newGroups);
+      }
     }
-  }, [truckGroups]);
+  
+  }, [truckGroups,isLoading]);
 
   useEffect(() => {
     const newMessages = messages?.data?.messages || [];
@@ -99,9 +119,10 @@ const ChatPage = () => {
     }
   }, [currentChatId, refetchMessages]);
 
-  const handleReceiveMessage = useCallback(
-    (message: any, groupId: string) => {
-      if (message.groupId !== groupId) {
+  function handleReceiveMessage (message: any, groupId: string) {
+ const currentId = currentChatIdRef.current;
+      console.log('Received message:', message, 'for groupId:', groupId, 'currentChatId:', currentChatId);
+      if (message.groupId !== currentId) {
         return; // Ignore the message if the groupId does not match selectedId
       }
       setMessage((prevMessages: any) => {
@@ -110,10 +131,13 @@ const ChatPage = () => {
         }
         return [message, ...prevMessages];
       });
-    },
-    [setMessage]
-  );
-
+    }
+    const loadMoreMessages = () => {
+    if (hasMore && !isLoading) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+console.log('Current chat ID:', currentChatId);
   useEffect(() => {
     if (socket) {
       socket.on('update_url_status_truck_group', (data: any) => {
@@ -123,7 +147,7 @@ const ChatPage = () => {
       });
       // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
       socket.on('receive_message_group_truck', (message: MessageModel) =>
-        handleReceiveMessage(message, currentChatId || '')
+        handleReceiveMessage(message, currentChatId!)
       );
 
       // Cleanup the event listener when the component unmounts or socket changes
@@ -132,6 +156,23 @@ const ChatPage = () => {
       };
     }
   }, [socket]);
+
+
+// Interval effect
+useEffect(() => {
+  if (currentChatId && socket?.connected) {
+    intervalRef.current = setInterval(() => {
+      socket.emit('staff_open_truck_chat', currentChatId);
+    }, 2000);
+  }
+
+  return () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+  };
+}, [currentChatId, socket?.connected]);
+
 
   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -205,7 +246,10 @@ const ChatPage = () => {
   const handleSendMessage = (message: string) => {
     try {
       // userId,groupId,body,direction,url
-
+     if(!currentChatId){
+      alert('Please re-select a group to send message or refresh the page.');
+      return
+     }
       if (messages?.data) {
         const userIds = messages?.data?.members
           .filter((e) => e.userProfileId && e.status == 'active')
@@ -226,11 +270,11 @@ const ChatPage = () => {
       }
 
       //   setIsLoading(false);
-        setSelectedTemplate({
-          name: '',
-          body: '',
-          url: '',
-        });
+      setSelectedTemplate({
+        name: '',
+        body: '',
+        url: '',
+      });
       //   setNewMessage('');
       // const data = {}
     } catch (err) {
@@ -255,7 +299,6 @@ const ChatPage = () => {
   };
 
   //   const currentChat = chats.find((chat) => chat.id === currentChatId);
-  console.log(hasMoreMessage);
 
   async function sendMessage() {
     try {
@@ -320,12 +363,12 @@ const ChatPage = () => {
       setPreviewDialogOpen(true);
     }
   };
-   useEffect(() => {
-      if (selectedTemplate) {
-        setNewMessage(selectedTemplate?.body);
-      }
-    }, [selectedTemplate]);
-  
+  useEffect(() => {
+    if (selectedTemplate) {
+      setNewMessage(selectedTemplate?.body);
+    }
+  }, [selectedTemplate]);
+
   return (
     <div style={{ height: '80vh' }}>
       {isLoading ? (
@@ -334,13 +377,16 @@ const ChatPage = () => {
         </div>
       ) : (
         <ChatView
-        search={search}
-        setSearch={setSearch}
-            setSelectedGroup={setCurrentChatId as any}
-        message={newMessage}
+        setPage={setPage}
+        loadMoreMessages={loadMoreMessages}
+        hasMore={hasMore}
+          search={search}
+          setSearch={setSearch}
+          setSelectedGroup={setCurrentChatId as any}
+          message={newMessage}
           setMessage={setNewMessage}
-        selectedTemplate={selectedTemplate}
-            setSelectedTemplate={setSelectedTemplate}
+          selectedTemplate={selectedTemplate}
+          setSelectedTemplate={setSelectedTemplate}
           setCurrentChatId={setCurrentChatId}
           isBack={false}
           setViewDetailGroup={setViewDetailGroup}

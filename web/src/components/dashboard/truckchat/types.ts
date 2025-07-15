@@ -56,4 +56,7 @@ export interface ChatViewProps {
     search: string;
     setSearch: React.Dispatch<React.SetStateAction<string>>;
     setSelectedGroup: React.Dispatch<React.SetStateAction<string>>;
+     loadMoreMessages: () => void;
+        hasMore?: boolean;
+        setPage?: React.Dispatch<React.SetStateAction<number>>;
 }

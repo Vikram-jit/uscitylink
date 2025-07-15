@@ -9,12 +9,13 @@ import { ChatSidebar } from './ChatSidebar';
 import { MessageInput } from './MessageInput';
 import { MessagesList } from './MessagesList';
 import { ChatViewProps } from './types';
+import { set } from 'react-hook-form';
 
 export const ChatView: React.FC<ChatViewProps> = ({
   currentUser,
   messages,
   message,
-    setMessage,
+  setMessage,
   onSelectChat,
   onSendMessage,
   isLoading,
@@ -34,13 +35,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
   setGroups,
   handleFileChangeVedio,
   handleVedioClick,
-
+  loadMoreMessages,
+  hasMore,
   selectedTemplate,
-    setSelectedTemplate,
-    search,
-    setSearch,
-    setSelectedGroup
-    }) => {
+  setSelectedTemplate,
+  search,
+  setSearch,
+  setSelectedGroup,
+  setPage
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sidebarOpen, setSidebarOpen] = React.useState(!isMobile);
@@ -56,10 +59,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Sidebar - hidden on mobile when chat is open */}
       {(sidebarOpen || !currentUser) && (
         <ChatSidebar
+        setPage={setPage}
+          loadMoreMessages={loadMoreMessages}
+          hasMore={hasMore}
           search={search}
           setSearch={setSearch}
-            setSelectedGroup={setSelectedGroup}
-            setGroups={setGroups as any}
+          setSelectedGroup={setSelectedGroup}
+          setGroups={setGroups as any}
           chats={trucks || []}
           currentUser={currentUser}
           currentChatId={currentUser?.group?.id}
@@ -107,17 +113,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
             />
           )}
 
-        { !viewDetailGroup &&  <Paper elevation={3}>
-            <MessageInput
-            selectedTemplate={selectedTemplate}
+          {!viewDetailGroup && (
+            <Paper elevation={3}>
+              <MessageInput
+                selectedTemplate={selectedTemplate}
                 setSelectedTemplate={setSelectedTemplate}
-            message={message}
-              setMessage={setMessage}
-            handleFileChangeVedio={handleFileChangeVedio}
-              onSend={onSendMessage}
-              //   disabled={currentChat}
-            />
-          </Paper>}
+                message={message}
+                setMessage={setMessage}
+                handleFileChangeVedio={handleFileChangeVedio}
+                onSend={onSendMessage}
+                //   disabled={currentChat}
+              />
+            </Paper>
+          )}
         </Box>
       )}
 
@@ -136,7 +144,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </Typography>
         </Box>
       )}
-      
     </Box>
   );
 };
