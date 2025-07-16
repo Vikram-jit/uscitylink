@@ -10,6 +10,7 @@ import { MessageInput } from './MessageInput';
 import { MessagesList } from './MessagesList';
 import { ChatViewProps } from './types';
 import { set } from 'react-hook-form';
+import MediaPane from '@/components/messages/MediaPane';
 
 export const ChatView: React.FC<ChatViewProps> = ({
   currentUser,
@@ -26,13 +27,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
   messageLoader = false,
   handleReset,
   viewMedia,
-
+currentChatId,
   setViewMedia,
   isBack = false,
   viewDetailGroup,
   setViewDetailGroup,
   setCurrentChatId,
   setGroups,
+  handleFileChange,
   handleFileChangeVedio,
   handleVedioClick,
   loadMoreMessages,
@@ -103,7 +105,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               setSelectedGroup={setCurrentChatId as any}
             />
           ) : (
-            <MessagesList
+           viewMedia ?  <MediaPane userId={currentChatId} source="group" channelId={currentChatId} /> : <MessagesList
               messages={messages || []}
               hasMoreMessage={hasMoreMessage}
               loadMoreGroupMessages={loadMoreGroupMessages}
@@ -122,6 +124,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 setMessage={setMessage}
                 handleFileChangeVedio={handleFileChangeVedio}
                 onSend={onSendMessage}
+                // handleVedioClick={handleVedioClick}
+                handleFileChange={handleFileChange}
                 //   disabled={currentChat}
               />
             </Paper>

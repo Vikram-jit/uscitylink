@@ -163,7 +163,7 @@ function reduceChildRoutes({
 interface NavItemProps extends Omit<NavItemConfig, 'items'> {
   pathname: string;
   children?:NavItemConfig[]
-  data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number}
+  data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number,truckGroup:number}
 }
 
 function NavItem({ disabled, external, href, icon, matcher, pathname, title,badge,data,key}: NavItemProps): React.JSX.Element {
@@ -236,6 +236,10 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title,badg
             background:"#fff",
             borderRadius:"10px!important"
           }} label={data?.staffcountUnRead}></Chip> }  
+          {badge && title == "Truck Chat" &&  data?.truckGroup > 0 && <Chip sx={{
+            background:"#fff",
+            borderRadius:"10px!important"
+          }} label={data?.truckGroup}></Chip> }  
         </Box>
       </Box>
     </li>

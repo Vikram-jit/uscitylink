@@ -168,6 +168,7 @@ const openPopOver = Boolean(anchorElPopOver);
                     <input
                       multiple
                       id="file-input"
+                       accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.svg,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.csv,.zip,.rar,.7z,.tar,.gz,.mp3,.wav,.ogg,.aac,.flac,.psd,.ai,.eps,.ttf,.otf,.woff,.woff2"
                       type="file"
                       style={{ display: 'none' }} // Hide the input element
                       onChange={handleFileChange} // Handle file selection

@@ -19,6 +19,7 @@ const SocketContext = createContext<SocketContextType>({
 export const useSocket = () => {
   return useContext(SocketContext);
 };
+let audioContext: AudioContext | null = null;
 
 export const SocketProvider = ({
   children,
@@ -32,7 +33,7 @@ export const SocketProvider = ({
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const [audioContext, setAudioContext] = useState<any>(null)
+  // const [audioContext, setAudioContext] = useState<any>(null)
   const [newMessage,setNewMessage] = useState<boolean>(false)
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
@@ -105,23 +106,31 @@ export const SocketProvider = ({
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
 
-    const createAudioContext = () => {
-      if (!audioContext) {
-        const context = new (window.AudioContext || (window as any).webkitAudioContext)()
-
-        setAudioContext(context)
-
-        // Play a muted sound to satisfy browser policies
-        const dummyAudio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav') // Path to your audio file
-
-        
-        dummyAudio.muted = true // Ensure it's muted
-        dummyAudio.play().catch(error => console.log('Muted playback failed:', error))
+   const createAudioContext = () => {
+  if (!audioContext) {
+    try {
+      // Create audio context
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Optionally resume it if it was suspended
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          console.log('AudioContext successfully resumed');
+        });
       }
-    }
 
-    document.addEventListener('click', createAudioContext, { once: true })
-    document.addEventListener('touchstart', createAudioContext, { once: true })
+      // Remove event listeners after first successful interaction
+      document.removeEventListener('click', createAudioContext);
+      document.removeEventListener('touchstart', createAudioContext);
+    } catch (error) {
+      console.error('AudioContext creation failed:', error);
+    }
+  }
+};
+
+// Add event listeners for both mouse and touch
+document.addEventListener('click', createAudioContext, { once: true });
+document.addEventListener('touchstart', createAudioContext, { once: true });
 
 
     socketServer.on('reconnect_attempt', onReconnectAttempt);

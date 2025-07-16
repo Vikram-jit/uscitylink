@@ -25,10 +25,10 @@ const ChatPage = () => {
 
   const searchItem = useDebounce(search, 200);
   const [pageMessage, setPageMessage] = React.useState(1);
-  const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(true);
+  const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(false);
   const { socket } = useSocket();
   const [page, setPage] = React.useState(1);
-  const [hasMore, setHasMore] = React.useState<boolean>(true);
+  const [hasMore, setHasMore] = React.useState<boolean>(false);
   const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
   const [viewDetailGroup, setViewDetailGroup] = useState<boolean>(false);
 
@@ -48,12 +48,12 @@ const ChatPage = () => {
     name: '',
     body: '',
   });
-const currentChatIdRef = useRef<string | undefined>();
+  const currentChatIdRef = useRef<string | undefined>();
 
-// Keep the ref updated
-useEffect(() => {
-  currentChatIdRef.current = currentChatId;
-}, [currentChatId]);
+  // Keep the ref updated
+  useEffect(() => {
+    currentChatIdRef.current = currentChatId;
+  }, [currentChatId]);
 
   const {
     data: messages,
@@ -77,24 +77,21 @@ useEffect(() => {
   };
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  
-
   useEffect(() => {
-     const newGroups = truckGroups?.data?.data || [];
+    const newGroups = truckGroups?.data?.data || [];
 
     if (newGroups?.length > 0) {
-     setHasMore((truckGroups?.data?.pagination.currentPage || 0 )< (truckGroups?.data?.pagination.totalPages || 0));
+      setHasMore((truckGroups?.data?.pagination.currentPage || 0) < (truckGroups?.data?.pagination.totalPages || 0));
 
       if ((truckGroups?.data?.pagination?.currentPage || 1) > 1) {
         // Append to existing messages
         setGroups((prev) => [...prev, ...newGroups]);
       } else {
         // Replace existing messages
-         setGroups(newGroups);
+        setGroups(newGroups);
       }
     }
-  
-  }, [truckGroups,isLoading]);
+  }, [truckGroups, isLoading]);
 
   useEffect(() => {
     const newMessages = messages?.data?.messages || [];
@@ -119,25 +116,59 @@ useEffect(() => {
     }
   }, [currentChatId, refetchMessages]);
 
-  function handleReceiveMessage (message: any, groupId: string) {
- const currentId = currentChatIdRef.current;
-      console.log('Received message:', message, 'for groupId:', groupId, 'currentChatId:', currentChatId);
-      if (message.groupId !== currentId) {
-        return; // Ignore the message if the groupId does not match selectedId
-      }
-      setMessage((prevMessages: any) => {
-        if (prevMessages.some((msg: any) => msg.id === message.id)) {
-          return prevMessages;
-        }
-        return [message, ...prevMessages];
-      });
+  function handleReceiveMessage(message: MessageModel, groupId: string) {
+    const currentId = currentChatIdRef.current;
+    console.log('Received message:', message, 'for groupId:', groupId, 'currentChatId:', currentChatId);
+    if (message.groupId !== currentId) {
+      return; // Ignore the message if the groupId does not match selectedId
     }
-    const loadMoreMessages = () => {
+    setMessage((prevMessages: any) => {
+      if (prevMessages.some((msg: any) => msg.id === message.id)) {
+        return prevMessages;
+      }
+      return [message, ...prevMessages];
+    });
+  }
+  const loadMoreMessages = () => {
     if (hasMore && !isLoading) {
       setPage((prevPage) => prevPage + 1);
     }
   };
-console.log('Current chat ID:', currentChatId);
+
+  const handleNewMessageCountUpdate = ({
+    channelId,
+    userId,
+    message,
+  }: {
+    channelId: string;
+    userId: string;
+    message: MessageModel;
+  }) => {
+    if (message) {
+      const currentId = currentChatIdRef.current;
+      if (message.groupId == currentId) {
+        socket.emit('staff_open_truck__message_count', {
+          groupId: message.groupId,
+          count: 0,
+        });
+         setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group.id === message.groupId
+            ? { ...group, message_count: 0 }
+            : group
+        )
+      );
+        return; // Ignore the message if the groupId does not match selectedId
+      }
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group.id === message.groupId
+            ? { ...group, last_message: message, message_count: (group.message_count || 0) + 1 }
+            : group
+        )
+      );
+    }
+  };
   useEffect(() => {
     if (socket) {
       socket.on('update_url_status_truck_group', (data: any) => {
@@ -149,6 +180,7 @@ console.log('Current chat ID:', currentChatId);
       socket.on('receive_message_group_truck', (message: MessageModel) =>
         handleReceiveMessage(message, currentChatId!)
       );
+      socket.on('new_message_count_update_staff', handleNewMessageCountUpdate);
 
       // Cleanup the event listener when the component unmounts or socket changes
       return () => {
@@ -157,22 +189,20 @@ console.log('Current chat ID:', currentChatId);
     }
   }, [socket]);
 
-
-// Interval effect
-useEffect(() => {
-  if (currentChatId && socket?.connected) {
-    intervalRef.current = setInterval(() => {
-      socket.emit('staff_open_truck_chat', currentChatId);
-    }, 2000);
-  }
-
-  return () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+  // Interval effect
+  useEffect(() => {
+    if (currentChatId && socket?.connected) {
+      intervalRef.current = setInterval(() => {
+        socket.emit('staff_open_truck_chat', currentChatId);
+      }, 2000);
     }
-  };
-}, [currentChatId, socket?.connected]);
 
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [currentChatId, socket?.connected]);
 
   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -207,7 +237,18 @@ useEffect(() => {
         alert('Please Add member before send message into group');
         dispatch(hideLoader());
         return;
+      }  
+     
+      const extension = files?.[0]?.name?.split('.')[files?.[0]?.name?.split('.').length - 1];
+
+      const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
+    
+      if(videoExtensions.includes(extension)) {
+      
+        sendMessage();
+        return;
       }
+      
       dispatch(showLoader());
 
       let formData = new FormData();
@@ -246,10 +287,10 @@ useEffect(() => {
   const handleSendMessage = (message: string) => {
     try {
       // userId,groupId,body,direction,url
-     if(!currentChatId){
-      alert('Please re-select a group to send message or refresh the page.');
-      return
-     }
+      if (!currentChatId) {
+        alert('Please re-select a group to send message or refresh the page.');
+        return;
+      }
       if (messages?.data) {
         const userIds = messages?.data?.members
           .filter((e) => e.userProfileId && e.status == 'active')
@@ -286,11 +327,25 @@ useEffect(() => {
   const handleSelectChat = (chatId: string) => {
     console.log('Selected chat ID:', chatId);
     if (socket.connected) {
+       setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group.id === chatId
+            ? { ...group,  message_count: 0 }
+            : group
+        )
+      );
+       socket.emit('staff_open_truck__message_count', {
+          groupId: chatId,
+          count: 0,
+        });
       socket.emit('staff_open_truck_chat', chatId);
+      
     } else {
       alert('Socket connection is not established. Please try again later or refesh page.');
       return;
     }
+    setHasMoreMessage(false);
+    setHasMore(false);
     setMessage([]); // Clear messages when switching chats
     setPageMessage(1); // Reset message page to 1
     // Mark messages as read when selecting a chat
@@ -302,7 +357,7 @@ useEffect(() => {
 
   async function sendMessage() {
     try {
-      const extension = file.name?.split('.')[file.name?.split('.').length - 1];
+      const extension = files?.[0]?.name?.split('.')[files?.[0]?.name?.split('.').length - 1];
 
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
       dispatch(showLoader());
@@ -316,11 +371,11 @@ useEffect(() => {
           return;
         }
         let formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', files[0]);
         formData.append('userId', '');
         formData.append('source', 'truck');
         formData.append('groupId', currentChatId || '');
-        formData.append('type', file.type.startsWith('image/') ? 'media' : 'doc');
+        formData.append('type', files?.[0]?.type.startsWith('image/') ? 'media' :videoExtensions ? 'media' : 'doc');
         const res = videoExtensions.includes(extension)
           ? await videoUpload({ formData, userId: '', groupId: currentChatId }).unwrap()
           : await fileUpload({ formData }).unwrap();
@@ -329,12 +384,13 @@ useEffect(() => {
             userId: userIds?.join(','),
             groupId: currentChatId,
             body: caption,
-            url: res?.data?.key,
+            url: videoExtensions ? res?.data?.Key : res?.data?.key ,
             direction: 'S',
             thumbnail: res?.data?.thumbnail,
           });
 
           setFile(null);
+          setFiles(null);
           setCaption('');
           setPreviewDialogOpen(false);
           dispatch(hideLoader());
@@ -363,6 +419,16 @@ useEffect(() => {
       setPreviewDialogOpen(true);
     }
   };
+   const handleFileChange = (event: any) => {
+    //console.log(event.target.files)
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      //setFile(selectedFile);
+      const selectedFiles = Array.from(event.target.files);
+      setFiles(selectedFiles);
+      setPreviewDialogOpen(true);
+    }
+  };
   useEffect(() => {
     if (selectedTemplate) {
       setNewMessage(selectedTemplate?.body);
@@ -377,9 +443,10 @@ useEffect(() => {
         </div>
       ) : (
         <ChatView
-        setPage={setPage}
-        loadMoreMessages={loadMoreMessages}
-        hasMore={hasMore}
+        currentChatId={currentChatId}
+          setPage={setPage}
+          loadMoreMessages={loadMoreMessages}
+          hasMore={hasMore}
           search={search}
           setSearch={setSearch}
           setSelectedGroup={setCurrentChatId as any}
@@ -393,7 +460,7 @@ useEffect(() => {
           viewDetailGroup={viewDetailGroup}
           viewMedia={viewMedia}
           setViewMedia={setViewMedia}
-          handleReset={() => {}}
+          handleReset={() => refetchMessages()}
           hasMoreMessage={hasMoreMessage}
           loadMoreGroupMessages={loadMoreGroupMessages}
           messageLoader={messageLoader || isMessagesFetching}
@@ -403,8 +470,9 @@ useEffect(() => {
           messages={message}
           onSelectChat={handleSelectChat}
           onSendMessage={handleSendMessage}
-          handleFileChangeVedio={handleFileChangeVedio}
+          handleFileChangeVedio={handleFileChange}
           handleVedioClick={handleVedioClick}
+          handleFileChange={handleFileChange}
         />
       )}
 

@@ -1,3 +1,4 @@
+"use client"
 import React from 'react';
 import { Paper, Typography, styled } from '@mui/material';
 import { Message } from './types';

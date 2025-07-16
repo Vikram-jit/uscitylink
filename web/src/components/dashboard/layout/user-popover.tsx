@@ -24,13 +24,15 @@ export interface UserPopoverProps {
   anchorEl: Element | null;
   onClose: () => void;
   open: boolean;
+  data:any
+  isLoading:boolean;
 }
 
-export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
+export function UserPopover({ anchorEl, onClose, open ,data,isLoading}: UserPopoverProps): React.JSX.Element {
   const { checkSession } = useUser();
   const  {socket} = useSocket();
   const  [socketServer,setSocketServer] = React.useState<any>(null)
-  const {data,isLoading} = useGetProfileQuery();
+ 
   const router = useRouter();
   React.useEffect(()=>{
     if(socket){

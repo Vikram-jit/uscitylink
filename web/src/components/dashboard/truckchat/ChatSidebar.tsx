@@ -1,23 +1,29 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Group, GroupModel, SingleGroupModel } from '@/redux/models/GroupModel';
 import {
   Avatar,
   Badge,
   Box,
+  Button,
+  Chip,
   Divider,
   List,
   ListItem,
   ListItemAvatar,
+  ListItemButton,
   ListItemText,
   TextField,
   Typography,
 } from '@mui/material';
 import { FiSearch } from 'react-icons/fi';
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 import { Chat, User } from './types';
-import InfiniteScroll from 'react-infinite-scroll-component';
+import moment from 'moment';
+import { type } from 'os';
+import AddGroupDialog from '../truckgroup/component/AddGroupDialog';
 
 interface ChatSidebarProps {
   chats: GroupModel[];
@@ -28,9 +34,9 @@ interface ChatSidebarProps {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   setSelectedGroup: React.Dispatch<React.SetStateAction<string>>;
   setGroups: React.Dispatch<React.SetStateAction<GroupModel[]>>;
-   loadMoreMessages: () => void;
-        hasMore?: boolean;
-        setPage?: React.Dispatch<React.SetStateAction<number>>;
+  loadMoreMessages: () => void;
+  hasMore?: boolean;
+  setPage?: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -44,8 +50,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   setGroups,
   loadMoreMessages,
   hasMore = true,
-  setPage
+  setPage,
 }) => {
+    const [open, setOpen] = useState<boolean>(false);
+  
   return (
     <Box
       sx={{
@@ -57,7 +65,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">Truck Chats</Typography>
+      {open && <AddGroupDialog open={open} setOpen={setOpen} type={"truck"} />}
+          <Box sx={{ display: 'flex', gap: 1,justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">Truck Chats</Typography>
+                      <Button onClick={() => setOpen(true)} size="small" variant="contained">
+                        Add Group
+                      </Button>
+                    </Box>
         <Box sx={{ marginTop: 1 }}>
           <TextField
             value={search}
@@ -79,77 +93,88 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       </Box>
       <Divider />
       <List id="scrollable-channel-container" sx={{ maxHeight: '650px', overflowY: 'auto' }}>
-          <InfiniteScroll
-                        dataLength={chats?.length || 0}
-                        next={loadMoreMessages}
-                        hasMore={hasMore}
-                        loader={<h4>Loading...</h4>}
-                        scrollThreshold={0.95}
-                        scrollableTarget="scrollable-channel-container"
-                      >
-        {chats.map((chat) => (
-          <ListItem
-            key={chat.id}
-            button
-            selected={chat.id === currentChatId}
-            onClick={() => onSelectChat(chat.id)}
-            sx={{
-              '&:hover': {
-                backgroundColor: 'action.hover',
-              },
-              '&.Mui-selected': {
-                backgroundColor: 'action.selected',
-              },
-            }}
-          >
-            <ListItemAvatar>
-              <Badge
-                overlap="circular"
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                variant="dot"
-                // color={
-                //   chat.user.status === 'online' ? 'success' :
-                //   chat.user.status === 'away' ? 'warning' : 'default'
-                // }
-              >
-                <Avatar src={chat.name} alt={chat.name} />
-              </Badge>
-            </ListItemAvatar>
-            <ListItemText
-              primary={chat?.name}
-              secondary={
-                chat.last_message
-                  ? `${chat.last_message?.body?.substring(0, 30)}${chat.last_message.body?.length > 30 ? '...' : ''}`
-                  : 'No messages yet'
-              }
-              secondaryTypographyProps={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            />
-            {/* {chat.unreadCount > 0 && (
-              <Box sx={{
-                minWidth: 24,
-                height: 24,
-                borderRadius: '50%',
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                ml: 1
-              }}>
-                <Typography variant="caption">
-                  {chat.unreadCount}
-                </Typography>
-              </Box>
-            )} */}
-          </ListItem>
-        ))}
+        <InfiniteScroll
+          dataLength={chats?.length || 0}
+          next={loadMoreMessages}
+          hasMore={hasMore}
+          loader={<h4>Loading...</h4>}
+          scrollThreshold={0.95}
+          scrollableTarget="scrollable-channel-container"
+        >
+          {chats.map((group) => (
+            <ListItem key={group.id} sx={{ padding: 0 }}>
+                        <ListItemButton
+                          selected={currentChatId == group.id}
+                          sx={{
+                            alignItems: 'initial',
+                            gap: 1,
+                            '&.Mui-selected': {
+                              backgroundColor: 'primary.main',
+                              color: 'white',
+                            },
+                            '&:hover': {
+                              backgroundColor: 'primary.light',
+                              color: 'black',
+                            },
+                          }}
+                          onClick={() => onSelectChat(group.id)}
+                        >
+                          <Badge
+                            overlap="circular"
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                            variant="dot"
+                            // color={contact.status === "online" ? "success" : "default"}
+                          >
+                            <Avatar>{group.name.split('')?.[0]}</Avatar>
+                            {/* <Avatar alt=""} /> */}
+                          </Badge>
+                          <ListItemText
+                            primary={
+                              <Box display={'flex'} justifyContent={'space-between'}>
+                                <Box display={'flex'} flexDirection={'column'}>
+                                  <Typography>{group.name}</Typography>
+                                  <Typography
+                                    sx={{
+                                      color: 'grey',
+                                      overflow: 'hidden',
+                                      display: '-webkit-box',
+                                      WebkitBoxOrient: 'vertical',
+                                      WebkitLineClamp: 2, // Limits text to 2 lines
+                                      '&:hover': {
+                                        color: 'grey',
+                                      },
+                                    }}
+                                  >
+                                    {group.last_message?.body ?? 'No Message Yet'}
+                                  </Typography>
+                                </Box>
+                                <Box display={'flex'} flexDirection={'column'}>
+                                  {group?.message_count > 0 && (
+                                   <Box width={'100%'}>
+                                     <Chip
+                                     
+                                      size="small"
+                                      variant="filled"
+                                      color="primary"
+                                     
+                                      label={group?.message_count}
+                                      sx={{ ml: 1 ,float: 'right'}}
+                                    />
+                                   </Box>
+                                  )}
+                                  <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
+                                    {moment(group?.last_message?.messageTimestampUtc).format('MM-DD-YYYY hh:mm A')}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            }
+                            sx={{ ml: 2 }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+          ))}
         </InfiniteScroll>
       </List>
-      
     </Box>
   );
 };

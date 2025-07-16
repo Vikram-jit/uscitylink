@@ -28,6 +28,7 @@ export interface Chat {
 }
 
 export interface ChatViewProps {
+  currentChatId?: string;
   currentUser: SingleGroupModel | undefined;
   messages: MessageModel[];
   currentChat?: Chat;
@@ -59,4 +60,5 @@ export interface ChatViewProps {
      loadMoreMessages: () => void;
         hasMore?: boolean;
         setPage?: React.Dispatch<React.SetStateAction<number>>;
+        handleFileChange:any
 }

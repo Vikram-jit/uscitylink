@@ -62,7 +62,8 @@ export const uploadLocal = multer({ storage });
 
 export const fileUploadQueue = new Queue("fileUploadQueue", {
   redis: {
-    host: process.env.DB_SERVER == "local" ?  "127.0.0.1": process.env.REDIS_HOST,
+    host:
+      process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379,
   },
 });
@@ -91,7 +92,7 @@ export const processFileUpload = async (
     userId: string;
     location: string;
     private_chat_id?: string;
-    tempId?:string
+    tempId?: string;
   }>
 ): Promise<void> => {
   const {
@@ -104,7 +105,7 @@ export const processFileUpload = async (
     userId,
     location,
     private_chat_id,
-    tempId
+    tempId,
   } = job.data;
 
   const fileStream = fs.createReadStream(filePath);
@@ -306,9 +307,6 @@ export const getMessages = async (
   res: Response
 ): Promise<any> => {
   try {
-
-
-
     const { channelId } = req.params;
     const driverPin = req.query.driverPin;
     const messages = await Message.findAll({
@@ -722,9 +720,8 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
         },
       });
     }
-  
+
     // if(private_chat_id != "undefined"){
-    
 
     // const channel =
     //    await Channel.findByPk(req.activeChannel)
@@ -760,7 +757,22 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       source == "channel"
         ? await Channel.findByPk(channelId)
         : await Group.findByPk(req.params.channelId);
+    let channelGroupId;
+    let groupUserIds;
+    if (source == "group") {
+      channelGroupId = await GroupChannel.findOne({
+        where: {
+          groupId: channelId,
+        },
+      });
+     const groupUser = await GroupUser.findAll({
+        where: {
+          groupId: channelId,
+        },
+      });
+       groupUserIds = groupUser.map(groupUser => groupUser.userProfileId);
 
+    }
     const media = await Media.findAndCountAll({
       where: {
         [Op.or]: [
@@ -796,6 +808,25 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                 {
                   groupId: channelId,
                   upload_source: "group",
+                },
+              ]
+            : []),
+          ...(source !== "channel"
+            ? [
+                {
+                  groupId: channelId,
+                  // upload_source: "truck",
+                },
+              ]
+            : []),
+          ...(source !== "channel"
+            ? [
+                {
+                  channelId: channelGroupId?.channelId,
+                  user_profile_id:{
+                   [Op.in]: groupUserIds
+                  }
+                  // upload_source: "truck",
                 },
               ]
             : []),
@@ -1036,13 +1067,13 @@ export const fileUploadByQueue = async (
     const private_chat_id = req.query.private_chat_id as string;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
-     if(tempId){
+    if (tempId) {
       const findTempId = await Message.findOne({
         where: {
           temp_id: tempId,
         },
       });
-      if(findTempId){
+      if (findTempId) {
         const socket = global.userSockets[req.user?.id];
         await driverMessageQueueProcessResend(
           getSocketInstance(),
@@ -1053,13 +1084,11 @@ export const fileUploadByQueue = async (
           channelId,
           null,
           null,
-          "not-upload",
-          
+          "not-upload"
         );
       }
-     }
+    }
     for (const file of files) {
-     
       const filePath = file.path;
       const fileName = file.originalname?.replace(" ", "_");
       const fileNameS3 = file?.filename;
@@ -1136,8 +1165,8 @@ export const fileUploadByQueue = async (
             "not-upload"
           );
         } else {
-          if(tempId){
-            if(socket){
+          if (tempId) {
+            if (socket) {
               await driverMessageQueueProcess(
                 getSocketInstance(),
                 socket,
@@ -1147,10 +1176,9 @@ export const fileUploadByQueue = async (
                 channelId,
                 null,
                 null,
-                "not-upload",
-                
+                "not-upload"
               );
-            }else{
+            } else {
               await driverMessageQueueProcessWithoutSocket(
                 getSocketInstance(),
                 tempId,
@@ -1164,8 +1192,7 @@ export const fileUploadByQueue = async (
                 null
               );
             }
-           
-          }else{
+          } else {
             await messageToChannelToUser(
               getSocketInstance(),
               socket,
@@ -1177,7 +1204,6 @@ export const fileUploadByQueue = async (
               "not-upload"
             );
           }
-          
         }
       }
       // Create media record in the database
@@ -1197,7 +1223,7 @@ export const fileUploadByQueue = async (
       });
 
       // Add job to the queue for the current file
-      const job =  await fileUploadQueue.add({
+      const job = await fileUploadQueue.add({
         filePath,
         fileName: fileNameS3,
         mediaId: media.id,
@@ -1209,13 +1235,12 @@ export const fileUploadByQueue = async (
         private_chat_id: private_chat_id,
         tempId: tempId,
       });
-      
+
       if (!job || !job.id) {
         media.update({
           upload_type: "fail_to_add_queue",
-        })
+        });
       }
-
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
@@ -1233,7 +1258,6 @@ export const fileUploadByQueue = async (
 };
 
 export const uploadMultipleMiddleware = upload.array("file");
-
 
 export const uploadFromLocal = async (
   job: Job<{
@@ -1323,7 +1347,7 @@ export const uploadFromLocal = async (
             "server",
             userId,
             existingGroupMessage!.id,
-             `uscitylink/${fileName}`
+            `uscitylink/${fileName}`
           );
         } else {
           await notifiyFileUploadStaffToDriver(
@@ -1395,5 +1419,3 @@ export const uploadFromLocal = async (
     }
   }
 };
-
-

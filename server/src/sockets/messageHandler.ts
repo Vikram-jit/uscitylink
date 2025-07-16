@@ -223,6 +223,7 @@ export async function driverMessageQueueProcessWithoutSocket(
   userId?: string,
   truckId?: string | null
 ) {
+  console.log(truckId, "truckIdByUser");
   const messageSave = await Message.create({
     channelId: channelId,
     userProfileId: userId,
@@ -442,6 +443,17 @@ export async function driverMessageQueueProcessWithoutSocket(
     );
 
     if (truckId) {
+       await Group.update(
+        {
+          message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
+          last_message_id: message?.id,
+        },
+        {
+          where: {
+            id: truckId,
+          },
+        }
+      );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (e.channelId === channelId && truckId == e.groupId) {
           const isSocket = global.userSockets[staffId];
@@ -715,6 +727,17 @@ export async function driverMessageQueueProcessResend(
     );
 
     if (socket?.user?.truck_group_id) {
+       await Group.update(
+        {
+          message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
+          last_message_id: message?.id,
+        },
+        {
+          where: {
+            id: socket?.user?.truck_group_id,
+          },
+        }
+      );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (
           e.channelId === channelId &&
@@ -772,10 +795,10 @@ export async function driverMessageQueueProcessResend(
     },
   });
 
-  const userDriver = await UserChannel.findOne( {
-    where:{
-      userProfileId:message?.userProfileId,
-      channelId:message?.channelId
+  const userDriver = await UserChannel.findOne({
+    where: {
+      userProfileId: message?.userProfileId,
+      channelId: message?.channelId,
     },
     include: [
       {
@@ -798,8 +821,6 @@ export async function driverMessageQueueProcessResend(
         as: "last_message",
       },
     ],
-
-   
   });
 
   await Promise.all(
@@ -811,36 +832,44 @@ export async function driverMessageQueueProcessResend(
             "notification_new_message",
             `New Message received on ${channel?.name} channel`
           );
-          if(userDriver){
+          if (userDriver) {
             const unreadCount = await MessageStaff.count({
-              where:{
-                driverId:userDriver.userProfileId,
-                status:"un-read",
-                type:"chat",
-                staffId:user.id
-              }
-            })
-            const groupUsers:any = await GroupUser.findAll({
-              where:{
-                userProfileId:userDriver.userProfileId,
-                status:"active"
+              where: {
+                driverId: userDriver.userProfileId,
+                status: "un-read",
+                type: "chat",
+                staffId: user.id,
               },
-              include:[{
-                model:Group,
-                where:{
-                  type:"truck",
-      
-                }
-              }]
-            })
-            const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
-      
-            const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
+            });
+            const groupUsers: any = await GroupUser.findAll({
+              where: {
+                userProfileId: userDriver.userProfileId,
+                status: "active",
+              },
+              include: [
+                {
+                  model: Group,
+                  where: {
+                    type: "truck",
+                  },
+                },
+              ],
+            });
+            const getTruckNumbers = await Promise.all(
+              groupUsers.map((e: any) => e.Group.name)
+            );
+
+            const newObj = {
+              ...userDriver.dataValues,
+              unreadCount: unreadCount,
+              assginTrucks: getTruckNumbers?.join(","),
+            };
             io.to(isSocket.id).emit(
               "notification_new_message_with_user",
               newObj
-            );}
-          
+            );
+          }
+
           io.to(isSocket.id).emit("new_message_count_update_staff", {
             channelId: message?.channelId,
             userId: message?.userProfileId,
@@ -1055,7 +1084,6 @@ export async function driverMessageQueueProcess(
           });
           if (el.role == "staff" && el.channelId == channelId) {
             if (isSocket) {
-              
               io.to(isSocket?.id).emit("new_message_count_update_staff", {
                 channelId: message?.channelId,
                 userId: message?.userProfileId,
@@ -1095,8 +1123,20 @@ export async function driverMessageQueueProcess(
         },
       }
     );
+     
 
     if (socket?.user?.truck_group_id) {
+      await Group.update(
+        {
+          message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
+          last_message_id: message?.id,
+        },
+        {
+          where: {
+            id: socket?.user?.truck_group_id,
+          },
+        }
+      );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (
           e.channelId === channelId &&
@@ -1106,6 +1146,7 @@ export async function driverMessageQueueProcess(
 
           if (isSocket) {
             io.to(isSocket.id).emit("receive_message_group_truck", message);
+           
           }
         }
       });
@@ -1145,10 +1186,10 @@ export async function driverMessageQueueProcess(
     },
   });
 
-  const userDriver = await UserChannel.findOne( {
-    where:{
-      userProfileId:message?.userProfileId,
-      channelId:message?.channelId
+  const userDriver = await UserChannel.findOne({
+    where: {
+      userProfileId: message?.userProfileId,
+      channelId: message?.channelId,
     },
     include: [
       {
@@ -1171,8 +1212,6 @@ export async function driverMessageQueueProcess(
         as: "last_message",
       },
     ],
-
-   
   });
 
   await Promise.all(
@@ -1184,37 +1223,44 @@ export async function driverMessageQueueProcess(
             "notification_new_message",
             `New Message received on ${channel?.name} channel`
           );
-          if(userDriver){
-              const unreadCount = await MessageStaff.count({
-                where:{
-                  driverId:userDriver.userProfileId,
-                  status:"un-read",
-                  type:"chat",
-                  staffId:user.id
-                }
-              })
-              const groupUsers:any = await GroupUser.findAll({
-                where:{
-                  userProfileId:userDriver.userProfileId,
-                  status:"active"
+          if (userDriver) {
+            const unreadCount = await MessageStaff.count({
+              where: {
+                driverId: userDriver.userProfileId,
+                status: "un-read",
+                type: "chat",
+                staffId: user.id,
+              },
+            });
+            const groupUsers: any = await GroupUser.findAll({
+              where: {
+                userProfileId: userDriver.userProfileId,
+                status: "active",
+              },
+              include: [
+                {
+                  model: Group,
+                  where: {
+                    type: "truck",
+                  },
                 },
-                include:[{
-                  model:Group,
-                  where:{
-                    type:"truck",
-        
-                  }
-                }]
-              })
-              const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
-        
-              const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
-              io.to(isSocket.id).emit(
-                "notification_new_message_with_user",
-                newObj
-              );
-            }
-         
+              ],
+            });
+            const getTruckNumbers = await Promise.all(
+              groupUsers.map((e: any) => e.Group.name)
+            );
+
+            const newObj = {
+              ...userDriver.dataValues,
+              unreadCount: unreadCount,
+              assginTrucks: getTruckNumbers?.join(","),
+            };
+            io.to(isSocket.id).emit(
+              "notification_new_message_with_user",
+              newObj
+            );
+          }
+
           io.to(isSocket.id).emit("new_message_count_update_staff", {
             channelId: message?.channelId,
             userId: message?.userProfileId,
@@ -1465,8 +1511,18 @@ export async function messageToChannelToUser(
           },
         }
       );
-
       if (socket?.user?.truck_group_id) {
+         await Group.update(
+        {
+          message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
+          last_message_id: message?.id,
+        },
+        {
+          where: {
+            id: socket?.user?.truck_group_id,
+          },
+        }
+      );
         Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
           if (
             e.channelId === channelId &&
@@ -1508,10 +1564,10 @@ export async function messageToChannelToUser(
       },
     });
 
-    const userDriver = await UserChannel.findOne( {
-      where:{
-        userProfileId:message?.userProfileId,
-        channelId:message?.channelId
+    const userDriver = await UserChannel.findOne({
+      where: {
+        userProfileId: message?.userProfileId,
+        channelId: message?.channelId,
       },
       include: [
         {
@@ -1534,10 +1590,8 @@ export async function messageToChannelToUser(
           as: "last_message",
         },
       ],
-
-     
     });
- 
+
     await Promise.all(
       users.map(async (user) => {
         if (user) {
@@ -1547,38 +1601,44 @@ export async function messageToChannelToUser(
               "notification_new_message",
               `New Message received by ${message?.dataValues.sender.username}`
             );
-            if(userDriver){
+            if (userDriver) {
               const unreadCount = await MessageStaff.count({
-                where:{
-                  driverId:userDriver.userProfileId,
-                  status:"un-read",
-                  type:"chat",
-                  staffId:user.id
-                }
-              })
-              const groupUsers:any = await GroupUser.findAll({
-                where:{
-                  userProfileId:userDriver.userProfileId,
-                  status:"active"
+                where: {
+                  driverId: userDriver.userProfileId,
+                  status: "un-read",
+                  type: "chat",
+                  staffId: user.id,
                 },
-                include:[{
-                  model:Group,
-                  where:{
-                    type:"truck",
-        
-                  }
-                }]
-              })
-              const getTruckNumbers = await Promise.all(groupUsers.map((e:any)=>e.Group.name));
-        
-              const newObj = {...userDriver.dataValues,unreadCount:unreadCount,assginTrucks:getTruckNumbers?.join(",")}
+              });
+              const groupUsers: any = await GroupUser.findAll({
+                where: {
+                  userProfileId: userDriver.userProfileId,
+                  status: "active",
+                },
+                include: [
+                  {
+                    model: Group,
+                    where: {
+                      type: "truck",
+                    },
+                  },
+                ],
+              });
+              const getTruckNumbers = await Promise.all(
+                groupUsers.map((e: any) => e.Group.name)
+              );
+
+              const newObj = {
+                ...userDriver.dataValues,
+                unreadCount: unreadCount,
+                assginTrucks: getTruckNumbers?.join(","),
+              };
               io.to(isSocket.id).emit(
                 "notification_new_message_with_user",
                 newObj
               );
             }
-           
-           
+
             io.to(isSocket.id).emit("new_message_count_update_staff", {
               channelId: message?.channelId,
               userId: message?.userProfileId,
@@ -1851,7 +1911,7 @@ export async function messageToDriverByTruckGroup(
     url_upload_type: url_upload_type || "server",
   });
   let isSendToStaff = false;
- 
+
   Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
     if (
       e.channelId === findStaffActiveChannel?.channelId &&
@@ -1869,18 +1929,18 @@ export async function messageToDriverByTruckGroup(
       }
     }
   });
-  if(isSendToStaff == false){
+  if (isSendToStaff == false) {
     const isSocket = global.userSockets[socket?.user?.id!];
-    console.log("isSocket",socket?.user);
+    console.log("isSocket", socket?.user);
     if (isSocket) {
       io.to(isSocket.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
         group_message
       );
       io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
-    io.sockets.emit("receive_message_group_truck", newSaveStaff);
-isSendToStaff = true;
-    } 
+      io.sockets.emit("receive_message_group_truck", newSaveStaff);
+      isSendToStaff = true;
+    }
   }
   console.log("Channel_testing", isSendToStaff);
   for (const driverId of userIds || []) {
@@ -2059,8 +2119,6 @@ isSendToStaff = true;
       },
     }
   );
- 
- 
 }
 
 export async function deleteMessage(

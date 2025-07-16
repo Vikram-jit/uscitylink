@@ -6,7 +6,7 @@ export const navItems = [
   { key: 'messages', title: 'Messages', href: paths.dashboard.messages, icon: 'chat',badge:true },
   { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users',badge:true },
   { key: 'truckgroup', title: 'Truck Groups', href: paths.dashboard.truck_group, icon: 'truck',badge:false },
-  { key: 'truckchat', title: 'Truck Chat', href: paths.dashboard.truck_chat, icon: 'truck',badge:false },
+  { key: 'truckchat', title: 'Truck Chat', href: paths.dashboard.truck_chat, icon: 'truck',badge:true },
   { key: 'templates', title: 'Templates', href: paths.dashboard.templates, icon: 'template',badge:false },
 
   { key: 'user', title: 'Users', href: `${paths.dashboard.users}/staff`, icon: 'user' ,badge:false, items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,badge:false}]},

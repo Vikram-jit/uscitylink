@@ -24,6 +24,8 @@ export function LoginWithToken(): React.JSX.Element {
 
   React.useEffect(() => {
     const handleAsyncOperations = async () => {
+      localStorage.removeItem('custom-auth-token');
+      sessionStorage.clear();
         if (error) {
           setApiResponse(error as any);
         }

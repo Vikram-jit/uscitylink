@@ -510,7 +510,9 @@ export async function getActiveChannel(
         status:"un-read"
       }
     });
-    const groupCount = await Group.sum('message_count');
+    const groupCount = await Group.sum('message_count',{where:{
+      type:"group"
+    }});
 
     let  countUnRead = 0;
     const staffUnReadCount1 = await PrivateChatMember.findAll({
@@ -530,11 +532,14 @@ export async function getActiveChannel(
     await Promise.all(staffUnReadCount2.map((e)=>{
       countUnRead = countUnRead + Number(e.reciverCount)
     }))
+const truckGroupCount = await Group.sum('message_count',{where:{
+  type:"truck"
+}});
 
     return res.status(200).json({
       status: true,
       message: `Active channel Fetch Successfully.`,
-      data: {channel,messages:userUnMessage,group:groupCount,staffcountUnRead:countUnRead},
+      data: {channel,messages:userUnMessage,group:groupCount,staffcountUnRead:countUnRead,truckGroup:truckGroupCount},
     });
   } catch (err: any) {
     return res

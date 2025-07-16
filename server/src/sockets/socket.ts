@@ -34,7 +34,7 @@ import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import PrivateChatMember from "../models/PrivateChatMember";
 import { Message } from "../models/Message";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import GroupChannel from "../models/GroupChannel";
 
 let io: Server;
@@ -87,9 +87,6 @@ export interface CustomSocket extends Socket {
 }
 
 export const initSocket = (httpServer: any) => {
-
-  
-
   io = new Server(httpServer, {
     cors: {
       origin: "*",
@@ -145,12 +142,20 @@ export const initSocket = (httpServer: any) => {
             where: {
               userProfileId: userProfile.id,
             },
+            include: [
+              {
+                model: Group,
+                where: {
+                  type: "truck",
+                },
+              },
+            ],
           });
 
           socket.user = {
             id: userProfile.id,
             name: userProfile.username || "Unknown",
-            truck_group_id: groupUser ? groupUser.dataValues.groupId : "",
+            truck_group_id: groupUser ? groupUser?.dataValues?.groupId : "",
           };
 
           global.userSockets[userProfile.id] = socket;
@@ -273,7 +278,7 @@ export const initSocket = (httpServer: any) => {
                   io.to(isSocket.id).emit("user_online", {
                     userId: userProfile.id,
                     channelId: value.channelId,
-                    isOnline:true
+                    isOnline: true,
                   });
                   io.to(isSocket.id).emit("user_online_driver", {
                     userId: userProfile?.id,
@@ -363,11 +368,11 @@ export const initSocket = (httpServer: any) => {
       "staff_open_truck_group",
       async (groupId) => await staffOpenTruckGroupUpdate(socket, groupId)
     );
- socket.on(
+    socket.on(
       "staff_open_truck_chat",
       async (groupId) => await staffOpenTruckChat(socket, groupId)
     );
-    
+
     socket.on(
       "staff_channel_update",
       async (channelId) => await staffActiveChannelUpdate(socket, channelId)
@@ -417,6 +422,43 @@ export const initSocket = (httpServer: any) => {
       "update_group_message_count",
       async (groupId) => await unreadAllGroupMessageByUser(io, socket, groupId)
     );
+
+    socket.on("staff_open_truck__message_count", async ({ groupId, count }) => {
+      if (groupId) {
+        // Update the group message count in the global variable
+        await Group.update(
+          {
+            message_count: 0,
+          },
+          {
+            where: {
+              id: groupId,
+            },
+          }
+        );
+
+        const isGroupUser = await GroupUser.findAll({
+          where: {
+            groupId: groupId,
+          },
+        });
+        const groupChannel = await GroupChannel.findOne({
+          where: { groupId: groupId },
+        });
+        if (isGroupUser) {
+          await Promise.all(
+            isGroupUser.map(async (e) => {
+              await unreadAllUserMessage(
+                io,
+                socket,
+                groupChannel?.channelId || "",
+                e.userProfileId
+              );
+            })
+          );
+        }
+      }
+    });
 
     //driver web app
 
@@ -472,7 +514,7 @@ export const initSocket = (httpServer: any) => {
               ],
             });
           }
-          return { ...e.dataValues, group:group?.dataValues };
+          return { ...e.dataValues, group: group?.dataValues };
         })
       );
       socket.emit("get_driver_messages_queues", modifiedMessage);
@@ -482,12 +524,11 @@ export const initSocket = (httpServer: any) => {
       const { messageId } = data;
       const message = await Message.findByPk(messageId);
       if (message) {
-        await message.update({ status: "sent", groupId: socket?.user?.truck_group_id || null });
-
+        await message.update({
+          status: "sent",
+          groupId: socket?.user?.truck_group_id || null,
+        });
       }
-
-        
-
     });
 
     socket.on(
@@ -676,7 +717,14 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_CHANNEL,
-      async ({ body, url = null, channelId, thumbnail, r_message_id,url_upload_type }) =>
+      async ({
+        body,
+        url = null,
+        channelId,
+        thumbnail,
+        r_message_id,
+        url_upload_type,
+      }) =>
         await messageToChannelToUser(
           io,
           socket,
@@ -698,7 +746,7 @@ export const initSocket = (httpServer: any) => {
         channelId,
         thumbnail,
         r_message_id,
-        messageTimestampUtc
+        messageTimestampUtc,
       }) =>
         await driverMessageQueueProcess(
           io,
@@ -714,8 +762,11 @@ export const initSocket = (httpServer: any) => {
         )
     );
 
-  socket.on("check_message_store", async ({ messageId,channelId }) => await getMessageByTempId(io,socket,messageId,channelId));
-
+    socket.on(
+      "check_message_store",
+      async ({ messageId, channelId }) =>
+        await getMessageByTempId(io, socket, messageId, channelId)
+    );
 
     socket.on(
       "driver_message_queue_resend",
@@ -848,7 +899,7 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online", {
                 userId: isUser.id,
                 channelId: value.channelId,
-                isOnline:false
+                isOnline: false,
               });
             }
           });
@@ -880,7 +931,7 @@ export const initSocket = (httpServer: any) => {
     socket.on("disconnect", async () => {
       console.log("disconnect");
       const userId = socket?.user?.id!;
-      
+
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
 
@@ -899,7 +950,7 @@ export const initSocket = (httpServer: any) => {
         ],
       });
 
-      console.log(isUser?.username)
+      console.log(isUser?.username);
 
       if (isUser) {
         if (isUser?.role?.name == "driver") {
@@ -915,7 +966,7 @@ export const initSocket = (httpServer: any) => {
               io.to(isSocket.id).emit("user_online", {
                 userId: userId,
                 channelId: value.channelId,
-                isOnline:false
+                isOnline: false,
               });
               io.to(isSocket.id).emit("user_online_driver", {
                 userId: socket.user?.id,

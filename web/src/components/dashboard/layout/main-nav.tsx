@@ -19,13 +19,14 @@ import { Button } from '@mui/material';
 import { useUnReadMessageAllMutation } from '@/redux/ChannelApiSlice';
 import MarkMessageDialog from './mark-message-dialog';
 import { toast } from 'react-toastify';
+import { useGetProfileQuery } from '@/redux/UserApiSlice';
 
 export function MainNav(): React.JSX.Element {
   const [openNav, setOpenNav] = React.useState<boolean>(false);
 
   const userPopover = usePopover<HTMLDivElement>();
   const [openDialog,setOpenDialog] = React.useState<boolean>(false)
- 
+  const {data,isLoading:profileLoader} = useGetProfileQuery();
   const [unReadMessageAll,{isLoading}] = useUnReadMessageAllMutation()
 
   return (
@@ -75,13 +76,14 @@ export function MainNav(): React.JSX.Element {
             <Avatar
               onClick={userPopover.handleOpen}
               ref={userPopover.anchorRef}
-              src="/assets/avatar.png"
+              src={data?.data?.username?.toUpperCase() || 'User Avatar'}
+              alt={data?.data?.username?.toUpperCase() || 'User Avatar'}
               sx={{ cursor: 'pointer' }}
             />
           </Stack>
         </Stack>
       </Box>
-      <UserPopover anchorEl={userPopover.anchorRef.current} onClose={userPopover.handleClose} open={userPopover.open} />
+      <UserPopover data={data} isLoading={profileLoader} anchorEl={userPopover.anchorRef.current} onClose={userPopover.handleClose} open={userPopover.open} />
       <MobileNav
         onClose={() => {
           setOpenNav(false);

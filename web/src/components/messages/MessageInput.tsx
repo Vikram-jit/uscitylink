@@ -174,7 +174,6 @@ export default function MessageInput(props: MessageInputProps) {
       const extension = file.name?.split('.')[file.name?.split('.').length - 1];
 
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
-
       dispatch(showLoader());
       let formData = new FormData();
       formData.append('file', file);
