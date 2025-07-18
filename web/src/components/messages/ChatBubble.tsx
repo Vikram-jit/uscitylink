@@ -86,8 +86,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
             onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={'server'}
-              thumbnail={`http://52.9.12.189:4300/${props.url}`}
-              url={`http://52.9.12.189:4300/${props.url}`}
+               thumbnail={`${process.env.SOCKET_URL}/${props.url}`}
+              url={`${process.env.SOCKET_URL}/${props.url}`}
               name={url ? url : ' '}
             />
           ) : (
@@ -160,8 +160,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       <MediaComponent
                         messageDirection={props.messageDirection}
                         type={'server'}
-                        thumbnail={`http://52.9.12.189:4300/${r_message.url}`}
-                        url={`http://52.9.12.189:4300/${r_message.url}`}
+                         thumbnail={`${process.env.SOCKET_URL}/${r_message.url}`}
+                        url={`${process.env.SOCKET_URL}/${r_message.url}`}
                         name={r_message.url ? r_message.url : ' '}
                       />
                     ) : (
@@ -280,7 +280,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
-                    window.open(`http://52.9.12.189:4300/${props.url}`, '_blank');
+                    window.open(`${process.env.SOCKET_URL}/${props.url}`, '_blank');
                     handleClose();
                   }}
                 >

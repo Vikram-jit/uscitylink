@@ -407,7 +407,7 @@ export default function MessageInput(props: MessageInputProps) {
   );
 }
 
-const MediaGallery = ({ mediaFiles }: any) => {
+export const MediaGallery = ({ mediaFiles }: any) => {
   const galleryItems = mediaFiles.map((file: any) => {
     const objectUrl = URL.createObjectURL(file);
     const extension = file.name.split('.').pop().toLowerCase();
@@ -426,7 +426,7 @@ const MediaGallery = ({ mediaFiles }: any) => {
         ) : isPDF ? (
           <iframe src={objectUrl} title={file.name} style={{ width: '100%', height: '75vh' }} />
         ) : (
-          <img src={objectUrl} alt={file.name} style={{ height: '75vh' }} />
+          <img src={objectUrl} alt={file.name} style={{ height: '300px' }} />
         ),
     };
   });

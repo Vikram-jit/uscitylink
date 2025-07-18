@@ -20,6 +20,7 @@ export interface Media {
   createdAt:       Date;
   updatedAt:       Date;
   thumbnail:string
+  upload_type?: string;
 }
 
 export interface Welcome {

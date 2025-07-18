@@ -151,7 +151,11 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <ReactPlayer
               controls={true}
-              url={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`}
+             url={
+                      uploadType === 'not-upload' || uploadType === 'local'
+                        ? `${process.env.SOCKET_URL}/uscitylink/${key}`
+                        : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`
+                    }
               width={'100%'}
             />
           </Box>
@@ -206,7 +210,11 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
              <Box marginBottom={2}></Box>
               <TransformComponent>
                 <Image
-                  src={uploadType == "not-upload" ? `http://52.9.12.189:4300/uscitylink/${key}` : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
+                 src={
+                      uploadType === 'not-upload' || uploadType === 'local'
+                        ? `${process.env.SOCKET_URL}/uscitylink/${key}`
+                        : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`
+                    }   
                   alt="image"
                   width={1020}
                   height={1020}

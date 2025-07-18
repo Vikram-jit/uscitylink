@@ -594,7 +594,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
        ()=>{
         setCurrentIndex(null)
        }
-      } uploadType={messages[currentIndex]?.url_upload_type} documentKey={messages[currentIndex]?.url?.split('/')?.[1]} moveNext={movePrevious} movePrev={moveNext} currentIndex={currentIndex}/>}
+      } uploadType={messages[currentIndex]?.url_upload_type} documentKey={messages[currentIndex]?.url?.split('/')?.[1] =="video" ? messages[currentIndex]?.url?.split('/')?.[2] : messages[currentIndex]?.url?.split('/')?.[1]} moveNext={movePrevious} movePrev={moveNext} currentIndex={currentIndex}/>}
     </Paper>
   );
 }
