@@ -81,7 +81,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             borderTopLeftRadius: isSent ? 'lg' : 0,
           }}
         >
-          {props.url_upload_type == 'not-upload' ? (
+          {props.url_upload_type == 'not-upload' || props.url_upload_type == "local" ? (
             <MediaComponent
             onClick={props.onClick}
               messageDirection={props.messageDirection}
@@ -156,7 +156,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       mb: 2,
                     }}
                   >
-                    {r_message.url_upload_type == 'not-upload' ? (
+                    {r_message.url_upload_type == 'not-upload' || r_message.url_upload_type == "local" ? (
                       <MediaComponent
                         messageDirection={props.messageDirection}
                         type={'server'}
