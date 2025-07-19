@@ -405,26 +405,21 @@ export async function convertImageToPDFAndDownload(req: Request, res: Response):
 
     // 3. Process image to PDF with error handling
     try {
-      const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-        const buffers: Buffer[] = [];
-        imageToPDF([imageBuffer], {
-          pages: 'A4',
-          quality: 100,
-          border: '0mm' // No border around the image
-        })
-          .on('data', (chunk: Buffer) => buffers.push(chunk))
-          .on('end', () => resolve(Buffer.concat(buffers)))
-          .on('error', reject);
-      });
+       // Convert the image buffer to PDF
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const buffers: Buffer[] = [];
+      imageToPDF([imageBuffer], 'A4')
+        .on('data', (chunk:any) => buffers.push(chunk))
+        .on('end', () => resolve(Buffer.concat(buffers)))
+        .on('error', reject);
+    });
 
-      // 4. Set response headers
-      const outputFilename = `${path.parse(objectKey).name}.pdf`;
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${outputFilename}"`);
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=converted-image.pdf');
 
-      // 5. Send response
-      return res.send(pdfBuffer);
+    // Send the PDF as the response
+    res.send(pdfBuffer);
     } catch (processingError) {
       console.error('PDF conversion error:', processingError);
       return res.status(500).json({ error: 'Failed to convert image to PDF' });
