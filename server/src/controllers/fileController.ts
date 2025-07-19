@@ -356,7 +356,86 @@ export async function convertImageAndDownloadOld(req:Request,res:Response){
   }
 }
 
-export async function convertImageToPDFAndDownload(req: Request, res: Response) {
+
+export async function convertImageToPDFAndDownload(req: Request, res: Response):Promise<any> {
+  const fileName = decodeURIComponent(req.params.fileName);
+  const bucketName = 'ciity-sms';
+  const objectKey = fileName;
+
+  try {
+    // 1. Check if media exists in database
+    const isMedia = await Media.findOne({ where: { key: objectKey } });
+    if (!isMedia) {
+      return res.status(404).json({ error: 'File not found in the database' });
+    }
+
+    let imageBuffer: Buffer;
+
+    // 2. Handle different upload types
+    if (isMedia.upload_type !== 'server') {
+      // Handle non-S3 media (local files)
+      const localPath = path.join(process.cwd(), 'public', objectKey);
+      
+      try {
+        imageBuffer = await fs.promises.readFile(localPath);
+      } catch (err) {
+        console.error('Error reading local file:', err);
+        return res.status(404).json({ error: 'Local file not found' });
+      }
+    } else {
+      // Handle S3 media
+      try {
+        const { Body } = await s3Client.send(
+          new GetObjectCommand({ 
+            Bucket: bucketName, 
+            Key: objectKey 
+          })
+        );
+
+        if (!Body || !(Body instanceof Readable)) {
+          return res.status(404).json({ error: 'S3 file not found or invalid' });
+        }
+
+        imageBuffer = await streamToBuffer(Body);
+      } catch (s3Error) {
+        console.error('S3 retrieval error:', s3Error);
+        return res.status(500).json({ error: 'Failed to retrieve file from S3' });
+      }
+    }
+
+    // 3. Process image to PDF with error handling
+    try {
+      const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+        const buffers: Buffer[] = [];
+        imageToPDF([imageBuffer], {
+          pages: 'A4',
+          quality: 100,
+          border: '0mm' // No border around the image
+        })
+          .on('data', (chunk: Buffer) => buffers.push(chunk))
+          .on('end', () => resolve(Buffer.concat(buffers)))
+          .on('error', reject);
+      });
+
+      // 4. Set response headers
+      const outputFilename = `${path.parse(objectKey).name}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${outputFilename}"`);
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+
+      // 5. Send response
+      return res.send(pdfBuffer);
+    } catch (processingError) {
+      console.error('PDF conversion error:', processingError);
+      return res.status(500).json({ error: 'Failed to convert image to PDF' });
+    }
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+export async function convertImageToPDFAndDownloadOld(req: Request, res: Response) {
   const fileName = decodeURIComponent(req.params.fileName)
   const bucketName = 'ciity-sms';
   const objectKey = fileName; 
