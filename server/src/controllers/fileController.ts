@@ -239,9 +239,93 @@ export const fileUploadAWS = async (
   }
 };
 
-export async function convertImageAndDownload(req:Request,res:Response){
+export async function convertImageAndDownload(req: Request, res: Response):Promise<any> {
   const bucketName = 'ciity-sms';
-  const objectKey = decodeURIComponent(req.params.fileName); // Adjust the path as needed
+  const objectKey = decodeURIComponent(req.params.fileName);
+  
+  try {
+    // 1. Check if media exists in database
+    const isMedia = await Media.findOne({ where: { key: objectKey } });
+    if (!isMedia) {
+      return res.status(404).json({ error: 'File not found in the database' });
+    }
+
+    let imageBuffer: Buffer;
+
+    // 2. Handle different upload types
+    if (isMedia.upload_type !== 'server') {
+      // Handle non-S3 media (local files)
+      const localPath = path.join(process.cwd(), 'public', 'uscitylink', objectKey);
+      
+      try {
+        imageBuffer = await fs.promises.readFile(localPath);
+      } catch (err) {
+        console.error('Error reading local file:', err);
+        return res.status(404).json({ error: 'Local file not found' });
+      }
+    } else {
+      // Handle S3 media
+      try {
+        const { Body } = await s3Client.send(
+          new GetObjectCommand({ 
+            Bucket: bucketName, 
+            Key: objectKey 
+          })
+        );
+
+        if (!Body || !(Body instanceof Readable)) {
+          return res.status(404).json({ error: 'S3 file not found or invalid' });
+        }
+
+        imageBuffer = await streamToBuffer(Body);
+      } catch (s3Error) {
+        console.error('S3 retrieval error:', s3Error);
+        return res.status(500).json({ error: 'Failed to retrieve file from S3' });
+      }
+    }
+
+    // 3. Process image with error handling
+    try {
+      const transformedImage = await sharp(imageBuffer)
+        .jpeg({ 
+          quality: 80, // Adjust quality
+          mozjpeg: true // Better compression
+        })
+        .withMetadata() // Preserve EXIF data
+        .toBuffer();
+
+      // 4. Set response headers
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Content-Disposition', `attachment; filename="${path.parse(objectKey).name}.jpg"`);
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
+
+      // 5. Send response
+      return res.send(transformedImage);
+    } catch (processingError) {
+      console.error('Image processing error:', processingError);
+      return res.status(500).json({ error: 'Failed to process image' });
+    }
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function convertImageAndDownloadOld(req:Request,res:Response){
+  const bucketName = 'ciity-sms';
+  const objectKey = decodeURIComponent(req.params.fileName); 
+     const isMedia = await Media.findOne({ where: { key: objectKey } });
+
+     if (!isMedia) {
+    return res.status(404).send('File not found in the database.');
+  } 
+
+  if(isMedia.upload_type !== 'server'){
+    //get from public public/uscitylink
+  }else{
+
+  }
 
   try {
     // Retrieve the image from S3
