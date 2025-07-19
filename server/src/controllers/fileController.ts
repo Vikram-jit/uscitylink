@@ -256,7 +256,7 @@ export async function convertImageAndDownload(req: Request, res: Response):Promi
     if (isMedia.upload_type !== 'server') {
       // Handle non-S3 media (local files)
       const localPath = path.join(process.cwd(), 'public', 'uscitylink', objectKey);
-      
+        console.log('Local path:', localPath);
       try {
         imageBuffer = await fs.promises.readFile(localPath);
       } catch (err) {
