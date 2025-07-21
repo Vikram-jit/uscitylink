@@ -116,6 +116,9 @@ export const initSocket = (httpServer: any) => {
     try {
       const decoded: any = verifyToken(token);
 
+if (!decoded) {
+  return next(new Error("Authentication error: Invalid token"));
+}
       if (decoded?.id) {
         const userProfile = await UserProfile.findByPk(decoded.id, {
           include: [

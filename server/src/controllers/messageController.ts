@@ -65,6 +65,12 @@ export const fileUploadQueue = new Queue("fileUploadQueue", {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379,
+      maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false,    // speeds up startup when Redis is slow
+      retryStrategy: (times) => {
+        // Exponential backoff, cap retry delay to 2s
+        return Math.min(times * 50, 2000);
+      },
   },
 });
 

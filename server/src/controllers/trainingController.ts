@@ -34,6 +34,12 @@ const trainingNotificationQueue = new Queue("trainingNotificationQueue", {
   redis: {
     host: "127.0.0.1", // Redis host
     port: 6379, // Custom Redis port
+      maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false,    // speeds up startup when Redis is slow
+      retryStrategy: (times) => {
+        // Exponential backoff, cap retry delay to 2s
+        return Math.min(times * 50, 2000);
+      },
   },
 });
 

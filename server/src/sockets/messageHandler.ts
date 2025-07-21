@@ -21,12 +21,20 @@ import PrivateChatMember from "../models/PrivateChatMember";
 import dotenv from "dotenv";
 import { channel } from "diagnostics_channel";
 import GroupChannel from "../models/GroupChannel";
+import sequelize from "sequelize/types/sequelize";
+import { primarySequelize } from "../sequelize";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379, // Custom Redis port
+      maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false,    // speeds up startup when Redis is slow
+      retryStrategy: (times) => {
+        // Exponential backoff, cap retry delay to 2s
+        return Math.min(times * 50, 2000);
+      },
   },
 });
 
@@ -35,6 +43,12 @@ export const groupMessageQueue = new Queue("groupMessageQueue", {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379,
+      maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false,    // speeds up startup when Redis is slow
+      retryStrategy: (times) => {
+        // Exponential backoff, cap retry delay to 2s
+        return Math.min(times * 50, 2000);
+      },
   },
 });
 
@@ -45,6 +59,8 @@ export const groupNotificationStaffQueue = new Queue(
       host:
         process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
       port: 6379,
+        maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false,    // speeds up startup when Redis is slow
     },
   }
 );
@@ -2288,19 +2304,23 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
-    await MessageStaff.update(
-      {
-        status: "read",
-      },
-      {
-        where: {
-          driverId: userId,
-          staffId: socket?.user?.id,
-          status: "un-read",
-        },
-      }
-    );
+   const limit = 100; // or a smaller safe chunk
+await primarySequelize.transaction(async (t) => {
+  const unreadMessages = await MessageStaff.findAll({
+    where: {
+      driverId: userId,
+      staffId: socket?.user?.id,
+      status: "un-read",
+    },
+    limit,
+    transaction: t,
+    lock: t.LOCK.UPDATE,
+  });
 
+  for (const message of unreadMessages) {
+    await message.update({ status: "read" }, { transaction: t });
+  }
+});
     await UserChannel.update(
       {
         sent_message_count: 0,

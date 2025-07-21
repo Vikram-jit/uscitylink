@@ -24,7 +24,9 @@ export const authMiddleware = async (
 
   try {
     const decoded: any = verifyToken(token);
-  
+    if (!decoded) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     if (decoded?.id) {
       const userProfile = await UserProfile.findByPk(decoded?.id);
      

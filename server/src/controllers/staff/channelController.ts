@@ -3,9 +3,9 @@ import { Request, Response } from "express";
 import { UserProfile } from "../../models/UserProfile";
 import UserChannel from "../../models/UserChannel";
 import User from "../../models/User";
-import GroupUser from "../../models/GroupUser";
 import Role from "../../models/Role";
 import { MessageStaff } from "../../models/MessageStaff";
+import { primarySequelize } from "../../sequelize";
 
 export async function updateStaffActiceChannel(
   req: Request,
@@ -27,7 +27,6 @@ export async function updateStaffActiceChannel(
     return res.status(200).json({
       status: true,
       message: `Switch Channel Successfully.`,
-     
     });
   } catch (err: any) {
     return res
@@ -35,8 +34,6 @@ export async function updateStaffActiceChannel(
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
-
-
 
 export async function getChannelListWithActive(
   req: Request,
@@ -74,7 +71,7 @@ export async function selectedChannelMembers(
       where: {
         channelId: req.activeChannel,
         isGroup: 0,
-        status:"active"
+        status: "active",
       },
       include: [
         {
@@ -111,25 +108,21 @@ export async function driverList(req: Request, res: Response): Promise<any> {
         {
           model: UserProfile,
           as: "profiles",
-          attributes:["id","username"],
-         
+          attributes: ["id", "username"],
         },
       ],
-       order: [
+      order: [
         [{ model: UserProfile, as: "profiles" }, "username", "ASC"], // Sort by username
       ],
-     
     });
 
     const newdrivers = await Promise.all(
       drivers.map(async (driver) => {
-      
         let isExsit = false;
         if (driver.profiles?.length || 0 > 0) {
           const profile = await UserChannel.findOne({
             where: {
-              
-              channelId:req.activeChannel,
+              channelId: req.activeChannel,
               userProfileId: driver.profiles?.[0]?.id,
             },
           });
@@ -145,8 +138,9 @@ export async function driverList(req: Request, res: Response): Promise<any> {
     return res.status(200).json({
       status: true,
       message: `Channel members Fetch Successfully.`,
-      data: newdrivers.sort((a, b) => (b.isChannelExist ? 1 : 0) - (a.isChannelExist ? 1 : 0))
-
+      data: newdrivers.sort(
+        (a, b) => (b.isChannelExist ? 1 : 0) - (a.isChannelExist ? 1 : 0)
+      ),
     });
   } catch (err: any) {
     return res
@@ -155,53 +149,50 @@ export async function driverList(req: Request, res: Response): Promise<any> {
   }
 }
 
-
-
-export async function addOrRemoveDriverFromChannel(req: Request, res: Response): Promise<any> {
-  try {
-      
-    
-    const userChannels = await UserChannel.findOne({
-      where: {
-        channelId: req.activeChannel,
-        userProfileId:req.body.id,
-        isGroup: 0,
-      },
-     
-     });
-     
-    if(userChannels){
-      await UserChannel.update({
-        status:userChannels.status =="active"?"inactive":"active"
-      },{
-        where:{
-          id:userChannels.id
-        }
-      })
-    }else{
-      await UserChannel.create({
-        channelId: req.activeChannel,
-        userProfileId: req.body.id,
-        last_message_utc:null
-      });
-    }
-    
-    return res.status(200).json({
-      status: true,
-      message: `Channel members updated Successfully.`,
-    
-    });
-  } catch (err: any) {
-    return res
-      .status(400)
-      .json({ status: false, message: err.message || "Internal Server Error" });
-  }
-}
-
-export async function getDrivers(
+export async function addOrRemoveDriverFromChannel(
   req: Request,
   res: Response
 ): Promise<any> {
+  try {
+    const userChannels = await UserChannel.findOne({
+      where: {
+        channelId: req.activeChannel,
+        userProfileId: req.body.id,
+        isGroup: 0,
+      },
+    });
+
+    if (userChannels) {
+      await UserChannel.update(
+        {
+          status: userChannels.status == "active" ? "inactive" : "active",
+        },
+        {
+          where: {
+            id: userChannels.id,
+          },
+        }
+      );
+    } else {
+      await UserChannel.create({
+        channelId: req.activeChannel,
+        userProfileId: req.body.id,
+        last_message_utc: null,
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `Channel members updated Successfully.`,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getDrivers(req: Request, res: Response): Promise<any> {
   try {
     const isDriverRole = await Role.findOne({
       where: {
@@ -224,9 +215,9 @@ export async function getDrivers(
         {
           model: User,
           as: "user",
-          where:{
-            status:"active",
-          }
+          where: {
+            status: "active",
+          },
         },
         {
           model: Role,
@@ -243,18 +234,16 @@ export async function getDrivers(
       ],
       order: [["id", "DESC"]],
       limit: pageSize,
-        offset: offset,
+      offset: offset,
     });
-    const total= users.count;
+    const total = users.count;
     const totalPages = Math.ceil(total / pageSize);
-
 
     return res.status(200).json({
       status: true,
       message: `Get Driver Users Successfully.`,
       data: {
-      
-        driver:users.rows,
+        driver: users.rows,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
@@ -270,26 +259,43 @@ export async function getDrivers(
   }
 }
 
-
 export async function markAllUnReadMessage(
   req: Request,
   res: Response
 ): Promise<any> {
   try {
+    const limit = parseInt(req.query.limit as string) || 100;
 
-    await MessageStaff.update({
-      status:"read"
-    },{
-      where:{
-        staffId:req.user?.id
+    await primarySequelize.transaction(async (t) => {
+      const unreadMessages = await MessageStaff.findAll({
+        where: {
+          staffId: req.user?.id,
+          status: "un-read",
+        },
+        limit,
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      for (const message of unreadMessages) {
+        await message.update({ status: "read" }, { transaction: t });
       }
-    })
+    });
+
+    // await MessageStaff.update(
+    //   {
+    //     status: "read",
+    //   },
+    //   {
+    //     where: {
+    //       staffId: req.user?.id,
+    //     },
+    //   }
+    // );
     return res.status(200).json({
       status: true,
       message: `Marked read chat successfully.`,
     });
-
-   
   } catch (err: any) {
     return res
       .status(400)

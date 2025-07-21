@@ -8,5 +8,9 @@ export const generateToken = (userId: string): string => {
 };
 
 export const verifyToken = (token: string) => {
+  try {
     return jwt.verify(token, process.env.JWT_SECRET!);
+  } catch (err) {
+    return null; // or return { error: err } if you want to inspect
+  }
 };
