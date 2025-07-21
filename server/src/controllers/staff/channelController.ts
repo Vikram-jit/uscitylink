@@ -6,6 +6,8 @@ import User from "../../models/User";
 import Role from "../../models/Role";
 import { MessageStaff } from "../../models/MessageStaff";
 import { primarySequelize } from "../../sequelize";
+import Group from "../../models/Group";
+import { Op } from "sequelize";
 
 export async function updateStaffActiceChannel(
   req: Request,
@@ -277,6 +279,23 @@ export async function markAllUnReadMessage(
 
       for (const message of unreadMessages) {
         await message.update({ status: "read" }, { transaction: t });
+      }
+    });
+
+     await primarySequelize.transaction(async (t) => {
+      const groupCount = await Group.findAll({
+        where: {
+          message_count: {
+            [Op.gt]: 0,
+          },
+         
+        },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      for (const group of groupCount) {
+        await group.update({ message_count: 0 }, { transaction: t });
       }
     });
 
