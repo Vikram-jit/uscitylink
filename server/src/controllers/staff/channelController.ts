@@ -264,7 +264,6 @@ export async function markAllUnReadMessage(
   res: Response
 ): Promise<any> {
   try {
-    const limit = parseInt(req.query.limit as string) || 100;
 
     await primarySequelize.transaction(async (t) => {
       const unreadMessages = await MessageStaff.findAll({
@@ -272,7 +271,6 @@ export async function markAllUnReadMessage(
           staffId: req.user?.id,
           status: "un-read",
         },
-        limit,
         transaction: t,
         lock: t.LOCK.UPDATE,
       });

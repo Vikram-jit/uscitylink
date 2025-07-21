@@ -21,7 +21,8 @@ import PrivateChatMember from "../models/PrivateChatMember";
 import dotenv from "dotenv";
 import { channel } from "diagnostics_channel";
 import GroupChannel from "../models/GroupChannel";
-import sequelize from "sequelize/types/sequelize";
+import retry from "async-retry";
+
 import { primarySequelize } from "../sequelize";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
@@ -29,12 +30,12 @@ const notificationQueue = new Queue("jobQueue", {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379, // Custom Redis port
-      maxRetriesPerRequest: null, // prevents crash on Redis failure
-      enableReadyCheck: false,    // speeds up startup when Redis is slow
-      retryStrategy: (times) => {
-        // Exponential backoff, cap retry delay to 2s
-        return Math.min(times * 50, 2000);
-      },
+    maxRetriesPerRequest: null, // prevents crash on Redis failure
+    enableReadyCheck: false, // speeds up startup when Redis is slow
+    retryStrategy: (times) => {
+      // Exponential backoff, cap retry delay to 2s
+      return Math.min(times * 50, 2000);
+    },
   },
 });
 
@@ -43,12 +44,12 @@ export const groupMessageQueue = new Queue("groupMessageQueue", {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379,
-      maxRetriesPerRequest: null, // prevents crash on Redis failure
-      enableReadyCheck: false,    // speeds up startup when Redis is slow
-      retryStrategy: (times) => {
-        // Exponential backoff, cap retry delay to 2s
-        return Math.min(times * 50, 2000);
-      },
+    maxRetriesPerRequest: null, // prevents crash on Redis failure
+    enableReadyCheck: false, // speeds up startup when Redis is slow
+    retryStrategy: (times) => {
+      // Exponential backoff, cap retry delay to 2s
+      return Math.min(times * 50, 2000);
+    },
   },
 });
 
@@ -59,8 +60,8 @@ export const groupNotificationStaffQueue = new Queue(
       host:
         process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
       port: 6379,
-        maxRetriesPerRequest: null, // prevents crash on Redis failure
-      enableReadyCheck: false,    // speeds up startup when Redis is slow
+      maxRetriesPerRequest: null, // prevents crash on Redis failure
+      enableReadyCheck: false, // speeds up startup when Redis is slow
     },
   }
 );
@@ -175,19 +176,30 @@ notificationQueue.process(async (job: any) => {
     users.map(async (user) => {
       if (user) {
         if (!staffIds.includes(user.id)) {
-          await MessageStaff.findOrCreate({
-            where: {
-              messageId: messageId,
-              staffId: user.id,
-              driverId: staffId,
+          await retry(
+            async () => {
+              await MessageStaff.upsert({
+                messageId,
+                staffId: user.id,
+                driverId: staffId,
+                status: "un-read",
+              });
             },
-            defaults: {
-              messageId: messageId,
-              staffId: user.id,
-              driverId: staffId,
-              status: "un-read",
-            },
-          });
+            {
+              retries: 3,
+              onRetry: (err) => {
+                if (
+                  err instanceof Error &&
+                  (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                ) {
+                  console.warn("Deadlock detected, retrying...");
+                } else {
+                  throw err;
+                }
+              },
+            }
+          );
+
           const deviceToken = user.device_token;
           if (deviceToken) {
             const isActiveChannel =
@@ -304,13 +316,31 @@ export async function driverMessageQueueProcessWithoutSocket(
 
         if (e.channelId === channelId && userId === e.userId) {
           if (isSocket) {
-            await MessageStaff.create({
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: userId,
-              status: "read",
-              type: "chat",
-            });
+            await retry(
+              async () => {
+                await MessageStaff.create({
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: userId,
+                  status: "read",
+                  type: "chat",
+                });
+              },
+              {
+                retries: 3,
+                onRetry: (err) => {
+                  if (
+                    err instanceof Error &&
+                    (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                  ) {
+                    console.warn("Deadlock detected, retrying...");
+                  } else {
+                    throw err;
+                  }
+                },
+              }
+            );
+
             await message?.update(
               {
                 deliveryStatus: "seen",
@@ -403,19 +433,38 @@ export async function driverMessageQueueProcessWithoutSocket(
       const newPromise = Object.entries(global.staffActiveChannel).map(
         async ([staffId, el]) => {
           const isSocket = global.userSockets[staffId];
-          await MessageStaff.findOrCreate({
-            where: {
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: userId,
+
+          await retry(
+            async () => {
+              await MessageStaff.findOrCreate({
+                where: {
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: userId,
+                },
+                defaults: {
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: userId,
+                  status: "un-read",
+                },
+              });
             },
-            defaults: {
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: userId,
-              status: "un-read",
-            },
-          });
+            {
+              retries: 3,
+              onRetry: (err) => {
+                if (
+                  err instanceof Error &&
+                  (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                ) {
+                  console.warn("Deadlock detected, retrying...");
+                } else {
+                  throw err;
+                }
+              },
+            }
+          );
+
           if (el.role == "staff" && el.channelId == channelId) {
             if (isSocket) {
               io.to(isSocket?.id).emit("new_message_count_update_staff", {
@@ -459,7 +508,7 @@ export async function driverMessageQueueProcessWithoutSocket(
     );
 
     if (truckId) {
-       await Group.update(
+      await Group.update(
         {
           message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
           last_message_id: message?.id,
@@ -743,7 +792,7 @@ export async function driverMessageQueueProcessResend(
     );
 
     if (socket?.user?.truck_group_id) {
-       await Group.update(
+      await Group.update(
         {
           message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
           last_message_id: message?.id,
@@ -974,13 +1023,30 @@ export async function driverMessageQueueProcess(
 
         if (e.channelId === channelId && socket?.user?.id === e.userId) {
           if (isSocket) {
-            await MessageStaff.create({
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: socket?.user?.id,
-              status: "read",
-              type: "chat",
-            });
+            await retry(
+              async () => {
+                await MessageStaff.create({
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: socket?.user?.id,
+                  status: "read",
+                  type: "chat",
+                });
+              },
+              {
+                retries: 3,
+                onRetry: (err) => {
+                  if (
+                    err instanceof Error &&
+                    (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                  ) {
+                    console.warn("Deadlock detected, retrying...");
+                  } else {
+                    throw err;
+                  }
+                },
+              }
+            );
             await message?.update(
               {
                 deliveryStatus: "seen",
@@ -1085,19 +1151,38 @@ export async function driverMessageQueueProcess(
       const newPromise = Object.entries(global.staffActiveChannel).map(
         async ([staffId, el]) => {
           const isSocket = global.userSockets[staffId];
-          await MessageStaff.findOrCreate({
-            where: {
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: socket?.user?.id,
+
+          await retry(
+            async () => {
+              await MessageStaff.findOrCreate({
+                where: {
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: socket?.user?.id,
+                },
+                defaults: {
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: socket?.user?.id,
+                  status: "un-read",
+                },
+              });
             },
-            defaults: {
-              messageId: messageSave.id,
-              staffId: staffId,
-              driverId: socket?.user?.id,
-              status: "un-read",
-            },
-          });
+            {
+              retries: 3,
+              onRetry: (err) => {
+                if (
+                  err instanceof Error &&
+                  (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                ) {
+                  console.warn("Deadlock detected, retrying...");
+                } else {
+                  throw err;
+                }
+              },
+            }
+          );
+
           if (el.role == "staff" && el.channelId == channelId) {
             if (isSocket) {
               io.to(isSocket?.id).emit("new_message_count_update_staff", {
@@ -1139,7 +1224,6 @@ export async function driverMessageQueueProcess(
         },
       }
     );
-     
 
     if (socket?.user?.truck_group_id) {
       await Group.update(
@@ -1162,7 +1246,6 @@ export async function driverMessageQueueProcess(
 
           if (isSocket) {
             io.to(isSocket.id).emit("receive_message_group_truck", message);
-           
           }
         }
       });
@@ -1369,13 +1452,31 @@ export async function messageToChannelToUser(
             socket?.user?.id === e.userId
           ) {
             if (isSocket) {
-              await MessageStaff.create({
-                messageId: messageSave.id,
-                staffId: staffId,
-                driverId: socket?.user?.id,
-                status: "read",
-                type: "chat",
-              });
+              await retry(
+                async () => {
+                  await MessageStaff.create({
+                    messageId: messageSave.id,
+                    staffId: staffId,
+                    driverId: socket?.user?.id,
+                    status: "read",
+                    type: "chat",
+                  });
+                },
+                {
+                  retries: 3,
+                  onRetry: (err) => {
+                    if (
+                      err instanceof Error &&
+                      (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                    ) {
+                      console.warn("Deadlock detected, retrying...");
+                    } else {
+                      throw err;
+                    }
+                  },
+                }
+              );
+
               await message?.update(
                 {
                   deliveryStatus: "seen",
@@ -1468,19 +1569,38 @@ export async function messageToChannelToUser(
         const newPromise = Object.entries(global.staffActiveChannel).map(
           async ([staffId, el]) => {
             const isSocket = global.userSockets[staffId];
-            await MessageStaff.findOrCreate({
-              where: {
-                messageId: messageSave.id,
-                staffId: staffId,
-                driverId: socket?.user?.id,
+
+            await retry(
+              async () => {
+                await MessageStaff.findOrCreate({
+                  where: {
+                    messageId: messageSave.id,
+                    staffId: staffId,
+                    driverId: socket?.user?.id,
+                  },
+                  defaults: {
+                    messageId: messageSave.id,
+                    staffId: staffId,
+                    driverId: socket?.user?.id,
+                    status: "un-read",
+                  },
+                });
               },
-              defaults: {
-                messageId: messageSave.id,
-                staffId: staffId,
-                driverId: socket?.user?.id,
-                status: "un-read",
-              },
-            });
+              {
+                retries: 3,
+                onRetry: (err) => {
+                  if (
+                    err instanceof Error &&
+                    (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                  ) {
+                    console.warn("Deadlock detected, retrying...");
+                  } else {
+                    throw err;
+                  }
+                },
+              }
+            );
+
             if (
               el.role == "staff" &&
               el.channelId == findUserChannel.channelId
@@ -1528,17 +1648,17 @@ export async function messageToChannelToUser(
         }
       );
       if (socket?.user?.truck_group_id) {
-         await Group.update(
-        {
-          message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
-          last_message_id: message?.id,
-        },
-        {
-          where: {
-            id: socket?.user?.truck_group_id,
+        await Group.update(
+          {
+            message_count: Sequelize.literal("COALESCE(message_count, 0) + 1"),
+            last_message_id: message?.id,
           },
-        }
-      );
+          {
+            where: {
+              id: socket?.user?.truck_group_id,
+            },
+          }
+        );
         Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
           if (
             e.channelId === channelId &&
@@ -2304,23 +2424,22 @@ export async function unreadAllUserMessage(
   userId: string
 ) {
   if (channelId) {
-   const limit = 100; // or a smaller safe chunk
-await primarySequelize.transaction(async (t) => {
-  const unreadMessages = await MessageStaff.findAll({
-    where: {
-      driverId: userId,
-      staffId: socket?.user?.id,
-      status: "un-read",
-    },
-    limit,
-    transaction: t,
-    lock: t.LOCK.UPDATE,
-  });
+    const limit = 100; // or a smaller safe chunk
+    await primarySequelize.transaction(async (t) => {
+      const unreadMessages = await MessageStaff.findAll({
+        where: {
+          driverId: userId,
+          staffId: socket?.user?.id,
+          status: "un-read",
+        },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
 
-  for (const message of unreadMessages) {
-    await message.update({ status: "read" }, { transaction: t });
-  }
-});
+      for (const message of unreadMessages) {
+        await message.update({ status: "read" }, { transaction: t });
+      }
+    });
     await UserChannel.update(
       {
         sent_message_count: 0,
