@@ -65,12 +65,12 @@ export const fileUploadQueue = new Queue("fileUploadQueue", {
     host:
       process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
     port: 6379,
-      maxRetriesPerRequest: null, // prevents crash on Redis failure
-      enableReadyCheck: false,    // speeds up startup when Redis is slow
-      retryStrategy: (times) => {
-        // Exponential backoff, cap retry delay to 2s
-        return Math.min(times * 50, 2000);
-      },
+    maxRetriesPerRequest: null, // prevents crash on Redis failure
+    enableReadyCheck: false, // speeds up startup when Redis is slow
+    retryStrategy: (times) => {
+      // Exponential backoff, cap retry delay to 2s
+      return Math.min(times * 50, 2000);
+    },
   },
 });
 
@@ -771,13 +771,12 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
           groupId: channelId,
         },
       });
-     const groupUser = await GroupUser.findAll({
+      const groupUser = await GroupUser.findAll({
         where: {
           groupId: channelId,
         },
       });
-       groupUserIds = groupUser.map(groupUser => groupUser.userProfileId);
-
+      groupUserIds = groupUser.map((groupUser) => groupUser.userProfileId);
     }
     const media = await Media.findAndCountAll({
       where: {
@@ -829,9 +828,9 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
             ? [
                 {
                   channelId: channelGroupId?.channelId,
-                  user_profile_id:{
-                   [Op.in]: groupUserIds
-                  }
+                  user_profile_id: {
+                    [Op.in]: groupUserIds,
+                  },
                   // upload_source: "truck",
                 },
               ]
@@ -1065,6 +1064,7 @@ export const fileUploadByQueue = async (
     if (!req.files || !Array.isArray(req.files)) {
       return res.status(400).send("No files uploaded.");
     }
+
     const channelId = req.body.channelId || req.activeChannel;
     const groupId = req.query.groupId || null;
     const body = req.body.body;
@@ -1073,6 +1073,20 @@ export const fileUploadByQueue = async (
     const private_chat_id = req.query.private_chat_id as string;
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
+
+    const isMediaExistSameTempId = await Media.findOne({
+      where: {
+        temp_id: tempId,
+      },
+    });
+    if (isMediaExistSameTempId) {
+      return res.status(201).json({
+        status: true,
+        message: `File upload successfully`,
+        data: fileUpload,
+      });
+    }
+
     if (tempId) {
       const findTempId = await Message.findOne({
         where: {
@@ -1214,6 +1228,7 @@ export const fileUploadByQueue = async (
       }
       // Create media record in the database
       const media = await Media.create({
+        temp_id: tempId,
         user_profile_id: userId,
         channelId: channelId,
         file_name: fileName,

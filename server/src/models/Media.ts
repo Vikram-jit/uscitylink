@@ -16,7 +16,7 @@ export class Media extends Model {
   public upload_source?: string;
   public private_chat_id?:string;
   public key?: string;
-
+ public temp_id?:string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -37,6 +37,11 @@ Media.init(
     private_chat_id: {
       type: DataTypes.UUID,
       allowNull: true,
+    },
+     temp_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      defaultValue: null,
     },
     upload_source: {
       type: DataTypes.STRING,

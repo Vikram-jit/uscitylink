@@ -265,7 +265,7 @@ class ImagePickerController extends GetxController {
 
     selectedXImages.value.clear();
     selectedImages.value.clear();
-    ;
+
     caption.value = '';
     if (networkService.isConnected) {
       _hiveController.uploadQueeueMedia();
