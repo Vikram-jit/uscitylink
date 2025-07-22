@@ -1077,9 +1077,27 @@ export const fileUploadByQueue = async (
     const isMediaExistSameTempId = await Media.findOne({
       where: {
         temp_id: tempId,
+        upload_source: req.query.location || "message",
       },
     });
     if (isMediaExistSameTempId) {
+      for (const file of files) {
+        const filePath = file.path; // Full path to the file
+
+        try {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error(`Failed to delete ${filePath}:`, err);
+              // Consider adding to a cleanup queue for retry
+            } else {
+              console.log(`Cleaned up: ${filePath}`);
+            }
+          });
+        } catch (error) {
+          console.error(`Error processing ${file.originalname}:`, error);
+        }
+      }
+
       return res.status(201).json({
         status: true,
         message: `File upload successfully`,
