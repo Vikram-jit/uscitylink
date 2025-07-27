@@ -19,6 +19,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { MediaGallery } from '../truckgroup/view';
 import { ChatView } from './ChatView';
 import { Chat, Message, User } from './types';
+import { generateTempId } from '@/components/messages/MessageInput';
 
 const ChatPage = () => {
   const [search, setSearch] = React.useState<string>('');
@@ -269,6 +270,7 @@ const ChatPage = () => {
         location: 'truck',
         source: 'truck',
         uploadBy: 'staff',
+        temp_id:generateTempId()
       }).unwrap();
       if (res?.status) {
         setFiles([]);

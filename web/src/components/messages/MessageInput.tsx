@@ -25,6 +25,7 @@ import TextField from '@mui/material/TextField';
 import ImageGallery from 'react-image-gallery';
 import ReactPlayer from 'react-player';
 import { useDispatch } from 'react-redux';
+import { v4 as uuidv4 } from 'uuid';
 
 import 'react-image-gallery/styles/css/image-gallery.css';
 
@@ -42,7 +43,16 @@ export type MessageInputProps = {
   isTyping: boolean;
   selectedTemplate: { name: string; body: string; url?: string };
 };
+export function generateTempId() {
+  const uuidPart = uuidv4(); // Generate UUID (v4)
+  const timestamp = Date.now().toString(); // Current timestamp in ms
+  const trimmedTimestamp = timestamp.length > 6 ? timestamp.substring(0, 6) : timestamp;
 
+  const randomNumber = Math.floor(Math.random() * 999999); // Random number (0–999999)
+
+  const tempId = `${uuidPart}-${trimmedTimestamp}-${randomNumber}`;
+  return tempId;
+}
 export default function MessageInput(props: MessageInputProps) {
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
 
@@ -226,6 +236,7 @@ export default function MessageInput(props: MessageInputProps) {
         location: 'message',
         source: 'message',
         uploadBy: 'staff',
+        temp_id:generateTempId()
       }).unwrap();
       if (res?.status) {
         setFiles([]);

@@ -51,6 +51,7 @@ import { formatDate } from '@/components/messages/utils';
 
 import AddMemberDialog from './add_member_dialog';
 import MessageView from './messge_view';
+import { generateTempId } from '@/components/messages/MessageInput';
 
 interface Contact {
   id: number;
@@ -400,6 +401,7 @@ const ChatView: React.FC = () => {
         source: 'message',
         uploadBy: 'staff_group',
         private_chat_id: selectedContact?.chat_id,
+        temp_id:generateTempId()
       }).unwrap();
       if (res?.status) {
         setFiles([]);

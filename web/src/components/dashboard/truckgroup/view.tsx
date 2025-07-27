@@ -61,6 +61,7 @@ import TemplateDialog from '../template/TemplateDialog';
 import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
+import { generateTempId } from '@/components/messages/MessageInput';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -569,6 +570,7 @@ const ChatInterface = ({ type }: { type: string }) => {
         location: type == 'group' ? 'group' : 'truck',
         source: type == 'group' ? 'group' : 'truck',
         uploadBy: 'staff',
+        temp_id:generateTempId()
       }).unwrap();
       if (res?.status) {
         setFiles([]);
