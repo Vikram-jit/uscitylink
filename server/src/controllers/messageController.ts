@@ -1274,7 +1274,8 @@ export const fileUploadByQueue = async (
         location: req.query.source,
         private_chat_id: private_chat_id,
         tempId: tempId,})
-      // Add job to the queue for the current file
+        try {
+                // Add job to the queue for the current file
       const job = await fileUploadQueue.add({
         filePath,
         fileName: fileNameS3,
@@ -1293,6 +1294,10 @@ export const fileUploadByQueue = async (
           upload_type: "fail_to_add_queue",
         });
       }
+
+        } catch (error) {
+          console.log(error,"Job Error")
+        }
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
