@@ -1246,6 +1246,7 @@ export const fileUploadByQueue = async (
           }
         }
       }
+      console.log("media")
       // Create media record in the database
       const media = await Media.create({
         temp_id: tempId,
@@ -1262,7 +1263,7 @@ export const fileUploadByQueue = async (
         upload_type: "local",
         private_chat_id: private_chat_id,
       });
-
+ console.log("job",media)
       // Add job to the queue for the current file
       const job = await fileUploadQueue.add({
         filePath,
@@ -1285,7 +1286,7 @@ export const fileUploadByQueue = async (
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
-
+    console.log("last")
     return res.status(201).json({
       status: true,
       message: `File upload successfully`,
