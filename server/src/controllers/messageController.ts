@@ -1264,6 +1264,16 @@ export const fileUploadByQueue = async (
         private_chat_id: private_chat_id,
       });
  console.log("job",media)
+ console.log("fileQueueData",{filePath,
+        fileName: fileNameS3,
+        mediaId: media.id,
+        channelId,
+        groupId,
+        userId: uploadBy == "staff_group" ? req.user?.id : userId,
+        source: uploadBy,
+        location: req.query.source,
+        private_chat_id: private_chat_id,
+        tempId: tempId,})
       // Add job to the queue for the current file
       const job = await fileUploadQueue.add({
         filePath,
