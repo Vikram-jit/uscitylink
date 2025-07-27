@@ -252,7 +252,17 @@ export const processFileUpload = async (
 };
 
 fileUploadQueue.process(processFileUpload);
+fileUploadQueue.on("error", (err) => {
+  console.error("Queue connection error:", err);
+});
 
+fileUploadQueue.on("waiting", (jobId) => {
+  console.log(`Job ${jobId} is waiting`);
+});
+
+fileUploadQueue.on("failed", (job, err) => {
+  console.log(`Job ${job.id} failed with ${err.message}`);
+});
 // Multer setup for file upload to S3 using AWS SDK v3
 const upload = multer({
   storage: multerS3({
