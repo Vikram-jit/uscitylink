@@ -1074,7 +1074,8 @@ export const fileUploadByQueue = async (
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
 
-    const isMediaExistSameTempId = await Media.findOne({
+   if(tempId){
+     const isMediaExistSameTempId = await Media.findOne({
       where: {
         temp_id: tempId,
         upload_source: req.query.location || "message",
@@ -1105,6 +1106,7 @@ export const fileUploadByQueue = async (
       });
     }
 
+   }
     if (tempId) {
       const findTempId = await Message.findOne({
         where: {

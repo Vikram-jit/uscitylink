@@ -125,7 +125,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
     {formData:FormData,groupId?:string|null,userId?:string,location?:string,source?:string,uploadBy?:string,private_chat_id?:string,temp_id:string}
   >({
     query: (formData) => ({
-      url: `media/uploadFileQueue?groupId=${formData.groupId}&userId=${formData.userId}&source=${formData.source}&location=${formData.location}&uploadBy=${formData.uploadBy}&private_chat_id=${formData.private_chat_id}&tempId=${formData.temp_id}`,
+      url: `media/uploadFileQueue?groupId=${formData.groupId}&userId=${formData.userId}&source=${formData.source}&location=${formData.location}&uploadBy=${formData.uploadBy}&private_chat_id=${formData.private_chat_id}`,
       method: 'POST',
       body: formData.formData,
       formData: true,
