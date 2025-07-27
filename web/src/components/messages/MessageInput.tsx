@@ -43,15 +43,14 @@ export type MessageInputProps = {
   isTyping: boolean;
   selectedTemplate: { name: string; body: string; url?: string };
 };
+
 export function generateTempId() {
-  const uuidPart = uuidv4(); // Generate UUID (v4)
-  const timestamp = Date.now().toString(); // Current timestamp in ms
-  const trimmedTimestamp = timestamp.length > 6 ? timestamp.substring(0, 6) : timestamp;
+  const baseUUID = uuidv4().replace(/-/g, ''); // Remove dashes, 32 characters
+  const timestampPart = Date.now().toString().slice(-2); // 2 digits from timestamp
+  const randomPart = Math.floor(Math.random() * 100000).toString().padStart(2, '0'); // 2 digits
 
-  const randomNumber = Math.floor(Math.random() * 999999); // Random number (0–999999)
-
-  const tempId = `${uuidPart}-${trimmedTimestamp}-${randomNumber}`;
-  return tempId;
+  // Combine: 32 (UUID) + 2 (timestamp) + 2 (random) = 36 total
+  return `${baseUUID}${timestampPart}${randomPart}`;
 }
 export default function MessageInput(props: MessageInputProps) {
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
