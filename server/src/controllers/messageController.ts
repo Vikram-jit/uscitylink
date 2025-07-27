@@ -1277,7 +1277,7 @@ export const fileUploadByQueue = async (
         private_chat_id: private_chat_id,
         tempId: tempId,
       });
-
+ console.log("jobId",job)
       if (!job || !job.id) {
         media.update({
           upload_type: "fail_to_add_queue",
