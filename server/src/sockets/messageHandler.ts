@@ -1856,7 +1856,11 @@ export async function messageToDriverByForward(
   });
   //Check Before send driver active room channel
   const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
-
+  const isUser = await UserProfile.findOne({
+        where: {
+          id: userId,
+        },
+      });
   if (
     findDriverSocket &&
     findDriverSocket?.channelId == findStaffActiveChannel?.channelId
@@ -1885,11 +1889,11 @@ export async function messageToDriverByForward(
         "new_message_count_update",
         message?.channelId
       );
-      const isUser = await UserProfile.findOne({
-        where: {
-          id: userId,
-        },
-      });
+      // const isUser = await UserProfile.findOne({
+      //   where: {
+      //     id: userId,
+      //   },
+      // });
       if (isUser) {
         if (isUser.device_token) {
           const isChannel = await Channel.findByPk(
@@ -1920,11 +1924,11 @@ export async function messageToDriverByForward(
         }
       }
     } else {
-      const isUser = await UserProfile.findOne({
-        where: {
-          id: userId,
-        },
-      });
+      // const isUser = await UserProfile.findOne({
+      //   where: {
+      //     id: userId,
+      //   },
+      // });
       if (isUser) {
         if (isUser.device_token) {
           const isChannel = await Channel.findByPk(
@@ -1989,7 +1993,7 @@ export async function messageToDriverByForward(
       if (isSocket) {
         io.to(isSocket.id).emit(
           "notification_forward_message",
-         `Message forwarded to ${findDriverSocket?.name} successfully`
+         `Message forwarded to ${isUser?.username} successfully`
         );
       }
     }

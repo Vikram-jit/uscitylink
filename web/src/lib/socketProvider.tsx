@@ -115,7 +115,7 @@ export const SocketProvider = ({
         audio.play()
       })
      // 
-    //  dispatch(apiSlice.util.invalidateTags(['channels','dashboard']));
+      dispatch(apiSlice.util.invalidateTags(['channels']));
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
    const createAudioContext = () => {
