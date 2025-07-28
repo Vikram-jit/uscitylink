@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
-import { Delete, Done, DoneAll, PushPin, Reply } from '@mui/icons-material';
+import { Delete, Done, DoneAll, Forward, PushPin, Reply } from '@mui/icons-material';
 import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Popover } from '@mui/material';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
@@ -14,6 +14,7 @@ import moment from 'moment';
 import { useSocket } from '@/lib/socketProvider';
 
 import LinkifyText from '../LinkifyText';
+import ForwardMessageDialog from './ForwardMessageDialog';
 import MediaComponent from './MediaComment';
 import { formatUtcTime } from './utils';
 
@@ -24,7 +25,8 @@ type ChatBubbleProps = MessageModel & {
   truckNumbers?: string;
   setSelectedMessageToReply?: React.Dispatch<React.SetStateAction<MessageModel | null>>;
   onClick?: () => void;
-  isVisibleThreeDot?:boolean
+  isVisibleThreeDot?: boolean;
+  singleMessage?:MessageModel
 };
 
 export default function ChatBubble(props: ChatBubbleProps) {
@@ -40,12 +42,11 @@ export default function ChatBubble(props: ChatBubbleProps) {
     thumbnail,
     staffPin,
     r_message,
-
   } = props;
   const isSent = variant === 'sent';
 
   const { socket } = useSocket();
-
+  const [openDialog, setOpenDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -56,9 +57,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
     setAnchorEl(null);
   };
   const open = Boolean(anchorEl);
-    return (
-    <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }} >
-     
+  return (
+    <Box sx={{ maxWidth: '60%', minWidth: 'auto', position: 'relative' }}>
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
         <Typography variant="body2">
           {messageDirection === 'S'
@@ -81,9 +81,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
             borderTopLeftRadius: isSent ? 'lg' : 0,
           }}
         >
-          {props.url_upload_type == 'not-upload' || props.url_upload_type == "local" ? (
+          {props.url_upload_type == 'not-upload' || props.url_upload_type == 'local' ? (
             <MediaComponent
-            onClick={props.onClick}
+              onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={'server'}
               thumbnail={`http://52.9.12.189:4300/${props.url}`}
@@ -92,7 +92,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             />
           ) : (
             <MediaComponent
-            onClick={props.onClick}
+              onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={props.url_upload_type}
               thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${thumbnail}`}
@@ -156,12 +156,12 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       mb: 2,
                     }}
                   >
-                    {r_message.url_upload_type == 'not-upload' || r_message.url_upload_type == "local" ? (
+                    {r_message.url_upload_type == 'not-upload' || r_message.url_upload_type == 'local' ? (
                       <MediaComponent
                         messageDirection={props.messageDirection}
                         type={'server'}
-                       thumbnail={`http://52.9.12.189:4300/${props.url}`}
-              url={`http://52.9.12.189:4300/${props.url}`}
+                        thumbnail={`http://52.9.12.189:4300/${props.url}`}
+                        url={`http://52.9.12.189:4300/${props.url}`}
                         name={r_message.url ? r_message.url : ' '}
                       />
                     ) : (
@@ -192,7 +192,6 @@ export default function ChatBubble(props: ChatBubbleProps) {
               </Box>
             )}
             <LinkifyText text={body} />
-            
           </Paper>
         </Box>
       )}
@@ -204,9 +203,11 @@ export default function ChatBubble(props: ChatBubbleProps) {
       )}
 
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', mb: 0.25 }}>
-      {props.isVisibleThreeDot  &&  <IconButton onClick={handleClick} sx={{ padding: 0 }}>
-          <DotsThree />
-        </IconButton> }
+        {props.isVisibleThreeDot && (
+          <IconButton onClick={handleClick} sx={{ padding: 0 }}>
+            <DotsThree />
+          </IconButton>
+        )}
         {messageDirection === 'S' && deliveryStatus == 'sent' ? (
           <Done
             sx={{
@@ -280,7 +281,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
-                                       window.open(`http://52.9.12.189:4300/${props.url}`, '_blank');
+                    window.open(`http://52.9.12.189:4300/${props.url}`, '_blank');
 
                     handleClose();
                   }}
@@ -292,9 +293,31 @@ export default function ChatBubble(props: ChatBubbleProps) {
                 </ListItemButton>
               </ListItem>
             )}
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => {
+                  setOpenDialog(true);
+                }}
+              >
+                <ListItemIcon>
+                  <Forward />
+                </ListItemIcon>
+                <ListItemText primary="Forward" />
+              </ListItemButton>
+            </ListItem>
+            <Divider />
           </List>
         </Popover>
       </Stack>
+      {openDialog && (
+        <ForwardMessageDialog
+          open={openDialog}
+          onClose={() => {
+            setOpenDialog(false);
+          }}
+          message={props.singleMessage!}
+        />
+      )}
     </Box>
   );
 }

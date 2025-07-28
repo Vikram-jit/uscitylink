@@ -452,6 +452,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                               truckNumbers={data?.truckNumbers}
                               variant={isYou ? 'sent' : 'received'}
                               {...message}
+                              singleMessage={message}
                               attachment={false}
                               sender={message?.sender}
                               setSelectedMessageToReply={setSelectedMessageToReply}

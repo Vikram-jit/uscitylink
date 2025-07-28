@@ -1788,6 +1788,217 @@ export async function messageToChannelToUser(
   }
 }
 
+
+
+//Message To Driver
+
+export async function messageToDriverByForward(
+  io: Server,
+  socket: CustomSocket,
+  userIds: string[],
+  body: string,
+  direction: string,
+  url: string | null,
+  thumbnail: string | null,
+  url_upload_type?: string
+) {
+  const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
+
+   await Promise.all(userIds?.map(async(userId)=>{
+    
+     const findDriverSocket = global.driverOpenChat.find(
+    (driver) => driver?.driverId === userId
+  );
+
+  const messageSave = await Message.create({
+    channelId: findStaffActiveChannel?.channelId,
+    userProfileId: userId,
+    body,
+    messageDirection: direction,
+    deliveryStatus: "sent",
+    messageTimestampUtc: new Date(),
+    senderId: socket?.user?.id,
+    isRead: false,
+    status: "queue",
+    url: url || null,
+    thumbnail: thumbnail || null,
+    reply_message_id: null,
+    url_upload_type: url_upload_type || "with-out-media",
+  });
+  const message = await Message.findOne({
+    where: {
+      id: messageSave.id,
+    },
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [
+              {
+                model: User,
+                as: "user",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    ],
+  });
+  //Check Before send driver active room channel
+  const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+
+  if (
+    findDriverSocket &&
+    findDriverSocket?.channelId == findStaffActiveChannel?.channelId
+  ) {
+    if (isDriverSocket) {
+      await message?.update(
+        {
+          deliveryStatus: "seen",
+          status: "sent",
+        },
+        {
+          where: {
+            id: messageSave.id,
+          },
+        }
+      );
+      io.to(isDriverSocket?.id).emit(
+        SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+        message
+      );
+    }
+  } else {
+    if (isDriverSocket) {
+      io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
+      io.to(isDriverSocket?.id).emit(
+        "new_message_count_update",
+        message?.channelId
+      );
+      const isUser = await UserProfile.findOne({
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId
+          );
+
+          const messageCount = await UserChannel.sum("recieve_message_count", {
+            where: {
+              userProfileId: userId,
+            },
+          });
+
+          const userGroupsCount = await GroupUser.sum("message_count", {
+            where: { userProfileId: userId },
+          });
+
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            badge: messageCount + userGroupsCount,
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      }
+    } else {
+      const isUser = await UserProfile.findOne({
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId
+          );
+          const messageCount = await UserChannel.sum("recieve_message_count", {
+            where: {
+              userProfileId: userId,
+            },
+          });
+
+          const userGroupsCount = await GroupUser.sum("message_count", {
+            where: { userProfileId: userId },
+          });
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            badge: messageCount + userGroupsCount,
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      }
+    }
+
+    await UserChannel.update(
+      {
+        recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
+      },
+      {
+        where: {
+          userProfileId: userId, // The user you want to update
+          channelId: findStaffActiveChannel?.channelId, // The channel to target
+        },
+      }
+    );
+  }
+  const utcTime = moment.utc().toDate();
+
+  await UserChannel.update(
+    {
+      last_message_id: message?.id,
+      last_message_utc: utcTime,
+    },
+    {
+      where: {
+        userProfileId: userId,
+        channelId: findStaffActiveChannel?.channelId,
+      },
+    }
+  );
+  //Return Message To Staff After Store
+ 
+ Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
+    if (e.channelId === findStaffActiveChannel?.channelId) {
+      const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+
+      if (isSocket) {
+        io.to(isSocket.id).emit(
+          "notification_forward_message",
+         `Message forwarded to ${findDriverSocket?.name} successfully`
+        );
+      }
+    }
+  });
+   }))
+ 
+}
+
+
 //Message To Driver
 
 export async function messageToDriver(

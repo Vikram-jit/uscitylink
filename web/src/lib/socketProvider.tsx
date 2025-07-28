@@ -106,6 +106,18 @@ export const SocketProvider = ({
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
 
+    socketServer.on("notification_forward_message",(message)=>{
+      toast.success(message);
+      const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
+
+      audio.addEventListener('canplaythrough', () => {
+        // the audio is now playable; play it if permissions allow
+        audio.play()
+      })
+     // 
+    //  dispatch(apiSlice.util.invalidateTags(['channels','dashboard']));
+     // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
+    })
    const createAudioContext = () => {
   if (!audioContext) {
     try {

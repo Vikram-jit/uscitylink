@@ -17,6 +17,7 @@ import {
   getMessageByTempId,
   messageToChannelToUser,
   messageToDriver,
+  messageToDriverByForward,
   messageToDriverByTruckGroup,
   messageToGroup,
   pinMessage,
@@ -116,9 +117,9 @@ export const initSocket = (httpServer: any) => {
     try {
       const decoded: any = verifyToken(token);
 
-if (!decoded) {
-  return next(new Error("Authentication error: Invalid token"));
-}
+      if (!decoded) {
+        return next(new Error("Authentication error: Invalid token"));
+      }
       if (decoded?.id) {
         const userProfile = await UserProfile.findByPk(decoded.id, {
           include: [
@@ -563,6 +564,21 @@ if (!decoded) {
           url,
           thumbnail,
           r_message_id
+        )
+    );
+
+    socket.on(
+      "FORWARD_MESSAGE_TO_DRIVERS",
+      async ({ userId, body, direction, url, thumbnail, url_upload_type }) =>
+        await messageToDriverByForward(
+          io,
+          socket,
+          userId,
+          body,
+          direction,
+          url,
+          thumbnail,
+          url_upload_type
         )
     );
 

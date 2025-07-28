@@ -61,7 +61,7 @@ export default function MediaComponent({
               src={thumbnail || ''}
               alt=""
               width={181}
-              style={{ height: 200, width: 181, objectFit: 'contain' }}
+              style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
               objectFit="contain"
             />
             <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
@@ -150,7 +150,7 @@ export default function MediaComponent({
                 src={url}
                 alt=""
                 width={181}
-                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
                {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
@@ -193,7 +193,7 @@ export default function MediaComponent({
                 src={url}
                 alt=""
                 width={181}
-                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
               {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
@@ -255,7 +255,7 @@ export default function MediaComponent({
                 src={url}
                 alt=""
                 width={181}
-                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
                 {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
@@ -297,7 +297,7 @@ export default function MediaComponent({
                 src={url}
                 alt=""
                 width={181}
-                style={{ height: 200, width: 181, objectFit: 'contain' }}
+                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
                 objectFit="contain"
               />
                {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
