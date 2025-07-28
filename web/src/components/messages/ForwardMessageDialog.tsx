@@ -138,7 +138,7 @@ const ForwardMessageDialog: React.FC<ForwardMessageDialogProps> = ({ open, onClo
       {/* Top area - Selected message */}
       <Box sx={{ px: 3, pt: 2 }}>
         {message && (
-          <Box>
+          <Box maxHeight={150} overflow={"scroll"}>
             <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
               <Typography variant="body2">
                 {message.messageDirection === 'S'
