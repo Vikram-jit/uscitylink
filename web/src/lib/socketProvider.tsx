@@ -102,7 +102,7 @@ export const SocketProvider = ({
         audio.play()
       })
      // 
-     dispatch(apiSlice.util.invalidateTags(['channels','dashboard']));
+     dispatch(apiSlice.util.invalidateTags(['dashboard','members']));
      // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
     })
 
