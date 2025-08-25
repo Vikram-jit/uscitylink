@@ -5,8 +5,8 @@ import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 
 class Constant {
-  static const String baseUrl = 'http://localhost:4300/api';
-  static const String tempImageUrl = 'http://localhost:4300/';
+  static const String baseUrl = 'http://52.9.12.189:4300/api';
+  static const String tempImageUrl = 'http://52.9.12.189:4300/';
 
   static const String versionApi = "v1";
 

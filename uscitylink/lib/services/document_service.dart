@@ -1,6 +1,7 @@
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
+import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/model/pagination_model.dart';
 import 'package:uscitylink/model/truck_model.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
@@ -227,6 +228,46 @@ class DocumentService {
       }
     } catch (e) {
       throw Exception('Error dd\ocument : $e');
+    }
+  }
+
+  Future<ApiResponse<InspectionModel>> getInspection() async {
+    try {
+      dynamic response =
+          await _apiService.getApi('${Constant.url}/yard/inspection');
+
+      if (response != null && response is Map<String, dynamic>) {
+        InspectionModel details = InspectionModel.fromJson(response['data']);
+
+        return ApiResponse<InspectionModel>(
+          data: details,
+          message: response['message'] ?? 'Get Inspection Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error inspection : $e');
+    }
+  }
+
+  Future<ApiResponse<dynamic>> updateInspection(dynamic data) async {
+    try {
+      dynamic response =
+          await _apiService.postApi(data, '${Constant.url}/yard/inspection');
+
+      if (response != null && response is Map<String, dynamic>) {
+        return ApiResponse<dynamic>(
+          data: null,
+          message: response['message'] ?? 'Submitted Inspection Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      throw Exception('Error inspection : $e');
     }
   }
 

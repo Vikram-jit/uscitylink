@@ -14,6 +14,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
 import 'package:uscitylink/views/driver/views/chat_view.dart';
+import 'package:uscitylink/views/driver/views/daily_inspection/add_inspection_screen.dart';
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
@@ -184,7 +185,45 @@ class _DriverDashboardState extends State<DriverDashboard>
                     ),
                   ),
                   SizedBox(
-                    height: TDeviceUtils.getScreenHeight() * 0.00,
+                    height: TDeviceUtils.getScreenHeight() * 0.01,
+                  ),
+                  SizedBox(
+                    height: TDeviceUtils.getScreenHeight() *
+                        0.05, // Explicit height
+                    child: InkWell(
+                      onTap: () {
+                        Get.to(() => AddInspectionScreen());
+                        // Your tap logic here
+                      },
+                      borderRadius:
+                          BorderRadius.circular(8), // Ripple effect boundary
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red, // Background color
+                          borderRadius: BorderRadius.circular(
+                              8), // Matching border radius
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16), // Add horizontal padding
+                        alignment: Alignment.center, // Center the content
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.calendar_today,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 8), // Space between icon and text
+                            Text(
+                              "Daily Inspection",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   SizedBox(
                     height: TDeviceUtils.getScreenHeight() * 0.2,
@@ -226,9 +265,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(
-                    height: TDeviceUtils.getAppBarHeight() * 0.3,
                   ),
                   SizedBox(
                     child: Row(
