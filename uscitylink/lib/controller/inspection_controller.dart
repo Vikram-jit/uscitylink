@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/services/document_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 
 class InspectionController extends GetxController {
   var isLoading = false.obs;
@@ -81,21 +82,56 @@ class InspectionController extends GetxController {
   }
 
   void submitInspection() async {
-    isLoading.value = true;
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    isLoading.value = false;
     var truckData = convertInspectionItems(inspectionItems);
     var trailerData = convertInspectionItems(inspectionTrailerItems);
+    if (truckData.isEmpty) {
+      Get.snackbar('Error', "Please complete truck inspection.");
+      return;
+    }
 
-    Get.snackbar(
-      '✅ Success',
-      'Inspection completed:  items passed',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-    );
+    if (selectedTrailer.value.isNotEmpty) {
+      if (trailerData.isEmpty) {
+        Get.snackbar('Error', "Please complete trailer inspection.");
+        return;
+      }
+    }
+
+    Map<String, dynamic> data = {
+      "company_name": carrierName.value,
+      "truck_id": inspection?.value?.getYardDriver?.id,
+      "trailer_id": selectedTrailer.value.isNotEmpty
+          ? inspection.value.trailers
+              ?.elementAt(int.parse(selectedTrailer.value))
+              .id
+          : "",
+      "odometer": inspection?.value?.odometerMiles,
+      "inspected_at": inspectionDate.value,
+      "vehicle_type": (truckData.length > 0 && trailerData.length > 0)
+          ? "truckandtrailer"
+          : "truck",
+      "truckData": truckData,
+      "trailerData": trailerData
+    };
+
+    try {
+      var response = await DocumentService().updateInspection(data);
+
+      // Check if the response is valid
+      if (response.status == true) {
+        Get.snackbar(
+          '✅ Success',
+          response.message,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        // Add a small delay before navigating back
+        await Future.delayed(const Duration(milliseconds: 500));
+        Get.to(() => const DriverDashboard());
+      }
+    } catch (e) {
+      Utils.snackBar('Error', e.toString());
+    } finally {}
   }
 }

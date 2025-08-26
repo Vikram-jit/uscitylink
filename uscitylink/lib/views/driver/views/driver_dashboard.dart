@@ -187,44 +187,46 @@ class _DriverDashboardState extends State<DriverDashboard>
                   SizedBox(
                     height: TDeviceUtils.getScreenHeight() * 0.01,
                   ),
-                  SizedBox(
-                    height: TDeviceUtils.getScreenHeight() *
-                        0.05, // Explicit height
-                    child: InkWell(
-                      onTap: () {
-                        Get.to(() => AddInspectionScreen());
-                        // Your tap logic here
-                      },
-                      borderRadius:
-                          BorderRadius.circular(8), // Ripple effect boundary
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.red, // Background color
-                          borderRadius: BorderRadius.circular(
-                              8), // Matching border radius
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16), // Add horizontal padding
-                        alignment: Alignment.center, // Center the content
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.calendar_today,
-                                color: Colors.white, size: 20),
-                            SizedBox(width: 8), // Space between icon and text
-                            Text(
-                              "Daily Inspection",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                  if (_dashboardController.dashboard.value.isInspectionDone ??
+                      false)
+                    SizedBox(
+                      height: TDeviceUtils.getScreenHeight() *
+                          0.05, // Explicit height
+                      child: InkWell(
+                        onTap: () {
+                          Get.to(() => AddInspectionScreen());
+                          // Your tap logic here
+                        },
+                        borderRadius:
+                            BorderRadius.circular(8), // Ripple effect boundary
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red, // Background color
+                            borderRadius: BorderRadius.circular(
+                                8), // Matching border radius
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16), // Add horizontal padding
+                          alignment: Alignment.center, // Center the content
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.calendar_today,
+                                  color: Colors.white, size: 20),
+                              SizedBox(width: 8), // Space between icon and text
+                              Text(
+                                "Daily Inspection",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   SizedBox(
                     height: TDeviceUtils.getScreenHeight() * 0.2,
                     child: Row(

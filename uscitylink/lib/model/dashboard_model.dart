@@ -12,6 +12,7 @@ class DashboardModel {
   bool? isDocumentExpired;
   List<LatestMessage>? latestMessage;
   List<LatestGroupMessage>? latestGroupMessage;
+  bool? isInspectionDone;
 
   DashboardModel(
       {this.trucks,
@@ -24,10 +25,12 @@ class DashboardModel {
       this.latestGroupMessage,
       this.channel,
       this.totalAmount,
-      this.isDocumentExpired});
+      this.isDocumentExpired,
+      this.isInspectionDone});
 
   DashboardModel.fromJson(Map<String, dynamic> json) {
     channelCount = json['channelCount'];
+    isInspectionDone = json['isInspectionDone'];
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
     truckCount = json['truckCount'];
@@ -57,6 +60,7 @@ class DashboardModel {
       data['channel'] = this.channel!.toJson();
     }
     data['channelCount'] = this.channelCount;
+    data['isInspectionDone'] = this.isInspectionDone;
     data['trucks'] = trucks;
     data['totalAmount'] =
         (this.totalAmount is num) ? this.totalAmount?.toDouble() : 0.0;

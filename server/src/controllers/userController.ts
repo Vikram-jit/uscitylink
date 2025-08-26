@@ -206,9 +206,7 @@ export async function getUserWithoutChannel(
   res: Response
 ): Promise<any> {
   try {
-
-  
-      const type = req.query.type || ""
+    const type = req.query.type || "";
 
     const isDriverRole = await Role.findOne({
       where: {
@@ -238,19 +236,20 @@ export async function getUserWithoutChannel(
           required: false,
           where: {
             channelId: req.activeChannel,
-            
           },
         },
       ],
       order: [["id", "DESC"]],
     });
- 
+
     const filteredUsers = users?.filter((user: any) => {
       return (
         !user.userChannels ||
         user.userChannels.length === 0 ||
         user.userChannels.some(
-          (channel: any) => channel.channelId === req.activeChannel && channel.status == "inactive"
+          (channel: any) =>
+            channel.channelId === req.activeChannel &&
+            channel.status == "inactive"
         )
       );
     });
@@ -258,7 +257,7 @@ export async function getUserWithoutChannel(
     return res.status(200).json({
       status: true,
       message: `Get Driver Users Successfully.`,
-      data:  type == "training" ? users : filteredUsers,
+      data: type == "training" ? users : filteredUsers,
     });
   } catch (err: any) {
     return res
@@ -278,9 +277,7 @@ export async function getUserProfile(
           model: User,
           as: "user",
         },
-        {model:Role,
-          as:"role"
-        }
+        { model: Role, as: "role" },
       ],
     });
     return res.status(200).json({
@@ -326,7 +323,6 @@ export async function updateDeviceToken(
   res: Response
 ): Promise<any> {
   try {
-  
     await UserProfile.update(
       {
         device_token: req.body.device_token,
@@ -421,7 +417,6 @@ export async function syncUser(req: Request, res: Response): Promise<any> {
 }
 
 export async function syncDriver(req: Request, res: Response): Promise<any> {
-  
   try {
     const isRole = await Role.findOne({
       where: {
@@ -543,6 +538,73 @@ export async function changePassword(
 
 export async function dashboard(req: Request, res: Response): Promise<any> {
   try {
+   const driverId = req.user?.id;
+
+const groupUser = await GroupUser.findOne({
+  where: {
+    userProfileId: driverId,
+  },
+  include: [
+    {
+      model: Group,
+      where: {
+        type: "truck",
+        name: {
+          [Op.ne]: "Mechanic",
+        },
+      },
+    },
+  ],
+});
+
+const getTruck = await secondarySequelize.query<any>(
+  `SELECT * FROM trucks WHERE number = :truckNumber`,
+  {
+    type: QueryTypes.SELECT,
+    replacements: {
+      truckNumber: groupUser?.dataValues.Group?.name,
+    },
+  }
+);
+const truckId = getTruck[0]?.id;
+
+// Get the latest inspection for this truck
+const latestInspection = await secondarySequelize.query<any>(
+  `SELECT * FROM daily_vehicle_inspections 
+   WHERE truck_id = :id 
+   ORDER BY id DESC 
+   LIMIT 1`,
+  {
+    type: QueryTypes.SELECT,
+    replacements: {
+      id: truckId,
+    },
+  }
+);
+console.log(latestInspection)
+// Check if inspection was done and if 24 hours have passed
+let inspectionDoneToday = false;
+
+
+if (latestInspection && latestInspection.length > 0) {
+  const lastInspectionTime = new Date(latestInspection[0].inspected_at);
+  const now = new Date();
+  
+  console.log('Last inspection time:', lastInspectionTime);
+  console.log('Current time:', now);
+  
+  // Calculate the time difference in milliseconds (absolute value to avoid negatives)
+  const timeDifference = Math.abs(now.getTime() - lastInspectionTime.getTime());
+  
+  console.log('Time difference:', timeDifference);
+  console.log('24 hours in ms:', 24 * 60 * 60 * 1000);
+  
+  // Check if less than 24 hours (86400000 milliseconds) have passed
+  inspectionDoneToday = timeDifference < 24 * 60 * 60 * 1000;
+  
+  console.log('Inspection done today:', inspectionDoneToday);
+}
+
     const userChannelCount = await UserChannel.count({
       where: {
         userProfileId: req?.user?.id,
@@ -553,8 +615,8 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     const userTotalMessage = await Message.count({
       where: {
         userProfileId: req?.user?.id,
-        messageDirection:"S",
-        deliveryStatus:"sent"
+        messageDirection: "S",
+        deliveryStatus: "sent",
       },
     });
 
@@ -567,22 +629,21 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
 
     const groupUsers = await GroupUser.findAll({
       where: {
-        userProfileId: req.user?.id
+        userProfileId: req.user?.id,
       },
       include: [
         {
           model: Group,
           where: {
-            type: "truck"
+            type: "truck",
           },
-          attributes: ['name']
-        }
-      ]
-    })
-    const truckIds = groupUsers.map((e: any,index) => {
-     return e?.Group?.name
-    
-    })
+          attributes: ["name"],
+        },
+      ],
+    });
+    const truckIds = groupUsers.map((e: any, index) => {
+      return e?.Group?.name;
+    });
     const truckCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS truckCount FROM trucks`,
       {
@@ -595,7 +656,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
-    const userProfile = await UserProfile.findByPk(req.user?.id)
+    const userProfile = await UserProfile.findByPk(req.user?.id);
     const user = await User.findByPk(userProfile?.userId);
     const totalAmount = await secondarySequelize.query<any>(
       `SELECT SUM(amount) AS totalAmount
@@ -605,7 +666,6 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       {
         replacements: {
           driverId: user?.yard_id,
-        
         },
         type: QueryTypes.SELECT,
       }
@@ -646,7 +706,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       limit: 2,
     });
 
-    // const assginedTruck = await 
+    // const assginedTruck = await
 
     const distinctGroupIds = await GroupUser.findAll({
       where: {
@@ -698,7 +758,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       `SELECT * FROM documents 
        WHERE type = 'driver' 
        AND item_id = :id 
-       AND expire_date < NOW()`, 
+       AND expire_date < NOW()`,
       {
         replacements: {
           id: user?.yard_id,
@@ -706,15 +766,18 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
-    
-
+    console.log(inspectionDoneToday)
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
-        totalAmount: totalAmount?.[0]?.totalAmount ? parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2)) : 0,
+        isInspectionDone: !inspectionDoneToday,
+
+        totalAmount: totalAmount?.[0]?.totalAmount
+          ? parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2))
+          : 0,
         trucks: truckIds ? truckIds?.join(",") : "",
-        channel:channel,
+        channel: channel,
         channelCount: userChannelCount,
         messageCount: userTotalMessage,
         groupCount: userTotalGroups,
@@ -723,7 +786,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         latestMessage,
         latestGroupMessage: messagesWithGroup,
         distinctChannelIds,
-        isDocumentExpired : driverDocuments.length > 0 ? true:false
+        isDocumentExpired: driverDocuments.length > 0 ? true : false,
       },
     });
   } catch (err: any) {
@@ -878,19 +941,17 @@ export async function gernateNewPassword(
   }
 }
 
-export async function getProfile(req: Request, res: Response): Promise<any>{
+export async function getProfile(req: Request, res: Response): Promise<any> {
   try {
+    const userProfile = await UserProfile.findByPk(req.user?.id);
 
-    const userProfile = await UserProfile.findByPk(req.user?.id)
-
-    const user = await User.findByPk(userProfile?.userId || "")
+    const user = await User.findByPk(userProfile?.userId || "");
 
     const driver = await secondarySequelize.query<any>(
       `SELECT * FROM drivers WHERE id = :id`,
       {
         replacements: {
-          id:  user?.yard_id,
-          
+          id: user?.yard_id,
         },
         type: QueryTypes.SELECT,
       }
@@ -899,8 +960,7 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
       `SELECT * FROM documents  WHERE  type = 'driver' AND item_id = :id`,
       {
         replacements: {
-          id:  user?.yard_id,
-          
+          id: user?.yard_id,
         },
         type: QueryTypes.SELECT,
       }
@@ -909,15 +969,15 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
       const expiryDate = moment(doc.expire_date);
       const now = moment();
       const oneMonthLater = moment().add(1, "month");
-    
+
       let status = "Valid"; // Default status
-    
+
       if (expiryDate.isBefore(now)) {
         status = "Expired"; // Document already expired
       } else if (expiryDate.isBefore(oneMonthLater)) {
         status = "Expire Soon"; // Document will expire within a month
       }
-    
+
       return {
         ...doc,
         expired_status: status, // Add new key
@@ -928,50 +988,48 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
       `SELECT * FROM driver_country_statuses  WHERE driver_id = :id`,
       {
         replacements: {
-          id:  user?.yard_id,
-          
+          id: user?.yard_id,
         },
         type: QueryTypes.SELECT,
       }
     );
-    if(driverCountryStatus?.length >0){
+    if (driverCountryStatus?.length > 0) {
       const expiryDate = moment(driverCountryStatus?.[0].expiry_date);
       const now = moment();
       const oneMonthLater = moment().add(1, "month");
-    
+
       let status = "Valid"; // Default status
-    
+
       if (expiryDate.isBefore(now)) {
         status = "Expired"; // Document already expired
       } else if (expiryDate.isBefore(oneMonthLater)) {
         status = "Expire Soon"; // Document will expire within a month
       }
-    
+
       expiredDocuments.push({
-        title:"Country Status",
-        file:driverCountryStatus?.[0].document,
-        issue_date:driverCountryStatus?.[0].issue_date,
-        expire_date:driverCountryStatus?.[0].expiry_date,
-        created_at:driverCountryStatus?.[0].created_at,
-        updated_at:driverCountryStatus?.[0].updated_at,
-        doc_type:"server",
-        item_id:driverCountryStatus?.[0].id,
-        id:driverCountryStatus?.[0].id,
-        type:driverCountryStatus?.[0].country_status,
-        expired_status: status, 
-      })
+        title: "Country Status",
+        file: driverCountryStatus?.[0].document,
+        issue_date: driverCountryStatus?.[0].issue_date,
+        expire_date: driverCountryStatus?.[0].expiry_date,
+        created_at: driverCountryStatus?.[0].created_at,
+        updated_at: driverCountryStatus?.[0].updated_at,
+        doc_type: "server",
+        item_id: driverCountryStatus?.[0].id,
+        id: driverCountryStatus?.[0].id,
+        type: driverCountryStatus?.[0].country_status,
+        expired_status: status,
+      });
     }
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
-      data:{
-        driver :driver.length > 0 ? driver?.[0] : null,
-        countryStatus : driverCountryStatus?.length >0 ? driverCountryStatus?.[0] : null,
-        document:expiredDocuments
-
-      }
+      data: {
+        driver: driver.length > 0 ? driver?.[0] : null,
+        countryStatus:
+          driverCountryStatus?.length > 0 ? driverCountryStatus?.[0] : null,
+        document: expiredDocuments,
+      },
     });
-    
   } catch (err: any) {
     return res
       .status(400)
@@ -981,110 +1039,116 @@ export async function getProfile(req: Request, res: Response): Promise<any>{
 
 export async function dashboardWeb(req: Request, res: Response): Promise<any> {
   try {
-    let  countUnRead = 0;
+    let countUnRead = 0;
     const staffUnReadCount1 = await PrivateChatMember.findAll({
-      where:{
-        createdBy:req.user?.id
-      }
-    })
-
-    await Promise.all(staffUnReadCount1.map((e)=>{
-      countUnRead = e.senderCount ?? 0 + countUnRead
-    }))
-
-
-    const userChannelCount = await Channel.count({
-    
+      where: {
+        createdBy: req.user?.id,
+      },
     });
+
+    await Promise.all(
+      staffUnReadCount1.map((e) => {
+        countUnRead = e.senderCount ?? 0 + countUnRead;
+      })
+    );
+
+    const userChannelCount = await Channel.count({});
     const templateCount = await Template.count({
-      where:{
-        channelId:req.activeChannel 
-      }
+      where: {
+        channelId: req.activeChannel,
+      },
     });
     const trainingCount = await Training.count();
-    const userTotalMessage = await Message.count({where:{
-       channelId:req.activeChannel
-    }});
-  
+    const userTotalMessage = await Message.count({
+      where: {
+        channelId: req.activeChannel,
+      },
+    });
+
     const userUnMessage = await MessageStaff.count({
-      where:{
-        staffId:req.user?.id,
-        status:"un-read",
-        type:"chat"
-      }
-    })
+      where: {
+        staffId: req.user?.id,
+        status: "un-read",
+        type: "chat",
+      },
+    });
 
-
-
-     const userUnReadMessage = await getUnrepliedMessages(req.activeChannel || '');
-    const driverCount = await User.count({where:{
-      user_type:"driver"
-    }})
+    const userUnReadMessage = await getUnrepliedMessages(
+      req.activeChannel || ""
+    );
+    const driverCount = await User.count({
+      where: {
+        user_type: "driver",
+      },
+    });
     const userTotalGroups = await GroupChannel.count({
       where: {
-        
-         channelId:req.activeChannel
+        channelId: req.activeChannel,
       },
-      include:[
+      include: [
         {
-          model:Group,
-          where:{
-            type:"group"
-          }
-        }
-      ]
+          model: Group,
+          where: {
+            type: "group",
+          },
+        },
+      ],
     });
     const userTotalTruckGroups = await GroupChannel.count({
       where: {
-        
-         channelId:req.activeChannel
+        channelId: req.activeChannel,
       },
-      include:[
+      include: [
         {
-          model:Group,
-          where:{
-            type:"truck"
-          }
-        }
-      ]
+          model: Group,
+          where: {
+            type: "truck",
+          },
+        },
+      ],
     });
     const lastFiveDriver = await User.findAll({
-      where:{
-        user_type:"driver",
-
+      where: {
+        user_type: "driver",
       },
-      include:[{
-        model:UserProfile,
-        as:"profiles",
-        attributes:['username','id']
-      }],
-      order:[["createdAt","DESC"]],
-      limit:2
-    })
-   const staffGroupCount = await Group.findOne({where:{
-    name:"Staff"
-   }})
-   const alertGroupCount = await Group.findOne({where:{
-    name:"Alert"
-   }})
+      include: [
+        {
+          model: UserProfile,
+          as: "profiles",
+          attributes: ["username", "id"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 2,
+    });
+    const staffGroupCount = await Group.findOne({
+      where: {
+        name: "Staff",
+      },
+    });
+    const alertGroupCount = await Group.findOne({
+      where: {
+        name: "Alert",
+      },
+    });
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
       data: {
         templateCount,
         trainingCount,
-        truckGroupCount:userTotalTruckGroups,
+        truckGroupCount: userTotalTruckGroups,
         channelCount: userChannelCount,
         messageCount: userTotalMessage,
         groupCount: userTotalGroups,
         userUnMessage,
-        lastFiveDriver:lastFiveDriver,
+        lastFiveDriver: lastFiveDriver,
         driverCount,
-        channelId:req.activeChannel,
-        userUnReadMessage:userUnReadMessage,
-        staffGroupCount:staffGroupCount?.message_count ?? 0,
-        alertGroupCount:alertGroupCount?.message_count ?? 0,
-        staffcountUnRead:countUnRead
+        channelId: req.activeChannel,
+        userUnReadMessage: userUnReadMessage,
+        staffGroupCount: staffGroupCount?.message_count ?? 0,
+        alertGroupCount: alertGroupCount?.message_count ?? 0,
+        staffcountUnRead: countUnRead,
       },
     });
   } catch (err: any) {
@@ -1094,23 +1158,23 @@ export async function dashboardWeb(req: Request, res: Response): Promise<any> {
   }
 }
 
-export async function getUnrepliedMessagesCount(   channelId:string,): Promise<number> {
+export async function getUnrepliedMessagesCount(
+  channelId: string
+): Promise<number> {
   try {
-
     // Fetch all received messages (R)
     const receivedMessages = await Message.findAll({
       where: {
-        channelId:channelId,
+        channelId: channelId,
         messageDirection: "R",
         type: {
-          [Op.ne]: "group", 
+          [Op.ne]: "group",
         },
-        deliveryStatus:"sent"
+        deliveryStatus: "sent",
       },
       attributes: ["id", "userProfileId", "channelId", "createdAt"],
-      
     });
-    return receivedMessages.length
+    return receivedMessages.length;
 
     let unrepliedMessagesCount = 0;
 
@@ -1131,14 +1195,12 @@ export async function getUnrepliedMessagesCount(   channelId:string,): Promise<n
         },
       });
 
-    
       if (!replyExists) {
         unrepliedMessagesCount += 1;
       }
-      console.log(unrepliedMessagesCount)
+      console.log(unrepliedMessagesCount);
     }
 
-    
     return unrepliedMessagesCount;
   } catch (error) {
     console.error("Error counting unreplied messages:", error);
@@ -1146,46 +1208,46 @@ export async function getUnrepliedMessagesCount(   channelId:string,): Promise<n
   }
 }
 
-export async function getUnrepliedMessages(channelId:string): Promise<any[]> { 
+export async function getUnrepliedMessages(channelId: string): Promise<any[]> {
   try {
-   
     const receivedMessages = await Message.findAll({
       where: {
-        channelId:channelId,
-        messageDirection: "R", 
+        channelId: channelId,
+        messageDirection: "R",
         type: {
-          [Op.ne]: "group", 
+          [Op.ne]: "group",
         },
       },
       include: {
         model: UserProfile,
         as: "sender",
         attributes: ["id", "username", "isOnline"],
-        include:[{
-          model:User,
-          as:"user"
-        }]
+        include: [
+          {
+            model: User,
+            as: "user",
+          },
+        ],
       },
-    
-      order:[['messageTimestampUtc','DESC']],
-      limit:2
+
+      order: [["messageTimestampUtc", "DESC"]],
+      limit: 2,
       // attributes: ["id", "userProfileId", "channelId", "createdAt","body"],
     });
 
     const unrepliedMessages: any[] = [];
 
-  
     const trackedMessages = new Set(); // To track unique userProfileId and channelId combinations
 
     for (const receivedMessage of receivedMessages) {
       const { userProfileId, channelId } = receivedMessage;
-    
+
       // Check if this combination of userProfileId and channelId has already been processed
       const messageKey = `${userProfileId}-${channelId}`;
       if (trackedMessages.has(messageKey)) {
         continue; // Skip if the combination has already been processed
       }
-    
+
       // Look for a reply in the database
       const replyExists = await Message.findOne({
         where: {
@@ -1201,20 +1263,17 @@ export async function getUnrepliedMessages(channelId:string): Promise<any[]> {
         },
         order: [["messageTimestampUtc", "DESC"]], // Order by messageTimestampUtc
       });
-    
+
       // If no reply exists, push the first message for this combination to the unrepliedMessages array
       if (!replyExists) {
         unrepliedMessages.push(receivedMessage);
         trackedMessages.add(messageKey); // Mark this combination as processed
       }
     }
-    
 
-   
     return unrepliedMessages;
   } catch (error) {
     console.error("Error fetching unreplied messages:", error);
     throw new Error("Internal server error");
   }
 }
-

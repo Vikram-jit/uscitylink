@@ -81,10 +81,13 @@ export const insertInspection = async (
       truckData,
       trailerData
     } = req.body;
-
+     
     // Get current time
     const now = new Date();
-    const driver_id =  req.user?.id
+
+     const userProfile = await UserProfile.findByPk(req.user?.id);
+    const user = await User.findByPk(userProfile?.userId);
+
     // Combine date from frontend with current time
     let finalInspectedAt;
     
@@ -119,18 +122,20 @@ export const insertInspection = async (
       (:company_name, :truck_id, :trailer_id, :driver_id, :odometer, :inspected_at, NOW(), NOW(), :vehicle_type)
     `;
 
-    await secondarySequelize.query(query, {
+   const result = await secondarySequelize.query(query, {
       replacements: {
         company_name,
         truck_id,
-        trailer_id,
-        driver_id,
+        trailer_id:trailer_id || null,
+        driver_id:user?.yard_id,
         odometer,
-        finalInspectedAt,
+        inspected_at:finalInspectedAt,
         vehicle_type,
       },
       type: QueryTypes.INSERT,
     });
+  
+    await insertInspectionQuestions(result?.[0],truckData,trailerData)
 
     return res.status(200).json({
       status: true,
@@ -677,3 +682,69 @@ export async function queueData(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+
+const insertInspectionQuestions = async (dailyVehicleInspectionId:any, truckData:any, trailerData:any) => {
+  try {
+    // Prepare all questions data
+    const allQuestions = [
+      ...truckData.map((item:any) => ({
+        daily_vehicle_inspections_id: dailyVehicleInspectionId,
+        inspected_vehicle_type: 'truck',
+        question: item.question,
+        status: item.status,
+        created_at: new Date(),
+        updated_at: new Date()
+      })),
+      ...trailerData.map((item:any) => ({
+        daily_vehicle_inspections_id: dailyVehicleInspectionId,
+        inspected_vehicle_type: 'trailer',
+        question: item.question,
+        status: item.status,
+        created_at: new Date(),
+        updated_at: new Date()
+      }))
+    ];
+
+    // If no questions to insert, return early
+    if (allQuestions.length === 0) {
+      return { message: 'No questions to insert' };
+    }
+
+    // Build the raw SQL query
+    const valuesPlaceholders = allQuestions.map((_, index) => 
+      `(:daily_vehicle_inspections_id_${index}, :inspected_vehicle_type_${index}, :question_${index}, :status_${index}, :created_at_${index}, :updated_at_${index})`
+    ).join(', ');
+
+    const query = `
+      INSERT INTO vehicle_inspection_questions 
+      (daily_vehicle_inspections_id, inspected_vehicle_type, question, status, created_at, updated_at) 
+      VALUES 
+      ${valuesPlaceholders}
+    `;
+
+    // Prepare replacements object
+    const replacements:any = {};
+    allQuestions.forEach((question:any, index:number) => {
+      replacements[`daily_vehicle_inspections_id_${index}`] = question.daily_vehicle_inspections_id;
+      replacements[`inspected_vehicle_type_${index}`] = question.inspected_vehicle_type;
+      replacements[`question_${index}`] = question.question;
+      replacements[`status_${index}`] = question.status;
+      replacements[`created_at_${index}`] = question.created_at;
+      replacements[`updated_at_${index}`] = question.updated_at;
+    });
+
+    // Execute the query
+    const result = await secondarySequelize.query(query, {
+      replacements,
+      type: QueryTypes.INSERT
+    });
+
+    console.log(`Inserted ${allQuestions.length} inspection questions`);
+    return result;
+
+  } catch (error) {
+    console.error('Error inserting inspection questions:', error);
+    throw error;
+  }
+};
