@@ -2,12 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/services/document_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 
 class InspectionController extends GetxController {
+  DashboardController _dashboardController = Get.find<DashboardController>();
+
   var isLoading = false.obs;
 
   var inspection = InspectionModel().obs;
@@ -85,14 +88,62 @@ class InspectionController extends GetxController {
     var truckData = convertInspectionItems(inspectionItems);
     var trailerData = convertInspectionItems(inspectionTrailerItems);
     if (truckData.isEmpty) {
-      Get.snackbar('Error', "Please complete truck inspection.");
+      Get.defaultDialog(
+        title: "Error",
+        middleText: "Please complete truck inspection.",
+        textConfirm: "OK",
+        confirmTextColor: Colors.white,
+        onConfirm: () {
+          Get.back(); // Closes the dialog
+        },
+      );
       return;
     }
 
     if (selectedTrailer.value.isNotEmpty) {
       if (trailerData.isEmpty) {
-        Get.snackbar('Error', "Please complete trailer inspection.");
+        Get.defaultDialog(
+          title: "Error",
+          middleText: "Please complete trailer inspection.",
+          textConfirm: "OK",
+          confirmTextColor: Colors.white,
+          onConfirm: () {
+            Get.back(); // Closes the dialog
+          },
+        );
         return;
+      }
+    }
+
+    if (truckData.isNotEmpty) {
+      if (truckData.length != inspectionItems.length) {
+        Get.defaultDialog(
+          title: "Error",
+          middleText: "Please complete truck inspection.",
+          textConfirm: "OK",
+          confirmTextColor: Colors.white,
+          onConfirm: () {
+            Get.back(); // Closes the dialog
+          },
+        );
+
+        return;
+      }
+    }
+    if (selectedTrailer.value.isNotEmpty) {
+      if (trailerData.isNotEmpty) {
+        if (trailerData.length != inspectionTrailerItems.length) {
+          Get.defaultDialog(
+            title: "Error",
+            middleText: "Please complete trailer inspection.",
+            textConfirm: "OK",
+            confirmTextColor: Colors.white,
+            onConfirm: () {
+              Get.back(); // Closes the dialog
+            },
+          );
+          return; // Still return to exit the function
+        }
       }
     }
 
@@ -118,6 +169,8 @@ class InspectionController extends GetxController {
 
       // Check if the response is valid
       if (response.status == true) {
+        _dashboardController.getDashboard();
+        Get.back();
         Get.snackbar(
           '✅ Success',
           response.message,
@@ -126,9 +179,6 @@ class InspectionController extends GetxController {
           colorText: Colors.white,
           duration: const Duration(seconds: 3),
         );
-        // Add a small delay before navigating back
-        await Future.delayed(const Duration(milliseconds: 500));
-        Get.to(() => const DriverDashboard());
       }
     } catch (e) {
       Utils.snackBar('Error', e.toString());

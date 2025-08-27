@@ -581,7 +581,6 @@ const latestInspection = await secondarySequelize.query<any>(
     },
   }
 );
-console.log(latestInspection)
 // Check if inspection was done and if 24 hours have passed
 let inspectionDoneToday = false;
 
