@@ -45,6 +45,24 @@ class AddInspectionScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   if (controller.selectedTrailer.isNotEmpty)
                     _buildInspectionTrailerGrid(controller),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Note",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Obx(() => TextField(
+                        onChanged: controller.updateText,
+                        maxLines: 6,
+                        maxLength: 500,
+                        decoration: InputDecoration(
+                          hintText: 'Type your note here...',
+                          border: InputBorder.none,
+                          counterText:
+                              '${controller.note.value.length}/500 characters',
+                        ),
+                      )),
+                  const SizedBox(height: 4),
                   _buildSubmitButton(controller),
                   const SizedBox(height: 16),
                 ],

@@ -17,6 +17,7 @@ class InspectionController extends GetxController {
   // Basic details
   var carrierName = 'US City Link Corporation'.obs;
   var inspectionDate = ''.obs;
+  var note = ''.obs;
 
   // Inspection items - using a map for cleaner code
   var inspectionItems = <String, bool?>{}.obs;
@@ -35,6 +36,10 @@ class InspectionController extends GetxController {
     super.onInit();
     getInspection();
     updateInspectionDate(DateTime.now());
+  }
+
+  void updateText(String newText) {
+    note.value = newText;
   }
 
   Future<void> getInspection() async {
@@ -161,7 +166,8 @@ class InspectionController extends GetxController {
           ? "truckandtrailer"
           : "truck",
       "truckData": truckData,
-      "trailerData": trailerData
+      "trailerData": trailerData,
+      "note": note.value
     };
 
     try {

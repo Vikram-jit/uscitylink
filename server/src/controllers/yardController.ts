@@ -79,7 +79,7 @@ export const insertInspection = async (
       inspected_at,
       vehicle_type,
       truckData,
-      trailerData
+      trailerData,note
     } = req.body;
      
     // Get current time
@@ -117,9 +117,9 @@ export const insertInspection = async (
     // Raw SQL query with parameter binding (recommended for security)
     const query = `
       INSERT INTO daily_vehicle_inspections 
-      (company_name, truck_id, trailer_id, driver_id, odometer, inspected_at, created_at, updated_at, vehicle_type) 
+      (company_name, truck_id, trailer_id, driver_id, odometer, inspected_at, created_at, updated_at, vehicle_type, note) 
       VALUES 
-      (:company_name, :truck_id, :trailer_id, :driver_id, :odometer, :inspected_at, NOW(), NOW(), :vehicle_type)
+      (:company_name, :truck_id, :trailer_id, :driver_id, :odometer, :inspected_at, NOW(), NOW(), :vehicle_type, :note)
     `;
 
    const result = await secondarySequelize.query(query, {
@@ -131,6 +131,7 @@ export const insertInspection = async (
         odometer,
         inspected_at:finalInspectedAt,
         vehicle_type,
+        note
       },
       type: QueryTypes.INSERT,
     });
