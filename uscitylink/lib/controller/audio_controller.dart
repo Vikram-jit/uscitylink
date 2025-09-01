@@ -244,7 +244,8 @@ class AudioController extends GetxController {
             _socketService.sendGroupMessage(
                 groupId!, channelId, "", res.data.key!);
           } else {
-            _socketService.sendMessage("", res.data.key!, channelId);
+            _socketService.sendMessage(
+                "", res.data.key!, channelId, null, null, "server");
           }
         }
         deleteRecoding();
