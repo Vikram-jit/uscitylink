@@ -118,4 +118,7 @@ server.listen(PORT, async () => {
   
   console.log("Secondary database & tables synced!");
   console.log(`Server is running on port ${PORT}`);
+
+
+  
 });
