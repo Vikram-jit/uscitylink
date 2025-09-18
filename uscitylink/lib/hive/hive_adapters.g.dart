@@ -28,13 +28,14 @@ class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
       channel: fields[0] as Channel?,
       totalAmount: (fields[7] as num?)?.toDouble(),
       isDocumentExpired: fields[8] as bool?,
+      isInspectionDone: fields[11] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DashboardModel obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.channel)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
       ..writeByte(9)
       ..write(obj.latestMessage)
       ..writeByte(10)
-      ..write(obj.latestGroupMessage);
+      ..write(obj.latestGroupMessage)
+      ..writeByte(11)
+      ..write(obj.isInspectionDone);
   }
 
   @override
@@ -469,13 +472,14 @@ class MessageModelAdapter extends TypeAdapter<MessageModel> {
       driverPin: fields[18] as String?,
       staffPin: fields[19] as String?,
       url_upload_type: fields[20] as String?,
+      temp_id: fields[22] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MessageModel obj) {
     writer
-      ..writeByte(22)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -519,7 +523,9 @@ class MessageModelAdapter extends TypeAdapter<MessageModel> {
       ..writeByte(20)
       ..write(obj.url_upload_type)
       ..writeByte(21)
-      ..write(obj.r_message);
+      ..write(obj.r_message)
+      ..writeByte(22)
+      ..write(obj.temp_id);
   }
 
   @override

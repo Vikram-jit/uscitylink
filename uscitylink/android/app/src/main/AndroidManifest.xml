@@ -22,6 +22,7 @@
      
 
     <application
+     android:extractNativeLibs="true"
     android:allowBackup="false"
         android:label="Uscitylink"
         android:name="${applicationName}"
