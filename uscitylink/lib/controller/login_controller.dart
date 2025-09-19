@@ -257,7 +257,7 @@ class LoginController extends GetxController {
 
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
-            if (token != null && token.isNotEmpty) {
+            if (token.isNotEmpty) {
               await fcmService.updateDeviceToken(token);
             }
             await socketService.connectSocket();
@@ -296,7 +296,7 @@ class LoginController extends GetxController {
 
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
-            if (token != null && token.isNotEmpty) {
+            if (token.isNotEmpty) {
               await fcmService.updateDeviceToken(token);
             }
             await socketService.connectSocket();
@@ -373,7 +373,7 @@ class LoginController extends GetxController {
             if (value?.data?.role?.name == "staff") {
               final fcmService = Get.put(FCMService());
               String? token = fcmService.fcmToken.value;
-              if (token != null && token.isNotEmpty) {
+              if (token.isNotEmpty) {
                 await fcmService.updateDeviceToken(token);
               }
 
@@ -382,7 +382,7 @@ class LoginController extends GetxController {
             } else {
               final fcmService = Get.put(FCMService());
               String? token = fcmService.fcmToken.value;
-              if (token != null && token.isNotEmpty) {
+              if (token.isNotEmpty) {
                 await fcmService.updateDeviceToken(token);
               }
 
@@ -394,7 +394,7 @@ class LoginController extends GetxController {
           if (value?.data?.role?.name == "staff") {
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
-            if (token != null && token.isNotEmpty) {
+            if (token.isNotEmpty) {
               await fcmService.updateDeviceToken(token);
             }
 
@@ -403,7 +403,7 @@ class LoginController extends GetxController {
           } else {
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
-            if (token != null && token.isNotEmpty) {
+            if (token.isNotEmpty) {
               await fcmService.updateDeviceToken(token);
             }
 

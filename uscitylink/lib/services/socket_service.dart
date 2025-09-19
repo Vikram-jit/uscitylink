@@ -41,16 +41,11 @@ class SocketService extends GetxController {
   Future<void> connectSocket() async {
     String? accessToken = await userPreferenceController.getToken();
 
-    if (accessToken == null) {
-      print("No access token found. Please log in.");
-      return; // Token is missing or user is not logged in
-    }
-
     if (isConnected.value) {
       print("Already connected to socket.");
       return; // If already connected, don't try to connect again
     }
-    String customUrl = generateSocketUrl(accessToken);
+    String customUrl = generateSocketUrl(accessToken ?? "");
 
     // Establish socket connection with the access token as part of the query
     socket = IO.io(

@@ -108,7 +108,7 @@ class HiveController extends GetxController {
                     "&tempId=${media["tempId"] ?? ''}";
 
                 final res = await _apiService.multiFileUpload(
-                  [fileToUpload!],
+                  [fileToUpload],
                   url,
                   mediaBatch["channelId"],
                   mediaBatch["body"],
@@ -207,7 +207,7 @@ class HiveController extends GetxController {
           "&tempId=$tempId";
 
       final res = await _apiService.multiFileUpload(
-        [fileToUpload!],
+        [fileToUpload],
         url,
         channelId,
         body,

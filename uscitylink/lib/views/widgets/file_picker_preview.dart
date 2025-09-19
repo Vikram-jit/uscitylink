@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/file_picker_controller.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+// import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 
@@ -52,13 +52,16 @@ class FilePickerPreview extends StatelessWidget {
                     _controller.fileType.value == 'pdf') {
                   return SizedBox(
                     height: TDeviceUtils.getScreenHeight() * 0.65,
-                    child: PDFView(
-                      filePath: _controller.filePath.value,
-                      onPageChanged: (int? currentPage, int? totalPages) {
-                        // Update the current page and total pages when the page changes
-                        _controller.updatePDFPage(
-                            currentPage ?? 0, totalPages ?? 0);
-                      },
+                    // child: PDFView(
+                    //   filePath: _controller.filePath.value,
+                    //   onPageChanged: (int? currentPage, int? totalPages) {
+                    //     // Update the current page and total pages when the page changes
+                    //     _controller.updatePDFPage(
+                    //         currentPage ?? 0, totalPages ?? 0);
+                    //   },
+                    // ),
+                    child: Center(
+                      child: Text("PDF Preview Unavailable"),
                     ),
                   );
                 } else {

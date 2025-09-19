@@ -97,7 +97,7 @@ class ChannelController extends GetxController {
       // Update observable with data from API
       channels.value = response.data;
       loading.value = false;
-    } catch (error, stackTrace) {
+    } catch (error) {
       // Stop loading if error occurs
       loading.value = false;
 

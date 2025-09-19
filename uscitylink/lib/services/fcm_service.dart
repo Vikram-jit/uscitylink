@@ -228,15 +228,13 @@ class FCMService extends GetxController {
 
     // Get the FCM token for this device
     String? token = await _firebaseMessaging.getToken();
-    if (token != null) {
-      fcmToken.value = token;
-      userPreferenceController.getToken().then((value) async {
-        if (value == null || value.isEmpty) {
-        } else {
-          await updateDeviceToken(token);
-        }
-      });
-    }
+    fcmToken.value = token ?? "";
+    userPreferenceController.getToken().then((value) async {
+      if (value == null || value.isEmpty) {
+      } else {
+        await updateDeviceToken(token ?? "");
+      }
+    });
 
     // Listen to token refresh events
     _firebaseMessaging.onTokenRefresh.listen((newToken) async {

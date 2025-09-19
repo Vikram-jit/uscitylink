@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/firebase_options.dart';
@@ -12,9 +12,15 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
+  Pdfrx.getCacheDirectory ??= () async {
+    final directory = await getTemporaryDirectory();
+    return directory.path;
+  };
   await Hive.initFlutter();
 
   Hive
@@ -39,22 +45,20 @@ void main() async {
 
   String? accessToken = await UserPreferenceController().getToken();
 
-  if (accessToken != null) {
-    socketService.connectSocket();
+  socketService.connectSocket();
 
-    // Explicitly update the FCM token after login
-    // String? token = fcmService.fcmToken.value;
-    // if (token != null && token.isNotEmpty) {
-    //   await fcmService.updateDeviceToken(token);
-    // }
-    if (!Get.isRegistered<MessageController>()) {
-      Get.lazyPut(() => MessageController());
-      print('📡 MessageController registered');
-    }
-    if (!Get.isRegistered<NetworkService>()) {
-      Get.lazyPut(() => NetworkService());
-      print('📡 NetworkService registered');
-    }
+  // Explicitly update the FCM token after login
+  // String? token = fcmService.fcmToken.value;
+  // if (token != null && token.isNotEmpty) {
+  //   await fcmService.updateDeviceToken(token);
+  // }
+  if (!Get.isRegistered<MessageController>()) {
+    Get.lazyPut(() => MessageController());
+    print('📡 MessageController registered');
+  }
+  if (!Get.isRegistered<NetworkService>()) {
+    Get.lazyPut(() => NetworkService());
+    print('📡 NetworkService registered');
   }
   //BackgroundService.start();
 

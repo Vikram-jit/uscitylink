@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
-import 'package:pdf_render/pdf_render_widgets.dart';
+import 'package:pdfrx/pdfrx.dart';
 import 'package:uscitylink/views/widgets/audio_player_widget.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 import 'package:path/path.dart' as p;
@@ -35,7 +37,7 @@ class AttachementUi extends StatefulWidget {
 
 class _AttachementUiState extends State<AttachementUi> {
   // URL of the file to preview
-  final controller = PdfViewerController();
+  // final controller = PdfViewerController();
 
   List<String> videoExtensions = [
     'mp4',
@@ -77,6 +79,9 @@ class _AttachementUiState extends State<AttachementUi> {
       return _buildVideoPreview(widget.fileUrl, widget.thumbnail);
     } else if (isSupportedFormat(widget.fileUrl)) {
       return AudioPlayerWidget(audioUrl: widget.fileUrl);
+      // return Center(
+      //   child: Text("Audio Player Unavailable"),
+      // );
     } else {
       // Unknown or unsupported file type
       return _buildUnsupportedFile();
@@ -293,34 +298,59 @@ class _AttachementUiState extends State<AttachementUi> {
     );
   }
 
-  // Widget to show the PDF thumbnail (using PdfViewer)
   Widget _buildPdfPreview(String pdfUrl) {
     return GestureDetector(
       onTap: () async {
-        // Navigate to PDF preview screen on tap
-        final file = pdfUrl;
-        Get.to(() => DocumentDownload(file: file));
+        Get.to(() => DocumentDownload(file: pdfUrl));
       },
       child: Container(
-        height: 200.0,
-        color: Colors.grey[200],
-        child: FutureBuilder(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: FutureBuilder<File?>(
           future: DefaultCacheManager().getSingleFile(pdfUrl),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
               return const Center(
-                  child: Icon(Icons.error, size: 40, color: Colors.red));
-            } else if (snapshot.hasData) {
-              // If the file is cached, show the PDF thumbnail
-              return PdfViewer.openFutureFile(
-                () async => snapshot.data!.path,
-                viewerController: controller,
-                params: const PdfViewerParams(padding: 0),
+                child: Icon(Icons.error, size: 40, color: Colors.red),
+              );
+            } else if (snapshot.hasData && snapshot.data != null) {
+              final file = snapshot.data!;
+              return FutureBuilder<PdfDocument?>(
+                future: PdfDocument.openFile(file.path),
+                builder: (context, pdfSnapshot) {
+                  if (pdfSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (pdfSnapshot.hasError) {
+                    return const Center(
+                      child: Icon(Icons.error, size: 40, color: Colors.red),
+                    );
+                  } else if (pdfSnapshot.hasData) {
+                    return PdfPageView(
+                      document: pdfSnapshot.data!,
+                      pageNumber: 1,
+                    );
+                  } else {
+                    return const Center(child: Text('Failed to load PDF'));
+                  }
+                },
               );
             } else {
-              return const Center(child: Text('Failed to load PDF'));
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.picture_as_pdf, size: 40, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('No PDF available',
+                        style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              );
             }
           },
         ),

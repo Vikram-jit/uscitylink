@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
-import 'package:pdf_render/pdf_render_widgets.dart';
+// import 'package:pdf_render/pdf_render_widgets.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/media_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
@@ -202,7 +202,7 @@ class CustomWidget {
 
   // Build a GridView for Docs tab
   static Widget buildDocsGrid(MediaController mediaController) {
-    final controller = PdfViewerController();
+    // final controller = PdfViewerController();
     if (mediaController.mediaList.isEmpty) {
       return const Center(
         child: Text("No Document"),
@@ -241,12 +241,14 @@ class CustomWidget {
                   return const Center(
                       child: Icon(Icons.error, size: 40, color: Colors.red));
                 } else if (snapshot.hasData) {
+                  return const Center(
+                      child: Icon(Icons.error, size: 40, color: Colors.red));
                   // If the file is cached, show the PDF thumbnail
-                  return PdfViewer.openFutureFile(
-                    () async => snapshot.data!.path,
-                    viewerController: controller,
-                    params: const PdfViewerParams(padding: 0),
-                  );
+                  // return PdfViewer.openFutureFile(
+                  //   () async => snapshot.data!.path,
+                  //   viewerController: controller,
+                  //   params: const PdfViewerParams(padding: 0),
+                  // );
                 } else {
                   return const Center(child: Text('Failed to load PDF'));
                 }

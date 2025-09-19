@@ -126,7 +126,7 @@ class ImagePickerController extends GetxController {
           await _picker.pickMultiImage(imageQuality: 25);
 
       if (images!.length > 0) {
-        if (images != null && images.isNotEmpty) {
+        if (images.isNotEmpty) {
           for (var item in images) {
             selectedImages.value.add(File(item.path)); // XFile → File via .path
             selectedXImages.value.add(item); // XFile → File via .path

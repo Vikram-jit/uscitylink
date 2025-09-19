@@ -79,7 +79,7 @@ class SelectOption extends StatelessWidget {
                         });
                   }),
                   Text(
-                    "${email?.trim()}",
+                    "${email.trim()}",
                     style: Theme.of(context).textTheme.bodyLarge,
                   )
                 ],
@@ -97,7 +97,7 @@ class SelectOption extends StatelessWidget {
                         });
                   }),
                   Text(
-                    "${phone_number?.toString()?.trim() ?? ""}",
+                    "${phone_number.toString().trim() ?? ""}",
                     style: Theme.of(context).textTheme.bodyLarge,
                   )
                 ],

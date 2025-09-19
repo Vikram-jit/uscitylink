@@ -5,15 +5,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+// import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:uscitylink/controller/document_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+// import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:video_player/video_player.dart';
+import 'package:pdfrx/pdfrx.dart';
 
 class DocumentDownload extends StatefulWidget {
   final String file; // URL of the file
@@ -28,7 +29,7 @@ class _DocumentDownloadState extends State<DocumentDownload> {
   late VideoPlayerController videoPlayerController;
   late Future<void> _initializeVideoPlayerFuture;
 
-  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
+  // final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
   List<String> videoExtensions = [
     'mp4',
     'mkv',
@@ -286,10 +287,14 @@ class _DocumentDownloadState extends State<DocumentDownload> {
             width: double.infinity,
             height:
                 TDeviceUtils.getScreenHeight() * 0.8, // Adjust height as needed
-            child: SfPdfViewer.network(
-              pdfUrl,
-              key: _pdfViewerKey,
+            child: PdfViewer.uri(
+              Uri.parse(pdfUrl),
             ),
+            // child: Center(
+            //     child: Text(
+            //   "PDF Preview Unavailables",
+            //   style: TextStyle(color: Colors.red),
+            // )),
           );
         } else {
           return const Center(child: Text('No PDF data available'));

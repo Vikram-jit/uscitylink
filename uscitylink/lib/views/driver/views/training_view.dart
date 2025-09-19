@@ -130,7 +130,7 @@ class _TrainingViewState extends State<TrainingView> {
                                       ? Colors.red
                                       : Colors.transparent,
                               label: Text(
-                                "${training.quiz_status == "passed" ? "Certified"?.toUpperCase() : training.quiz_status?.toUpperCase()}",
+                                "${training.quiz_status == "passed" ? "Certified".toUpperCase() : training.quiz_status?.toUpperCase()}",
                                 style: TextStyle(
                                   color: training.quiz_status == "passed"
                                       ? Colors.white

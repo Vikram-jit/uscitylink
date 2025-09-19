@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:intl/intl.dart';
-import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class AudioPlayerWidget extends StatefulWidget {
   final String audioUrl;
@@ -14,22 +15,92 @@ class AudioPlayerWidget extends StatefulWidget {
 
 class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   late AudioPlayer _audioPlayer;
-  late Stream<Duration?> _durationStream;
-  late Stream<Duration> _positionStream;
-  late Stream<PlayerState> _playerStateStream;
-
-  // Local variable to hold slider value during dragging.
-  double? _dragValue;
-  bool _isDragging = false;
+  String? _errorMessage;
+  bool _isLoading = true;
+  bool _isLocalFile = false;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
-    _durationStream = _audioPlayer.durationStream;
-    _positionStream = _audioPlayer.positionStream;
-    _playerStateStream = _audioPlayer.playerStateStream;
-    _audioPlayer.setUrl(widget.audioUrl);
+    _loadAudio();
+  }
+
+  Future<void> _loadAudio() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // Try multiple approaches to load the audio
+      await _tryDirectUrl();
+    } catch (e) {
+      print('All audio loading approaches failed: $e');
+      setState(() {
+        _errorMessage = 'Cannot play audio. Format may not be supported.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _tryDirectUrl() async {
+    try {
+      // Approach 1: Try direct URL with setUrl
+      await _audioPlayer.setUrl(widget.audioUrl);
+      setState(() {
+        _isLoading = false;
+        _isLocalFile = false;
+      });
+    } catch (e) {
+      print('Direct URL failed: $e');
+      await _tryDownloadAndPlay();
+    }
+  }
+
+  Future<void> _tryDownloadAndPlay() async {
+    try {
+      // Approach 2: Download the file first and play locally
+      print('Downloading audio file...');
+
+      final response = await http.get(Uri.parse(widget.audioUrl));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to download audio: ${response.statusCode}');
+      }
+
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/temp_audio.aac');
+      await file.writeAsBytes(response.bodyBytes);
+
+      // Try playing the local file
+      await _audioPlayer.setFilePath(file.path);
+
+      setState(() {
+        _isLoading = false;
+        _isLocalFile = true;
+      });
+
+      print('Audio loaded successfully from local file');
+    } catch (e) {
+      print('Download approach failed: $e');
+      await _tryAudioSourceUri();
+    }
+  }
+
+  Future<void> _tryAudioSourceUri() async {
+    try {
+      // Approach 3: Try with AudioSource.uri
+      await _audioPlayer.setAudioSource(
+        AudioSource.uri(Uri.parse(widget.audioUrl)),
+      );
+      setState(() {
+        _isLoading = false;
+        _isLocalFile = false;
+      });
+    } catch (e) {
+      print('AudioSource.uri failed: $e');
+      rethrow;
+    }
   }
 
   @override
@@ -45,123 +116,173 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     return "$minutes:$seconds";
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildErrorWidget() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red),
+      ),
+      child: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, color: Colors.red, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _errorMessage ?? 'Audio playback failed',
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: _loadAudio,
+              color: Colors.blue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingWidget() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Loading audio...', style: TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlButton() {
     return StreamBuilder<PlayerState>(
-      stream: _playerStateStream,
+      stream: _audioPlayer.playerStateStream,
       builder: (context, snapshot) {
-        final playerState = snapshot.data;
-        final processingState = playerState?.processingState;
-        final playing = playerState?.playing ?? false;
+        final playerState =
+            snapshot.data ?? PlayerState(false, ProcessingState.idle);
+        final processingState = playerState.processingState;
 
-        Widget controlButton;
-
-        // If playback is complete, show a restart button.
-        if (processingState == ProcessingState.completed) {
-          controlButton = IconButton(
+        if (processingState == ProcessingState.loading) {
+          return const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        } else if (processingState == ProcessingState.completed) {
+          return IconButton(
             icon: const Icon(Icons.replay),
             iconSize: 24.0,
-            color: Colors.blueAccent,
-            onPressed: () async {
-              await _audioPlayer.seek(Duration.zero);
-              await _audioPlayer.play();
-            },
+            color: Colors.blue,
+            onPressed: () => _audioPlayer
+                .seek(Duration.zero)
+                .then((_) => _audioPlayer.play()),
           );
-        } else if (playing) {
-          controlButton = IconButton(
+        } else if (playerState.playing) {
+          return IconButton(
             icon: const Icon(Icons.pause),
             iconSize: 24.0,
+            color: Colors.blue,
             onPressed: _audioPlayer.pause,
           );
         } else {
-          controlButton = IconButton(
-            padding: const EdgeInsets.all(0),
+          return IconButton(
             icon: const Icon(Icons.play_arrow),
             iconSize: 24.0,
+            color: Colors.blue,
             onPressed: _audioPlayer.play,
           );
         }
+      },
+    );
+  }
 
-        return Container(
-          width: double.infinity,
-          height: 60,
-          decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(5)),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              controlButton,
-              Expanded(
-                child: StreamBuilder<Duration?>(
-                  stream: _durationStream,
-                  builder: (context, snapshot) {
-                    final duration = snapshot.data ?? Duration.zero;
-                    return StreamBuilder<Duration>(
-                      stream: _positionStream,
-                      builder: (context, snapshot) {
-                        var position = snapshot.data ?? Duration.zero;
-                        if (position > duration) {
-                          position = duration;
-                        }
-                        // Use local _dragValue if user is dragging.
-                        final sliderValue = _isDragging
-                            ? _dragValue ?? position.inMilliseconds.toDouble()
-                            : position.inMilliseconds.toDouble();
-                        return Row(
-                          children: [
-                            SizedBox(
-                              width:
-                                  TDeviceUtils.getScreenWidth(context) * 0.30,
-                              child: Slider(
-                                min: 0.0,
-                                max: duration.inMilliseconds.toDouble(),
-                                value: sliderValue.clamp(
-                                    0.0, duration.inMilliseconds.toDouble()),
-                                activeColor: Colors.blueAccent,
-                                inactiveColor: Colors.grey[300],
-                                onChangeStart: (value) {
-                                  setState(() {
-                                    _isDragging = true;
-                                    _dragValue = value;
-                                  });
-                                },
-                                onChanged: (value) {
-                                  setState(() {
-                                    _dragValue = value;
-                                  });
-                                },
-                                onChangeEnd: (value) {
-                                  _audioPlayer.seek(
-                                      Duration(milliseconds: value.round()));
-                                  setState(() {
-                                    _isDragging = false;
-                                    _dragValue = null;
-                                  });
-                                },
-                              ),
-                            ),
-                            SizedBox(
-                              width:
-                                  TDeviceUtils.getScreenWidth(context) * 0.11,
-                              child: Text(
-                                _formatDuration(Duration(
-                                    milliseconds: _isDragging
-                                        ? _dragValue?.round() ??
-                                            position.inMilliseconds
-                                        : position.inMilliseconds)),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return _buildLoadingWidget();
+    }
+
+    if (_errorMessage != null) {
+      return _buildErrorWidget();
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          _buildControlButton(),
+          const SizedBox(width: 12),
+          Expanded(
+            child: StreamBuilder<Duration?>(
+              stream: _audioPlayer.durationStream,
+              builder: (context, durationSnapshot) {
+                final duration = durationSnapshot.data ?? Duration.zero;
+                return StreamBuilder<Duration>(
+                  stream: _audioPlayer.positionStream,
+                  builder: (context, positionSnapshot) {
+                    var position = positionSnapshot.data ?? Duration.zero;
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            min: 0.0,
+                            max: duration.inMilliseconds > 0
+                                ? duration.inMilliseconds.toDouble()
+                                : 1.0,
+                            value: position.inMilliseconds
+                                .toDouble()
+                                .clamp(0.0, duration.inMilliseconds.toDouble()),
+                            onChanged: (value) {
+                              _audioPlayer
+                                  .seek(Duration(milliseconds: value.round()));
+                            },
+                            activeColor: Colors.blue,
+                            inactiveColor: Colors.grey[300],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDuration(position),
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
                     );
                   },
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
