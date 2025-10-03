@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Add, Download, Replay,Remove, RotateRight, Restore } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Grid, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch';
+import { ReactZoomPanPinchRef, TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import Image from 'next/image';
 import ReactPlayer from 'react-player';
@@ -43,6 +43,7 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
     const nextIndex = (currentIndex + 1) % rotations.length;
     setRotation(rotations[nextIndex]);
   };
+  const transformComponentRef = useRef<ReactZoomPanPinchRef | null>(null);
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -190,10 +191,13 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
 
         <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-            <TransformWrapper initialScale={1}>
+            <TransformWrapper initialScale={1} 
+      minScale={0.5}
+      maxScale={3}
+      centerOnInit={true}>
              <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
               <Box display={"flex"} justifyContent={"center"}> <Controls />
-             <Tooltip title={`Rotate (${rotation}°)`} arrow>
+             <Tooltip title={`Rotate (${rotation}°)`} arrow >
                   <IconButton 
                     color="secondary" 
                     onClick={handleRotate}
@@ -208,7 +212,10 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
 
               <DropdownButton btnName='Download' fileName={`uscitylink/${key}`}/></Box>
              <Box marginBottom={2}></Box>
-              <TransformComponent>
+             
+              <TransformComponent
+              
+              >
                 <Image
                  src={
                       uploadType === 'not-upload' || uploadType === 'local'

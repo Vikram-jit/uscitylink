@@ -51,7 +51,6 @@ export default function DocumentDialog({
   uploadType
 }: DocumentDialog) {
 
-console.log(uploadType)
 
     const [isLoading, setIsLoading] = React.useState(true); 
     const [oldCurrebIndex,setOldCurrentIndex] = React.useState<number | null>(null)// Track loading state
