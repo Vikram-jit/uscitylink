@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Add, Download, Replay,Remove, RotateRight, Restore } from '@mui/icons-material';
+import { Add, Download, Remove, Replay, Restore, RotateRight } from '@mui/icons-material';
 import { Box, Button, CircularProgress, Grid, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ReactZoomPanPinchRef, TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch';
+
 import 'react-pdf/dist/Page/AnnotationLayer.css';
+
 import Image from 'next/image';
 import ReactPlayer from 'react-player';
+
 import DropdownButton from './dropdown_button';
 
 const options = {
@@ -15,28 +18,32 @@ const options = {
 };
 interface Viewer {
   documentKey: string;
-  setLoading?: React.Dispatch<React.SetStateAction<boolean>>; 
-  uploadType?:string
-
+  setLoading?: React.Dispatch<React.SetStateAction<boolean>>;
+  uploadType?: string;
 }
 const Controls = () => {
   const { zoomIn, zoomOut, resetTransform } = useControls();
 
   return (
     <div className="tools">
-      <Button variant="contained" onClick={() => zoomIn()}><Add/></Button>
-      <Button onClick={() => zoomOut()}><Remove/></Button>
-       <Tooltip title={`reset`} arrow>
-      <Button color="error" onClick={() => resetTransform()}><Restore/></Button>
+      <Button variant="contained" onClick={() => zoomIn()}>
+        <Add />
+      </Button>
+      <Button onClick={() => zoomOut()}>
+        <Remove />
+      </Button>
+      <Tooltip title={`reset`} arrow>
+        <Button color="error" onClick={() => resetTransform()}>
+          <Restore />
+        </Button>
       </Tooltip>
     </div>
   );
 };
-export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
+export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) {
+  const [rotation, setRotation] = useState(0);
 
-    const [rotation, setRotation] = useState(0);
-
-  const rotations = [0, 90, 180, 270,360]; // All possible rotation states
+  const rotations = [0, 90, 180, 270, 360]; // All possible rotation states
 
   const handleRotate = () => {
     const currentIndex = rotations.indexOf(rotation);
@@ -152,11 +159,11 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
             <ReactPlayer
               controls={true}
-             url={
-                      uploadType === 'not-upload' || uploadType === 'local'
-                        ? `${process.env.SOCKET_URL}/uscitylink/${key}`
-                        : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`
-                    }
+              url={
+                uploadType === 'not-upload' || uploadType === 'local'
+                  ? `${process.env.SOCKET_URL}/uscitylink/${key}`
+                  : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`
+              }
               width={'100%'}
             />
           </Box>
@@ -191,48 +198,59 @@ export default function Viewer({ documentKey ,setLoading,uploadType}: Viewer) {
 
         <Paper sx={{ width: '100%', padding: 3, boxShadow: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 2 }}>
-            <TransformWrapper initialScale={1} 
-      minScale={0.5}
-      maxScale={3}
-      centerOnInit={true}>
-             <Box display={"flex"} flexDirection={"column"} alignItems={"center"}>
-              <Box display={"flex"} justifyContent={"center"}> <Controls />
-             <Tooltip title={`Rotate (${rotation}°)`} arrow >
-                  <IconButton 
-                    color="secondary" 
-                    onClick={handleRotate}
-                    sx={{
-                      transform: `rotate(${rotation}deg)`,
-                      transition: 'transform 0.3s ease',
-                    }}
-                  >
-                    <RotateRight />
-                  </IconButton>
-                </Tooltip>
+            <TransformWrapper initialScale={1} minScale={0.5} maxScale={3} centerOnInit={true}>
+              <Box display={'flex'} flexDirection={'column'} alignItems={'center'}>
+                <Box
+                  display={'flex'}
+                  justifyContent={'center'}
+                  sx={{
+                    zIndex: 99999,
+                    position: 'absolute',
+                    top: '10px',
+                    background: 'white',
+                    width: '50%',
+                    padding: '3px',
+                  }}
+                >
+                  <Controls />
+                  <Tooltip title={`Rotate (${rotation}°)`} arrow>
+                    <IconButton
+                      color="secondary"
+                      onClick={handleRotate}
+                      sx={{
+                        transform: `rotate(${rotation}deg)`,
+                        transition: 'transform 0.3s ease',
+                      }}
+                    >
+                      <RotateRight />
+                    </IconButton>
+                  </Tooltip>
 
-              <DropdownButton btnName='Download' fileName={`uscitylink/${key}`}/></Box>
-             <Box marginBottom={2}></Box>
-             
-              <TransformComponent
-              
-              >
-                <Image
-                 src={
+                  <DropdownButton btnName="Download" fileName={`uscitylink/${key}`} />
+                </Box>
+                <Box marginBottom={2}></Box>
+
+                <TransformComponent>
+                  <Image
+                    src={
                       uploadType === 'not-upload' || uploadType === 'local'
                         ? `${process.env.SOCKET_URL}/uscitylink/${key}`
                         : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`
-                    }   
-                  alt="image"
-                  width={1020}
-                  height={1020}
-                  objectFit="contain"
-                  style={{ objectFit: 'contain', transform: `rotate(${rotation}deg)`,
-                  transition: 'transform 0.3s ease', }}
-                  onLoadingComplete={handleLoadingComplete}
-                  unoptimized={true}
-                />
-              </TransformComponent>
-             </Box>
+                    }
+                    alt="image"
+                    width={1020}
+                    height={1020}
+                    objectFit="contain"
+                    style={{
+                      objectFit: 'contain',
+                      transform: `rotate(${rotation}deg)`,
+                      transition: 'transform 0.3s ease',
+                    }}
+                    onLoadingComplete={handleLoadingComplete}
+                    unoptimized={true}
+                  />
+                </TransformComponent>
+              </Box>
             </TransformWrapper>
           </Box>
         </Paper>
