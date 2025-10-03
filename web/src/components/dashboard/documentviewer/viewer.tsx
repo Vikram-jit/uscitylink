@@ -203,14 +203,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
                 <Box
                   display={'flex'}
                   justifyContent={'center'}
-                  sx={{
-                    zIndex: 99999,
-                    position: 'absolute',
-                    top: '10px',
-                    background: 'white',
-                    width: '50%',
-                    padding: '3px',
-                  }}
+                
                 >
                   <Controls />
                   <Tooltip title={`Rotate (${rotation}°)`} arrow>
