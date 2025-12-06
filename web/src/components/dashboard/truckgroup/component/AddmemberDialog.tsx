@@ -102,13 +102,18 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
       console.log(error);
     }
   }
-  const uniqueUsers = React.useMemo(() => {
-    const map = new Map<string, UserModel>(); // FIXED
-    (data?.data?.users || []).forEach((user) => {
-      map.set(user.id, user); // ✅ Now valid
-    });
-    return Array.from(map.values());
-  }, [data]);
+ const uniqueUsers = React.useMemo<UserModel[]>(() => {
+  const seen = new Set<string>();
+
+  return (data?.data?.users || []).filter(user => {
+    const id = String(user.id);
+    if (!id) return false;
+
+    const isDuplicate = seen.has(id);
+    seen.add(id);
+    return !isDuplicate;
+  });
+}, [data]);
   return (
     <React.Fragment>
       <Dialog
@@ -130,10 +135,10 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
                 disableCloseOnSelect
                 onChange={handleChange}
                 getOptionLabel={(option) => `${option.username} (${option.user.driver_number})`}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
+isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
                 filterSelectedOptions
                 renderOption={(props, option, { selected }) => (
-                  <li {...props} key={option.id}>
+                  <li {...props} key={option.id || `${option.username}-${option.user.driver_number}`}>
                     <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
                     {`${option.username} (${option.user.driver_number})`}
                   </li>
