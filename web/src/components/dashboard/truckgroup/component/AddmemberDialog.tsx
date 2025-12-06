@@ -17,7 +17,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
-import moment from 'moment';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 
@@ -43,6 +42,12 @@ interface AddGroupDialog {
 }
 
 export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGroupDialog) {
+  const [isMounted, setIsMounted] = React.useState(false);
+  
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const handleClose = () => {
     setOpen(false);
   };
@@ -50,27 +55,51 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
   const [addGroupMember] = useAddGroupMemberMutation();
 
   const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
-  const [search, setSearch] = React.useState('');
+  
+  // Initialize with empty array to avoid hydration issues
+  const [availableUsers, setAvailableUsers] = React.useState<UserModel[]>([]);
 
   const handleChange = (event: any, value: any) => {
-    setSelectedUsers(value);
+    setSelectedUsers(value || []);
   };
-  const { data, isFetching } = useGetUsersQuery({ role: 'driver', page: -1 });
+  
+  const { data, isFetching } = useGetUsersQuery({ 
+    role: 'driver', 
+    page: -1 
+  }, {
+    skip: !open, // Only fetch when dialog is open
+  });
+  
   const [message, setApiResponse] = useErrorHandler();
   
+  // Process data only on client side
   React.useEffect(() => {
-    if (data?.data) {
-      if (group) {
-        const defaultSelectedUsers = data.data?.users?.filter((user) =>
+    if (isMounted && data?.data?.users) {
+      // Deduplicate users by id
+      const idMap = new Map<string, UserModel>();
+      data.data.users.forEach(user => {
+        if (user?.id) {
+          const id = String(user.id);
+          if (!idMap.has(id)) {
+            idMap.set(id, user);
+          }
+        }
+      });
+      
+      const uniqueUsers = Array.from(idMap.values());
+      setAvailableUsers(uniqueUsers);
+      
+      // Set default selected users if group is provided
+      if (group && uniqueUsers.length > 0) {
+        const defaultSelectedUsers = uniqueUsers.filter((user) =>
           group?.members
             .filter((e) => e.status === 'active')
-            .map((e) => e.userProfileId)
-            .includes(user.id)
+            .some((e) => String(e.userProfileId) === String(user.id))
         );
         setSelectedUsers(defaultSelectedUsers);
       }
     }
-  }, [data, group]);
+  }, [isMounted, data, group]);
 
   async function onSubmit() {
     try {
@@ -83,12 +112,12 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
         return;
       }
 
-      const data: any = {
+      const payload: any = {
         groupId,
         ...(selectedMember.length > 0 && { members: selectedMember.join(',') }),
       };
 
-      const res = await addGroupMember(data);
+      const res = await addGroupMember(payload);
       if (res.data?.status) {
         toast.success('Add Group Member Successfully.');
         dispatch(hideLoader());
@@ -105,20 +134,10 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
     }
   }
 
-  // Clean up the uniqueUsers logic - simpler approach
-  const uniqueUsers = React.useMemo<UserModel[]>(() => {
-    if (!data?.data?.users) return [];
-    
-    // Simple deduplication by id
-    const idMap = new Map<string, UserModel>();
-    data.data.users.forEach(user => {
-      if (user?.id) {
-        idMap.set(String(user.id), user);
-      }
-    });
-    
-    return Array.from(idMap.values());
-  }, [data]);
+  // Don't render Autocomplete until component is mounted and data is ready
+  if (!isMounted) {
+    return null; // Or return a skeleton
+  }
 
   return (
     <React.Fragment>
@@ -137,38 +156,45 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
               <Autocomplete
                 multiple
                 value={selectedUsers}
-                options={uniqueUsers}
+                options={availableUsers}
                 disableCloseOnSelect
+                loading={isFetching}
                 onChange={handleChange}
                 
-                // ✅ Critical: Proper equality check
-                isOptionEqualToValue={(option, value) => 
-                  String(option?.id) === String(value?.id)
-                }
+                // Critical: Stable equality check
+                isOptionEqualToValue={(option, value) => {
+                  if (!option?.id || !value?.id) return false;
+                  return String(option.id) === String(value.id);
+                }}
                 
-                // ✅ Clean label
-                getOptionLabel={(option) => 
-                  `${option.username || ''} (${option.user?.driver_number || ''})`
-                }
+                getOptionLabel={(option) => {
+                  if (!option) return '';
+                  return `${option.username || ''} (${option.user?.driver_number || ''})`;
+                }}
                 
-                // ✅ Remove custom filterOptions and let MUI handle it
+                // Use built-in filtering
                 filterSelectedOptions
                 
-                renderOption={(props, option, { selected }) => (
-                  <li {...props} key={String(option.id)}>
-                    <Checkbox 
-                      checked={selected} 
-                      icon={icon} 
-                      checkedIcon={checkedIcon} 
-                    />
-                    {`${option.username} (${option.user?.driver_number})`}
-                  </li>
-                )}
+                renderOption={(props, option, { selected }) => {
+                  if (!option?.id) return null;
+                  return (
+                    <li {...props} key={`option-${String(option.id)}`}>
+                      <Checkbox 
+                        checked={selected} 
+                        icon={icon} 
+                        checkedIcon={checkedIcon} 
+                      />
+                      {`${option.username} (${option.user?.driver_number})`}
+                    </li>
+                  );
+                }}
                 
                 renderInput={(params) => (
                   <TextField 
                     {...params} 
                     placeholder="Search members..." 
+                    label="Members"
+                    variant="outlined"
                   />
                 )}
                 fullWidth
@@ -178,8 +204,12 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button variant="contained" onClick={onSubmit}>
-            Submit
+          <Button 
+            variant="contained" 
+            onClick={onSubmit}
+            disabled={isFetching || selectedUsers.length === 0}
+          >
+            {isFetching ? 'Loading...' : 'Submit'}
           </Button>
         </DialogActions>
       </Dialog>
