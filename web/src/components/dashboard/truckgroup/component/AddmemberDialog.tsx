@@ -1,7 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { useAddGroupMemberMutation } from '@/redux/GroupApiSlice';
+import { SingleGroupModel } from '@/redux/models/GroupModel';
 import { UserModel } from '@/redux/models/UserModel';
+import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { useGetUsersQuery } from '@/redux/UserApiSlice';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
@@ -14,14 +17,11 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
-import { toast } from 'react-toastify';
-import { useAddGroupMemberMutation } from '@/redux/GroupApiSlice';
-import { SingleGroupModel } from '@/redux/models/GroupModel';
-import useErrorHandler from '@/hooks/use-error-handler';
-import { useDispatch } from 'react-redux';
-import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import moment from 'moment';
+import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
 
+import useErrorHandler from '@/hooks/use-error-handler';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -36,76 +36,79 @@ const Transition = React.forwardRef(function Transition(
 });
 
 interface AddGroupDialog {
-  groupId:string
+  groupId: string;
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  group?:SingleGroupModel    | undefined
+  group?: SingleGroupModel | undefined;
 }
 
-export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGroupDialog) {
+export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGroupDialog) {
   const handleClose = () => {
     setOpen(false);
   };
   const dispatch = useDispatch();
   const [addGroupMember] = useAddGroupMemberMutation();
 
-
   const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
 
   const handleChange = (event: any, value: any) => {
     setSelectedUsers(value);
   };
-  const { data, isFetching } = useGetUsersQuery({ role: 'driver' ,page:-1});
-  const [message,setApiResponse] = useErrorHandler()
+  const { data, isFetching } = useGetUsersQuery({ role: 'driver', page: -1 });
+  const [message, setApiResponse] = useErrorHandler();
   React.useEffect(() => {
     if (data?.data) {
-      if(group){
-        const defaultSelectedUsers = data.data?.users?.filter(user =>
+      if (group) {
+        const defaultSelectedUsers = data.data?.users?.filter((user) =>
           group?.members
-            .filter(e => e.status === "active")
-            .map(e => e.userProfileId)
+            .filter((e) => e.status === 'active')
+            .map((e) => e.userProfileId)
             .includes(user.id)
         );
         setSelectedUsers(defaultSelectedUsers);
       }
-
     }
-  }, [data,group]);
+  }, [data, group]);
 
   async function onSubmit() {
     try {
-
-      dispatch(showLoader())
+      dispatch(showLoader());
       const selectedMember = selectedUsers.map((user) => user.id);
 
-      if(selectedMember.length == 0){
-        alert("Please select at least one member to add into group.");
-        dispatch(hideLoader())
+      if (selectedMember.length == 0) {
+        alert('Please select at least one member to add into group.');
+        dispatch(hideLoader());
         return;
       }
 
-      const data:any = {
-       groupId,
+      const data: any = {
+        groupId,
         ...(selectedMember.length > 0 && { members: selectedMember.join(',') }),
       };
 
       const res = await addGroupMember(data);
       if (res.data?.status) {
         toast.success('Add Group Member Successfully.');
-        dispatch(hideLoader())
+        dispatch(hideLoader());
         setOpen(false);
-        return
+        return;
       }
-      setApiResponse(res.error as any)
+      setApiResponse(res.error as any);
       setOpen(false);
-      dispatch(hideLoader())
-      return
+      dispatch(hideLoader());
+      return;
     } catch (error) {
-      dispatch(hideLoader())
+      dispatch(hideLoader());
       console.log(error);
     }
   }
-
+  const uniqueUsers = React.useMemo(() => {
+    const map = new Map<string, UserModel>(); // FIXED
+    (data?.data?.users || []).forEach((user) => {
+      map.set(user.id, user); // ✅ Now valid
+    });
+    return Array.from(map.values());
+  }, [data]);
   return (
     <React.Fragment>
       <Dialog
@@ -118,29 +121,25 @@ export default function AddMemberDialog({ open, setOpen,groupId,group }: AddGrou
       >
         <DialogTitle>{'Select Members'}</DialogTitle>
         <DialogContent>
-
           <Grid container mt={2}>
-
             <Grid item xs={12} mt={1}>
               <Autocomplete
-              value={selectedUsers}
                 multiple
-                id="checkboxes-tags-demo"
-                options={data?.data?.users || []}
+                value={selectedUsers}
+                options={uniqueUsers}
                 disableCloseOnSelect
                 onChange={handleChange}
                 getOptionLabel={(option) => `${option.username} (${option.user.driver_number})`}
-                renderOption={(props: any, option, { selected }) => {
-                  const { key, ...optionProps } = props;
-                  return (
-                    <li key={key + moment().utc} {...optionProps}>
-                      <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                      {`${option.username} (${option.user.driver_number})`}
-                    </li>
-                  );
-                }}
-                fullWidth
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                filterSelectedOptions
+                renderOption={(props, option, { selected }) => (
+                  <li {...props} key={option.id}>
+                    <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
+                    {`${option.username} (${option.user.driver_number})`}
+                  </li>
+                )}
                 renderInput={(params) => <TextField {...params} />}
+                fullWidth
               />
             </Grid>
           </Grid>
