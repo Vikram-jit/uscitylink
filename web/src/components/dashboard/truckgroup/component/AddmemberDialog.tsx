@@ -50,12 +50,14 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
   const [addGroupMember] = useAddGroupMemberMutation();
 
   const [selectedUsers, setSelectedUsers] = React.useState<UserModel[]>([]);
+  const [search, setSearch] = React.useState('');
 
   const handleChange = (event: any, value: any) => {
     setSelectedUsers(value);
   };
   const { data, isFetching } = useGetUsersQuery({ role: 'driver', page: -1 });
   const [message, setApiResponse] = useErrorHandler();
+  
   React.useEffect(() => {
     if (data?.data) {
       if (group) {
@@ -102,18 +104,22 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
       console.log(error);
     }
   }
- const uniqueUsers = React.useMemo<UserModel[]>(() => {
-  const seen = new Set<string>();
 
-  return (data?.data?.users || []).filter(user => {
-    const id = String(user.id);
-    if (!id) return false;
+  // Clean up the uniqueUsers logic - simpler approach
+  const uniqueUsers = React.useMemo<UserModel[]>(() => {
+    if (!data?.data?.users) return [];
+    
+    // Simple deduplication by id
+    const idMap = new Map<string, UserModel>();
+    data.data.users.forEach(user => {
+      if (user?.id) {
+        idMap.set(String(user.id), user);
+      }
+    });
+    
+    return Array.from(idMap.values());
+  }, [data]);
 
-    const isDuplicate = seen.has(id);
-    seen.add(id);
-    return !isDuplicate;
-  });
-}, [data]);
   return (
     <React.Fragment>
       <Dialog
@@ -129,47 +135,44 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
           <Grid container mt={2}>
             <Grid item xs={12} mt={1}>
               <Autocomplete
-  multiple
-  value={selectedUsers}
-  options={uniqueUsers}
-  disableCloseOnSelect
-  onChange={handleChange}
-
-  // ✅ MANDATORY - fixes prod duplicate bug
-  isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-
-  // ✅ stable label
-  getOptionLabel={(o) => `${o.username} (${o.user.driver_number})`}
-
-  // ✅ force deterministic filtering (fixes prod random duplication)
-  filterOptions={(options, state) => {
-    const search = state.inputValue.toLowerCase().trim();
-    const map = new Map<string, UserModel>();
-
-    options.forEach(option => {
-      const label = `${option.username} ${option.user.driver_number}`.toLowerCase();
-
-      if (label.includes(search)) {
-        map.set(String(option.id), option);   // ✅ hard-dedup
-      }
-    });
-
-    return Array.from(map.values());
-  }}
-
-  // ✅ never show selected again
-  filterSelectedOptions
-
-  renderOption={(props, option, { selected }) => (
-    <li {...props} key={String(option.id)}>
-      <Checkbox checked={selected} icon={icon} checkedIcon={checkedIcon} />
-      {`${option.username} (${option.user.driver_number})`}
-    </li>
-  )}
-
-  renderInput={(params) => <TextField {...params} />}
-  fullWidth
-/>
+                multiple
+                value={selectedUsers}
+                options={uniqueUsers}
+                disableCloseOnSelect
+                onChange={handleChange}
+                
+                // ✅ Critical: Proper equality check
+                isOptionEqualToValue={(option, value) => 
+                  String(option?.id) === String(value?.id)
+                }
+                
+                // ✅ Clean label
+                getOptionLabel={(option) => 
+                  `${option.username || ''} (${option.user?.driver_number || ''})`
+                }
+                
+                // ✅ Remove custom filterOptions and let MUI handle it
+                filterSelectedOptions
+                
+                renderOption={(props, option, { selected }) => (
+                  <li {...props} key={String(option.id)}>
+                    <Checkbox 
+                      checked={selected} 
+                      icon={icon} 
+                      checkedIcon={checkedIcon} 
+                    />
+                    {`${option.username} (${option.user?.driver_number})`}
+                  </li>
+                )}
+                
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    placeholder="Search members..." 
+                  />
+                )}
+                fullWidth
+              />
             </Grid>
           </Grid>
         </DialogContent>
