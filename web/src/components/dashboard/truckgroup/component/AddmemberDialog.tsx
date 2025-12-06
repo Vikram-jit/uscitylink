@@ -129,23 +129,47 @@ export default function AddMemberDialog({ open, setOpen, groupId, group }: AddGr
           <Grid container mt={2}>
             <Grid item xs={12} mt={1}>
               <Autocomplete
-                multiple
-                value={selectedUsers}
-                options={uniqueUsers}
-                disableCloseOnSelect
-                onChange={handleChange}
-                getOptionLabel={(option) => `${option.username} (${option.user.driver_number})`}
-isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-                filterSelectedOptions
-                renderOption={(props, option, { selected }) => (
-                  <li {...props} key={option.id || `${option.username}-${option.user.driver_number}`}>
-                    <Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
-                    {`${option.username} (${option.user.driver_number})`}
-                  </li>
-                )}
-                renderInput={(params) => <TextField {...params} />}
-                fullWidth
-              />
+  multiple
+  value={selectedUsers}
+  options={uniqueUsers}
+  disableCloseOnSelect
+  onChange={handleChange}
+
+  // ✅ MANDATORY - fixes prod duplicate bug
+  isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
+
+  // ✅ stable label
+  getOptionLabel={(o) => `${o.username} (${o.user.driver_number})`}
+
+  // ✅ force deterministic filtering (fixes prod random duplication)
+  filterOptions={(options, state) => {
+    const search = state.inputValue.toLowerCase().trim();
+    const map = new Map<string, UserModel>();
+
+    options.forEach(option => {
+      const label = `${option.username} ${option.user.driver_number}`.toLowerCase();
+
+      if (label.includes(search)) {
+        map.set(String(option.id), option);   // ✅ hard-dedup
+      }
+    });
+
+    return Array.from(map.values());
+  }}
+
+  // ✅ never show selected again
+  filterSelectedOptions
+
+  renderOption={(props, option, { selected }) => (
+    <li {...props} key={String(option.id)}>
+      <Checkbox checked={selected} icon={icon} checkedIcon={checkedIcon} />
+      {`${option.username} (${option.user.driver_number})`}
+    </li>
+  )}
+
+  renderInput={(params) => <TextField {...params} />}
+  fullWidth
+/>
             </Grid>
           </Grid>
         </DialogContent>
