@@ -99,6 +99,7 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
       {/* {addMemberDialog && (
         <AddMemberDialog open={addMemberDialog} setOpen={setAddMemberDialog} groupId={group.group.id} group={group} />
       )} */}
+      
       <Grid item xs={12}>
         <Typography variant="h5">Group Details</Typography>
       </Grid>
