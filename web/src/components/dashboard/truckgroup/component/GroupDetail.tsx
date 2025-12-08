@@ -96,9 +96,9 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
 
   return (
     <Grid container p={2}>
-      {/* {addMemberDialog && (
+      {addMemberDialog && (
         <AddMemberDialog open={addMemberDialog} setOpen={setAddMemberDialog} groupId={group.group.id} group={group} />
-      )} */}
+      )}
       
       <Grid item xs={12}>
         <Typography variant="h5">Group Details</Typography>
