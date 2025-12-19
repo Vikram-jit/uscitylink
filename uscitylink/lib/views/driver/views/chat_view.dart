@@ -121,13 +121,14 @@ class _ChatViewState extends State<ChatView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       key: _scaffoldKey,
       appBar: AppBar(
-        backgroundColor: TColors.primary,
+        backgroundColor: TColors.white,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: Colors.white,
+            color: Colors.black,
           ),
           onPressed: () {
             if (!socketService.isConnected.value) {
@@ -147,7 +148,7 @@ class _ChatViewState extends State<ChatView>
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: Colors.black,
                       )),
                 ),
                 SizedBox(
@@ -158,7 +159,7 @@ class _ChatViewState extends State<ChatView>
                   style: Theme.of(context)
                       .textTheme
                       .headlineSmall
-                      ?.copyWith(color: Colors.white),
+                      ?.copyWith(color: Colors.black),
                 )
               ],
             );
@@ -167,12 +168,12 @@ class _ChatViewState extends State<ChatView>
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium
-                  ?.copyWith(color: Colors.white));
+                  ?.copyWith(color: Colors.black));
         }),
         bottom: TabBar(
-          labelColor: Colors.white,
+          labelColor: TColors.primary,
           unselectedLabelColor: Colors.grey.shade500,
-          indicatorColor: Colors.white,
+          indicatorColor: TColors.primary,
           onTap: (index) => channelController.setInnerTabIndex(index),
           controller: _tabController,
           tabs: [

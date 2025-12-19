@@ -80,23 +80,16 @@ class _DriverDashboardState extends State<DriverDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       key: _scaffoldKey,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
-              // leading: IconButton(
-              //   icon: Icon(
-              //     Icons.menu,
-              //     color: Colors.white,
-              //   ),
-              //   onPressed: () {
-              //     // Open the drawer using the scaffold key
-              //     _scaffoldKey.currentState?.openDrawer();
-              //   },
-              // ),
-              backgroundColor: TColors.primary,
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: TColors.white,
               title: Obx(() {
                 if (_networkService.connected.value == false) {
                   return Row(
@@ -125,11 +118,13 @@ class _DriverDashboardState extends State<DriverDashboard>
                   );
                 }
                 return Text(
-                  "${"Dashboard"}",
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(color: Colors.white),
+                  'Dashboard',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[900],
+                    letterSpacing: -0.3,
+                  ),
                 );
               }),
               actions: const [
@@ -150,10 +145,10 @@ class _DriverDashboardState extends State<DriverDashboard>
                 ),
               ],
             ),
-            Container(
-              height: 1.0,
-              color: Colors.grey.shade300,
-            ),
+            // Container(
+            //   height: 1.0,
+            //   color: Colors.grey.shade300,
+            // ),
           ],
         ),
       ),
@@ -177,8 +172,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                           value: 0,
                           icon: Icons.wifi_channel,
                           gradientColors: const [
-                            Color(0xFFe5e5e5),
-                            Color(0xFFe5e5e5),
+                            Color(0xFFffffff),
+                            Color(0xFFffffff),
                           ],
                         ),
                       ],
@@ -243,8 +238,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                                     .dashboard.value.messageCount ??
                                 0,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ],
                           ),
                         ),
@@ -260,8 +255,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                             title: "MY INFORMATION",
                             value: 0,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ],
                           ),
                         ),
@@ -287,8 +282,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 _dashboardController.dashboard.value.trucks ??
                                     0,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ],
                           ),
                         ),
@@ -305,8 +300,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                             value: 0,
                             icon: Icons.car_crash,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ], // Gradient colors
                           ),
                         ),
@@ -333,8 +328,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                                     "\$0",
                             icon: Icons.money,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ], // Gradient colors
                           ),
                         ),
@@ -347,8 +342,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                             value: 0,
                             icon: Icons.class_,
                             gradientColors: [
-                              Color(0xFFe5e5e5),
-                              Color(0xFFe5e5e5),
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
                             ], // Gradient colors
                           ),
                         ),

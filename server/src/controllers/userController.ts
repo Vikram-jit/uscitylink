@@ -280,6 +280,17 @@ export async function getUserProfile(
         { model: Role, as: "role" },
       ],
     });
+     if(user && user?.dataValues?.user?.user_type === "driver" && user?.dataValues?.user?.yard_id){ 
+     const documents = await secondarySequelize.query<any>(
+      `SELECT * FROM documents WHERE item_id = :id AND type = :type`,
+      {
+        replacements: { id:  "193", type: "driver" },
+        type: QueryTypes.SELECT,
+      }
+    );
+     user!.dataValues.documents = documents;
+  }
+   
     return res.status(200).json({
       status: true,
       message: `Get Profile User Successfully.`,

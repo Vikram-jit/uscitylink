@@ -1,5 +1,6 @@
 import 'package:uscitylink/model/staff/channel_chat_user_model.dart';
 import 'package:uscitylink/model/user_model.dart';
+import 'package:uscitylink/model/vehicle_model.dart';
 
 class LoginModel {
   String? id;
@@ -68,6 +69,8 @@ class Profiles {
   String? version;
   String? buildNumber;
   String? appUpdate;
+  List<Documents>? documents;
+
   Role? role;
   UserModel? user;
 
@@ -90,7 +93,8 @@ class Profiles {
       this.user,
       this.appUpdate,
       this.buildNumber,
-      this.version});
+      this.version,
+      this.documents});
 
   // Factory constructor to create a Profiles from JSON
   factory Profiles.fromJson(Map<String, dynamic> json) {
@@ -114,6 +118,10 @@ class Profiles {
       appUpdate: json['appUpdate'],
       role: json['role'] != null ? Role.fromJson(json['role']) : null,
       user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
+      documents: json['documents'] != null
+          ? List<Documents>.from(
+              json['documents'].map((v) => Documents.fromJson(v)))
+          : null,
     );
   }
 
@@ -139,6 +147,7 @@ class Profiles {
       'version': version,
       'role': role?.toJson(),
       'user': user?.toJson(),
+      'documents': documents?.map((v) => v.toJson()).toList(),
     };
   }
 }

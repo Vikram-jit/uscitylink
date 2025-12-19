@@ -29,6 +29,7 @@ class _DashboardViewState extends State<DashboardView>
     setState(() {
       channelController.currentIndex.value = index;
     });
+
     if (index == 3) {
       _trainingController.fetchTrainingVideos(page: 1);
     }
@@ -39,7 +40,7 @@ class _DashboardViewState extends State<DashboardView>
   final List<Widget> _screens = [
     const DriverDashboard(),
     // const ChatView(),
-    const SettingView(),
+    SettingView(),
   ];
 
   @override

@@ -44,6 +44,6 @@ class NavigationController extends GetxController {
     const DriverDashboard(),
     const ChatView(),
     DocumentView(),
-    const SettingView(),
+    SettingView(),
   ];
 }

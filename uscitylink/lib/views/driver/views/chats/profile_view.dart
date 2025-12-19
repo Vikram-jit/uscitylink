@@ -16,20 +16,22 @@ class ProfileView extends StatelessWidget {
     final mediaController = Get.put(MediaController(
         channelId: channelId, source: type == "driver" ? "channel" : "staff"));
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor:
-            type == "driver" ? TColors.primary : TColors.primaryStaff,
+            type == "driver" ? TColors.white : TColors.primaryStaff,
         centerTitle: true,
         title: Obx(() {
           return Text(
             "${mediaController.channel.value.name}",
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+                color: type == "driver" ? Colors.black : Colors.white),
           );
         }),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: type == "driver" ? Colors.black : Colors.white,
           ),
           onPressed: () {
             Navigator.pop(context);

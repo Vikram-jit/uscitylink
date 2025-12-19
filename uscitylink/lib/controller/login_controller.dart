@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
@@ -50,7 +51,8 @@ class LoginController extends GetxController {
   void onInit() {
     super.onInit();
     currentIndex.listen((index) {
-      if (index == 3) {
+      print(index);
+      if (index == 1) {
         getProfile();
       }
     });

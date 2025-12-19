@@ -243,12 +243,13 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Column(
           children: [
             AppBar(
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.white,
               centerTitle: false,
               title: InkWell(
                 onTap: () {
@@ -263,14 +264,14 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     style: Theme.of(context)
                         .textTheme
                         .headlineMedium
-                        ?.copyWith(color: Colors.white),
+                        ?.copyWith(color: Colors.black),
                   );
                 }),
               ),
               leading: IconButton(
                 icon: const Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
+                  Icons.arrow_back_ios,
+                  color: Colors.black,
                 ),
                 onPressed: () {
                   if (!socketService.isConnected.value) {
@@ -301,7 +302,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                         },
                         child: const Icon(
                           Icons.add_a_photo,
-                          color: Colors.white,
+                          color: Colors.black,
                         )),
                     const SizedBox(
                       width: 10,
@@ -316,7 +317,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       },
                       child: Icon(
                         Icons.push_pin,
-                        color: pinMessage == "1" ? Colors.amber : Colors.white,
+                        color: pinMessage == "1" ? Colors.amber : Colors.black,
                       ),
                     ),
                     const SizedBox(
@@ -329,7 +330,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       },
                       child: Icon(
                         Icons.restore_page,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                   ],
@@ -668,7 +669,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                               height: 50,
                               width: 50,
                               decoration: BoxDecoration(
-                                color: Colors.blue,
+                                color: TColors.primary,
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: const Icon(

@@ -36,6 +36,7 @@ class ChannelController extends GetxController {
   void onInit() {
     super.onInit();
     currentIndex.listen((index) {
+      print(index);
       if (index == 0) {
         dashboardController.getDashboard();
         getCount();
@@ -131,6 +132,7 @@ class ChannelController extends GetxController {
 
   // Set the current index
   void setTabIndex(int index) {
+    print(index);
     currentIndex.value = index;
   }
 
