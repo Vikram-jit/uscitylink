@@ -86,7 +86,7 @@ class _DocumentViewState extends State<DocumentView>
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: TColors.white,
+      backgroundColor: Colors.grey[50],
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(
             180), // Increased height for AppBar and search
@@ -96,7 +96,7 @@ class _DocumentViewState extends State<DocumentView>
               leading: IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
                 onPressed: () {
                   _dashboardController.getDashboard();
@@ -105,13 +105,13 @@ class _DocumentViewState extends State<DocumentView>
                   // _scaffoldKey.currentState?.openDrawer();
                 },
               ),
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.white,
               title: Text(
                 "Vehicles",
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium
-                    ?.copyWith(color: Colors.white),
+                    ?.copyWith(color: Colors.black),
               ),
               actions: [
                 IconButton(
@@ -125,7 +125,7 @@ class _DocumentViewState extends State<DocumentView>
             ),
             Container(
               height: 50.0, // Height for the search bar
-              color: TColors.primary,
+              color: TColors.white,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Column(
                 children: [

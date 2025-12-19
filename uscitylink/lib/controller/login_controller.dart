@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uscitylink/constant.dart';
@@ -46,6 +47,7 @@ class LoginController extends GetxController {
   var checkedPhoneNumberOtp = false.obs;
 
   var driverProfile = DriverModel().obs;
+  var isLoading = false.obs;
 
   @override
   void onInit() {
@@ -444,12 +446,15 @@ class LoginController extends GetxController {
   }
 
   void getDriverProfile() {
+    isLoading.value = true;
     __authService.getDriverProfile().then((value) async {
       if (value.status == true) {
         driverProfile.value = value.data;
+        isLoading.value = false;
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());
+      isLoading.value = false;
     });
   }
 

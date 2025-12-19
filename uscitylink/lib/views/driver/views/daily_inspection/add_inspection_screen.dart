@@ -13,18 +13,18 @@ class AddInspectionScreen extends StatelessWidget {
     final InspectionController controller = Get.put(InspectionController());
 
     return Scaffold(
-      backgroundColor: TColors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: TColors.primary,
+        backgroundColor: TColors.white,
         centerTitle: false,
         title: const Text(
           "Truck Inspection",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.black),
         ),
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back,
-            color: Colors.white,
+            color: Colors.black,
           ),
           onPressed: () {
             Navigator.pop(context);

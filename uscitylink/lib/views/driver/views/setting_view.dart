@@ -832,7 +832,8 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
                         SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            "${Constant.aws}${doc.file}" ?? 'No file',
+                            "https://msyard.s3.us-west-1.amazonaws.com/images/${doc.file}" ??
+                                'No file',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[500],

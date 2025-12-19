@@ -29,7 +29,7 @@ class _TrainingViewState extends State<TrainingView> {
     _trainingController.fetchTrainingVideos(page: 1);
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: TColors.white,
+      backgroundColor: Colors.grey[50],
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Column(
@@ -38,7 +38,7 @@ class _TrainingViewState extends State<TrainingView> {
               leading: IconButton(
                 icon: Icon(
                   Icons.arrow_back_ios,
-                  color: Colors.white,
+                  color: Colors.black,
                 ),
                 onPressed: () {
                   // Open the drawer using the scaffold key
@@ -46,13 +46,13 @@ class _TrainingViewState extends State<TrainingView> {
                   Get.back();
                 },
               ),
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.white,
               title: Text(
                 "Training Section",
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium
-                    ?.copyWith(color: Colors.white),
+                    ?.copyWith(color: Colors.black),
               ),
             ),
             Container(

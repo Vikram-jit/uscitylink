@@ -15,6 +15,7 @@ class DriverPayView extends StatelessWidget {
       _payController.fetchTrucks(page: _payController.currentPage.value);
     });
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       key: _scaffoldKey,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(120),
@@ -22,30 +23,30 @@ class DriverPayView extends StatelessWidget {
           children: [
             AppBar(
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
                 onPressed: () {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primary,
+              backgroundColor: TColors.white,
               title: Text(
                 "Pays",
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium
-                    ?.copyWith(color: Colors.white),
+                    ?.copyWith(color: Colors.black),
               ),
               actions: [
                 IconButton(
                     onPressed: () {
                       _payController.fetchTrucks(page: 1);
                     },
-                    icon: Icon(Icons.refresh, color: Colors.white))
+                    icon: Icon(Icons.refresh, color: Colors.black))
               ],
             ),
             Container(
               height: 60.0,
-              color: TColors.primary,
+              color: TColors.white,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
