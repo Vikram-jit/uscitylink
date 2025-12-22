@@ -10,6 +10,7 @@ import 'package:uscitylink/model/user_model.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/views/widgets/document_download.dart';
 
 import '../../../model/login_model.dart';
 
@@ -703,164 +704,162 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Color(0xFF3B82F6).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () {
+          if (doc.file != null && doc.file!.isNotEmpty) {
+            Get.to(() => DocumentDownload(
+                file:
+                    "https://msyard.s3.us-west-1.amazonaws.com/images/${doc.file}"));
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF3B82F6).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.description_rounded,
+                    size: 20,
+                    color: Color(0xFF3B82F6),
+                  ),
                 ),
-                child: Icon(
-                  Icons.description_rounded,
-                  size: 20,
-                  color: Color(0xFF3B82F6),
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            doc.title ?? 'Untitled Document',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[900],
-                              height: 1.3,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: statusColor.withOpacity(0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: statusColor,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12),
-
-                    // Dates Row
-                    Row(
-                      children: [
-                        // Issue Date
-                        _buildDateChip(
-                          icon: Icons.calendar_today_rounded,
-                          label: 'Issued',
-                          date: issueDate,
-                          color: Colors.blue,
-                        ),
-                        SizedBox(width: 12),
-
-                        // Expiry Date
-                        _buildDateChip(
-                          icon: Icons.timer_rounded,
-                          label: 'Expires',
-                          date: expireDate,
-                          color: statusColor,
-                          isExpired: isExpired,
-                        ),
-
-                        Spacer(),
-
-                        // Days Left Counter
-                        if (!isExpired && daysLeft > 0)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: daysLeft <= 30
-                                  ? Color(0xFFFEF3C7)
-                                  : Color(0xFFD1FAE5),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
                             child: Text(
-                              '$daysLeft days',
+                              doc.title ?? 'Untitled Document',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: daysLeft <= 30
-                                    ? Color(0xFF92400E)
-                                    : Color(0xFF065F46),
+                                color: Colors.grey[900],
+                                height: 1.3,
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: statusColor.withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              statusText,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
 
-                    SizedBox(height: 12),
+                      // Dates Row
+                      Row(
+                        children: [
+                          // Issue Date
+                          _buildDateChip(
+                            icon: Icons.calendar_today_rounded,
+                            label: 'Issued',
+                            date: issueDate,
+                            color: Colors.blue,
+                          ),
+                          SizedBox(width: 12),
 
-                    // File Name Row
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.insert_drive_file_rounded,
-                          size: 14,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            "https://msyard.s3.us-west-1.amazonaws.com/images/${doc.file}" ??
-                                'No file',
-                            style: TextStyle(
-                              fontSize: 12,
+                          // Expiry Date
+                          _buildDateChip(
+                            icon: Icons.timer_rounded,
+                            label: 'Expires',
+                            date: expireDate,
+                            color: statusColor,
+                            isExpired: isExpired,
+                          ),
+
+                          Spacer(),
+
+                          // Days Left Counter
+                          if (!isExpired && daysLeft > 0)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: daysLeft <= 30
+                                    ? Color(0xFFFEF3C7)
+                                    : Color(0xFFD1FAE5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$daysLeft days',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: daysLeft <= 30
+                                      ? Color(0xFF92400E)
+                                      : Color(0xFF065F46),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      SizedBox(height: 12),
+
+                      // File Name Row
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.insert_drive_file_rounded,
+                            size: 14,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(width: 6),
+                          IconButton(
+                            icon: Icon(
+                              Icons.visibility_rounded,
+                              size: 18,
                               color: Colors.grey[500],
                             ),
-                            overflow: TextOverflow.ellipsis,
+                            onPressed: () {
+                              // View document
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: BoxConstraints(),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.visibility_rounded,
-                            size: 18,
-                            color: Colors.grey[500],
-                          ),
-                          onPressed: () {
-                            // View document
-                          },
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

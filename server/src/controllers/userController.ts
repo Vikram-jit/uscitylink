@@ -284,7 +284,7 @@ export async function getUserProfile(
      const documents = await secondarySequelize.query<any>(
       `SELECT * FROM documents WHERE item_id = :id AND type = :type`,
       {
-        replacements: { id:  "193", type: "driver" },
+        replacements: { id:  user?.dataValues?.user?.yard_id, type: "driver" },
         type: QueryTypes.SELECT,
       }
     );
