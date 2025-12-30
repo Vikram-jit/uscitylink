@@ -2,7 +2,10 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon",
-    "build": "tsc && copyfiles -u 2 './src/config/firebase.json' './dist/config/'"
+    "build": "tsc && copyfiles -u 2 './src/config/firebase.json' './dist/config/'",
+"build:web": "cd ../chat_app && flutter build web --release --base-href=\"/app/\" --pwa-strategy=none && rm -rf ../server/public/build && mkdir -p ../server/public/build && cp -r build/web/* ../server/public/build"
+
+
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.691.0",

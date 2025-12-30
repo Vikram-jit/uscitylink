@@ -33,18 +33,37 @@ import Group from "./models/Group";
 import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
-
-import cluster from 'cluster';
-import os from 'os';
+import path from "path";
 
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const __root = path.resolve();
 
 
 app.use(express.static("public"));
+
+// Serve Flutter Web build correctly
+app.use(
+  "/app",
+  express.static(path.join(__root, "public", "build"), {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      }
+      if (path.endsWith(".json")) {
+        res.setHeader("Content-Type", "application/json");
+      }
+    }
+  })
+);
+
+// SPA routing (important)
+app.get("/app/*", (req, res) => {
+  res.sendFile(path.join(__root, "public", "build", "index.html"));
+});
 
 app.set("view engine", "ejs");
 app.set("views", "./views"); 
@@ -55,6 +74,8 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+
 
 // Basic route
 app.get("/:id", async (req, res) => {
