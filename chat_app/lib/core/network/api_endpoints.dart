@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const baseUrl = "http://localhost:4300/api/v1";
+  static const baseUrl = "/api/v1";
 
   static const login = "/auth/loginwithweb";
 }
