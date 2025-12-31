@@ -1,11 +1,14 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
+import 'package:chat_app/modules/home/controllers/overview_controller.dart';
+import 'package:chat_app/modules/home/desktop/components/overview_screen.dart';
 import 'package:chat_app/modules/home/desktop/widgets/channel_sidebar.dart';
 import 'package:chat_app/modules/home/desktop/widgets/chat_header.dart';
 import 'package:chat_app/modules/home/desktop/widgets/left_sidebar.dart';
 import 'package:chat_app/modules/home/desktop/widgets/message_input.dart';
 import 'package:chat_app/modules/home/desktop/widgets/message_list.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/home/screens/channel_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +17,7 @@ class DesktopHomeView extends StatelessWidget {
   DesktopHomeView({super.key});
   final controller = Get.find<HomeController>();
   final msgController = Get.find<MessageController>();
+  final overviewController = Get.find<OverviewController>();
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +87,6 @@ class DesktopHomeView extends StatelessWidget {
             ChannelSidebar(),
             Expanded(
               child: Obx(() {
-                print(controller.currentView.value);
                 switch (controller.currentView.value) {
                   case SidebarViewType.directMessage:
                     return Container(
@@ -115,13 +118,7 @@ class DesktopHomeView extends StatelessWidget {
                     );
 
                   case SidebarViewType.channel:
-                    return Container(
-                      color: Colors.white,
-                      child: Column(children: [
-                         
-                        ],
-                      ),
-                    );
+                    return ChannelScreen();
 
                   case SidebarViewType.directory:
                     return Container(
@@ -136,6 +133,37 @@ class DesktopHomeView extends StatelessWidget {
                         ),
                       ),
                     );
+
+                  case SidebarViewType.home:
+                    return Obx(() {
+                      if (overviewController.isLoading.value) {
+                        return Container(
+                          color: Colors.white,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
+                      }
+                      return OverviewScreen(
+                        totalMessages:
+                            overviewController.overview.value.messageCount ?? 0,
+                        unreadMessages:
+                            overviewController.overview.value.userUnMessage ??
+                            0,
+                        channels:
+                            overviewController.overview.value.channelCount ?? 0,
+                        trucksGroups:
+                            overviewController.overview.value.truckGroupCount ??
+                            0,
+                        driverCount:
+                            overviewController.overview.value.driverCount ?? 0,
+                        drivers:
+                            overviewController.overview.value.lastFiveDriver ??
+                            [],
+                      );
+                    });
                 }
               }),
             ),

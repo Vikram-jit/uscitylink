@@ -4,11 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+enum TYPE { truck, driver }
+
 class UserStatusTile extends StatefulWidget {
   final String name;
+  final String id;
   final bool isOnline;
+  final TYPE type;
 
-  const UserStatusTile({super.key, required this.name, required this.isOnline});
+  const UserStatusTile({
+    super.key,
+    required this.name,
+    required this.isOnline,
+    required this.id,
+    this.type = TYPE.driver,
+  });
 
   @override
   State<UserStatusTile> createState() => _UserStatusTileState();
@@ -45,6 +55,7 @@ class _UserStatusTileState extends State<UserStatusTile> {
           onTap: () {
             controller.currentView.value = SidebarViewType.directMessage;
             controller.selectedName.value = widget.name;
+            controller.driverId.value = widget.id;
           },
 
           child: AnimatedContainer(
@@ -82,26 +93,26 @@ class _UserStatusTileState extends State<UserStatusTile> {
                         ),
                       ),
                     ),
-
-                    // Online Dot
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: widget.isOnline ? Colors.green : Colors.grey,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.black,
-                            width: 1.2,
+                    if (widget.type == TYPE.driver)
+                      // Online Dot
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: widget.isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.black,
+                              width: 1.2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(width: 6),
@@ -119,6 +130,7 @@ class _UserStatusTileState extends State<UserStatusTile> {
                     ),
                   ),
                 ),
+                // Badge(label: Text("0")),
               ],
             ),
           ),

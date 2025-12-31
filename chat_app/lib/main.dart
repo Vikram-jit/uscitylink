@@ -14,46 +14,56 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  InitialBindings().dependencies();
-  usePathUrlStrategy(); // 👈 removes # from web URLs
-  Get.put(MessageController());
-
-  Get.put(HomeController());
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString("token");
-
-  final String startRoute = token == null ? AppRoutes.login : AppRoutes.home;
-
-  runApp(MyApp(startRoute: startRoute));
+  usePathUrlStrategy();
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final String startRoute;
-  const MyApp({super.key, required this.startRoute});
+  const MyApp({super.key});
+
+  Future<String> getInitial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+
+    // 👇 If token exists -> go home, else -> go login
+    return token == null || token.isEmpty ? AppRoutes.login : AppRoutes.home;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.main,
-      initialRoute: startRoute, // 👈 dynamic route based on login
-      getPages: [
-        GetPage(
-          name: AppRoutes.login,
-          page: () => LoginView(),
-          middlewares: [AuthMiddleware()],
-        ),
-        GetPage(
-          name: AppRoutes.home,
-          page: () => HomeView(),
-          middlewares: [AuthMiddleware()],
-        ),
-      ],
-      unknownRoute: GetPage(
-        name: "/404",
-        page: () => const NotFoundView(),
-        transition: Transition.fadeIn,
-      ),
+    return FutureBuilder<String>(
+      future: getInitial(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const MaterialApp(
+            home: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final initialRoute = snapshot.data!;
+        final bool needsBinding = initialRoute == AppRoutes.home;
+
+        return GetMaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.main,
+          initialBinding: needsBinding ? InitialBindings() : null,
+          initialRoute: initialRoute,
+          getPages: [
+            GetPage(
+              name: AppRoutes.login,
+              page: () => LoginView(),
+              middlewares: [AuthMiddleware()],
+            ),
+            GetPage(
+              name: AppRoutes.home,
+              page: () => HomeView(),
+              middlewares: [AuthMiddleware()],
+            ),
+          ],
+
+          // ❗ Unknown route
+          unknownRoute: GetPage(name: "/404", page: () => const NotFoundView()),
+        );
+      },
     );
   }
 }

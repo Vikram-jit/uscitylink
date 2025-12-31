@@ -1047,6 +1047,154 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
   }
 }
 
+
+export async function dashboardNew(req: Request, res: Response): Promise<any> {
+  try {
+
+    const userChannelCount = await Channel.count({});
+    const templateCount = await Template.count({
+      where: {
+        channelId: req.activeChannel,
+      },
+    });
+    const userTotalMessage = await Message.count({
+      where: {
+        channelId: req.activeChannel,
+      },
+    });
+
+    const userUnMessage = await MessageStaff.count({
+      where: {
+        staffId: req.user?.id,
+        status: "un-read",
+        type: "chat",
+      },
+    });
+
+   
+    const driverCount = await User.count({
+      where: {
+        user_type: "driver",
+      },
+    });
+  
+    const userTotalTruckGroups = await GroupChannel.count({
+      where: {
+        channelId: req.activeChannel,
+      },
+      include: [
+        {
+          model: Group,
+          where: {
+            type: "truck",
+          },
+        },
+      ],
+    });
+    const lastFiveDriver = await User.findAll({
+      where: {
+        user_type: "driver",
+      },
+      include: [
+        {
+          model: UserProfile,
+          as: "profiles",
+          attributes: ["username", "id"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 5,
+    });
+
+     const trucksgroup = await Group.findAll({
+      where: {
+        type: "truck",
+      },
+      include: [
+        {
+          model:GroupChannel,
+          as:"group_channel"
+        },
+        {
+          model:GroupUser,
+          as:"group_users"
+        }
+      ],
+      order: [["updatedAt", "DESC"]],
+      limit: 5,
+    });
+
+     let onlineDrivers = await User.findAll({
+  where: {
+    user_type: "driver",
+   
+   
+  },
+  attributes: ["id", "phone_number", "email", "driver_number", "status", "createdAt"],
+  include: [
+    {
+      model: UserProfile,
+      as: "profiles",
+      attributes: ["isOnline", "last_login","username", "id"],
+      required: true, // 👈 IMPORTANT: forces join so column exists
+      where:{
+        isOnline:true
+      }
+    },
+  ],
+  order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
+  limit: 5,
+});
+// STEP 2: If online < 5 ⇒ get remaining drivers by last login
+if (onlineDrivers.length < 5) {
+  const needed = 5 - onlineDrivers.length;
+
+  const fallbackDrivers = await User.findAll({
+    where: {
+      user_type: "driver",
+     
+    },
+    attributes: ["id", "phone_number", "email", "driver_number", "status", "createdAt"],
+    include: [
+      {
+        model: UserProfile,
+        as: "profiles",
+        attributes: ["isOnline", "last_login","username", "id"],
+      }
+    ],
+    order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
+    limit: needed,
+  });
+
+  // MERGE THEM
+  onlineDrivers = [...onlineDrivers, ...fallbackDrivers];
+}
+
+   
+    return res.status(200).json({
+      status: true,
+      message: `Dashboard fetch successfully.`,
+      data: {
+        templateCount,
+        truckGroupCount: userTotalTruckGroups,
+        channelCount: userChannelCount,
+        messageCount: userTotalMessage,
+        userUnMessage,
+        lastFiveDriver: lastFiveDriver,
+        driverCount,
+        channelId: req.activeChannel,
+        onlineDrivers,
+        trucksgroups:trucksgroup
+    
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
 export async function dashboardWeb(req: Request, res: Response): Promise<any> {
   try {
     let countUnRead = 0;

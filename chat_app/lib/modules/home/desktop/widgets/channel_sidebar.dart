@@ -1,6 +1,9 @@
+import 'package:chat_app/modules/home/controllers/overview_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/channel_tile.dart';
 import 'package:chat_app/modules/home/desktop/components/user_status_tile.dart';
+import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/colors.dart';
@@ -18,7 +21,8 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
   bool channelsOpen = true;
   bool dmOpen = true;
   bool tOpen = true;
-
+  OverviewController _overviewController = Get.find<OverviewController>();
+  HomeController _homeController = Get.find<HomeController>();
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -32,7 +36,6 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
       ),
       child: Column(
         children: [
-          // 🔹 Sidebar Header
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: Space.lg,
@@ -41,7 +44,17 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text("US CITY LINK", style: TStyle.channelTitle),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      child: Text("US CITY LINK", style: TStyle.channelTitle),
+                      onTap: () {
+                        _homeController.currentView.value =
+                            SidebarViewType.home;
+                        _homeController.selectedName.value = "";
+                      },
+                    ),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(
@@ -89,32 +102,61 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
                 const SizedBox(height: 10),
 
                 // ==================== DIRECT MESSAGES ====================
-                _sectionHeader(
-                  "Direct Messages",
-                  dmOpen,
-                  () => setState(() => dmOpen = !dmOpen),
-                ),
+                Obx(
+                  () => Column(
+                    children: [
+                      _sectionHeader(
+                        "Direct Messages",
+                        dmOpen,
+                        () => dmOpen = !dmOpen,
+                      ),
 
-                if (dmOpen) ...[
-                  UserStatusTile(name: "John Doe", isOnline: true),
-                  UserStatusTile(name: "Jane Smith", isOnline: false),
-                  UserStatusTile(name: "Michael Adams", isOnline: true),
-                ],
+                      if (dmOpen) ...[
+                        for (var driver
+                            in _overviewController
+                                    .overview
+                                    .value
+                                    .onlineDrivers ??
+                                [])
+                          UserStatusTile(
+                            name: driver.profiles?[0].username ?? "-",
+                            id: driver.profiles?[0].id ?? "-",
+                            isOnline: driver.profiles?[0].isOnline ?? false,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 10),
 
                 // ==================== TRUCK MESSAGES ====================
-                _sectionHeader(
-                  "Truck Groups",
-                  tOpen,
-                  () => setState(() => tOpen = !tOpen),
-                ),
+                Obx(
+                  () => Column(
+                    children: [
+                      _sectionHeader(
+                        "Truck Groups",
+                        tOpen,
+                        () => tOpen = !tOpen,
+                      ),
 
-                if (tOpen) ...[
-                  UserStatusTile(name: "22222", isOnline: false),
-                  UserStatusTile(name: "12345", isOnline: false),
-                  UserStatusTile(name: "12345", isOnline: false),
-                ],
+                      if (tOpen) ...[
+                        for (var truck
+                            in _overviewController
+                                    .overview
+                                    .value
+                                    .trucksgroups ??
+                                [])
+                          UserStatusTile(
+                            name: truck.name ?? "-",
+                            id: truck.id ?? "-",
+                            isOnline: false,
+                            type: TYPE.truck,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

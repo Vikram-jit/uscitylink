@@ -24,7 +24,7 @@ class LoginView extends StatelessWidget {
             children: [
               // Title
               const Text(
-                "Sign in to Slack",
+                "Sign in to ChatBox",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,

@@ -1,3 +1,4 @@
+import 'package:chat_app/core/bindings/initial_bindings.dart';
 import 'package:chat_app/modules/auth/auth_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -24,7 +25,7 @@ class AuthController extends GetxController {
         await StorageService.saveToken(res.data?.accessToken ?? "");
 
         // await StorageService.saveUser(res.data!.user!);
-
+        InitialBindings().dependencies();
         Get.offAllNamed("/home");
       } else {
         errorText.value = res.message;

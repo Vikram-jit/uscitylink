@@ -1,5 +1,7 @@
+import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/modules/home/controllers/sidebar_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/sidebar_icon.dart';
+import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -78,6 +80,10 @@ class LeftSidebar extends StatelessWidget {
               PopupMenuDivider(),
               PopupMenuItem(
                 child: Text("Logout", style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  await StorageService.clear();
+                  Get.offAndToNamed(AppRoutes.login);
+                },
               ),
             ],
           ),

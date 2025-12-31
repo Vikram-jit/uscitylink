@@ -1,7 +1,7 @@
-import 'package:flutter/widgets.dart';
+import 'package:chat_app/routes/app_routes.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'app_routes.dart';
 
 class AuthMiddleware extends GetMiddleware {
   @override
@@ -9,16 +9,16 @@ class AuthMiddleware extends GetMiddleware {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
 
-    // If token exists, user is already logged in → block login page
+    // 🔐 Already logged in → block /login
     if (token != null && token.isNotEmpty && route == AppRoutes.login) {
       return const RouteSettings(name: AppRoutes.home);
     }
 
-    // If NO token and user tries to open home → redirect to login
-    if ((token == null || token.isEmpty) && route == AppRoutes.home) {
+    // 🚫 Not logged in → block everything except /login
+    if ((token == null || token.isEmpty) && route != AppRoutes.login) {
       return const RouteSettings(name: AppRoutes.login);
     }
 
-    return null; // allow normal navigation
+    return null;
   }
 }
