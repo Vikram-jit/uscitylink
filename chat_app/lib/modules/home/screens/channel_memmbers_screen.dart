@@ -158,14 +158,12 @@ class ChannelMemmbersScreen extends StatelessWidget {
                               DataCell(
                                 SizedBox(
                                   width: 120,
-                                  child: Expanded(
-                                    child: Text(
-                                      driver.userProfile?.username ?? "-",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black87,
-                                      ),
+                                  child: Text(
+                                    driver.userProfile?.username ?? "-",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
                                     ),
                                   ),
                                 ),

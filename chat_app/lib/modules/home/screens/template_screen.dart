@@ -133,26 +133,22 @@ class TemplateScreen extends StatelessWidget {
                                       ),
                                   cells: [
                                     DataCell(
-                                      Expanded(
-                                        child: Text(
-                                          template.name ?? "-",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
-                                          ),
+                                      Text(
+                                        template.name ?? "-",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black87,
                                         ),
                                       ),
                                     ),
                                     DataCell(
-                                      Expanded(
-                                        child: Text(
-                                          template.body ?? "-",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey.shade800,
-                                          ),
+                                      Text(
+                                        template.body ?? "-",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.grey.shade800,
                                         ),
                                       ),
                                     ),
