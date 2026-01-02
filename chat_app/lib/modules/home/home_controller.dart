@@ -1,6 +1,15 @@
 import 'package:get/get.dart';
 
-enum SidebarViewType { home, channel, directMessage, directory }
+enum SidebarViewType {
+  home,
+  channel,
+  channelMembers,
+  template,
+  driver,
+  directMessage,
+  directory,
+  users,
+}
 
 class HomeController extends GetxController {
   var currentView = SidebarViewType.home.obs;

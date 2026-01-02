@@ -14,6 +14,7 @@ class DataTableConfig<T> {
   final VoidCallback? onRefresh;
   final Widget? emptyState;
   final bool showHeader;
+  final bool isScrollable;
   final bool showPagination;
   final bool showActions;
   final Color? primaryColor;
@@ -33,6 +34,7 @@ class DataTableConfig<T> {
     this.showHeader = true,
     this.showPagination = true,
     this.showActions = true,
+    this.isScrollable = false,
     this.primaryColor,
   });
 }
@@ -86,6 +88,7 @@ class _TableContainerState<T> extends State<TableContainer<T>> {
     final displayData = widget.data;
 
     return Container(
+      width: MediaQuery.of(context).size.width * 0.66,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -167,13 +170,14 @@ class _TableContainerState<T> extends State<TableContainer<T>> {
             child: displayData.isEmpty
                 ? widget.config.emptyState ??
                       _buildDefaultEmptyState(widget.config.title)
-                : SingleChildScrollView(
+                : widget.config.isScrollable
+                ? SingleChildScrollView(
                     scrollDirection: Axis.vertical,
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minWidth: MediaQuery.of(context).size.width,
+                          minWidth: MediaQuery.of(context).size.width * 0.647,
                         ),
                         child: DataTable(
                           dataRowMinHeight: 64,
@@ -191,6 +195,25 @@ class _TableContainerState<T> extends State<TableContainer<T>> {
                           rows: widget.config.buildRows(displayData),
                         ),
                       ),
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: MediaQuery.of(context).size.width * 0.647,
+                    ),
+                    child: DataTable(
+                      dataRowMinHeight: 100,
+                      dataRowMaxHeight: 100,
+                      headingRowHeight: 48,
+                      horizontalMargin: 24,
+                      columnSpacing: 32,
+                      dividerThickness: 0,
+                      headingRowColor:
+                          MaterialStateProperty.resolveWith<Color?>(
+                            (Set<MaterialState> states) => Colors.grey.shade50,
+                          ),
+                      columns: widget.config.columns,
+                      rows: widget.config.buildRows(displayData),
                     ),
                   ),
           ),

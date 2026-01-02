@@ -17,7 +17,7 @@ class LeftSidebar extends StatelessWidget {
     String currentPath = Get.currentRoute;
 
     return Container(
-      width: 80,
+      width: MediaQuery.of(context).size.width * 0.06,
       color: AppColors.primary,
       child: Column(
         children: [

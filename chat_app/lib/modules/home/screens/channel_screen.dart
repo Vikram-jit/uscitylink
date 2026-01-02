@@ -42,147 +42,167 @@ class ChannelScreen extends StatelessWidget {
 
             // Table Container
             Expanded(
-              child: Obx(() {
-                final channels = _channelController.channels.value;
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Container(
+                      height: MediaQuery.of(context).size.height * 0.8,
+                      child: Obx(() {
+                        final channels = _channelController.channels.value;
 
-                return TableContainer<ChannelModel>(
-                  data: channels,
-                  config: DataTableConfig<ChannelModel>(
-                    title: "All Channels",
-                    columns: [
-                      DataColumn(
-                        label: Text(
-                          "CHANNEL",
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: Text(
-                          "CHANNEL ID",
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-
-                      DataColumn(
-                        label: Text(
-                          "CREATED",
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                    ],
-                    buildRows: (data) => data.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final channel = entry.value;
-                      final isAlternate = index % 2 == 1;
-
-                      return DataRow(
-                        color: MaterialStateProperty.resolveWith<Color?>(
-                          (Set<MaterialState> states) =>
-                              isAlternate ? Colors.grey.shade50 : null,
-                        ),
-                        cells: [
-                          DataCell(
-                            Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.public,
-                                    size: 18,
+                        return TableContainer<ChannelModel>(
+                          data: channels,
+                          config: DataTableConfig<ChannelModel>(
+                            title: "All Channels",
+                            columns: [
+                              DataColumn(
+                                label: Text(
+                                  "CHANNEL",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
                                     color: Colors.grey.shade600,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "CHANNEL ID",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade600,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+
+                              DataColumn(
+                                label: Text(
+                                  "CREATED",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade600,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            buildRows: (data) => data.asMap().entries.map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final channel = entry.value;
+                              final isAlternate = index % 2 == 1;
+
+                              return DataRow(
+                                color:
+                                    MaterialStateProperty.resolveWith<Color?>(
+                                      (Set<MaterialState> states) => isAlternate
+                                          ? Colors.grey.shade50
+                                          : null,
+                                    ),
+                                cells: [
+                                  DataCell(
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.public,
+                                            size: 18,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              channel.name ?? "-",
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  DataCell(
                                     Text(
-                                      channel.name ?? "-",
+                                      channel.id ?? "-",
                                       style: GoogleFonts.inter(
-                                        fontSize: 14,
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.black87,
+                                        color: Colors.grey.shade800,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              channel.id ?? "-",
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-
-                          DataCell(
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  channel.createdAt.formatDate(),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
                                   ),
-                                ),
-                              ],
-                            ),
+
+                                  DataCell(
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          channel.createdAt.formatDate(),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                            totalItems:
+                                channels.length, // Total items in database
+                            currentPage: 1,
+                            itemsPerPage: 10,
+                            onPageChanged: (page) {
+                              // Fetch data for this page
+                              print("Page changed to: $page");
+                            },
+                            onExport: () {
+                              print("Export data");
+                            },
+                            onFilter: () {
+                              print("Open filter");
+                            },
+                            onRefresh: () {
+                              print("Refresh data");
+                            },
+                            showHeader: false,
+                            showPagination: false,
+                            showActions: false,
+                            primaryColor: const Color(0xFF4A154B),
                           ),
-                        ],
-                      );
-                    }).toList(),
-                    totalItems: channels.length, // Total items in database
-                    currentPage: 1,
-                    itemsPerPage: 10,
-                    onPageChanged: (page) {
-                      // Fetch data for this page
-                      print("Page changed to: $page");
-                    },
-                    onExport: () {
-                      print("Export data");
-                    },
-                    onFilter: () {
-                      print("Open filter");
-                    },
-                    onRefresh: () {
-                      print("Refresh data");
-                    },
-                    showHeader: false,
-                    showPagination: false,
-                    showActions: false,
-                    primaryColor: const Color(0xFF4A154B),
-                  ),
-                );
-              }),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

@@ -8,12 +8,13 @@ class ChannelTile extends StatefulWidget {
   final String name;
   final bool active;
   final IconData icon;
-
+  final SidebarViewType sidebarViewType;
   const ChannelTile(
     this.name, {
     super.key,
     this.active = false,
     this.icon = Icons.tag,
+    required this.sidebarViewType,
   });
 
   @override
@@ -36,7 +37,7 @@ class _ChannelTileState extends State<ChannelTile> {
           onTap: () {
             controller.currentView.value = widget.name == "Directories"
                 ? SidebarViewType.directory
-                : SidebarViewType.channel;
+                : widget.sidebarViewType;
             controller.selectedName.value = widget.name;
           },
           child: AnimatedContainer(

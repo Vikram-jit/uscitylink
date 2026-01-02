@@ -1,15 +1,15 @@
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
 import 'package:chat_app/modules/home/models/channel_model.dart';
 import 'package:chat_app/modules/home/models/overview_model.dart';
+import 'package:chat_app/modules/home/models/template_model.dart';
 import 'package:chat_app/modules/home/services/channel_service.dart';
+import 'package:chat_app/modules/home/services/template_service.dart';
 import 'package:get/get.dart';
 
-class ChannelController extends GetxController {
-  var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
+class TemplateController extends GetxController {
   var isLoading = false.obs;
   var errorText = "".obs;
-  RxList<ChannelModel> channels = <ChannelModel>[].obs;
-  RxList<UserChannels> channelMembers = <UserChannels>[].obs;
+  RxList<Template> templates = <Template>[].obs;
 
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
@@ -18,36 +18,17 @@ class ChannelController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    getChannels();
   }
 
-  Future<void> getChannels() async {
-    try {
-      isLoading.value = true;
-
-      final res = await ChannelService().channels();
-
-      if (res.status) {
-        channels.value = res.data!;
-      } else {
-        errorText.value = res.message;
-      }
-    } catch (e) {
-      errorText.value = "Error: $e";
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> getChannelMembers({int page = 1}) async {
+  Future<void> getTemplates({int page = 1}) async {
     try {
       isLoading.value = true;
       currentPage.value = page;
 
-      final res = await ChannelService().channelMemmbers(page);
+      final res = await TemplateService().templates(page);
 
       if (res.status) {
-        channelMembers.assignAll(res.data?.userChannels ?? []);
+        templates.assignAll(res.data?.data ?? []);
         totalItems = res.data?.pagination?.total ?? 0;
       } else {
         errorText.value = res.message;

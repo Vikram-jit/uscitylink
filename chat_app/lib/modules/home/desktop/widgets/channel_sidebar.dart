@@ -26,7 +26,7 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 360,
+      width: MediaQuery.of(context).size.width * 0.25,
       decoration: BoxDecoration(
         color: AppColors.channelSideColor,
         borderRadius: const BorderRadius.only(
@@ -91,12 +91,33 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
                 ),
 
                 if (channelsOpen) ...[
-                  ChannelTile("Channels", icon: Icons.ac_unit),
-                  ChannelTile("Channel Memmbers", icon: Icons.groups),
-                  ChannelTile("Templates", icon: Icons.brush),
-                  ChannelTile("Users", icon: Icons.person_off),
-                  ChannelTile("Drivers", icon: Icons.drive_eta),
-                  ChannelTile("Announcements", icon: Icons.campaign),
+                  ChannelTile(
+                    "Channels",
+                    icon: Icons.ac_unit,
+                    sidebarViewType: SidebarViewType.channel,
+                  ),
+                  ChannelTile(
+                    "Channel Memmbers",
+                    icon: Icons.groups,
+                    sidebarViewType: SidebarViewType.channelMembers,
+                  ),
+                  ChannelTile(
+                    "Templates",
+                    icon: Icons.brush,
+                    sidebarViewType: SidebarViewType.template,
+                  ),
+                  //ChannelTile("Users", icon: Icons.person_off),
+                  ChannelTile(
+                    "Drivers",
+                    icon: Icons.drive_eta,
+                    sidebarViewType: SidebarViewType.driver,
+                  ),
+                  ChannelTile(
+                    "Users",
+                    icon: Icons.person,
+                    sidebarViewType: SidebarViewType.users,
+                  ),
+                  // ChannelTile("Announcements", icon: Icons.campaign),
                 ],
 
                 const SizedBox(height: 10),

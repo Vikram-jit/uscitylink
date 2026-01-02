@@ -235,7 +235,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1; 
    
-    const pageSize = 30; 
+    const pageSize = parseInt(req.query.limit as string) || 30; 
 
     const search = req.query.search as string || ''
     const unreadMessage = req.query.unreadMessage  as string || "0"
