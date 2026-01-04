@@ -1033,11 +1033,7 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
       });
     }
 
-     const formattedDriverDocuments = expiredDocuments.map((doc) => ({
-  ...doc,
-  issue_date: formatUSDate(doc.issue_date),
-  expire_date: formatUSDate(doc.expire_date),
-}));
+    
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
@@ -1045,7 +1041,7 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
         driver: driver.length > 0 ? driver?.[0] : null,
         countryStatus:
           driverCountryStatus?.length > 0 ? driverCountryStatus?.[0] : null,
-        document: formattedDriverDocuments,
+        document: expiredDocuments,
       },
     });
   } catch (err: any) {
