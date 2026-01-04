@@ -3,7 +3,6 @@ import { QueryTypes } from "sequelize";
 import { secondarySequelize } from "../sequelize";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
-import moment from "moment";
 
 
 
@@ -127,22 +126,10 @@ export async function getById(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
-
-   const formattedDocuments = documents.map((doc) => ({
-  ...doc,
-  
-  issue_date: doc.issue_date
-    ? moment(doc.issue_date).format('MM/DD/YYYY')
-    : null,
-
-  expire_date: doc.expire_date
-    ? moment(doc.expire_date).format('MM/DD/YYYY')
-    : null,
-}));
     return res.status(200).json({
       status: true,
       message: `Get Details Successfully.`,
-      data: { ...details?.[0], documents:formattedDocuments },
+      data: { ...details?.[0], documents },
     });
   } catch (err: any) {
     return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
