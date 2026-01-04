@@ -975,6 +975,8 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
+
+   
     const expiredDocuments = driverDocuments.map((doc) => {
       const expiryDate = moment(doc.expire_date);
       const now = moment();
@@ -1030,6 +1032,12 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
         expired_status: status,
       });
     }
+
+     const formattedDriverDocuments = expiredDocuments.map((doc) => ({
+  ...doc,
+  issue_date: formatUSDate(doc.issue_date),
+  expire_date: formatUSDate(doc.expire_date),
+}));
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
@@ -1037,7 +1045,7 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
         driver: driver.length > 0 ? driver?.[0] : null,
         countryStatus:
           driverCountryStatus?.length > 0 ? driverCountryStatus?.[0] : null,
-        document: expiredDocuments,
+        document: formattedDriverDocuments,
       },
     });
   } catch (err: any) {
@@ -1047,7 +1055,10 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
   }
 }
 
-
+const formatUSDate = (date: string | Date | null) => {
+  if (!date) return null;
+  return new Date(date).toLocaleDateString('en-US');
+};
 export async function dashboardNew(req: Request, res: Response): Promise<any> {
   try {
 

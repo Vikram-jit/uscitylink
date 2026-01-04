@@ -126,15 +126,26 @@ export async function getById(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
+
+    const formattedDocuments = documents.map((doc) => ({
+  ...doc,
+  issue_date: formatUSDate(doc.issue_date),
+  expire_date: formatUSDate(doc.expire_date),
+}));
     return res.status(200).json({
       status: true,
       message: `Get Details Successfully.`,
-      data: { ...details?.[0], documents },
+      data: { ...details?.[0], documents:formattedDocuments },
     });
   } catch (err: any) {
     return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+
+const formatUSDate = (date: string | Date | null) => {
+  if (!date) return null;
+  return new Date(date).toLocaleDateString('en-US');
+};
 
 export async function getTruckList(req: Request, res: Response): Promise<any> {
   try {
