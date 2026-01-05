@@ -45107,35 +45107,35 @@ if(A.aY(a,null,s).w.a.a>=1100)return this.e
 if(A.aY(a,null,s).w.a.a>=700&&A.aY(a,null,s).w.a.a<1100)return this.d
 return this.c}}
 A.app.prototype={
-XM(a){var s,r,q,p,o,n,m,l,k,j,i,h=null,g="query",f=t.N,e=t.z,d=A.n(f,e)
-d.l(0,"transports",A.b(["websocket"],t.s))
-d.l(0,"autoConnect",!1)
-d.l(0,"auth",A.ab(["token",a],e,e))
-s=A.eS("/",0,h)
+XM(a){var s,r,q,p,o,n,m,l,k,j,i,h="http://52.9.12.189:4300/",g=null,f="query",e=t.N,d=t.z,c=A.n(e,d)
+c.l(0,"transports",A.b(["websocket"],t.s))
+c.l(0,"autoConnect",!1)
+c.l(0,"auth",A.ab(["token",a],d,d))
+s=A.eS(h,0,g)
 r=s.gf5()+"://"+s.gld()+":"+s.gq8()
 q=s.gdG()
 p=$.aFD.ab(r)&&$.aFD.h(0,r).d.ab(q)
-o=J.e(d.h(0,"forceNew"),!0)||J.e(d.h(0,"force new connection"),!0)||!1===d.h(0,"multiplex")||p
+o=J.e(c.h(0,"forceNew"),!0)||J.e(c.h(0,"force new connection"),!0)||!1===c.h(0,"multiplex")||p
 n=A.c2()
-if(o){$.aUV().aP(B.t,"ignoring socket cache for /",h,h)
-n.b=A.aNJ(d,"/")}else{m=$.aFD.h(0,r)
-if(m==null){m=A.aNJ(d,"/")
-$.aFD.l(0,r,m)}n.b=m}if(s.glu().length!==0&&d.h(0,g)==null)d.l(0,g,s.glu())
-else{m=d.h(0,g)
-if(t.f.b(m))d.l(0,g,A.b6s(d.h(0,g)))}m=n.b0()
+if(o){$.aUV().aP(B.t,"ignoring socket cache for http://52.9.12.189:4300/",g,g)
+n.b=A.aNJ(c,h)}else{m=$.aFD.h(0,r)
+if(m==null){m=A.aNJ(c,h)
+$.aFD.l(0,r,m)}n.b=m}if(s.glu().length!==0&&c.h(0,f)==null)c.l(0,f,s.glu())
+else{m=c.h(0,f)
+if(t.f.b(m))c.l(0,f,A.b6s(c.h(0,f)))}m=n.b0()
 l=s.gdG().length===0?"/":s.gdG()
 k=m.d
 j=k.h(0,l)
 if(j==null){i=t.sB
-j=new A.F1(m,[],[],[],l,d,A.n(e,e),A.n(e,e),[],[],A.c8(h,h,h,f,i),A.c8(h,h,h,f,i),A.b([],t.hx))
-d.h(0,g)
-j.y=d.h(0,"auth")
-f=m.db
-f===$&&A.a()
-if(f)j.J1()
-k.l(0,l,j)}else{f=m.db
-f===$&&A.a()
-if(f&&j.cx==null)j.J1()}this.a=j
+j=new A.F1(m,[],[],[],l,c,A.n(d,d),A.n(d,d),[],[],A.c8(g,g,g,e,i),A.c8(g,g,g,e,i),A.b([],t.hx))
+c.h(0,f)
+j.y=c.h(0,"auth")
+e=m.db
+e===$&&A.a()
+if(e)j.J1()
+k.l(0,l,j)}else{e=m.db
+e===$&&A.a()
+if(e&&j.cx==null)j.J1()}this.a=j
 j.J1()}}
 A.aq0.prototype={}
 A.Qe.prototype={

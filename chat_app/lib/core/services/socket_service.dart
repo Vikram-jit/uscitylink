@@ -9,7 +9,7 @@ class SocketService {
 
   void connect(String token) {
     socket = IO.io(
-      "/",
+      "http://52.9.12.189:4300/",
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
