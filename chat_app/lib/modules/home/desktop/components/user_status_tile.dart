@@ -1,5 +1,6 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/widgets/typing_dots.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,13 +12,14 @@ class UserStatusTile extends StatefulWidget {
   final String id;
   final bool isOnline;
   final TYPE type;
-
+  final bool isTyping;
   const UserStatusTile({
     super.key,
     required this.name,
     required this.isOnline,
     required this.id,
     this.type = TYPE.driver,
+    this.isTyping = false,
   });
 
   @override
@@ -74,47 +76,51 @@ class _UserStatusTileState extends State<UserStatusTile> {
             child: Row(
               children: [
                 // Avatar
-                Stack(
-                  children: [
-                    Container(
-                      width: 22,
-                      height: 22,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: avatarColor,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        initial,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                if (widget.isTyping) TypingDots(),
+                if (!widget.isTyping)
+                  Stack(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: avatarColor,
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                      ),
-                    ),
-                    if (widget.type == TYPE.driver)
-                      // Online Dot
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: widget.isOnline ? Colors.green : Colors.grey,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.black,
-                              width: 1.2,
-                            ),
+                        child: Text(
+                          initial,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
                           ),
                         ),
                       ),
-                  ],
-                ),
+                      if (widget.type == TYPE.driver)
+                        // Online Dot
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: widget.isOnline
+                                  ? Colors.green
+                                  : Colors.grey,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.black,
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 const SizedBox(width: 6),
                 // Username
                 Expanded(

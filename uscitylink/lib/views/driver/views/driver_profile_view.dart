@@ -569,7 +569,7 @@ class DriverProfileView extends StatelessWidget {
                           SizedBox(width: 6),
                           Text(
                             issueDate != null
-                                ? DateFormat('dd/MM/yy').format(issueDate)
+                                ? DateFormat('MM/dd/yyyy').format(issueDate)
                                 : 'N/A',
                             style: TextStyle(
                               fontSize: 12,
@@ -593,7 +593,7 @@ class DriverProfileView extends StatelessWidget {
                           SizedBox(width: 6),
                           Text(
                             expireDate != null
-                                ? DateFormat('dd/MM/yy').format(expireDate)
+                                ? DateFormat('MM/dd/yyyy').format(expireDate)
                                 : 'N/A',
                             style: TextStyle(
                               fontSize: 12,

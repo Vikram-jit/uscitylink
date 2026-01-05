@@ -162,7 +162,9 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
               onSelected: (String value) {
                 if (value == 'change_password') {
                   Get.toNamed(AppRoutes.driverChangePassword);
-                } else if (value == 'logout') {}
+                } else if (value == 'logout') {
+                  loginController.logOut();
+                }
               },
             ),
           ],
@@ -892,7 +894,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
             ),
             SizedBox(width: 4),
             Text(
-              date != null ? DateFormat('dd/MM/yy').format(date) : 'N/A',
+              date != null ? DateFormat('MM/dd/yyyy').format(date) : 'N/A',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,

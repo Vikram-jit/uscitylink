@@ -193,7 +193,8 @@ class DriverPayView extends StatelessWidget {
                                               ),
                                             ],
                                           ),
-                                          Text("${pay.startDate}",
+                                          Text(
+                                              "${formatDate(parseDate(pay.startDate))}",
                                               style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 14))
@@ -216,7 +217,8 @@ class DriverPayView extends StatelessWidget {
                                               ),
                                             ],
                                           ),
-                                          Text("${pay.endDate}",
+                                          Text(
+                                              "${formatDate(parseDate(pay.endDate))}",
                                               style: TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 14))
@@ -278,7 +280,8 @@ class DriverPayView extends StatelessWidget {
                                                       ),
                                                     ],
                                                   ),
-                                                  Text("${pay.startDate}",
+                                                  Text(
+                                                      "${formatDate(parseDate(pay.startDate))}",
                                                       style: TextStyle(
                                                           fontWeight:
                                                               FontWeight.w700))
@@ -302,7 +305,8 @@ class DriverPayView extends StatelessWidget {
                                                       ),
                                                     ],
                                                   ),
-                                                  Text("${pay.endDate}",
+                                                  Text(
+                                                      "${formatDate(parseDate(pay.endDate))}",
                                                       style: TextStyle(
                                                           fontWeight:
                                                               FontWeight.w700))
@@ -863,5 +867,25 @@ class DriverPayView extends StatelessWidget {
         );
       }),
     );
+  }
+
+  DateTime? parseDate(dynamic value) {
+    if (value == null) return null;
+
+    if (value is DateTime) return value;
+
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
+  }
+
+  String formatDate(DateTime? date) {
+    if (date == null) return 'N/A';
+
+    return '${date.month.toString().padLeft(2, '0')}/'
+        '${date.day.toString().padLeft(2, '0')}/'
+        '${date.year}';
   }
 }

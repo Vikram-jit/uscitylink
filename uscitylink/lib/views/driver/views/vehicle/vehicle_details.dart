@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 
 class VehicleDetails extends StatefulWidget {
@@ -133,7 +132,10 @@ class _VehicleDetailsState extends State<VehicleDetails> {
     // Format date for display
     String formatDate(DateTime? date) {
       if (date == null) return 'N/A';
-      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+      return '${date.month.toString().padLeft(2, '0')}/'
+          '${date.day.toString().padLeft(2, '0')}/'
+          '${date.year}';
     }
 
     // Get status color

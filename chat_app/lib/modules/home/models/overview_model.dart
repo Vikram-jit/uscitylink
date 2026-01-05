@@ -77,6 +77,21 @@ class OverViewModel {
     data['channelId'] = this.channelId;
     return data;
   }
+
+  OverViewModel copyWith({List<LastFiveDriver>? onlineDrivers}) {
+    return OverViewModel(
+      templateCount: templateCount,
+      truckGroupCount: truckGroupCount,
+      channelCount: channelCount,
+      messageCount: messageCount,
+      userUnMessage: userUnMessage,
+      lastFiveDriver: lastFiveDriver,
+      driverCount: driverCount,
+      channelId: channelId,
+      trucksgroups: trucksgroups,
+      onlineDrivers: onlineDrivers ?? this.onlineDrivers,
+    );
+  }
 }
 
 class LastFiveDriver {

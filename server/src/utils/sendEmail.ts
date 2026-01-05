@@ -118,6 +118,7 @@ export const sendOTPEmail = async (
   };
 
   const res = await sgMail.send(msg);
+  
   return res;
 };
 

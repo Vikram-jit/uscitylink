@@ -1,8 +1,10 @@
 import 'package:chat_app/core/bindings/initial_bindings.dart';
+import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/modules/auth/auth_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
+import 'package:socket_io_client/socket_io_client.dart';
 
 class AuthController extends GetxController {
   var isLoading = false.obs;
@@ -25,7 +27,8 @@ class AuthController extends GetxController {
         await StorageService.saveToken(res.data?.accessToken ?? "");
 
         // await StorageService.saveUser(res.data!.user!);
-        InitialBindings().dependencies();
+        // InitialBindings().dependencies();
+        SocketService().connect(res.data?.accessToken ?? "");
         Get.offAllNamed("/home");
       } else {
         errorText.value = res.message;

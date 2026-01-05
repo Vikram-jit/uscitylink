@@ -143,6 +143,9 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
                             name: driver.profiles?[0].username ?? "-",
                             id: driver.profiles?[0].id ?? "-",
                             isOnline: driver.profiles?[0].isOnline ?? false,
+                            isTyping: _overviewController.isUserTyping(
+                              driver.profiles?[0].id,
+                            ),
                           ),
                       ],
                     ],

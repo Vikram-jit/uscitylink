@@ -37,6 +37,7 @@ import PrivateChatMember from "../models/PrivateChatMember";
 import { Message } from "../models/Message";
 import { Op, Sequelize } from "sequelize";
 import GroupChannel from "../models/GroupChannel";
+import UserModel from "../models/User"
 
 let io: Server;
 interface User {
@@ -108,8 +109,8 @@ export const initSocket = (httpServer: any) => {
   global.staff_open_staff_chat = {};
   //Validate User Connect With Socket
   io.use(async (socket: CustomSocket, next) => {
-    const token = socket.handshake.query.token as string;
-
+    const token = socket.handshake.query.token || socket.handshake.auth?.token;
+    
     if (!token) {
       return next(new Error("Authentication error: Token is missing"));
     }
@@ -129,7 +130,6 @@ export const initSocket = (httpServer: any) => {
             },
           ],
         });
-
         if (userProfile) {
           await UserProfile.update(
             {
@@ -276,7 +276,7 @@ export const initSocket = (httpServer: any) => {
           }
           if (userProfile.role?.name === "driver") {
             Object.entries(global.staffActiveChannel).forEach(
-              ([key, value]) => {
+              async ([key, value]) => {
                 const isSocket = global.userSockets[key];
                 if (isSocket) {
                   io.to(isSocket.id).emit("user_online", {
@@ -288,6 +288,42 @@ export const initSocket = (httpServer: any) => {
                     userId: userProfile?.id,
                     channelId: value.channelId,
                     isOnline: true,
+                  });
+                  let onlineDrivers = await UserModel.findOne({
+                    where: {
+                      user_type: "driver",
+                    },
+                    attributes: [
+                      "id",
+                      "phone_number",
+                      "email",
+                      "driver_number",
+                      "status",
+                      "createdAt",
+                    ],
+                    include: [
+                      {
+                        model: UserProfile,
+                        as: "profiles",
+                        attributes: [
+                          "isOnline",
+                          "last_login",
+                          "username",
+                          "id",
+                        ],
+                        required: true, // 👈 IMPORTANT: forces join so column exists
+                        where: {
+                          isOnline: true,
+                          id: userProfile?.id,
+                        },
+                      },
+                    ],
+                  });
+                  io.to(isSocket.id).emit("user_online_driver_web", {
+                    userId: userProfile?.id,
+                    channelId: value.channelId,
+                    isOnline: true,
+                    driver:onlineDrivers
                   });
                 }
               }
@@ -311,6 +347,8 @@ export const initSocket = (httpServer: any) => {
   });
 
   io.on("connection", (socket: CustomSocket) => {
+    console.log("Connection" + socket.id);
+
     socket.on("group_user_add", async ({ group_id, channel_id }) => {
       const user_id = socket?.user?.id!;
 
@@ -854,6 +892,7 @@ export const initSocket = (httpServer: any) => {
     });
 
     socket.on("driverTyping", (data) => {
+      console.log(data)
       const userId = socket?.user?.id;
       const driver = global.driverOpenChat.find((e) => e.driverId == userId);
       Object.entries(global.staffOpenChat).map(([key, value]) => {
@@ -871,6 +910,23 @@ export const initSocket = (httpServer: any) => {
           });
         }
       });
+        //Web Channel LeftBar
+       Object.entries(global.staffActiveChannel).map(async ([key, value]) => {
+            const isSocket = global.userSockets[key];
+             let message = `User Typing....`;
+          if (driver) {
+            message = `${driver.name} Typing....`;
+          }
+            if (isSocket) {
+              io.to(isSocket.id).emit("typingUserWeb", {
+            ...data,
+            userId,
+            message,
+          });
+            }
+
+          });
+
     });
 
     socket.on("driverLogout", () => {
@@ -979,7 +1035,7 @@ export const initSocket = (httpServer: any) => {
             last_login: moment.utc(),
           });
 
-          Object.entries(global.staffActiveChannel).map(([key, value]) => {
+          Object.entries(global.staffActiveChannel).map(async ([key, value]) => {
             const isSocket = global.userSockets[key];
             if (isSocket) {
               io.to(isSocket.id).emit("user_online", {
@@ -992,6 +1048,43 @@ export const initSocket = (httpServer: any) => {
                 channelId: value.channelId,
                 isOnline: false,
               });
+
+               let onlineDrivers = await UserModel.findOne({
+                    where: {
+                      user_type: "driver",
+                    },
+                    attributes: [
+                      "id",
+                      "phone_number",
+                      "email",
+                      "driver_number",
+                      "status",
+                      "createdAt",
+                    ],
+                    include: [
+                      {
+                        model: UserProfile,
+                        as: "profiles",
+                        attributes: [
+                          "isOnline",
+                          "last_login",
+                          "username",
+                          "id",
+                        ],
+                        required: true, // 👈 IMPORTANT: forces join so column exists
+                        where: {
+                         
+                          id: userId,
+                        },
+                      },
+                    ],
+                  });
+                  io.to(isSocket.id).emit("user_online_driver_web", {
+                    userId: userId,
+                    channelId: value.channelId,
+                    isOnline: false,
+                    driver:onlineDrivers
+                  });
             }
           });
         } else {
