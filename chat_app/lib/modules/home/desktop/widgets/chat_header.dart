@@ -14,9 +14,9 @@ class ChatHeader extends StatefulWidget {
 
   const ChatHeader({
     super.key,
-    this.userName = "Vikramjit Singh",
-    this.avatarUrl = "https://i.pravatar.cc/150?img=3",
-    this.status = "Active",
+    this.userName = "",
+    this.avatarUrl = "",
+    this.status = "",
     this.isOnline = true,
   });
 
@@ -27,11 +27,10 @@ class ChatHeader extends StatefulWidget {
 class _ChatHeaderState extends State<ChatHeader>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
+  final messageController = Get.find<MessageController>();
   @override
   void initState() {
     super.initState();
-    final messageController = Get.find<MessageController>();
 
     _tabController = TabController(length: 3, vsync: this);
 
@@ -54,17 +53,12 @@ class _ChatHeaderState extends State<ChatHeader>
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🎯 TOP BAR - Enhanced professional design
         Container(
-          height: 64, // Slightly taller for better proportions
+          height: 80,
           padding: const EdgeInsets.symmetric(horizontal: Space.lg),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.only(
-              topRight: Radius.circular(6.0),
-
-              // bottomLeft and bottomRight remain square by default
-            ),
+            borderRadius: BorderRadius.only(topRight: Radius.circular(6.0)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -74,43 +68,59 @@ class _ChatHeaderState extends State<ChatHeader>
             ],
           ),
           child: Row(
+            // crossAxisAlignment: CrossAxisAlignment.start,
+            // mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              // 🔹 Avatar with Status Indicator
               Stack(
                 children: [
-                  Container(
-                    height: 40, // Slightly larger
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.avatarGreen,
-                      borderRadius: BorderRadius.circular(
-                        10,
-                      ), // Smoother radius
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "A",
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                        color: AppColors.white,
+                  const SizedBox(height: Space.md),
+                  Obx(() {
+                    return Container(
+                      height: 40, // Slightly larger
+                      width: 40,
+                      decoration: BoxDecoration(
+                        color:
+                            messageController.userProfile.value.isOnline ??
+                                false
+                            ? AppColors.avatarGreen
+                            : Colors.grey,
+                        borderRadius: BorderRadius.circular(
+                          10,
+                        ), // Smoother radius
                       ),
-                    ),
-                  ),
-                  if (widget.isOnline)
-                    Positioned(
+                      alignment: Alignment.center,
+                      child: Text(
+                        messageController.userProfile.value.username?[0]
+                                .toUpperCase() ??
+                            "",
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    );
+                  }),
+
+                  Obx(() {
+                    return Positioned(
                       right: 0,
                       bottom: 0,
                       child: Container(
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: AppColors.avatarGreen,
+                          color:
+                              messageController.userProfile.value.isOnline ??
+                                  false
+                              ? AppColors.avatarGreen
+                              : Colors.grey,
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: AppColors.white, width: 2),
                         ),
                       ),
-                    ),
+                    );
+                  }),
                 ],
               ),
 
@@ -118,23 +128,49 @@ class _ChatHeaderState extends State<ChatHeader>
 
               // 🔹 User Info with Improved Typography
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.userName,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.bg,
-                        height: 1.2,
+                child: Obx(() {
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${messageController.userProfile.value.username ?? widget.userName} (${messageController.userProfile.value.user?.driverNumber ?? "-"})",
+
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.bg,
+                          height: 1.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                  ],
-                ),
+                      const SizedBox(height: 5),
+                      Text(
+                        "${messageController.userProfile.value.user?.phoneNumber ?? "-"}",
+
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.bg,
+                          height: 1.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        "Truck Groups : ${messageController.truckNumber.value ?? "-"}",
+
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.bg,
+                          height: 1.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  );
+                }),
               ),
             ],
           ),

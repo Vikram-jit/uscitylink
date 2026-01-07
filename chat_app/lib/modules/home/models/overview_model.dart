@@ -105,6 +105,7 @@ class LastFiveDriver {
   String? createdAt;
   String? updatedAt;
   List<Profiles>? profiles;
+  int? unreadCount;
 
   LastFiveDriver({
     this.id,
@@ -117,7 +118,35 @@ class LastFiveDriver {
     this.createdAt,
     this.updatedAt,
     this.profiles,
+    this.unreadCount,
   });
+  LastFiveDriver copyWith({
+    String? id,
+    String? phoneNumber,
+    String? userType,
+    String? driverNumber,
+    int? yardId,
+    String? email,
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<Profiles>? profiles,
+    int? unreadCount,
+  }) {
+    return LastFiveDriver(
+      id: id ?? this.id,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      userType: userType ?? this.userType,
+      driverNumber: driverNumber ?? this.driverNumber,
+      yardId: yardId ?? this.yardId,
+      email: email ?? this.email,
+      status: status ?? this.status,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      profiles: profiles ?? this.profiles,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
+  }
 
   LastFiveDriver.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -129,6 +158,7 @@ class LastFiveDriver {
     status = json['status'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    unreadCount = json['unreadCount'];
     if (json['profiles'] != null) {
       profiles = <Profiles>[];
       json['profiles'].forEach((v) {
@@ -148,6 +178,7 @@ class LastFiveDriver {
     data['status'] = this.status;
     data['createdAt'] = this.createdAt;
     data['updatedAt'] = this.updatedAt;
+    data['unreadCount'] = this.unreadCount;
     if (this.profiles != null) {
       data['profiles'] = this.profiles!.map((v) => v.toJson()).toList();
     }

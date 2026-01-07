@@ -13,6 +13,7 @@ class UserStatusTile extends StatefulWidget {
   final bool isOnline;
   final TYPE type;
   final bool isTyping;
+  final int unreadCount;
   const UserStatusTile({
     super.key,
     required this.name,
@@ -20,6 +21,7 @@ class UserStatusTile extends StatefulWidget {
     required this.id,
     this.type = TYPE.driver,
     this.isTyping = false,
+    this.unreadCount = 0,
   });
 
   @override
@@ -55,9 +57,13 @@ class _UserStatusTileState extends State<UserStatusTile> {
 
         child: GestureDetector(
           onTap: () {
-            controller.currentView.value = SidebarViewType.directMessage;
-            controller.selectedName.value = widget.name;
-            controller.driverId.value = widget.id;
+            // controller.currentView.value = SidebarViewType.directMessage;
+            // controller.selectedName.value = widget.name;
+            // controller.driverId.value = widget.id;
+            controller.openDirectMessage(
+              userId: widget.id,
+              userName: widget.name,
+            );
           },
 
           child: AnimatedContainer(
@@ -136,7 +142,26 @@ class _UserStatusTileState extends State<UserStatusTile> {
                     ),
                   ),
                 ),
-                // Badge(label: Text("0")),
+                if (widget.unreadCount > 0)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Center(
+                        child: Text(
+                          widget.unreadCount.toString(),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

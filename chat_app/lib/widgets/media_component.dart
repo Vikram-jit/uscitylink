@@ -1,150 +1,167 @@
+import 'package:chat_app/core/helpers/media_file_helper.dart';
+import 'package:chat_app/widgets/media_preview_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart'; // for better video controls
+import 'package:google_fonts/google_fonts.dart';
 
 class MediaComponent extends StatelessWidget {
   final String url;
-  final String? name;
-  final String? fileName;
-  final String? type;
+  final String fileName;
+  final String uploadType; // not-upload | local | server
+  final String messageDirection; // S | R
   final String? thumbnail;
-  final DateTime? dateTime;
-  final double width;
-  final double height;
-  final VoidCallback? onClick;
 
   const MediaComponent({
     super.key,
     required this.url,
-    this.name,
-    this.fileName,
-    this.type,
+    required this.fileName,
+    required this.uploadType,
+    required this.messageDirection,
     this.thumbnail,
-    this.dateTime,
-    this.width = 180,
-    this.height = 200,
-    this.onClick,
   });
 
   @override
   Widget build(BuildContext context) {
-    final ext = _getExtension(url);
+    final resolvedUrl = MediaFileHelper().resolveMediaUrl(url, uploadType);
+    final ext = MediaFileHelper().getFileExtension(resolvedUrl);
 
-    /// ------------------ VIDEO ------------------
-    if (_videoExt.contains(ext)) {
-      return InkWell(
-        onTap: () => _openDialog(context, type: "video"),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Image.network(
-              thumbnail ?? url,
-              width: width,
-              height: height,
-              fit: BoxFit.cover,
-            ),
-            const Icon(Icons.play_circle_fill, size: 50, color: Colors.white),
-          ],
-        ),
-      );
+    switch (ext) {
+      // ---------------- VIDEO ----------------
+      case '.mp4':
+      case '.mkv':
+      case '.avi':
+      case '.mov':
+      case '.webm':
+        return _video(resolvedUrl, context);
+
+      // ---------------- AUDIO ----------------
+      case '.mp3':
+      case '.wav':
+      case '.aac':
+      case '.m4a':
+        return _audio(resolvedUrl);
+
+      // ---------------- IMAGE ----------------
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.gif':
+      case '.webp':
+        return _image(resolvedUrl, context);
+
+      // ---------------- PDF ----------------
+      case '.pdf':
+        return _pdf(context);
+
+      default:
+        return Text(resolvedUrl, style: const TextStyle(fontSize: 12));
+    }
+  }
+
+  // ================= UI BUILDERS =================
+
+  Widget _image(String url, BuildContext context) {
+    if (uploadType == 'not-upload') {
+      return _uploading();
     }
 
-    /// ------------------ AUDIO ------------------
-    if (_audioExt.contains(ext)) {
-      return Container(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Icon(Icons.audiotrack_rounded, size: 45, color: Colors.blueGrey),
-            Text(fileName ?? "Audio", overflow: TextOverflow.ellipsis),
-            ElevatedButton(
-              onPressed: () => _openDialog(context, type: "audio"),
-              child: const Text("Play"),
-            ),
-          ],
-        ),
-      );
-    }
-
-    /// ------------------ IMAGES ------------------
-    if (_imageExt.contains(ext)) {
-      return InkWell(
-        onTap: onClick,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            url,
-            width: width,
-            height: height,
-            fit: BoxFit.contain,
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => MediaPreviewDialog(
+            url: url,
+            fileName: fileName,
+            thumbnail: thumbnail ?? "-",
           ),
-        ),
-      );
-    }
-
-    /// ------------------ PDF ------------------
-    if (ext == ".pdf") {
-      return InkWell(
-        onTap: () => _openDialog(context, type: "pdf"),
-        child: Column(
-          children: [
-            const Icon(Icons.picture_as_pdf, size: 50, color: Colors.red),
-            Text(fileName ?? "PDF Document"),
-          ],
-        ),
-      );
-    }
-
-    /// ------------------ DEFAULT ------------------
-    return Text("Unsupported file: $ext");
-  }
-
-  // -------------------- Helper Methods --------------------
-  String _getExtension(String url) {
-    final uri = Uri.parse(url);
-    final path = uri.path;
-    return ".${path.split('.').last.toLowerCase()}";
-  }
-
-  void _openDialog(BuildContext context, {required String type}) {
-    showDialog(
-      context: context,
-      builder: (_) =>
-          Dialog(backgroundColor: Colors.black, child: _buildViewer(type)),
+        );
+      },
+      child: Image.network(url, width: 180, height: 200, fit: BoxFit.contain),
     );
   }
 
-  Widget _buildViewer(String type) {
-    if (type == "video") {
-      return Chewie(
-        controller: ChewieController(
-          videoPlayerController: VideoPlayerController.network(url),
-          autoPlay: true,
-          looping: false,
+  Widget _video(String url, BuildContext context) {
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => MediaPreviewDialog(
+            url: url,
+            fileName: fileName,
+            thumbnail: thumbnail ?? "-",
+          ),
+        );
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Image.network(
+            thumbnail ?? '',
+            width: 180,
+            height: 200,
+            fit: BoxFit.contain,
+          ),
+          const Icon(Icons.play_circle_fill, size: 52, color: Colors.white),
+        ],
+      ),
+    );
+  }
+
+  Widget _audio(String url) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.audiotrack),
+        const SizedBox(width: 6),
+        Text(fileName, style: GoogleFonts.poppins(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _pdf(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => MediaPreviewDialog(
+            url: url,
+            fileName: fileName,
+            thumbnail: thumbnail ?? "-",
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.picture_as_pdf, size: 44, color: Colors.red),
+          Text(
+            fileName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _uploading() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          messageDirection == 'S' ? Icons.upload : Icons.download,
+          size: 28,
+          color: Colors.grey,
         ),
-      );
-    }
-
-    if (type == "audio") {
-      return Center(
-        child: Icon(Icons.audiotrack, size: 80, color: Colors.white),
-      );
-    }
-
-    if (type == "pdf") {
-      return Center(
-        child: Text(
-          "Open PDF Viewer Here",
-          style: TextStyle(color: Colors.white),
+        const SizedBox(height: 4),
+        Text(
+          messageDirection == 'S' ? 'sending…' : 'receiving…',
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
         ),
-      );
-    }
-
-    return const SizedBox();
+      ],
+    );
   }
 }
-
-// ------------------- File Extension Groups -------------------
-const _videoExt = [".mp4", ".mkv", ".avi", ".mov", ".flv", ".webm"];
-const _audioExt = [".mp3", ".aac", ".m4a", ".wav", ".ogg", ".flac"];
-const _imageExt = [".jpg", ".jpeg", ".png", ".gif", ".webp"];

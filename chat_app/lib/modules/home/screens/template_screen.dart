@@ -157,10 +157,7 @@ class TemplateScreen extends StatelessWidget {
                                       SizedBox(
                                         width: 200,
                                         child: (template.url ?? "").isNotEmpty
-                                            ? MediaComponent(
-                                                url:
-                                                    "https://ciity-sms.s3.us-west-1.amazonaws.com/${template.url}",
-                                              )
+                                            ? Text("-")
                                             : Text("-"),
                                       ),
                                     ),

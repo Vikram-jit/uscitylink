@@ -14,7 +14,7 @@ class OverviewScreen extends StatelessWidget {
 
   final List<LastFiveDriver> drivers;
 
-  const OverviewScreen({
+  OverviewScreen({
     super.key,
 
     this.totalMessages = 0,

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/modules/home/controllers/message_controller.dart';
+import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/overview_model.dart';
 import 'package:chat_app/modules/home/services/overview_service.dart';
 import 'package:get/get.dart';
@@ -26,9 +28,11 @@ class OverviewController extends GetxController {
 
     socket.off('user_online_driver_web');
     socket.off('typingUser');
+    socket.off('update_channel_sent_message_count');
 
     socket.on('user_online_driver_web', (data) {
       _handleDriverOnlineEvent(data);
+      _handleDriverOnlineForChatHeader(data);
     });
 
     socket.on("typingUserWeb", (data) {
@@ -36,12 +40,17 @@ class OverviewController extends GetxController {
       final bool isTyping = data['isTyping'] ?? false;
       setTyping(userId, isTyping);
     });
+
+    socket.on("update_channel_sent_message_count", (data) {
+      unreadCountByProfileId(data);
+    });
   }
 
   @override
   void onClose() {
-    _socketService.socket.off('user_online_driver_web');
-    _socketService.socket.off('typingUserWeb');
+    _socketService.off('user_online_driver_web');
+    _socketService.off('typingUserWeb');
+    _socketService.off('update_channel_sent_message_count');
     super.onClose();
   }
 
@@ -73,6 +82,27 @@ class OverviewController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _handleDriverOnlineForChatHeader(dynamic data) {
+    final bool isOnline = data['isOnline'] ?? false;
+    final Map<String, dynamic> driverJson = data['driver'];
+
+    final driver = LastFiveDriver.fromJson(driverJson);
+
+    if (!Get.isRegistered<MessageController>()) return;
+    final messageController = Get.find<MessageController>();
+
+    final profile = messageController.userProfile.value;
+    if (profile == null) return;
+
+    if (profile.userId != driver.id) return;
+
+    messageController.userProfile.update((p) {
+      if (p != null) {
+        p.isOnline = isOnline;
+      }
+    });
   }
 
   void _handleDriverOnlineEvent(dynamic data) {
@@ -111,6 +141,61 @@ class OverviewController extends GetxController {
         drivers.add(driver);
       }
     }
+
+    overview.value = currentOverview.copyWith(onlineDrivers: drivers);
+  }
+
+  void incrementUnreadCountByProfileId(String profileId) {
+    final currentOverview = overview.value;
+
+    final List<LastFiveDriver> drivers = List.from(
+      currentOverview.onlineDrivers ?? [],
+    );
+
+    final int index = drivers.indexWhere(
+      (d) =>
+          d.profiles != null &&
+          d.profiles!.isNotEmpty &&
+          d.profiles!.first.id == profileId,
+    );
+
+    if (index == -1) return;
+
+    final driver = drivers[index];
+
+    // ✅ Correct increment
+    final updatedDriver = driver.copyWith(
+      unreadCount: (driver.unreadCount ?? 0) + 1,
+    );
+
+    drivers[index] = updatedDriver;
+
+    overview.value = currentOverview.copyWith(onlineDrivers: drivers);
+  }
+
+  void unreadCountByProfileId(dynamic data) {
+    final profileId = data["userId"] ?? "";
+    final currentOverview = overview.value;
+
+    final List<LastFiveDriver> drivers = List.from(
+      currentOverview.onlineDrivers ?? [],
+    );
+
+    final int index = drivers.indexWhere(
+      (d) =>
+          d.profiles != null &&
+          d.profiles!.isNotEmpty &&
+          d.profiles!.first.id == profileId,
+    );
+
+    if (index == -1) return;
+
+    final driver = drivers[index];
+
+    // ✅ Correct increment
+    final updatedDriver = driver.copyWith(unreadCount: 0);
+
+    drivers[index] = updatedDriver;
 
     overview.value = currentOverview.copyWith(onlineDrivers: drivers);
   }

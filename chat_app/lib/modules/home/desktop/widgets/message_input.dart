@@ -1,9 +1,13 @@
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// ignore: must_be_immutable
 class MessageInput extends StatelessWidget {
-  const MessageInput({super.key});
+  MessageInput({super.key});
+  final messageController = Get.find<MessageController>();
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +34,9 @@ class MessageInput extends StatelessWidget {
             // 1. The Text Input Area
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              child: TextField(
+              child: TextFormField(
+                controller: messageController.msgInputController,
+
                 style: GoogleFonts.poppins(
                   color: Colors.black, // Change this to your desired color
                   fontSize: 16,
@@ -102,8 +108,27 @@ class MessageInput extends StatelessWidget {
                   // -- Spacer pushes the Send button to the right --
                   const Spacer(),
 
-                  // -- Right Group (Send) --
-                  Icon(Icons.send, color: Colors.grey.shade400, size: 20),
+                  Obx(() {
+                    final hasText = messageController.msgText.isNotEmpty;
+
+                    return IconButton(
+                      onPressed: () {
+                        messageController.sendMessage(
+                          body: messageController.msgText.value,
+                          userId: messageController.userProfile.value.id ?? "",
+                        );
+                        messageController.msgText.value = "";
+                      },
+                      icon: Icon(
+                        Icons.send,
+                        color: hasText
+                            ? AppColors.primary
+                            : Colors.grey.shade400,
+                        size: 20,
+                      ),
+                    );
+                  }),
+
                   const SizedBox(width: 4),
                   Icon(
                     Icons.keyboard_arrow_down,

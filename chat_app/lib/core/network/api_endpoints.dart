@@ -7,4 +7,5 @@ class ApiEndpoints {
   static const channelMemmbers = "/channel/members";
   static const template = "/template";
   static const user = "/user";
+  static const messageByUserId = "/message/byUserId";
 }

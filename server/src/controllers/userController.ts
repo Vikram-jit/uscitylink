@@ -1113,6 +1113,20 @@ export async function dashboardNew(req: Request, res: Response): Promise<any> {
       limit: 5,
     });
 
+     const modifiedData = await Promise.all(lastFiveDriver.map(async(e:any)=>{
+      const unreadCount = await MessageStaff.count({
+        where:{
+          driverId:e.profiles?.[0].id,
+          status:"un-read",
+          type:"chat",
+          staffId:req.user?.id
+        }
+      })
+    
+
+      return {...e.dataValues,unreadCount:unreadCount}
+    }))
+
      const trucksgroup = await Group.findAll({
       where: {
         type: "truck",
@@ -1176,7 +1190,19 @@ if (onlineDrivers.length < 5) {
   // MERGE THEM
   onlineDrivers = [...onlineDrivers, ...fallbackDrivers];
 }
+ const modifiedDataOnline = await Promise.all(onlineDrivers.map(async(e:any)=>{
+      const unreadCount = await MessageStaff.count({
+        where:{
+          driverId:e.profiles?.[0].id,
+          status:"un-read",
+          type:"chat",
+          staffId:req.user?.id
+        }
+      })
+    
 
+      return {...e.dataValues,unreadCount:unreadCount}
+    }))
    
     return res.status(200).json({
       status: true,
@@ -1187,10 +1213,10 @@ if (onlineDrivers.length < 5) {
         channelCount: userChannelCount,
         messageCount: userTotalMessage,
         userUnMessage,
-        lastFiveDriver: lastFiveDriver,
+        lastFiveDriver: modifiedData,
         driverCount,
         channelId: req.activeChannel,
-        onlineDrivers,
+        onlineDrivers:modifiedDataOnline,
         trucksgroups:trucksgroup
     
       },

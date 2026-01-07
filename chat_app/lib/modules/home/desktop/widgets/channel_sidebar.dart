@@ -146,6 +146,7 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
                             isTyping: _overviewController.isUserTyping(
                               driver.profiles?[0].id,
                             ),
+                            unreadCount: driver?.unreadCount ?? 0,
                           ),
                       ],
                     ],

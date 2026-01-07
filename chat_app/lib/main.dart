@@ -1,6 +1,5 @@
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/modules/not_found/not_found_view.dart';
-import 'package:chat_app/routes/auth_middleware.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +12,9 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   usePathUrlStrategy();
+
   runApp(const MyApp());
 }
 
@@ -25,7 +26,6 @@ class MyApp extends StatelessWidget {
     final token = prefs.getString("token");
 
     if (token != null && token.isNotEmpty) {
-      // 🔥 restore socket on refresh / reload
       SocketService().connect(token);
       return AppRoutes.home;
     }

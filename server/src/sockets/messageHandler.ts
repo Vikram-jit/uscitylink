@@ -251,7 +251,6 @@ export async function driverMessageQueueProcessWithoutSocket(
   userId?: string,
   truckId?: string | null
 ) {
-  console.log(truckId, "truckIdByUser");
   const messageSave = await Message.create({
     channelId: channelId,
     userProfileId: userId,
@@ -366,6 +365,10 @@ export async function driverMessageQueueProcessWithoutSocket(
                 "notification_new_message",
                 `New Message received on ${channel?.name} channel`
               );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userId}`
+              );
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
@@ -405,6 +408,10 @@ export async function driverMessageQueueProcessWithoutSocket(
               io.to(isSocket.id).emit(
                 "notification_new_message",
                 `New Message received`
+              );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userId}`
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -477,6 +484,10 @@ export async function driverMessageQueueProcessWithoutSocket(
                 "notification_new_message",
                 `New Message received `
               );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userId}`
+              );
             }
           } else {
             if (el.role == "staff" && el.channelId != channelId) {
@@ -486,6 +497,10 @@ export async function driverMessageQueueProcessWithoutSocket(
                   "notification_new_message",
                   `New Message received on ${channel?.name} channel`
                 );
+                 io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userId}`
+              );
               }
             }
           }
@@ -669,6 +684,10 @@ export async function driverMessageQueueProcessResend(
                 "notification_new_message",
                 `New Message received by ${message?.dataValues.sender.username}`
               );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
@@ -708,6 +727,10 @@ export async function driverMessageQueueProcessResend(
               io.to(isSocket.id).emit(
                 "notification_new_message",
                 `New Message received`
+              );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -761,6 +784,10 @@ export async function driverMessageQueueProcessResend(
                 "notification_new_message",
                 `New Message received `
               );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
             }
           } else {
             if (el.role == "staff" && el.channelId != channelId) {
@@ -770,6 +797,10 @@ export async function driverMessageQueueProcessResend(
                   "notification_new_message",
                   `New Message received by  ${message?.dataValues.sender.username}`
                 );
+                 io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
               }
             }
           }
@@ -897,6 +928,7 @@ export async function driverMessageQueueProcessResend(
             "notification_new_message",
             `New Message received on ${channel?.name} channel`
           );
+          
           if (userDriver) {
             const unreadCount = await MessageStaff.count({
               where: {
@@ -906,6 +938,10 @@ export async function driverMessageQueueProcessResend(
                 staffId: user.id,
               },
             });
+             io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userDriver.userProfileId}`
+              );
             const groupUsers: any = await GroupUser.findAll({
               where: {
                 userProfileId: userDriver.userProfileId,
@@ -933,6 +969,7 @@ export async function driverMessageQueueProcessResend(
               "notification_new_message_with_user",
               newObj
             );
+           
           }
 
           io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -1072,6 +1109,10 @@ export async function driverMessageQueueProcess(
                 "notification_new_message",
                 `New Message received by  ${message?.dataValues.sender.username}`
               );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
@@ -1111,6 +1152,10 @@ export async function driverMessageQueueProcess(
               io.to(isSocket.id).emit(
                 "notification_new_message",
                 `New Message received First`
+              );
+               io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -1358,6 +1403,10 @@ export async function driverMessageQueueProcess(
               "notification_new_message_with_user",
               newObj
             );
+             io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userDriver.userProfileId}`
+              );
           }
 
           io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -1502,6 +1551,10 @@ export async function messageToChannelToUser(
                   "notification_new_message",
                   `New Message received on  ${message?.dataValues.sender.username}  channel 1`
                 );
+                 io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
                 await UserChannel.update(
                   {
                     sent_message_count: Sequelize.literal(
@@ -1542,6 +1595,10 @@ export async function messageToChannelToUser(
                   "notification_new_message",
                   `New Message received`
                 );
+                 io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
                 isCheckAnyStaffOpenChat += 1;
               }
             }
@@ -1627,6 +1684,10 @@ export async function messageToChannelToUser(
                     "notification_new_message",
                     `New Message received by ${message?.dataValues.sender.username} `
                   );
+                   io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${message.userProfileId}`
+              );
                 }
               }
             }
@@ -1746,6 +1807,10 @@ export async function messageToChannelToUser(
                   staffId: user.id,
                 },
               });
+                io.to(isSocket.id).emit(
+                "notification_user_id",
+                `${userDriver.userProfileId}`
+              );
               const groupUsers: any = await GroupUser.findAll({
                 where: {
                   userProfileId: userDriver.userProfileId,
@@ -1773,6 +1838,7 @@ export async function messageToChannelToUser(
                 "notification_new_message_with_user",
                 newObj
               );
+              
             }
 
             io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -2638,6 +2704,7 @@ export async function unreadAllUserMessage(
   channelId: string,
   userId: string
 ) {
+  console.log(channelId,userId,"===============")
   if (channelId) {
     const limit = 100; // or a smaller safe chunk
     await primarySequelize.transaction(async (t) => {
