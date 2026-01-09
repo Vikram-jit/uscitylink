@@ -385,7 +385,7 @@ class SocketService extends GetxController {
   void startPing() {
     if (isConnected.value) {
       // Use Timer.periodic to send the ping every 5 seconds
-      Timer.periodic(const Duration(seconds: 10), (timer) {
+      Timer.periodic(const Duration(seconds: 30), (timer) {
         if (isConnected.value) {
           print('Sending ping...');
           socket.emit('ping'); // Send the ping message to the server

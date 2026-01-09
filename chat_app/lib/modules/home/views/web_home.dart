@@ -339,32 +339,7 @@ class WebHomeView extends StatelessWidget {
                   horizontal: 20,
                   vertical: 10,
                 ),
-                children: const [
-                  MessageBubble(
-                    name: "John",
-                    time: "2:30 PM",
-                    message: "Hello team! How is the project going?",
-                    isMe: false,
-                  ),
-                  MessageBubble(
-                    name: "John",
-                    time: "2:30 PM",
-                    message: "Hello team! How is the project going?",
-                    isMe: false,
-                  ),
-                  MessageBubble(
-                    name: "John",
-                    time: "2:30 PM",
-                    message: "Hello team! How is the project going?",
-                    isMe: false,
-                  ),
-                  MessageBubble(
-                    name: "John",
-                    time: "2:30 PM",
-                    message: "Hello team! How is the project going?",
-                    isMe: false,
-                  ),
-                ],
+                children: const [],
               ),
             ),
           ),

@@ -34,11 +34,13 @@ class SocketService {
   void listenNotifications({
     required void Function(String message) onNotification,
     required void Function(String message) onNotificationId,
+    required void Function(dynamic data) onOnlineDriverFn,
   }) {
     if (socket == null) return;
 
     socket!.off('notification_new_message');
     socket!.off('notification_user_id');
+    socket!.off('user_online_driver_web');
 
     socket!.on('notification_new_message', (data) {
       final message = data.toString();
@@ -47,6 +49,10 @@ class SocketService {
     socket!.on('notification_user_id', (data) {
       final message = data.toString();
       onNotificationId(message);
+    });
+
+    socket!.on("user_online_driver_web", (data) {
+      onOnlineDriverFn(data);
     });
   }
 

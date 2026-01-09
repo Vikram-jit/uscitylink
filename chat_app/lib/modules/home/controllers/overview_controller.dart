@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/overview_model.dart';
@@ -10,7 +11,7 @@ import 'package:get/get.dart';
 class OverviewController extends GetxController {
   final SocketService _socketService = SocketService();
   final RxMap<String, bool> typingUsers = <String, bool>{}.obs;
-
+  HomeController _homeController = Get.find<HomeController>();
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
   var isLoading = false.obs;
   var errorText = "".obs;
@@ -26,19 +27,16 @@ class OverviewController extends GetxController {
     final socket = _socketService.socket;
     if (socket == null) return;
 
-    socket.off('user_online_driver_web');
     socket.off('typingUser');
     socket.off('update_channel_sent_message_count');
-
-    socket.on('user_online_driver_web', (data) {
-      _handleDriverOnlineEvent(data);
-      _handleDriverOnlineForChatHeader(data);
-    });
 
     socket.on("typingUserWeb", (data) {
       final String userId = data['userId'];
       final bool isTyping = data['isTyping'] ?? false;
       setTyping(userId, isTyping);
+      if (Get.isRegistered<ChannelController>()) {
+        Get.find<ChannelController>().handelUserTyping(data);
+      }
     });
 
     socket.on("update_channel_sent_message_count", (data) {
@@ -48,7 +46,6 @@ class OverviewController extends GetxController {
 
   @override
   void onClose() {
-    _socketService.off('user_online_driver_web');
     _socketService.off('typingUserWeb');
     _socketService.off('update_channel_sent_message_count');
     super.onClose();
@@ -84,7 +81,7 @@ class OverviewController extends GetxController {
     }
   }
 
-  void _handleDriverOnlineForChatHeader(dynamic data) {
+  void handleDriverOnlineForChatHeader(dynamic data) {
     final bool isOnline = data['isOnline'] ?? false;
     final Map<String, dynamic> driverJson = data['driver'];
 
@@ -105,7 +102,7 @@ class OverviewController extends GetxController {
     });
   }
 
-  void _handleDriverOnlineEvent(dynamic data) {
+  void handleDriverOnlineEvent(dynamic data) {
     final bool isOnline = data['isOnline'] ?? false;
     final Map<String, dynamic> driverJson = data['driver'];
 
@@ -147,7 +144,7 @@ class OverviewController extends GetxController {
 
   void incrementUnreadCountByProfileId(String profileId) {
     final currentOverview = overview.value;
-
+    if (profileId == _homeController.driverId.value) return;
     final List<LastFiveDriver> drivers = List.from(
       currentOverview.onlineDrivers ?? [],
     );

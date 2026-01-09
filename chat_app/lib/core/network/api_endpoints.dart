@@ -8,4 +8,5 @@ class ApiEndpoints {
   static const template = "/template";
   static const user = "/user";
   static const messageByUserId = "/message/byUserId";
+  static const search = "/user/search";
 }

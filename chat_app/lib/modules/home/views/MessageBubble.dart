@@ -2,13 +2,16 @@ import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/widgets/media_component.dart';
 import 'package:chat_app/widgets/media_preview_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MessageBubble extends StatelessWidget {
   final String name;
   final String time;
   final String message;
   final bool isMe;
+  final String driverNumber;
 
   // Media
   final String? mediaUrl;
@@ -21,6 +24,7 @@ class MessageBubble extends StatelessWidget {
     required this.name,
     required this.time,
     required this.message,
+    required this.driverNumber,
     this.isMe = false,
     this.mediaUrl,
     this.mediaName,
@@ -63,19 +67,39 @@ class MessageBubble extends StatelessWidget {
                 // Name + Time
                 Row(
                   children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                    RichText(
+                      text: TextSpan(
+                        text: name,
+                        style: GoogleFonts.poppins(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: " ",
+                            style: GoogleFonts.poppins(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                          TextSpan(
+                            text: isMe ? "($driverNumber)" : "(staff)",
+                            style: GoogleFonts.poppins(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       time,
                       style: GoogleFonts.poppins(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: Colors.black,
                       ),
                     ),
@@ -84,12 +108,26 @@ class MessageBubble extends StatelessWidget {
 
                 if (message.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    message,
+                  SelectableLinkify(
+                    text: message,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: Colors.black,
                     ),
+                    linkStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    onOpen: (link) async {
+                      final uri = Uri.parse(link.url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    },
                   ),
                 ],
 

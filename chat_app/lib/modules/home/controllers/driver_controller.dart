@@ -1,11 +1,5 @@
-import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
-import 'package:chat_app/modules/home/models/channel_model.dart';
-import 'package:chat_app/modules/home/models/overview_model.dart';
-import 'package:chat_app/modules/home/models/template_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
-import 'package:chat_app/modules/home/services/channel_service.dart';
 import 'package:chat_app/modules/home/services/driver_service.dart';
-import 'package:chat_app/modules/home/services/template_service.dart';
 import 'package:get/get.dart';
 
 class DriverController extends GetxController {

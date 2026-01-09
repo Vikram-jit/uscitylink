@@ -1,6 +1,8 @@
 import 'package:chat_app/core/storage/storage_service.dart';
+import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/sidebar_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/sidebar_icon.dart';
+import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -40,8 +42,26 @@ class LeftSidebar extends StatelessWidget {
           ),
 
           const SizedBox(height: Space.xl),
-          SidebarIcon(Icons.home_filled, tooltip: "Home", active: true),
-          SidebarIcon(Icons.message, tooltip: "Messages"),
+          SidebarIcon(
+            Icons.home_filled,
+            tooltip: "Home",
+            onTap: () {
+              HomeController homeController = Get.find<HomeController>();
+              homeController.closeDirectMessage(userId: "", userName: "");
+              Get.toNamed(AppRoutes.home);
+            },
+            active: isRouteActive(AppRoutes.home),
+          ),
+          SidebarIcon(
+            Icons.message,
+            tooltip: "Messages",
+            onTap: () {
+              HomeController homeController = Get.find<HomeController>();
+              homeController.closeDirectMessage(userId: "", userName: "");
+              Get.toNamed(AppRoutes.driverChat);
+            },
+            active: isRouteActive(AppRoutes.driverChat),
+          ),
           SidebarIcon(Icons.fire_truck, tooltip: "Truck Groups"),
           SidebarIcon(Icons.groups, tooltip: "Groups"),
 
@@ -91,5 +111,9 @@ class LeftSidebar extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool isRouteActive(String route) {
+    return Get.currentRoute == route;
   }
 }

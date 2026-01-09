@@ -14,6 +14,7 @@ class UserStatusTile extends StatefulWidget {
   final TYPE type;
   final bool isTyping;
   final int unreadCount;
+  final String message;
   const UserStatusTile({
     super.key,
     required this.name,
@@ -22,6 +23,7 @@ class UserStatusTile extends StatefulWidget {
     this.type = TYPE.driver,
     this.isTyping = false,
     this.unreadCount = 0,
+    this.message = "",
   });
 
   @override
@@ -57,9 +59,6 @@ class _UserStatusTileState extends State<UserStatusTile> {
 
         child: GestureDetector(
           onTap: () {
-            // controller.currentView.value = SidebarViewType.directMessage;
-            // controller.selectedName.value = widget.name;
-            // controller.driverId.value = widget.id;
             controller.openDirectMessage(
               userId: widget.id,
               userName: widget.name,
@@ -80,6 +79,8 @@ class _UserStatusTileState extends State<UserStatusTile> {
             ),
 
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Avatar
                 if (widget.isTyping) TypingDots(),
@@ -128,18 +129,47 @@ class _UserStatusTileState extends State<UserStatusTile> {
                     ],
                   ),
                 const SizedBox(width: 6),
-                // Username
+
                 Expanded(
-                  child: Text(
-                    widget.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      color: isSelected ? Colors.white : AppColors.primary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: widget.message.isEmpty ? 12 : 14,
+
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : widget.message.isNotEmpty
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                          color: isSelected ? Colors.white : AppColors.primary,
+                        ),
+                      ),
+                      if (widget.message.isNotEmpty)
+                        Column(
+                          children: [
+                            SizedBox(height: 2),
+                            Text(
+                              widget.message,
+                              maxLines: 1, // 🔥 THIS IS THE KEY
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false, // extra safety
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
                 if (widget.unreadCount > 0)

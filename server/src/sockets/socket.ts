@@ -849,10 +849,12 @@ export const initSocket = (httpServer: any) => {
     //Typing Staff Event
 
     socket.on("typing", (data) => {
+      console.log(data,"======")
       const staff = global.staffActiveChannel[socket?.user?.id!];
       const driver = global.driverOpenChat.find(
         (e) => e.driverId == data.userId
       );
+      console.log(driver,"============")
       if (driver) {
         const isSocket = global.userSockets[driver.driverId];
 

@@ -1,5 +1,6 @@
 import 'package:chat_app/core/bindings/initial_bindings.dart';
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/modules/auth/auth_model.dart';
 import 'package:chat_app/modules/auth/auth_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -25,6 +26,7 @@ class AuthController extends GetxController {
 
       if (res.status) {
         await StorageService.saveToken(res.data?.accessToken ?? "");
+        await StorageService.saveUserData(res.data ?? AuthModel());
 
         // await StorageService.saveUser(res.data!.user!);
         // InitialBindings().dependencies();

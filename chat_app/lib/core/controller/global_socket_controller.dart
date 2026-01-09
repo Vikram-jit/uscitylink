@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:chat_app/core/services/user_interaction_service.dart';
+import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -22,13 +24,44 @@ class GlobalSocketController extends GetxController {
     _socket.listenNotifications(
       onNotification: _handleNotification,
       onNotificationId: _handleNotificationId,
+      onOnlineDriverFn: _handleOnlineDriverFn,
     );
   }
 
   // ---------- HANDLERS ----------
 
+  void _handleOnlineDriverFn(dynamic data) async {
+    if (Get.isRegistered<OverviewController>()) {
+      Get.find<OverviewController>().handleDriverOnlineEvent(data);
+      Get.find<OverviewController>().handleDriverOnlineForChatHeader(data);
+    }
+    if (Get.isRegistered<ChannelController>()) {
+      Get.find<ChannelController>().handleDriverOnlineEvent(data);
+    }
+  }
+
   void _handleNotification(dynamic message) async {
     _playCount = 0; // Reset counter for new notification
+    final interaction = Get.find<UserInteractionService>();
+
+    // 🔕 If user never interacted → NO SOUND (but show snackbar)
+    if (!interaction.hasInteracted.value) {
+      Get.snackbar(
+        "New Message Recived",
+        message ?? "",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
+        duration: const Duration(seconds: 5),
+        margin: const EdgeInsets.all(15),
+        icon: const Icon(Icons.notifications_active, color: Colors.blue),
+        // Optional: Add a button to stop the sound if it's long
+        mainButton: TextButton(
+          onPressed: () => Get.back(),
+          child: const Text("Dismiss"),
+        ),
+      );
+      return;
+    }
 
     // Listen for completion to repeat the sound
     final subscription = _audioPlayer.onPlayerComplete.listen((event) async {
@@ -64,6 +97,9 @@ class GlobalSocketController extends GetxController {
   void _handleNotificationId(String driverId) {
     if (Get.isRegistered<OverviewController>()) {
       Get.find<OverviewController>().incrementUnreadCountByProfileId(driverId);
+    }
+    if (Get.isRegistered<ChannelController>()) {
+      Get.find<ChannelController>().incrementUnreadCountByProfileId(driverId);
     }
   }
 }

@@ -16,9 +16,12 @@ class ChannelService {
     );
   }
 
-  Future<BaseResponse<ChannelMemmberModel>> channelMemmbers(int page) async {
+  Future<BaseResponse<ChannelMemmberModel>> channelMemmbers(
+    int page,
+    int limit,
+  ) async {
     final response = await api.dio.get(
-      "${ApiEndpoints.channelMemmbers}?page=$page&limit=10",
+      "${ApiEndpoints.channelMemmbers}?page=$page&limit=$limit",
     );
 
     return BaseResponse<ChannelMemmberModel>(

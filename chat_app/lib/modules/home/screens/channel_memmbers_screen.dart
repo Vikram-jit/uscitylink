@@ -1,8 +1,6 @@
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
-import 'package:chat_app/modules/home/controllers/driver_controller.dart';
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
 
-import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/widgets/container_header.dart';
 import 'package:chat_app/widgets/data_table.dart';
 
@@ -12,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class ChannelMemmbersScreen extends StatelessWidget {
   ChannelMemmbersScreen({super.key});
-  final ChannelController _driverController = Get.put(ChannelController());
+  final ChannelController _driverController = Get.find<ChannelController>();
 
   @override
   Widget build(BuildContext context) {

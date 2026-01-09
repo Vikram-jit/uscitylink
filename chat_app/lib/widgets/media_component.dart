@@ -50,7 +50,7 @@ class MediaComponent extends StatelessWidget {
 
       // ---------------- PDF ----------------
       case '.pdf':
-        return _pdf(context);
+        return _pdf(resolvedUrl, context);
 
       default:
         return Text(resolvedUrl, style: const TextStyle(fontSize: 12));
@@ -119,14 +119,14 @@ class MediaComponent extends StatelessWidget {
     );
   }
 
-  Widget _pdf(BuildContext context) {
+  Widget _pdf(String resolvedUrl, BuildContext context) {
     return InkWell(
       onTap: () {
         showDialog(
           context: context,
           barrierDismissible: true,
           builder: (_) => MediaPreviewDialog(
-            url: url,
+            url: resolvedUrl,
             fileName: fileName,
             thumbnail: thumbnail ?? "-",
           ),

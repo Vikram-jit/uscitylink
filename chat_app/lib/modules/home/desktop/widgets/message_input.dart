@@ -1,6 +1,7 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -34,27 +35,64 @@ class MessageInput extends StatelessWidget {
             // 1. The Text Input Area
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              child: TextFormField(
-                controller: messageController.msgInputController,
+              child: KeyboardListener(
+                focusNode: FocusNode(),
+                onKeyEvent: (event) {
+                  if (event is! KeyDownEvent) return;
 
-                style: GoogleFonts.poppins(
-                  color: Colors.black, // Change this to your desired color
-                  fontSize: 16,
-                ),
+                  final isEnter = event.logicalKey == LogicalKeyboardKey.enter;
 
-                // 2. Controls the blinking cursor color
-                cursorColor: AppColors.primary,
-                decoration: InputDecoration(
-                  filled: true, // <--- Enable background color
-                  fillColor: Colors.white, // <--- Set color to white
-                  hintText: "Start a new message",
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                  border: InputBorder.none, // Remove default underline
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  // ✅ Correct modifier detection
+                  final pressedKeys =
+                      HardwareKeyboard.instance.logicalKeysPressed;
+
+                  final isCtrlOrCmd =
+                      pressedKeys.contains(LogicalKeyboardKey.controlLeft) ||
+                      pressedKeys.contains(LogicalKeyboardKey.controlRight) ||
+                      pressedKeys.contains(LogicalKeyboardKey.metaLeft) ||
+                      pressedKeys.contains(LogicalKeyboardKey.metaRight);
+
+                  if (isEnter && isCtrlOrCmd) {
+                    messageController.sendMessage(
+                      body: messageController.msgText.value,
+                      userId: messageController.userProfile.value.id ?? "",
+                    );
+                    return;
+                  }
+
+                  // Ignore modifier-only presses
+                  if (event.logicalKey == LogicalKeyboardKey.shift ||
+                      event.logicalKey == LogicalKeyboardKey.controlLeft ||
+                      event.logicalKey == LogicalKeyboardKey.controlRight ||
+                      event.logicalKey == LogicalKeyboardKey.metaLeft ||
+                      event.logicalKey == LogicalKeyboardKey.metaRight) {
+                    return;
+                  }
+
+                  messageController.onKeyPressed();
+                },
+                child: TextFormField(
+                  controller: messageController.msgInputController,
+
+                  style: GoogleFonts.poppins(
+                    color: Colors.black, // Change this to your desired color
+                    fontSize: 16,
+                  ),
+
+                  // 2. Controls the blinking cursor color
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    filled: true, // <--- Enable background color
+                    fillColor: Colors.white, // <--- Set color to white
+                    hintText: "Start a new message",
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                    border: InputBorder.none, // Remove default underline
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  maxLines: null, // Allows text to wrap nicely
+                  keyboardType: TextInputType.multiline,
                 ),
-                maxLines: null, // Allows text to wrap nicely
-                keyboardType: TextInputType.multiline,
               ),
             ),
 

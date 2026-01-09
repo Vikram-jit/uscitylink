@@ -49,8 +49,12 @@ dependencies:
   firebase_messaging: ^16.1.0
   permission_handler: ^12.0.1
   web: ^1.1.1
- 
   audioplayers: ^6.5.1
+  pdfrx: ^2.2.20
+  image_gallery_saver: ^2.0.3
+  share_plus: ^12.0.1
+  photo_view: ^0.15.0
+  flutter_linkify: ^6.0.0
 
 dev_dependencies:
   flutter_test:

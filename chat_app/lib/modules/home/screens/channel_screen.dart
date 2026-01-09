@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class ChannelScreen extends StatelessWidget {
   ChannelScreen({super.key});
-  final ChannelController _channelController = Get.put(ChannelController());
+  final ChannelController _channelController = Get.find<ChannelController>();
 
   @override
   Widget build(BuildContext context) {

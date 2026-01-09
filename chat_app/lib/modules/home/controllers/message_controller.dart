@@ -1,12 +1,16 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/models/message_response_model.dart';
+import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/home/models/message_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MessageController extends GetxController {
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
@@ -36,13 +40,41 @@ class MessageController extends GetxController {
   final msgInputController = TextEditingController();
   final msgText = "".obs;
 
+  final typingMsg = "".obs;
+  final isTyping = false.obs;
+
+  final isTypingStaff = false.obs;
+  DateTime? _typingStartTime;
+  Timer? _typingTimer;
+
   @override
   void onInit() {
     super.onInit();
     listenIncomingMessages();
+    listenDriverTypling();
     scrollController.addListener(_onScroll);
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
+    });
+  }
+
+  void onKeyPressed() {
+    if (!isTypingStaff.value) {
+      isTypingStaff.value = true;
+      sendTypingStatus(true);
+    }
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(milliseconds: 1500), () {
+      isTypingStaff.value = false;
+      sendTypingStatus(false);
+    });
+  }
+
+  void sendTypingStatus(bool typing) async {
+    SocketService().emit('typing', {
+      'isTyping': typing,
+      'userId': _homeController.driverId.value,
     });
   }
 
@@ -64,6 +96,14 @@ class MessageController extends GetxController {
 
   void switchTab(int index) {
     currentTab.value = index;
+  }
+
+  clearChat() {
+    currentPage.value = 1;
+    userProfile.value = UserProfileModel();
+    truckNumber.value = "";
+    messages.clear();
+    totalItems = 0;
   }
 
   Future<void> loadMessages(String userId, int page) async {
@@ -136,6 +176,11 @@ class MessageController extends GetxController {
     };
 
     SocketService().emit("send_message_to_user", payload);
+
+    msgInputController.clear();
+
+    isTypingStaff.value = false;
+    sendTypingStatus(false);
   }
 
   void listenIncomingMessages() {
@@ -146,11 +191,26 @@ class MessageController extends GetxController {
 
     socket.on('receive_message_channel', (data) {
       final message = Messages.fromJson(data);
-      handleIncomingMessage(message);
+      final messageModel = MessageModel.fromJson(data);
+      handleIncomingMessage(message, messageModel);
     });
   }
 
-  void handleIncomingMessage(Messages message) {
+  void listenDriverTypling() {
+    final socket = SocketService().socket;
+    if (socket == null) return;
+
+    socket.off('typingUser');
+
+    socket.on('typingUser', (data) {
+      if (data["userId"] == _homeController.driverId.value) {
+        isTyping.value = data["isTyping"] ?? false;
+        typingMsg.value = data["message"] ?? "";
+      }
+    });
+  }
+
+  void handleIncomingMessage(Messages message, MessageModel messageModel) {
     final homeController = Get.find<HomeController>();
     // 1️⃣ If message belongs to current open chat → add to messages
     if (message.userProfileId == homeController.driverId.value) {
@@ -161,6 +221,9 @@ class MessageController extends GetxController {
         showScrollToBottomButton.value = true;
         scrollButtonTitle.value = "New Message";
       }
+    }
+    if (Get.isRegistered<ChannelController>()) {
+      Get.find<ChannelController>().handleReceiveMessage(messageModel);
     }
   }
 
@@ -188,6 +251,7 @@ class MessageController extends GetxController {
 
   @override
   void onClose() {
+    _typingTimer?.cancel();
     scrollController.dispose();
     msgInputController.dispose();
     super.onClose();

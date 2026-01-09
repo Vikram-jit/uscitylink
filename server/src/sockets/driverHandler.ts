@@ -5,6 +5,7 @@ export async function driverActiveChannelUpdate(
     socket: CustomSocket,
     channelId: string
   ) {
+    console.log("Driver Open Chat",channelId)
     if (
       !global.driverOpenChat.find((driver) => driver.driverId === socket?.user?.id)
     ) {

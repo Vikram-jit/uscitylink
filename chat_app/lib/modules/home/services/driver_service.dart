@@ -24,4 +24,14 @@ class DriverService {
           : null,
     );
   }
+
+  Future<BaseResponse<dynamic>> getSearch(String search) async {
+    final response = await api.dio.get("${ApiEndpoints.search}?search=$search");
+
+    return BaseResponse<dynamic>(
+      status: response.data["status"] ?? false,
+      message: response.data["message"] ?? "",
+      data: response.data["data"],
+    );
+  }
 }

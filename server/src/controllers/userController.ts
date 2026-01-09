@@ -280,17 +280,21 @@ export async function getUserProfile(
         { model: Role, as: "role" },
       ],
     });
-     if(user && user?.dataValues?.user?.user_type === "driver" && user?.dataValues?.user?.yard_id){ 
-     const documents = await secondarySequelize.query<any>(
-      `SELECT * FROM documents WHERE item_id = :id AND type = :type`,
-      {
-        replacements: { id:  user?.dataValues?.user?.yard_id, type: "driver" },
-        type: QueryTypes.SELECT,
-      }
-    );
-     user!.dataValues.documents = documents;
-  }
-   
+    if (
+      user &&
+      user?.dataValues?.user?.user_type === "driver" &&
+      user?.dataValues?.user?.yard_id
+    ) {
+      const documents = await secondarySequelize.query<any>(
+        `SELECT * FROM documents WHERE item_id = :id AND type = :type`,
+        {
+          replacements: { id: user?.dataValues?.user?.yard_id, type: "driver" },
+          type: QueryTypes.SELECT,
+        }
+      );
+      user!.dataValues.documents = documents;
+    }
+
     return res.status(200).json({
       status: true,
       message: `Get Profile User Successfully.`,
@@ -549,71 +553,72 @@ export async function changePassword(
 
 export async function dashboard(req: Request, res: Response): Promise<any> {
   try {
-   const driverId = req.user?.id;
+    const driverId = req.user?.id;
 
-const groupUser = await GroupUser.findOne({
-  where: {
-    userProfileId: driverId,
-  },
-  include: [
-    {
-      model: Group,
+    const groupUser = await GroupUser.findOne({
       where: {
-        type: "truck",
-        name: {
-          [Op.ne]: "Mechanic",
-        },
+        userProfileId: driverId,
       },
-    },
-  ],
-});
+      include: [
+        {
+          model: Group,
+          where: {
+            type: "truck",
+            name: {
+              [Op.ne]: "Mechanic",
+            },
+          },
+        },
+      ],
+    });
 
-const getTruck = await secondarySequelize.query<any>(
-  `SELECT * FROM trucks WHERE number = :truckNumber`,
-  {
-    type: QueryTypes.SELECT,
-    replacements: {
-      truckNumber: groupUser?.dataValues.Group?.name,
-    },
-  }
-);
-const truckId = getTruck[0]?.id;
+    const getTruck = await secondarySequelize.query<any>(
+      `SELECT * FROM trucks WHERE number = :truckNumber`,
+      {
+        type: QueryTypes.SELECT,
+        replacements: {
+          truckNumber: groupUser?.dataValues.Group?.name,
+        },
+      }
+    );
+    const truckId = getTruck[0]?.id;
 
-// Get the latest inspection for this truck
-const latestInspection = await secondarySequelize.query<any>(
-  `SELECT * FROM daily_vehicle_inspections 
+    // Get the latest inspection for this truck
+    const latestInspection = await secondarySequelize.query<any>(
+      `SELECT * FROM daily_vehicle_inspections 
    WHERE truck_id = :id 
    ORDER BY id DESC 
    LIMIT 1`,
-  {
-    type: QueryTypes.SELECT,
-    replacements: {
-      id: truckId,
-    },
-  }
-);
-// Check if inspection was done and if 24 hours have passed
-let inspectionDoneToday = false;
+      {
+        type: QueryTypes.SELECT,
+        replacements: {
+          id: truckId,
+        },
+      }
+    );
+    // Check if inspection was done and if 24 hours have passed
+    let inspectionDoneToday = false;
 
+    if (latestInspection && latestInspection.length > 0) {
+      const lastInspectionTime = new Date(latestInspection[0].inspected_at);
+      const now = new Date();
 
-if (latestInspection && latestInspection.length > 0) {
-  const lastInspectionTime = new Date(latestInspection[0].inspected_at);
-  const now = new Date();
-  
-  console.log('Last inspection time:', lastInspectionTime);
-  console.log('Current time:', now);
-  
-  // Calculate the time difference in milliseconds (absolute value to avoid negatives)
-  const timeDifference = Math.abs(now.getTime() - lastInspectionTime.getTime());
-  
-  console.log('Time difference:', timeDifference);
-  console.log('24 hours in ms:', 24 * 60 * 60 * 1000);
-  
-  // Check if less than 24 hours (86400000 milliseconds) have passed
-  inspectionDoneToday = timeDifference < 24 * 60 * 60 * 1000;
-  
-  console.log('Inspection done today:', inspectionDoneToday);
-}
+      console.log("Last inspection time:", lastInspectionTime);
+      console.log("Current time:", now);
+
+      // Calculate the time difference in milliseconds (absolute value to avoid negatives)
+      const timeDifference = Math.abs(
+        now.getTime() - lastInspectionTime.getTime()
+      );
+
+      console.log("Time difference:", timeDifference);
+      console.log("24 hours in ms:", 24 * 60 * 60 * 1000);
+
+      // Check if less than 24 hours (86400000 milliseconds) have passed
+      inspectionDoneToday = timeDifference < 24 * 60 * 60 * 1000;
+
+      console.log("Inspection done today:", inspectionDoneToday);
+    }
 
     const userChannelCount = await UserChannel.count({
       where: {
@@ -776,7 +781,7 @@ if (latestInspection && latestInspection.length > 0) {
         type: QueryTypes.SELECT,
       }
     );
-    console.log(inspectionDoneToday)
+    console.log(inspectionDoneToday);
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
@@ -798,6 +803,91 @@ if (latestInspection && latestInspection.length > 0) {
         distinctChannelIds,
         isDocumentExpired: driverDocuments.length > 0 ? true : false,
       },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function searchResult(req: Request, res: Response): Promise<any> {
+  try {
+    const q = req.query.search as string;
+
+    if (!q || q.trim() === "") {
+      return res.status(400).json({ message: "Search query required" });
+    }
+
+    const search = `%${q}%`;
+
+    const [drivers, groups, truckGroups] = await Promise.all([
+      // 🔹 Drivers
+      UserProfile.findAll({
+        where: {
+          [Op.or]: [
+            {
+              username: {
+                [Op.like]: search, // %q%
+              },
+            },
+            {
+              "$user.driver_number$": {
+                [Op.like]: search, // %q%
+              },
+            },
+          ],
+        },
+        include: [
+          {
+            model: User,
+            as: "user",
+            attributes: ["id", "driver_number"],
+            required: false, // important
+          },
+          {
+            model: GroupUser,
+            as: "userGroups",
+            include: [
+              {
+                model: Group,
+                where: {
+                  type: "truck",
+                },
+              },
+            ],
+          },
+        ],
+        attributes: ["id", "username"],
+      }),
+
+      // 🔹 Groups (type = group)
+      Group.findAll({
+        where: {
+          type: "group",
+          name: {
+            [Op.like]: search,
+          },
+        },
+        attributes: ["id", "name", "type"],
+      }),
+
+      // 🔹 Truck Groups (type = truck)
+      Group.findAll({
+        where: {
+          type: "truck",
+          name: {
+            [Op.like]: search,
+          },
+        },
+        attributes: ["id", "name", "type"],
+      }),
+    ]);
+
+    return res.status(200).json({
+      status: true,
+      message: `Search data  successfully.`,
+      data: { drivers, groups, truckGroups },
     });
   } catch (err: any) {
     return res
@@ -976,7 +1066,6 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
       }
     );
 
-   
     const expiredDocuments = driverDocuments.map((doc) => {
       const expiryDate = moment(doc.expire_date);
       const now = moment();
@@ -1033,7 +1122,6 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
       });
     }
 
-    
     return res.status(200).json({
       status: true,
       message: `Get profile from yard successfully.`,
@@ -1053,11 +1141,10 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
 
 const formatUSDate = (date: string | Date | null) => {
   if (!date) return null;
-  return new Date(date).toLocaleDateString('en-US');
+  return new Date(date).toLocaleDateString("en-US");
 };
 export async function dashboardNew(req: Request, res: Response): Promise<any> {
   try {
-
     const userChannelCount = await Channel.count({});
     const templateCount = await Template.count({
       where: {
@@ -1078,13 +1165,12 @@ export async function dashboardNew(req: Request, res: Response): Promise<any> {
       },
     });
 
-   
     const driverCount = await User.count({
       where: {
         user_type: "driver",
       },
     });
-  
+
     const userTotalTruckGroups = await GroupChannel.count({
       where: {
         channelId: req.activeChannel,
@@ -1113,97 +1199,110 @@ export async function dashboardNew(req: Request, res: Response): Promise<any> {
       limit: 5,
     });
 
-     const modifiedData = await Promise.all(lastFiveDriver.map(async(e:any)=>{
-      const unreadCount = await MessageStaff.count({
-        where:{
-          driverId:e.profiles?.[0].id,
-          status:"un-read",
-          type:"chat",
-          staffId:req.user?.id
-        }
+    const modifiedData = await Promise.all(
+      lastFiveDriver.map(async (e: any) => {
+        const unreadCount = await MessageStaff.count({
+          where: {
+            driverId: e.profiles?.[0].id,
+            status: "un-read",
+            type: "chat",
+            staffId: req.user?.id,
+          },
+        });
+
+        return { ...e.dataValues, unreadCount: unreadCount };
       })
-    
+    );
 
-      return {...e.dataValues,unreadCount:unreadCount}
-    }))
-
-     const trucksgroup = await Group.findAll({
+    const trucksgroup = await Group.findAll({
       where: {
         type: "truck",
       },
       include: [
         {
-          model:GroupChannel,
-          as:"group_channel"
+          model: GroupChannel,
+          as: "group_channel",
         },
         {
-          model:GroupUser,
-          as:"group_users"
-        }
+          model: GroupUser,
+          as: "group_users",
+        },
       ],
       order: [["updatedAt", "DESC"]],
       limit: 5,
     });
 
-     let onlineDrivers = await User.findAll({
-  where: {
-    user_type: "driver",
-   
-   
-  },
-  attributes: ["id", "phone_number", "email", "driver_number", "status", "createdAt"],
-  include: [
-    {
-      model: UserProfile,
-      as: "profiles",
-      attributes: ["isOnline", "last_login","username", "id"],
-      required: true, // 👈 IMPORTANT: forces join so column exists
-      where:{
-        isOnline:true
-      }
-    },
-  ],
-  order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
-  limit: 5,
-});
-// STEP 2: If online < 5 ⇒ get remaining drivers by last login
-if (onlineDrivers.length < 5) {
-  const needed = 5 - onlineDrivers.length;
+    let onlineDrivers = await User.findAll({
+      where: {
+        user_type: "driver",
+      },
+      attributes: [
+        "id",
+        "phone_number",
+        "email",
+        "driver_number",
+        "status",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: UserProfile,
+          as: "profiles",
+          attributes: ["isOnline", "last_login", "username", "id"],
+          required: true, // 👈 IMPORTANT: forces join so column exists
+          where: {
+            isOnline: true,
+          },
+        },
+      ],
+      order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
+      limit: 5,
+    });
+    // STEP 2: If online < 5 ⇒ get remaining drivers by last login
+    if (onlineDrivers.length < 5) {
+      const needed = 5 - onlineDrivers.length;
 
-  const fallbackDrivers = await User.findAll({
-    where: {
-      user_type: "driver",
-     
-    },
-    attributes: ["id", "phone_number", "email", "driver_number", "status", "createdAt"],
-    include: [
-      {
-        model: UserProfile,
-        as: "profiles",
-        attributes: ["isOnline", "last_login","username", "id"],
-      }
-    ],
-    order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
-    limit: needed,
-  });
+      const fallbackDrivers = await User.findAll({
+        where: {
+          user_type: "driver",
+        },
+        attributes: [
+          "id",
+          "phone_number",
+          "email",
+          "driver_number",
+          "status",
+          "createdAt",
+        ],
+        include: [
+          {
+            model: UserProfile,
+            as: "profiles",
+            attributes: ["isOnline", "last_login", "username", "id"],
+          },
+        ],
+        order: [[{ model: UserProfile, as: "profiles" }, "last_login", "DESC"]],
+        limit: needed,
+      });
 
-  // MERGE THEM
-  onlineDrivers = [...onlineDrivers, ...fallbackDrivers];
-}
- const modifiedDataOnline = await Promise.all(onlineDrivers.map(async(e:any)=>{
-      const unreadCount = await MessageStaff.count({
-        where:{
-          driverId:e.profiles?.[0].id,
-          status:"un-read",
-          type:"chat",
-          staffId:req.user?.id
-        }
+      // MERGE THEM
+      onlineDrivers = [...onlineDrivers, ...fallbackDrivers];
+    }
+    const modifiedDataOnline = await Promise.all(
+      onlineDrivers.map(async (e: any) => {
+        const unreadCount = await MessageStaff.count({
+          where: {
+            driverId: e.profiles?.[0].id,
+            status: "un-read",
+            type: "chat",
+            staffId: req.user?.id,
+          },
+        });
+
+        return { ...e.dataValues, unreadCount: unreadCount };
       })
-    
+    );
 
-      return {...e.dataValues,unreadCount:unreadCount}
-    }))
-   
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
@@ -1216,9 +1315,8 @@ if (onlineDrivers.length < 5) {
         lastFiveDriver: modifiedData,
         driverCount,
         channelId: req.activeChannel,
-        onlineDrivers:modifiedDataOnline,
-        trucksgroups:trucksgroup
-    
+        onlineDrivers: modifiedDataOnline,
+        trucksgroups: trucksgroup,
       },
     });
   } catch (err: any) {

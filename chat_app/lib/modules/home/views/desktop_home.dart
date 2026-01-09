@@ -1,3 +1,4 @@
+import 'package:chat_app/core/controller/global_search_controller.dart';
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
@@ -22,11 +23,13 @@ class DesktopHomeView extends StatelessWidget {
   final controller = Get.find<HomeController>();
   final msgController = Get.find<MessageController>();
   final overviewController = Get.find<OverviewController>();
-
+  final searchCtrl = Get.find<GlobalSearchController>();
+  final searchKey = GlobalKey();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: AppColors.primary,
         toolbarHeight: 40,
         elevation: 0,
@@ -42,6 +45,9 @@ class DesktopHomeView extends StatelessWidget {
                 height: 30,
                 width: MediaQuery.of(context).size.width * 0.5,
                 child: TextField(
+                  key: searchKey,
+                  onChanged: (value) =>
+                      searchCtrl.onSearchChanged(value, context, searchKey),
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 14,
@@ -115,6 +121,22 @@ class DesktopHomeView extends StatelessWidget {
                               }
                             }),
                           ),
+
+                          if (msgController.isTyping.value)
+                            Align(
+                              alignment: AlignmentGeometry.topLeft,
+                              child: Container(
+                                margin: EdgeInsets.only(left: 10),
+                                child: Text(
+                                  msgController.typingMsg.value,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
                           if (msgController.currentTab.value ==
                               0) // DM Message List
                             MessageInput(),

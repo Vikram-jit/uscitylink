@@ -48,6 +48,7 @@ class MessageList extends StatelessWidget {
               if (showDateDivider)
                 DateDivider(date: _parseDate(message.messageTimestampUtc)),
               MessageBubble(
+                driverNumber: message.sender?.user?.driverNumber ?? "-",
                 thumbnail: message.thumbnail,
                 mediaUrl: message.url,
                 uploadType: message.urlUploadType,
