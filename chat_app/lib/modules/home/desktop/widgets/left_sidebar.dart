@@ -62,7 +62,16 @@ class LeftSidebar extends StatelessWidget {
             },
             active: isRouteActive(AppRoutes.driverChat),
           ),
-          SidebarIcon(Icons.fire_truck, tooltip: "Truck Groups"),
+          SidebarIcon(
+            Icons.fire_truck,
+            tooltip: "Truck Groups",
+            onTap: () {
+              HomeController homeController = Get.find<HomeController>();
+              homeController.closeDirectMessage(userId: "", userName: "");
+              Get.toNamed(AppRoutes.truckChat);
+            },
+            active: isRouteActive(AppRoutes.truckChat),
+          ),
           SidebarIcon(Icons.groups, tooltip: "Groups"),
 
           const Spacer(),

@@ -103,6 +103,155 @@ export async function getTrucks(req: Request, res: Response): Promise<any> {
     return res.status(400).json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
+export async function getRoutes(req: Request, res: Response): Promise<any> {
+  try {
+    // 1️⃣ Get trucks assigned to logged-in user
+    const groupUsers = await GroupUser.findAll({
+      where: {
+        userProfileId: req.user?.id
+      },
+      include: [
+        {
+          model: Group,
+          where: { type: "truck" },
+          attributes: ["name"] // truck number
+        }
+      ]
+    });
+
+    const truckNumbers = groupUsers
+      .map((g: any) => g?.Group?.name)
+      .filter(Boolean);
+  console.log(truckNumbers);
+    if (truckNumbers.length === 0) {
+      return res.status(200).json({
+        status: true,
+        message: "No routes found.",
+        data: []
+      });
+    }
+
+const routes = await secondarySequelize.query<any>(
+`
+SELECT
+  r.*,
+
+  /* 🚚 Trucks */
+  CONCAT(
+    '[',
+    GROUP_CONCAT(
+      DISTINCT JSON_OBJECT(
+        'id', t.id,
+        'number', t.number
+      )
+    ),
+    ']'
+  ) AS trucks,
+
+  /* ⛽ Stations + latest fuel price */
+  CONCAT(
+    '[',
+    GROUP_CONCAT(
+      JSON_OBJECT(
+        'id', s.id,
+        'store_number', s.store_number,
+        'name', s.name,
+        'address', s.address,
+        'city', s.city,
+        'state', s.state,
+        'zip_code', s.zip_code,
+        'interstate', s.interstate,
+        'latitude', s.latitude,
+        'longitude', s.longitude,
+        'phone_number', s.phone_number,
+        'parking_spaces_count', s.parking_spaces_count,
+        'fuel_lane_count', s.fuel_lane_count,
+        'shower_count', s.shower_count,
+        'amenities', s.amenities,
+        'restaurants', s.restaurants,
+
+        'latest_price', IFNULL(
+          JSON_OBJECT(
+            'product', p.product,
+            'your_price', p.your_price,
+            'retail_price', p.retail_price,
+            'savings_total', p.savings_total,
+            'effective_date', p.effective_date
+          ),
+          NULL
+        )
+      )
+    ),
+    ']'
+  ) AS stations
+
+FROM routes r
+
+/* 🔥 Filter routes by truck numbers */
+INNER JOIN route_truck rt_filter ON rt_filter.route_id = r.id
+INNER JOIN trucks t_filter ON t_filter.id = rt_filter.truck_id
+  AND t_filter.number IN (:truckNumbers)
+
+/* 🔁 All trucks */
+LEFT JOIN route_truck rt ON rt.route_id = r.id
+LEFT JOIN trucks t ON t.id = rt.truck_id
+
+/* 🔁 Stations */
+LEFT JOIN route_fuel_stations rfs ON rfs.route_id = r.id
+LEFT JOIN stations s ON s.id = rfs.station_id
+
+/* 🔥 Latest fuel price per store */
+LEFT JOIN (
+  SELECT dfpq.*
+  FROM daily_fuel_price_quotes dfpq
+  INNER JOIN (
+    SELECT site, MAX(effective_date) AS max_date
+    FROM daily_fuel_price_quotes
+    GROUP BY site
+  ) latest
+    ON latest.site = dfpq.site
+   AND latest.max_date = dfpq.effective_date
+) p ON p.site = s.store_number
+
+GROUP BY r.id
+ORDER BY r.created_at DESC
+`,
+{
+  replacements: { truckNumbers },
+  type: QueryTypes.SELECT
+});
+const parsedRoutes = routes.map(route => {
+  const trucks = JSON.parse(route.trucks || '[]');
+
+  const stations = JSON.parse(route.stations || '[]').map((station: any) => {
+    return {
+      ...station,
+      latest_price: station.latest_price
+        ? JSON.parse(station.latest_price)
+        : null
+    };
+  });
+
+  return {
+    ...route,
+    trucks,
+    stations
+  };
+});
+
+    return res.status(200).json({
+      status: true,
+      message: "Routes fetched successfully",
+      data: parsedRoutes
+    });
+
+  } catch (err: any) {
+    return res.status(400).json({
+      status: false,
+      message: err.message || "Internal Server Error"
+    });
+  }
+}
 
 
 export async function getById(req: Request, res: Response): Promise<any> {

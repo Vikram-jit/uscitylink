@@ -142,6 +142,12 @@ PODS:
   - gal (1.0.0):
     - Flutter
     - FlutterMacOS
+  - Google-Maps-iOS-Utils (6.1.0):
+    - GoogleMaps (~> 9.0)
+  - google_maps_flutter_ios (0.0.1):
+    - Flutter
+    - Google-Maps-iOS-Utils (< 7.0, >= 5.0)
+    - GoogleMaps (< 11.0, >= 8.4)
   - GoogleAdsOnDeviceConversion (2.3.0):
     - GoogleUtilities/Logger (~> 8.1)
     - GoogleUtilities/Network (~> 8.1)
@@ -171,6 +177,9 @@ PODS:
   - GoogleDataTransport (10.1.0):
     - nanopb (~> 3.30910.0)
     - PromisesObjC (~> 2.4)
+  - GoogleMaps (9.4.0):
+    - GoogleMaps/Maps (= 9.4.0)
+  - GoogleMaps/Maps (9.4.0)
   - GoogleUtilities (8.1.0):
     - GoogleUtilities/AppDelegateSwizzler (= 8.1.0)
     - GoogleUtilities/Environment (= 8.1.0)
@@ -251,10 +260,10 @@ PODS:
   - PromisesObjC (2.4.0)
   - PromisesSwift (2.4.0):
     - PromisesObjC (= 2.4.0)
-  - SDWebImage (5.21.2):
-    - SDWebImage/Core (= 5.21.2)
-  - SDWebImage/Core (5.21.2)
-  - SDWebImageWebPCoder (0.14.6):
+  - SDWebImage (5.21.5):
+    - SDWebImage/Core (= 5.21.5)
+  - SDWebImage/Core (5.21.5)
+  - SDWebImageWebPCoder (0.15.0):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
   - share_plus (0.0.1):
@@ -300,6 +309,7 @@ DEPENDENCIES:
   - flutter_sound (from `.symlinks/plugins/flutter_sound/ios`)
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - gal (from `.symlinks/plugins/gal/darwin`)
+  - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
   - GoogleDataTransport
   - GoogleUtilities
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
@@ -334,9 +344,11 @@ SPEC REPOS:
     - FirebaseRemoteConfigInterop
     - FirebaseSessions
     - flutter_sound_core
+    - Google-Maps-iOS-Utils
     - GoogleAdsOnDeviceConversion
     - GoogleAppMeasurement
     - GoogleDataTransport
+    - GoogleMaps
     - GoogleUtilities
     - libwebp
     - Mantle
@@ -380,6 +392,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/fluttertoast/ios"
   gal:
     :path: ".symlinks/plugins/gal/darwin"
+  google_maps_flutter_ios:
+    :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   just_audio:
@@ -439,9 +453,12 @@ SPEC CHECKSUMS:
   flutter_sound_core: 427465f72d07ab8c3edbe8ffdde709ddacd3763c
   fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
   gal: baecd024ebfd13c441269ca7404792a7152fde89
+  Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
+  google_maps_flutter_ios: 17552876e72723da1d41accc22f03b5f7afbde69
   GoogleAdsOnDeviceConversion: 9090c435cde08903e8dd1ba2c77fbec9e46d9afe
   GoogleAppMeasurement: 09f341dfa8527d1612a09cbfe809a242c0b737af
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
+  GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
@@ -455,8 +472,8 @@ SPEC CHECKSUMS:
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   PromisesSwift: 9d77319bbe72ebf6d872900551f7eeba9bce2851
-  SDWebImage: 9f177d83116802728e122410fb25ad88f5c7608a
-  SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
+  SDWebImage: e9c98383c7572d713c1a0d7dd2783b10599b9838
+  SDWebImageWebPCoder: 0e06e365080397465cc73a7a9b472d8a3bd0f377
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
@@ -466,6 +483,6 @@ SPEC CHECKSUMS:
   video_player_avfoundation: 2cef49524dd1f16c5300b9cd6efd9611ce03639b
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: 7af544af6fdd5b8ab5411739c4e4af50d5325bbd
+PODFILE CHECKSUM: 4db680723b05e876eefe5888b3950f10fb6989b9
 
 COCOAPODS: 1.16.2

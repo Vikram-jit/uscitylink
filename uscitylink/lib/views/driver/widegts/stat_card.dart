@@ -50,6 +50,12 @@ class StatCard extends StatelessWidget {
         Color(0xFF614385),
         Color(0xFF516395),
       ];
+    } else if (title == "FUEL STATIONS") {
+      return [
+        // Reddish
+        Color(0xFFEABC6A),
+        Color(0xFFF0A13A),
+      ];
     } else if (title == "STAFF GROUP") {
       return [
         // Reddish

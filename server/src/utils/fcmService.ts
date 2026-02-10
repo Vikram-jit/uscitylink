@@ -27,41 +27,45 @@ export const sendNotificationToDevice = async (
   deviceToken: string,
   message: NotificationMessage
 ) => {
-  const { title, body, data ,badge} = message;
+  const { title, body, data, badge } = message;
 
-  const messagePayload = {
-    notification: {
-      title: title,
-      body: body,
-      // sound: "default"
-     
-    },
+  const payload = {
+    notification: { title, body },
     token: deviceToken,
-    // priority: "high",
-    data: data,
+    data,
     android: {
-      notification: {
-        sound: "default",
-      },
+      notification: { sound: "default" },
     },
     apns: {
       payload: {
         aps: {
           sound: "default",
-          badge:badge
+          badge,
         },
       },
     },
-   
   };
 
   try {
-    const response = await admin.messaging().send(messagePayload);
-    console.log("Successfully sent notification:", response);
-    return response;
-  } catch (error) {
-    console.error("Error sending notification:", error);
-    //throw error;
+    return await admin.messaging().send(payload);
+  } catch (error: any) {
+    
+    // 🔥 HANDLE INVALID TOKEN SAFELY
+    if (
+      error.code === "messaging/registration-token-not-registered" ||
+      error.code === "messaging/invalid-registration-token"
+    ) {
+      console.warn("⚠️ Invalid FCM token. Removing from DB:", deviceToken);
+
+      // OPTIONAL: remove token from DB here
+      // await deleteDeviceToken(deviceToken);
+
+      return null; // ⛔ DO NOT throw
+    }
+
+    // Log other errors
+    console.error("FCM send error:", error);
+    return null;
   }
 };
 

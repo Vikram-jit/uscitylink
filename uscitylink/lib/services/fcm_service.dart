@@ -225,7 +225,23 @@ class FCMService extends GetxController {
   Future<void> _initializeFCM() async {
     // Request permissions for iOS or Android
     await _requestPermissions();
+    if (Platform.isIOS) {
+      await _firebaseMessaging.setAutoInitEnabled(true);
 
+      String? apnsToken;
+      for (int i = 0; i < 6; i++) {
+        apnsToken = await _firebaseMessaging.getAPNSToken();
+        if (apnsToken != null) break;
+        await Future.delayed(const Duration(seconds: 2));
+      }
+
+      if (apnsToken == null) {
+        print('❌ APNs token not ready yet, skipping FCM token init');
+        return; // ⛔ DO NOT call getToken
+      }
+
+      print('✅ APNs token ready');
+    }
     // Get the FCM token for this device
     String? token = await _firebaseMessaging.getToken();
     fcmToken.value = token ?? "";

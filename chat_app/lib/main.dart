@@ -1,9 +1,8 @@
 import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/modules/driver_chat/screen/driver_chat.dart';
-import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/not_found/not_found_view.dart';
-import 'package:chat_app/routes/app_route_observer.dart';
+import 'package:chat_app/modules/truck_chat/screens/truck_chat.dart';
 import 'package:chat_app/routes/auth_middleware.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -56,6 +55,12 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: AppRoutes.driverChat,
           page: () => DriverChat(),
+          middlewares: [AuthMiddleware()],
+          binding: InitialBindings(),
+        ),
+        GetPage(
+          name: AppRoutes.truckChat,
+          page: () => TruckChat(),
           middlewares: [AuthMiddleware()],
           binding: InitialBindings(),
         ),

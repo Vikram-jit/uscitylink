@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const baseUrl = "/api/v1";
+  static const baseUrl = "http://localhost:4300/api/v1";
 
   static const login = "/auth/loginwithweb";
   static const overview = "/user/new-dashboard";
@@ -9,4 +9,6 @@ class ApiEndpoints {
   static const user = "/user";
   static const messageByUserId = "/message/byUserId";
   static const search = "/user/search";
+  static const groups = "/group";
+  static const groupMessages = "/group/messages";
 }

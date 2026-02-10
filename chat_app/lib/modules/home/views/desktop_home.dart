@@ -14,6 +14,10 @@ import 'package:chat_app/modules/home/screens/channel_screen.dart';
 import 'package:chat_app/modules/home/screens/driver_screen.dart';
 import 'package:chat_app/modules/home/screens/template_screen.dart';
 import 'package:chat_app/modules/home/screens/user_screen.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_header.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_input.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_messages.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +26,7 @@ class DesktopHomeView extends StatelessWidget {
   DesktopHomeView({super.key});
   final controller = Get.find<HomeController>();
   final msgController = Get.find<MessageController>();
+  final groupMsgController = Get.find<GroupMessageController>();
   final overviewController = Get.find<OverviewController>();
   final searchCtrl = Get.find<GlobalSearchController>();
   final searchKey = GlobalKey();
@@ -140,6 +145,49 @@ class DesktopHomeView extends StatelessWidget {
                           if (msgController.currentTab.value ==
                               0) // DM Message List
                             MessageInput(),
+                        ],
+                      ),
+                    );
+                  case SidebarViewType.truckMessage:
+                    return Container(
+                      color: Colors.white,
+                      child: Column(
+                        children: [
+                          GroupHeader(
+                            userName: controller.selectedName.value,
+                          ), // DM Header
+                          Expanded(
+                            child: Obx(() {
+                              switch (groupMsgController.currentTab.value) {
+                                case 0:
+                                  return GroupMessages(); // Messages
+                                case 1:
+                                  return Text("Files"); // Files Tab Content
+                                case 2:
+                                  return Text("Pins"); // Pins Tab Content
+                                default:
+                                  return GroupMessages();
+                              }
+                            }),
+                          ),
+                          // if (msgController.isTyping.value)
+                          //   Align(
+                          //     alignment: AlignmentGeometry.topLeft,
+                          //     child: Container(
+                          //       margin: EdgeInsets.only(left: 10),
+                          //       child: Text(
+                          //         msgController.typingMsg.value,
+                          //         style: GoogleFonts.poppins(
+                          //           fontSize: 11,
+                          //           fontWeight: FontWeight.w800,
+                          //           color: Colors.black,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
+                          if (msgController.currentTab.value ==
+                              0) // DM Message List
+                            GroupInput(),
                         ],
                       ),
                     );

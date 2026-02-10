@@ -3,6 +3,7 @@ import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
 import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/model/pagination_model.dart';
+import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/model/truck_model.dart';
 import 'package:uscitylink/model/vehicle_model.dart';
 
@@ -206,6 +207,35 @@ class DocumentService {
       }
     } catch (e) {
       throw Exception('Error document: $e');
+    }
+  }
+
+  Future<ApiResponse<List<RouteModel>>> getRoutes() async {
+    try {
+      dynamic response =
+          await _apiService.getApi('${Constant.url}/yard/routes');
+
+      if (response != null) {
+        var data = response['data'];
+
+        if (data != null && data is List && data.isNotEmpty) {
+          List<RouteModel> templates =
+              data.map((item) => RouteModel.fromJson(item)).toList();
+
+          return ApiResponse<List<RouteModel>>(
+            data: templates,
+            message: response['message'] ?? 'Get Route List Successfully.',
+            status: response['status'] ?? true,
+          );
+        } else {
+          throw Exception('Expected a list in response["data"]');
+        }
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } catch (e) {
+      print(e);
+      throw Exception('Error fetching template: $e');
     }
   }
 

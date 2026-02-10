@@ -15,6 +15,7 @@ class UserStatusTile extends StatefulWidget {
   final bool isTyping;
   final int unreadCount;
   final String message;
+
   const UserStatusTile({
     super.key,
     required this.name,
@@ -59,10 +60,16 @@ class _UserStatusTileState extends State<UserStatusTile> {
 
         child: GestureDetector(
           onTap: () {
-            controller.openDirectMessage(
-              userId: widget.id,
-              userName: widget.name,
-            );
+            widget.type == TYPE.truck
+                ? controller.openDirectGroupMessage(
+                    id: widget.id,
+                    name: widget.name,
+                    type: widget.type.toString(),
+                  )
+                : controller.openDirectMessage(
+                    userId: widget.id,
+                    userName: widget.name,
+                  );
           },
 
           child: AnimatedContainer(

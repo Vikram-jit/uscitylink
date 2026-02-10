@@ -1,22 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/models/group_message_response_model.dart';
+import 'package:chat_app/models/group_response_model.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
-import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class MessageController extends GetxController {
+class GroupMessageController extends GetxController {
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
   final messages = <Messages>[].obs;
   final isLoading = false.obs;
-  final userProfile = UserProfileModel().obs;
+  final memmbers = <GroupMembers>[].obs;
+  final senderId = "".obs;
+  final group = GroupModel().obs;
 
-  RxString truckNumber = "".obs;
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
   int totalItems = 0;
@@ -82,7 +85,7 @@ class MessageController extends GetxController {
             scrollController.position.maxScrollExtent - 40 &&
         !isLoading.value &&
         hasMore.value) {
-      loadMore(_homeController.driverId.value);
+      loadMore(_homeController.groupId.value);
     }
   }
 
@@ -98,13 +101,14 @@ class MessageController extends GetxController {
 
   clearChat() {
     currentPage.value = 1;
-    userProfile.value = UserProfileModel();
-    truckNumber.value = "";
+    memmbers.clear();
+    senderId.value = "";
+    group.value = GroupModel();
     messages.clear();
     totalItems = 0;
   }
 
-  Future<void> loadMessages(String userId, int page) async {
+  Future<void> loadMessages(String groupId, int page) async {
     try {
       if (scrollController.hasClients) {
         scrollController.jumpTo(0);
@@ -112,15 +116,12 @@ class MessageController extends GetxController {
       isLoading.value = true;
       currentPage.value = page;
 
-      final res = await MessageService().getMessages(
-        userId,
-        page,
-        itemsPerPage,
-      );
+      final res = await MessageService().getGroupMessages(groupId, page);
 
       if (res.status) {
-        userProfile.value = res.data?.userProfile ?? UserProfileModel();
-        truckNumber.value = res.data?.truckNumbers ?? "";
+        memmbers.value = res.data?.members ?? [];
+        senderId.value = res.data?.senderId ?? "";
+        group.value = res.data?.group ?? GroupModel();
         messages.assignAll(res.data?.messages ?? []);
         totalItems = res.data?.pagination?.total ?? 0;
       } else {
@@ -137,11 +138,7 @@ class MessageController extends GetxController {
     try {
       isLoading.value = true;
 
-      final res = await MessageService().getMessages(
-        userId,
-        page,
-        itemsPerPage,
-      );
+      final res = await MessageService().getGroupMessages(userId, page);
       if (res.status) {
         final pagination = res.data?.pagination;
 
@@ -159,38 +156,38 @@ class MessageController extends GetxController {
 
   void sendMessage({
     required String body,
-    required String userId,
     String? replyMessageId,
     String? url,
     String? thumbnail,
   }) {
-    final payload = {
+    print("------");
+    String userIds = memmbers
+        .where((e) => e.status == "active")
+        .map((e) => e.userProfileId) // or e.id depending on your model
+        .join(",");
+    print(userIds);
+    SocketService().emit('send_message_to_user_by_group', {
+      "userId": userIds,
+      "groupId": group.value.id,
       "body": body,
-      "userId": userId,
-      "direction": "S",
-      "url": url,
-      "thumbnail": thumbnail,
-      if (replyMessageId != null) "r_message_id": replyMessageId,
-    };
-
-    SocketService().emit("send_message_to_user", payload);
-
+      "direction": 'S',
+      "url": '',
+    });
+    print("------");
     msgInputController.clear();
-
-    isTypingStaff.value = false;
-    sendTypingStatus(false);
   }
 
   void listenIncomingMessages() {
     final socket = SocketService().socket;
     if (socket == null) return;
 
-    socket.off('receive_message_channel');
+    socket.off('receive_message_group_truck');
 
-    socket.on('receive_message_channel', (data) {
+    socket.on('receive_message_group_truck', (data) {
       final message = Messages.fromJson(data);
       final messageModel = MessageModel.fromJson(data);
-      handleIncomingMessage(message, messageModel);
+      print(jsonEncode(messageModel));
+      //handleIncomingMessage(message, messageModel);
     });
   }
 
@@ -201,7 +198,7 @@ class MessageController extends GetxController {
     socket.off('typingUser');
 
     socket.on('typingUser', (data) {
-      if (data["userId"] == _homeController.driverId.value) {
+      if (data["userId"] == _homeController.groupId.value) {
         isTyping.value = data["isTyping"] ?? false;
         typingMsg.value = data["message"] ?? "";
       }
@@ -211,7 +208,7 @@ class MessageController extends GetxController {
   void handleIncomingMessage(Messages message, MessageModel messageModel) {
     final homeController = Get.find<HomeController>();
     // 1️⃣ If message belongs to current open chat → add to messages
-    if (message.userProfileId == homeController.driverId.value) {
+    if (message.userProfileId == homeController.groupId.value) {
       messages.insert(0, message);
 
       // Scroll handling

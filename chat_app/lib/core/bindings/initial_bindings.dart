@@ -5,6 +5,8 @@ import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:get/get.dart';
 
 class InitialBindings extends Bindings {
@@ -17,7 +19,12 @@ class InitialBindings extends Bindings {
     Get.put(HomeController());
 
     Get.put(OverviewController());
+    Get.put(GroupController());
     Get.lazyPut<MessageController>(() => MessageController(), fenix: true);
+    Get.lazyPut<GroupMessageController>(
+      () => GroupMessageController(),
+      fenix: true,
+    );
     Get.put(GlobalSearchController(), permanent: true);
   }
 }

@@ -18,6 +18,8 @@ import 'package:uscitylink/views/driver/views/daily_inspection/add_inspection_sc
 import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
+import 'package:uscitylink/views/driver/views/fuel_stations/fuel_stations_view.dart';
+import 'package:uscitylink/views/driver/views/fuel_stations/routes_dummy_data.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 import 'package:uscitylink/views/driver/widegts/stat_card.dart';
 
@@ -341,6 +343,27 @@ class _DriverDashboardState extends State<DriverDashboard>
                             title: "TRAINING SECTION",
                             value: 0,
                             icon: Icons.class_,
+                            gradientColors: [
+                              Color(0xFFffffff),
+                              Color(0xFFffffff),
+                            ], // Gradient colors
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            Get.to(() => FuelStationsView());
+                          },
+                          child: StatCard(
+                            title: "FUEL STATIONS",
+                            value: 0,
+                            icon: Icons.ev_station,
                             gradientColors: [
                               Color(0xFFffffff),
                               Color(0xFFffffff),
