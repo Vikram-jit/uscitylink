@@ -107,151 +107,212 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
   try {
     // 1️⃣ Get trucks assigned to logged-in user
     const groupUsers = await GroupUser.findAll({
-      where: {
-        userProfileId: req.user?.id
-      },
+      where: { userProfileId: req.user?.id },
       include: [
         {
           model: Group,
           where: { type: "truck" },
-          attributes: ["name"] // truck number
-        }
-      ]
+          attributes: ["name"], // truck number
+        },
+      ],
     });
 
     const truckNumbers = groupUsers
       .map((g: any) => g?.Group?.name)
       .filter(Boolean);
-  console.log(truckNumbers);
+
     if (truckNumbers.length === 0) {
       return res.status(200).json({
         status: true,
         message: "No routes found.",
-        data: []
+        data: [],
       });
     }
 
-const routes = await secondarySequelize.query<any>(
-`
-SELECT
-  r.*,
+    // 2️⃣ FLAT QUERY (NO JSON IN SQL)
+    const rows = await secondarySequelize.query<any>(
+      `
+      SELECT
+        r.id,
+        r.from_location,
+        r.to_location,
+        r.distance,
+        r.created_at,
+        r.updated_at,
+        r.from_address,
+        r.from_city,
+        r.from_state,
+        r.from_zip,
+        r.from_country,
+        r.from_lat,
+        r.from_lng,
+        r.to_address,
+        r.to_city,
+        r.to_state,
+        r.to_zip,
+        r.to_country,
+        r.to_lat,
+        r.to_lng,
 
-  /* 🚚 Trucks */
-  CONCAT(
-    '[',
-    GROUP_CONCAT(
-      DISTINCT JSON_OBJECT(
-        'id', t.id,
-        'number', t.number
-      )
-    ),
-    ']'
-  ) AS trucks,
+        t.id AS truck_id,
+        t.number AS truck_number,
 
-  /* ⛽ Stations + latest fuel price */
-  CONCAT(
-    '[',
-    GROUP_CONCAT(
-      JSON_OBJECT(
-        'id', s.id,
-        'store_number', s.store_number,
-        'name', s.name,
-        'address', s.address,
-        'city', s.city,
-        'state', s.state,
-        'zip_code', s.zip_code,
-        'interstate', s.interstate,
-        'latitude', s.latitude,
-        'longitude', s.longitude,
-        'phone_number', s.phone_number,
-        'parking_spaces_count', s.parking_spaces_count,
-        'fuel_lane_count', s.fuel_lane_count,
-        'shower_count', s.shower_count,
-        'amenities', s.amenities,
-        'restaurants', s.restaurants,
+        s.id AS station_id,
+        s.store_number,
+        s.name AS station_name,
+        s.address,
+        s.city AS station_city,
+        s.state AS station_state,
+        s.zip_code,
+        s.interstate,
+        s.latitude,
+        s.longitude,
+        s.phone_number,
+        s.parking_spaces_count,
+        s.fuel_lane_count,
+        s.shower_count,
+        s.amenities,
+        s.restaurants,
 
-        'latest_price', IFNULL(
-          JSON_OBJECT(
-            'product', p.product,
-            'your_price', p.your_price,
-            'retail_price', p.retail_price,
-            'savings_total', p.savings_total,
-            'effective_date', p.effective_date
-          ),
-          NULL
-        )
-      )
-    ),
-    ']'
-  ) AS stations
+        p.product,
+        p.your_price,
+        p.retail_price,
+        p.savings_total,
+        p.effective_date
 
-FROM routes r
+      FROM routes r
 
-/* 🔥 Filter routes by truck numbers */
-INNER JOIN route_truck rt_filter ON rt_filter.route_id = r.id
-INNER JOIN trucks t_filter ON t_filter.id = rt_filter.truck_id
-  AND t_filter.number IN (:truckNumbers)
+      /* 🔥 Filter routes by assigned trucks */
+      INNER JOIN route_truck rt_filter ON rt_filter.route_id = r.id
+      INNER JOIN trucks t_filter
+        ON t_filter.id = rt_filter.truck_id
+       AND t_filter.number IN (:truckNumbers)
 
-/* 🔁 All trucks */
-LEFT JOIN route_truck rt ON rt.route_id = r.id
-LEFT JOIN trucks t ON t.id = rt.truck_id
+      /* 🔁 All trucks */
+      LEFT JOIN route_truck rt ON rt.route_id = r.id
+      LEFT JOIN trucks t ON t.id = rt.truck_id
 
-/* 🔁 Stations */
-LEFT JOIN route_fuel_stations rfs ON rfs.route_id = r.id
-LEFT JOIN stations s ON s.id = rfs.station_id
+      /* 🔁 Stations */
+      LEFT JOIN route_fuel_stations rfs ON rfs.route_id = r.id
+      LEFT JOIN stations s ON s.id = rfs.station_id
 
-/* 🔥 Latest fuel price per store */
-LEFT JOIN (
-  SELECT dfpq.*
-  FROM daily_fuel_price_quotes dfpq
-  INNER JOIN (
-    SELECT site, MAX(effective_date) AS max_date
-    FROM daily_fuel_price_quotes
-    GROUP BY site
-  ) latest
-    ON latest.site = dfpq.site
-   AND latest.max_date = dfpq.effective_date
-) p ON p.site = s.store_number
+      /* 🔥 Latest fuel price */
+      LEFT JOIN (
+        SELECT dfpq.*
+        FROM daily_fuel_price_quotes dfpq
+        INNER JOIN (
+          SELECT site, MAX(effective_date) AS max_date
+          FROM daily_fuel_price_quotes
+          GROUP BY site
+        ) latest
+          ON latest.site = dfpq.site
+         AND latest.max_date = dfpq.effective_date
+      ) p ON p.site = s.store_number
 
-GROUP BY r.id
-ORDER BY r.created_at DESC
-`,
-{
-  replacements: { truckNumbers },
-  type: QueryTypes.SELECT
-});
-const parsedRoutes = routes.map(route => {
-  const trucks = JSON.parse(route.trucks || '[]');
+      ORDER BY r.created_at DESC
+      `,
+      {
+        replacements: { truckNumbers },
+        type: QueryTypes.SELECT,
+      }
+    );
 
-  const stations = JSON.parse(route.stations || '[]').map((station: any) => {
-    return {
-      ...station,
-      latest_price: station.latest_price
-        ? JSON.parse(station.latest_price)
-        : null
-    };
-  });
+    // 3️⃣ GROUP DATA SAFELY IN NODE
+    const routeMap = new Map<number, any>();
 
-  return {
-    ...route,
-    trucks,
-    stations
-  };
-});
+    for (const row of rows) {
+      // Create route
+      if (!routeMap.has(row.id)) {
+        routeMap.set(row.id, {
+          id: row.id,
+          from_location: row.from_location,
+          to_location: row.to_location,
+          distance: row.distance,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          from_address: row.from_address,
+          from_city: row.from_city,
+          from_state: row.from_state,
+          from_zip: row.from_zip,
+          from_country: row.from_country,
+          from_lat: row.from_lat,
+          from_lng: row.from_lng,
+          to_address: row.to_address,
+          to_city: row.to_city,
+          to_state: row.to_state,
+          to_zip: row.to_zip,
+          to_country: row.to_country,
+          to_lat: row.to_lat,
+          to_lng: row.to_lng,
+          trucks: [],
+          stations: [],
+        });
+      }
+
+      const route = routeMap.get(row.id);
+
+      // Add truck (dedupe)
+      if (
+        row.truck_id &&
+        !route.trucks.some((t: any) => t.id === row.truck_id)
+      ) {
+        route.trucks.push({
+          id: row.truck_id,
+          number: row.truck_number,
+        });
+      }
+
+      // Add station (dedupe)
+      if (
+        row.station_id &&
+        !route.stations.some((s: any) => s.id === row.station_id)
+      ) {
+        route.stations.push({
+          id: row.station_id,
+          store_number: row.store_number,
+          name: row.station_name,
+          address: row.address,
+          city: row.station_city,
+          state: row.station_state,
+          zip_code: row.zip_code,
+          interstate: row.interstate,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          phone_number: row.phone_number,
+          parking_spaces_count: row.parking_spaces_count,
+          fuel_lane_count: row.fuel_lane_count,
+          shower_count: row.shower_count,
+          amenities: row.amenities,
+          restaurants: row.restaurants,
+          latest_price: row.product
+            ? {
+                product: row.product,
+                your_price: row.your_price,
+                retail_price: row.retail_price,
+                savings_total: row.savings_total,
+                effective_date: row.effective_date,
+              }
+            : null,
+        });
+      }
+    }
+
+    const routes = Array.from(routeMap.values());
 
     return res.status(200).json({
       status: true,
       message: "Routes fetched successfully",
-      data: parsedRoutes
+      data: routes,
     });
-
   } catch (err: any) {
-    return res.status(400).json({
+    console.error("getRoutes error:", err);
+    return res.status(500).json({
       status: false,
-      message: err.message || "Internal Server Error"
+      message: err.message || "Internal Server Error",
     });
   }
 }
+
 
 
 export async function getById(req: Request, res: Response): Promise<any> {
