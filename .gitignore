@@ -2,7 +2,9 @@ server/node_modules
 server/dist
 server/public/uscitylink
 server/.env
+uscitylink/.env
 
 server/src/config/firebase.json
 server/config/firebase.json
 server/config/config.json
+

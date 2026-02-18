@@ -6,7 +6,7 @@ import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class StationDetailScreen extends StatelessWidget {
-  final Station station;
+  final Stations station;
 
   const StationDetailScreen({
     Key? key,
@@ -18,7 +18,7 @@ class StationDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(station.name),
+        title: Text(station.name ?? "Station Details"),
         backgroundColor: TColors.white,
         elevation: 0,
       ),
@@ -51,7 +51,7 @@ class StationDetailScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              station.name,
+                              station.name ?? "Unnamed Station",
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -77,11 +77,11 @@ class StationDetailScreen extends StatelessWidget {
                     title: 'Location',
                     children: [
                       Text(
-                        station.address,
+                        station.address ?? "Address not available",
                         style: const TextStyle(fontSize: 16),
                       ),
                       Text(
-                        '${station.city}, ${station.state} ${station.zipCode}',
+                        '${station.city ?? "City not available"}, ${station.state ?? "State not available"} ${station.zipCode ?? "Zip code not available"}',
                         style: const TextStyle(fontSize: 16),
                       ),
                       const SizedBox(height: 8),
@@ -92,7 +92,7 @@ class StationDetailScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          station.interstate,
+                          station.interstate ?? "Interstate info not available",
                           style: TextStyle(
                             color: Colors.blue[800],
                             fontWeight: FontWeight.bold,
@@ -105,9 +105,11 @@ class StationDetailScreen extends StatelessWidget {
                           Icon(Icons.phone, color: Colors.blue[700], size: 20),
                           const SizedBox(width: 8),
                           GestureDetector(
-                            onTap: () => _launchPhone(station.phoneNumber),
+                            onTap: () =>
+                                _launchPhone(station.phoneNumber ?? ""),
                             child: Text(
-                              station.phoneNumber,
+                              station.phoneNumber ??
+                                  "Phone number not available",
                               style: TextStyle(
                                 color: Colors.blue[700],
                                 decoration: TextDecoration.underline,
@@ -121,7 +123,7 @@ class StationDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   // Price Information
-                  if (station.latestPrice != null)
+                  if (station.fuelPrice != null)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -155,7 +157,7 @@ class StationDetailScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        '\$${station.latestPrice!.yourPrice.toStringAsFixed(3)}/gal',
+                                        '\$${station.fuelPrice!.yourPrice}/gal',
                                         style: TextStyle(
                                           fontSize: 28,
                                           fontWeight: FontWeight.bold,
@@ -175,7 +177,7 @@ class StationDetailScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        '\$${station.latestPrice!.retailPrice.toStringAsFixed(3)}/gal',
+                                        '\$${station.fuelPrice!.retailPrice}/gal',
                                         style: TextStyle(
                                           fontSize: 18,
                                           color: Colors.grey[600],
@@ -195,7 +197,7 @@ class StationDetailScreen extends StatelessWidget {
                                               BorderRadius.circular(12),
                                         ),
                                         child: Text(
-                                          'Save \$${station.latestPrice!.savingsTotal.toStringAsFixed(3)}',
+                                          'Save \$${station.fuelPrice!.savingsTotal}',
                                           style: TextStyle(
                                             color: Colors.green[900],
                                             fontWeight: FontWeight.bold,
@@ -209,7 +211,7 @@ class StationDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Effective: ${_formatDate(station.latestPrice!.effectiveDate)}',
+                              'Effective: ${_formatDate(station.fuelPrice!.effectiveDate)}',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontStyle: FontStyle.italic,
@@ -253,7 +255,7 @@ class StationDetailScreen extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: station.amenities
+                        children: (station.amenities?.split('|') ?? [])
                             .map((amenity) => Chip(
                                   label: Text(amenity),
                                   backgroundColor: Colors.blue[50],
@@ -265,8 +267,7 @@ class StationDetailScreen extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   // Restaurants
-                  if (station.restaurants.isNotEmpty &&
-                      station.restaurants.first.isNotEmpty)
+                  if ((station.restaurants?.length ?? 0) > 0)
                     Column(
                       children: [
                         _buildSection(
@@ -277,13 +278,15 @@ class StationDetailScreen extends StatelessWidget {
                               spacing: 8,
                               runSpacing: 8,
                               children: station.restaurants
-                                  .map((restaurant) => Chip(
-                                        label: Text(restaurant),
-                                        backgroundColor: Colors.orange[50],
-                                        avatar: Icon(Icons.restaurant_menu,
-                                            color: Colors.orange[700]),
-                                      ))
-                                  .toList(),
+                                      ?.split("|")
+                                      .map((restaurant) => Chip(
+                                            label: Text(restaurant),
+                                            backgroundColor: Colors.orange[50],
+                                            avatar: Icon(Icons.restaurant_menu,
+                                                color: Colors.orange[700]),
+                                          ))
+                                      .toList() ??
+                                  [],
                             ),
                           ],
                         ),
@@ -297,11 +300,8 @@ class StationDetailScreen extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            _launchDirections(
-                              context,
-                              station.latitude,
-                              station.longitude,
-                            );
+                            _launchDirections(context, station.latitude ?? 0.0,
+                                station.longitude ?? 0.0);
                           },
                           icon: const Icon(Icons.directions),
                           label: const Text('Get Directions'),
@@ -315,7 +315,8 @@ class StationDetailScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _launchPhone(station.phoneNumber),
+                          onPressed: () =>
+                              _launchPhone(station.phoneNumber ?? ""),
                           icon: const Icon(Icons.phone),
                           label: const Text('Call Station'),
                           style: OutlinedButton.styleFrom(
@@ -370,7 +371,19 @@ class StationDetailScreen extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(dynamic value) {
+    if (value == null) return '';
+
+    late DateTime date;
+
+    if (value is DateTime) {
+      date = value;
+    } else if (value is String) {
+      date = DateTime.parse(value);
+    } else {
+      throw ArgumentError('Invalid date type: ${value.runtimeType}');
+    }
+
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 

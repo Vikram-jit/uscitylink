@@ -2,6 +2,7 @@ class VehicleModel {
   int? id;
 
   String? number;
+  String? samsara_vehicle_id;
   int? year;
   String? make;
   String? model;
@@ -19,6 +20,7 @@ class VehicleModel {
 
   VehicleModel(
       {this.id,
+      this.samsara_vehicle_id,
       this.number,
       this.year,
       this.make,
@@ -39,6 +41,7 @@ class VehicleModel {
     pre_pass_id = json['pre_pass_id'];
     driver_fuel_id = json['driver_fuel_id'];
     fuel_card_number = json['fuel_card_number'];
+    samsara_vehicle_id = json['samsara_vehicle_id'];
     number = json['number'];
     year = json['year'];
     make = json['make'];
@@ -64,6 +67,7 @@ class VehicleModel {
     data['pre_pass_id'] = this.pre_pass_id;
     data['driver_fuel_id'] = this.driver_fuel_id;
     data['fuel_card_number'] = this.fuel_card_number;
+    data['samsara_vehicle_id'] = this.samsara_vehicle_id;
     data['number'] = this.number;
     data['year'] = this.year;
     data['make'] = this.make;

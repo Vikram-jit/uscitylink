@@ -116,11 +116,11 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
         },
       ],
     });
-
+   
     const truckNumbers = groupUsers
       .map((g: any) => g?.Group?.name)
       .filter(Boolean);
-
+  
     if (truckNumbers.length === 0) {
       return res.status(200).json({
         status: true,
@@ -128,7 +128,15 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
         data: [],
       });
     }
+ const trucks = await secondarySequelize.query<any>(
+      `SELECT * FROM trucks WHERE number = :truckNumber`,
+      {
 
+        type: QueryTypes.SELECT,
+        replacements:{truckNumber: truckNumbers?.[0]}
+      }
+    
+    );
     // 2️⃣ FLAT QUERY (NO JSON IN SQL)
     const rows = await secondarySequelize.query<any>(
       `
@@ -156,6 +164,7 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
 
         t.id AS truck_id,
         t.number AS truck_number,
+        t.samsara_vehicle_id AS samsara_vehicle_id,
 
         s.id AS station_id,
         s.store_number,
@@ -244,6 +253,7 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
           to_country: row.to_country,
           to_lat: row.to_lat,
           to_lng: row.to_lng,
+          truck: trucks.length > 0 ? trucks?.[0] : null,
           trucks: [],
           stations: [],
         });
@@ -302,7 +312,7 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
     return res.status(200).json({
       status: true,
       message: "Routes fetched successfully",
-      data: routes,
+      data:routes,
     });
   } catch (err: any) {
     console.error("getRoutes error:", err);
