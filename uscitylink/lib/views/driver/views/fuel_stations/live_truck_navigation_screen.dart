@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -14,14 +13,18 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
-// Your Stations and FuelPrice models remain the same...
-
 class LiveTruckNavigationScreen extends StatefulWidget {
   final Stations station;
+  final double truckLat; // Add truck latitude
+  final double truckLng; // Add truck longitude
+  final String truckName; // Add truck name
 
   const LiveTruckNavigationScreen({
     super.key,
     required this.station,
+    required this.truckLat,
+    required this.truckLng,
+    this.truckName = 'Truck',
   });
 
   @override
@@ -30,60 +33,101 @@ class LiveTruckNavigationScreen extends StatefulWidget {
 }
 
 class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
-  GoogleMapController? _mapController; // Make private with underscore
-  Position? currentPosition;
-  StreamSubscription<Position>? positionStream;
+  GoogleMapController? _mapController;
 
-  // Get API key from environment
+  // Truck location state
+  late double _truckLat;
+  late double _truckLng;
+  String _truckName = 'Truck';
+
+  // API key
   late final String googleApiKey;
 
+  // Map elements
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
 
+  // Route info
   String distance = "";
   String duration = "";
 
+  // Icons
   BitmapDescriptor? truckIcon;
   BitmapDescriptor? stationIcon;
 
+  // UI State
   bool _isLoading = true;
   String? _errorMessage;
-
-  // Zoom level
   double _currentZoom = 14.0;
   bool _showStationDetails = false;
-
-  // Add a flag to track if the widget is disposed
   bool _isDisposed = false;
+
+  // Timer for API refresh
+  Timer? _apiRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    _truckLat = widget.truckLat;
+    _truckLng = widget.truckLng;
+    _truckName = widget.truckName;
     _initialize();
+    _startApiRefreshTimer();
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-
-    // Cancel all subscriptions
-    positionStream?.cancel();
-    positionStream = null;
-
-    // Properly dispose the map controller
+    _apiRefreshTimer?.cancel();
+    _apiRefreshTimer = null;
     _mapController?.dispose();
     _mapController = null;
-
     super.dispose();
   }
 
-  // Safe method to update map controller
-  Future<void> _safeAnimateCamera(CameraUpdate update) async {
-    if (_isDisposed || _mapController == null) return;
+  // Start timer to refresh truck location every 10 seconds
+  void _startApiRefreshTimer() {
+    _apiRefreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (!_isDisposed && mounted) {
+        _fetchUpdatedTruckLocation();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  // Method to fetch updated truck location from API
+  Future<void> _fetchUpdatedTruckLocation() async {
     try {
-      await _mapController!.animateCamera(update);
+      print('🔄 Fetching updated truck location...');
+
+      // TODO: Replace with your actual API call
+      // This is a placeholder - implement your actual API call here
+      /*
+      final response = await http.get(
+        Uri.parse('YOUR_API_ENDPOINT/truck-location'),
+        headers: {'Authorization': 'Bearer YOUR_TOKEN'},
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _truckLat = data['latitude'];
+          _truckLng = data['longitude'];
+        });
+        await _updateMap();
+      }
+      */
+
+      // For demo purposes, simulate a small movement
+      setState(() {
+        // Simulate slight movement for demo
+        _truckLat += 0.0001;
+        _truckLng += 0.0001;
+      });
+      await _updateMap();
     } catch (e) {
-      print('Error animating camera: $e');
+      print('Error fetching truck location: $e');
     }
   }
 
@@ -101,7 +145,13 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
       }
 
       await loadIcons();
-      await _checkPermissionsAndStartTracking();
+      await _updateMap();
+
+      if (_isSafeToUpdate) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (_isSafeToUpdate) {
         setState(() {
@@ -173,9 +223,7 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
       );
 
       final paragraphBuilder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(
-          textAlign: TextAlign.center,
-        ),
+        ui.ParagraphStyle(textAlign: TextAlign.center),
       )
         ..pushStyle(textStyle)
         ..addText(iconStr);
@@ -229,92 +277,10 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
     }
   }
 
-  Future<void> _checkPermissionsAndStartTracking() async {
-    // Check if location services are enabled
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (_isSafeToUpdate) {
-        setState(() {
-          _errorMessage = 'Location services are disabled. Please enable them.';
-          _isLoading = false;
-        });
-      }
-      return;
-    }
+  Future<void> _updateMap() async {
+    if (_isDisposed) return;
 
-    // Check and request permissions
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        if (_isSafeToUpdate) {
-          setState(() {
-            _errorMessage = 'Location permissions are denied.';
-            _isLoading = false;
-          });
-        }
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (_isSafeToUpdate) {
-        setState(() {
-          _errorMessage = 'Location permissions are permanently denied.';
-          _isLoading = false;
-        });
-      }
-      return;
-    }
-
-    // Get initial position
-    try {
-      currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-
-      if (_isSafeToUpdate) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-
-      await updateMap();
-
-      // Start listening for position updates
-      positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 10,
-        ),
-      ).listen(
-        (Position position) {
-          if (_isDisposed) return;
-          currentPosition = position;
-          updateMap();
-        },
-        onError: (error) {
-          if (_isSafeToUpdate) {
-            setState(() {
-              _errorMessage = 'Error getting location updates: $error';
-            });
-          }
-        },
-      );
-    } catch (e) {
-      if (_isSafeToUpdate) {
-        setState(() {
-          _errorMessage = 'Error getting current position: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> updateMap() async {
-    if (_isDisposed || currentPosition == null) return;
-
-    LatLng truck =
-        LatLng(currentPosition!.latitude, currentPosition!.longitude);
+    LatLng truck = LatLng(_truckLat, _truckLng);
     LatLng station = LatLng(
       widget.station.latitude ?? 0.0,
       widget.station.longitude ?? 0.0,
@@ -330,12 +296,11 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
           position: truck,
           icon: truckIcon ??
               BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(title: "Your Truck"),
-          rotation: currentPosition!.heading,
+          infoWindow: InfoWindow(
+            title: _truckName,
+            snippet: 'Live location - Updates every 10s',
+          ),
           anchor: const Offset(0.5, 0.5),
-          onTap: () {
-            _showTruckInfo();
-          },
         ));
 
         // Station marker
@@ -357,17 +322,26 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
 
     await getRoute(truck, station);
 
-    // Only animate if not manually zooming and widget is still active
+    // Only animate if not manually zooming
     if (!_showStationDetails && !_isDisposed) {
-      await _safeAnimateCamera(
+      _safeAnimateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: truck,
             zoom: _currentZoom,
-            bearing: currentPosition!.heading,
           ),
         ),
       );
+    }
+  }
+
+  // Safe method to update map controller
+  Future<void> _safeAnimateCamera(CameraUpdate update) async {
+    if (_isDisposed || _mapController == null) return;
+    try {
+      await _mapController!.animateCamera(update);
+    } catch (e) {
+      print('Error animating camera: $e');
     }
   }
 
@@ -389,50 +363,11 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
     return details.isNotEmpty ? details.join(' • ') : "Tap for details";
   }
 
-  void _showTruckInfo() {
-    if (_isDisposed) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Your Truck'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('Speed',
-                '${currentPosition?.speed?.toStringAsFixed(1) ?? '0'} m/s'),
-            _buildInfoRow('Heading',
-                '${currentPosition?.heading?.toStringAsFixed(0) ?? '0'}°'),
-            _buildInfoRow('Accuracy',
-                '±${currentPosition?.accuracy?.toStringAsFixed(1) ?? '0'} m'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> openMapSmart() async {
     if (_isDisposed) return;
 
-    if (currentPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Waiting for current location...'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final startLat = currentPosition!.latitude;
-    final startLng = currentPosition!.longitude;
+    final startLat = _truckLat;
+    final startLng = _truckLng;
     final endLat = widget.station.latitude ?? 0.0;
     final endLng = widget.station.longitude ?? 0.0;
 
@@ -857,19 +792,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
   void _navigateToStation() {
     if (_isDisposed) return;
 
@@ -954,16 +876,20 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
   }
 
   void _zoomIn() {
-    setState(() {
-      _currentZoom = (_currentZoom + 1).clamp(3.0, 20.0);
-    });
+    if (_isSafeToUpdate) {
+      setState(() {
+        _currentZoom = (_currentZoom + 1).clamp(3.0, 20.0);
+      });
+    }
     _safeAnimateCamera(CameraUpdate.zoomIn());
   }
 
   void _zoomOut() {
-    setState(() {
-      _currentZoom = (_currentZoom - 1).clamp(3.0, 20.0);
-    });
+    if (_isSafeToUpdate) {
+      setState(() {
+        _currentZoom = (_currentZoom - 1).clamp(3.0, 20.0);
+      });
+    }
     _safeAnimateCamera(CameraUpdate.zoomOut());
   }
 
@@ -1012,12 +938,7 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
       );
     }
 
-    LatLng start = currentPosition == null
-        ? LatLng(
-            widget.station.latitude ?? 0.0,
-            widget.station.longitude ?? 0.0,
-          )
-        : LatLng(currentPosition!.latitude, currentPosition!.longitude);
+    LatLng start = LatLng(_truckLat, _truckLng);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -1026,6 +947,52 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         backgroundColor: TColors.white,
         elevation: 0,
         actions: [
+          // Live indicator
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  'Live',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '10s',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: _showStationDetailsModal,
@@ -1042,12 +1009,12 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: CameraPosition(target: start, zoom: 14),
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            myLocationEnabled: false, // Disabled - using passed truck location
+            myLocationButtonEnabled: false,
             markers: markers,
             polylines: polylines,
             onMapCreated: (c) {
-              _mapController = c; // Store the controller properly
+              _mapController = c;
             },
             onCameraMove: (position) {
               if (_isSafeToUpdate) {

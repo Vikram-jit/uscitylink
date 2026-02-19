@@ -129,7 +129,7 @@ class GoogleMapController extends GetxController {
 
     final idsParam = vehicleIds.join(',');
     final url = Uri.parse(
-      'https://api.samsara.com/fleet/vehicles/stats?vehicleIds=$idsParam&types=gps',
+      'https://api.samsara.com/fleet/vehicles/stats?vehicleIds=$idsParam&types=gps,fuelPercents',
     );
 
     print('📍 Fetching live truck locations for IDs: $idsParam');

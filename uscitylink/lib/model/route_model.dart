@@ -161,26 +161,37 @@ class Stations {
   String? amenities;
   String? restaurants;
   FuelPrice? fuelPrice;
+  bool? isRecommended;
+  double? distanceFromRoute;
+  bool? isCheapestInState;
+  double? distanceFromTruck;
+  bool? isNearestStation;
+  bool? isBothNearestAndCheapest;
 
-  Stations({
-    this.id,
-    this.storeNumber,
-    this.name,
-    this.address,
-    this.city,
-    this.state,
-    this.zipCode,
-    this.interstate,
-    this.latitude,
-    this.longitude,
-    this.phoneNumber,
-    this.parkingSpacesCount,
-    this.fuelLaneCount,
-    this.showerCount,
-    this.amenities,
-    this.restaurants,
-    this.fuelPrice,
-  });
+  Stations(
+      {this.id,
+      this.storeNumber,
+      this.name,
+      this.address,
+      this.city,
+      this.state,
+      this.zipCode,
+      this.interstate,
+      this.latitude,
+      this.longitude,
+      this.phoneNumber,
+      this.parkingSpacesCount,
+      this.fuelLaneCount,
+      this.showerCount,
+      this.amenities,
+      this.restaurants,
+      this.fuelPrice,
+      this.distanceFromRoute,
+      this.isCheapestInState,
+      this.distanceFromTruck,
+      this.isRecommended,
+      this.isBothNearestAndCheapest,
+      this.isNearestStation});
 
   Stations.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -198,6 +209,12 @@ class Stations {
     fuelLaneCount = json['fuel_lane_count'];
     showerCount = json['shower_count'];
     amenities = json['amenities'];
+    isCheapestInState = json['isCheapestInState'];
+    isRecommended = json['isRecommended'];
+    isBothNearestAndCheapest = json['isBothNearestAndCheapest'];
+    isNearestStation = json['isNearestStation'];
+    distanceFromRoute = json['distanceFromRoute'];
+    distanceFromTruck = json['distanceFromTruck'];
     restaurants = json['restaurants'];
     fuelPrice = json['latest_price'] != null
         ? FuelPrice.fromJson(json['latest_price'])
@@ -212,8 +229,14 @@ class Stations {
     data['address'] = address;
     data['city'] = city;
     data['state'] = state;
+    data['isCheapestInState'] = isCheapestInState;
+    data['isRecommended'] = isRecommended;
+    data['distanceFromRoute'] = distanceFromRoute;
+    data['distanceFromTruck'] = distanceFromTruck;
     data['zip_code'] = zipCode;
     data['interstate'] = interstate;
+    data['isNearestStation'] = isNearestStation;
+    data['isBothNearestAndCheapest'] = isBothNearestAndCheapest;
     data['latitude'] = latitude ?? 0.0;
     data['longitude'] = longitude ?? 0.0;
     data['phone_number'] = phoneNumber;

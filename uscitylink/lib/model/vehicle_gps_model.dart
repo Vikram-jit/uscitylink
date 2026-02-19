@@ -7,7 +7,8 @@ class VehicleGpsModel {
   final double? headingDegrees;
   final double? speedMilesPerHour;
   final String? formattedLocation;
-
+  final int? fuelPercent; // Added fuelPercent field
+  final DateTime? fuelPercentTime; // Time when fuel percent was recorded
   VehicleGpsModel({
     required this.vehicleId,
     required this.vehicleName,
@@ -17,12 +18,15 @@ class VehicleGpsModel {
     this.headingDegrees,
     this.speedMilesPerHour,
     this.formattedLocation,
+    this.fuelPercent,
+    this.fuelPercentTime,
   });
 
   // Factory constructor to create an object from the API JSON
   factory VehicleGpsModel.fromJson(Map<String, dynamic> json) {
     final vehicle = json;
     final gps = vehicle['gps'] ?? {};
+    final fuelPercentData = vehicle['fuelPercent']; // Extract fuelPercent data
 
     return VehicleGpsModel(
       vehicleId: vehicle['id'] ?? '',
@@ -34,6 +38,10 @@ class VehicleGpsModel {
       headingDegrees: (gps['headingDegrees']?.toDouble()),
       speedMilesPerHour: (gps['speedMilesPerHour']?.toDouble()),
       formattedLocation: gps['reverseGeo']?['formattedLocation'],
+      fuelPercent: fuelPercentData?['value'], // Get fuel percent value
+      fuelPercentTime: fuelPercentData?['time'] != null
+          ? DateTime.parse(fuelPercentData['time'])
+          : null, // Get fuel percent timestamp
     );
   }
 }

@@ -270,27 +270,27 @@ export async function groupAddMember(
     const { members } = req.body;
 
     //check member active count
-    if (group?.type != "group" && group?.name?.trim() != "Mechanic") {
-      const isCheckCount = await GroupUser.findAndCountAll({
-        where: {
-          groupId: group?.id,
-          status: "active",
-        },
-      });
-      if (
-        members?.split(",")?.length > 2 &&
-        group?.name?.trim() != "Mechanic"
-      ) {
-        throw new Error(
-          "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
-        );
-      }
+    // if (group?.type != "group" && group?.name?.trim() != "Mechanic") {
+    //   const isCheckCount = await GroupUser.findAndCountAll({
+    //     where: {
+    //       groupId: group?.id,
+    //       status: "active",
+    //     },
+    //   });
+    //   if (
+    //     members?.split(",")?.length > 2 &&
+    //     group?.name?.trim() != "Mechanic"
+    //   ) {
+    //     throw new Error(
+    //       "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+    //     );
+    //   }
 
-      if (isCheckCount.count == 2)
-        throw new Error(
-          "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
-        );
-    }
+    //   if (isCheckCount.count == 2)
+    //     throw new Error(
+    //       "This group currently has 2 members. To add a new member, you must disable or delete at least one existing member."
+    //     );
+    // }
 
     await GroupUser.destroy({
       where: {

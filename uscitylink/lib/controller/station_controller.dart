@@ -6,23 +6,57 @@ class StationGroup {
   final String stateName;
   final List<Stations> stations;
   final int stationCount;
+  double? minDistanceFromTruck; // Add this property
 
   StationGroup({
     required this.stateCode,
     required this.stateName,
     required this.stations,
+    this.minDistanceFromTruck,
   }) : stationCount = stations.length;
 
-  // Add copyWith method if needed
+  bool get hasRecommendedStation =>
+      stations.any((s) => s.isRecommended == true);
+
+  Stations? get recommendedStation {
+    try {
+      return stations.firstWhere((s) => s.isRecommended == true);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Stations? get cheapestStation {
+    final stationsWithPrice = stations
+        .where((s) =>
+            s.fuelPrice?.yourPrice != null &&
+            double.tryParse(s.fuelPrice!.yourPrice!) != null)
+        .toList();
+
+    if (stationsWithPrice.isEmpty) return null;
+
+    stationsWithPrice.sort((a, b) {
+      final priceA =
+          double.tryParse(a.fuelPrice!.yourPrice!) ?? double.infinity;
+      final priceB =
+          double.tryParse(b.fuelPrice!.yourPrice!) ?? double.infinity;
+      return priceA.compareTo(priceB);
+    });
+
+    return stationsWithPrice.first;
+  }
+
   StationGroup copyWith({
     String? stateCode,
     String? stateName,
     List<Stations>? stations,
+    double? minDistanceFromTruck,
   }) {
     return StationGroup(
       stateCode: stateCode ?? this.stateCode,
       stateName: stateName ?? this.stateName,
       stations: stations ?? this.stations,
+      minDistanceFromTruck: minDistanceFromTruck ?? this.minDistanceFromTruck,
     );
   }
 }
