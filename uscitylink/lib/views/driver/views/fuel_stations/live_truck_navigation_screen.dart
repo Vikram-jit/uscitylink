@@ -5,19 +5,21 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uscitylink/controller/route_controller.dart';
 import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
 class LiveTruckNavigationScreen extends StatefulWidget {
   final Stations station;
-  final double truckLat; // Add truck latitude
-  final double truckLng; // Add truck longitude
-  final String truckName; // Add truck name
+  final double truckLat;
+  final double truckLng;
+  final String truckName;
 
   const LiveTruckNavigationScreen({
     super.key,
@@ -34,6 +36,7 @@ class LiveTruckNavigationScreen extends StatefulWidget {
 
 class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
   GoogleMapController? _mapController;
+  RouteController _routeController = Get.find<RouteController>();
 
   // Truck location state
   late double _truckLat;
@@ -101,37 +104,20 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
     try {
       print('🔄 Fetching updated truck location...');
 
-      // TODO: Replace with your actual API call
-      // This is a placeholder - implement your actual API call here
-      /*
-      final response = await http.get(
-        Uri.parse('YOUR_API_ENDPOINT/truck-location'),
-        headers: {'Authorization': 'Bearer YOUR_TOKEN'},
-      );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final latLng = await _routeController.getTuckLocation();
+      if (latLng != null && mounted) {
         setState(() {
-          _truckLat = data['latitude'];
-          _truckLng = data['longitude'];
+          _truckLat = latLng.latitude;
+          _truckLng = latLng.longitude;
         });
+        print('✅ Truck location updated: $_truckLat, $_truckLng');
         await _updateMap();
       }
-      */
-
-      // For demo purposes, simulate a small movement
-      setState(() {
-        // Simulate slight movement for demo
-        _truckLat += 0.0001;
-        _truckLng += 0.0001;
-      });
-      await _updateMap();
     } catch (e) {
       print('Error fetching truck location: $e');
     }
   }
 
-  // Safe method to check if widget is still mounted and not disposed
   bool get _isSafeToUpdate => !_isDisposed && mounted;
 
   Future<void> _initialize() async {
@@ -163,115 +149,151 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
   }
 
   Future<Uint8List> getBytesFromAsset(String path, int width) async {
-    final ByteData data = await rootBundle.load(path);
-    final ui.Codec codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetWidth: width,
-    );
-    final ui.FrameInfo fi = await codec.getNextFrame();
-    final byteData = await fi.image.toByteData(format: ui.ImageByteFormat.png);
-    return byteData!.buffer.asUint8List();
+    try {
+      final ByteData data = await rootBundle.load(path);
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        data.buffer.asUint8List(),
+        targetWidth: width,
+      );
+      final ui.FrameInfo fi = await codec.getNextFrame();
+      final byteData =
+          await fi.image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData!.buffer.asUint8List();
+    } catch (e) {
+      print('Error loading asset $path: $e');
+      rethrow;
+    }
   }
 
-  Future<BitmapDescriptor> _createCustomMarker({
-    required IconData icon,
-    required Color color,
-    int size = 64,
-  }) async {
+  // IMPROVED: Create custom truck icon
+  Future<BitmapDescriptor> _createTruckIcon() async {
     try {
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
+      // Try to load from assets first
+      try {
+        final Uint8List iconData =
+            await getBytesFromAsset('assets/truck.png', 120);
+        return BitmapDescriptor.fromBytes(iconData);
+      } catch (e) {
+        print('Asset truck icon not found, creating custom icon');
 
-      // Draw shadow
-      final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-      canvas.drawCircle(
-        Offset(size / 2 + 2, size / 2 + 2),
-        size / 2 - 6,
-        shadowPaint,
-      );
+        // Create custom truck icon
+        final size = 100.0;
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
 
-      // Draw main circle
-      final circlePaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(
-        Offset(size / 2, size / 2),
-        size / 2 - 6,
-        circlePaint,
-      );
+        // Draw truck body
+        final paint = Paint()
+          ..color = Colors.blue.shade700
+          ..style = PaintingStyle.fill;
 
-      // Draw white border
-      final borderPaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
-      canvas.drawCircle(
-        Offset(size / 2, size / 2),
-        size / 2 - 6,
-        borderPaint,
-      );
+        // Draw rectangle for truck body
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(size * 0.2, size * 0.3, size * 0.6, size * 0.4),
+            Radius.circular(size * 0.1),
+          ),
+          paint,
+        );
 
-      // Draw icon
-      final iconStr = String.fromCharCode(icon.codePoint);
-      final textStyle = ui.TextStyle(
-        fontSize: size * 0.5,
-        fontFamily: icon.fontFamily,
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-      );
+        // Draw cabin
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(size * 0.6, size * 0.2, size * 0.25, size * 0.3),
+            Radius.circular(size * 0.05),
+          ),
+          paint,
+        );
 
-      final paragraphBuilder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(textAlign: TextAlign.center),
-      )
-        ..pushStyle(textStyle)
-        ..addText(iconStr);
+        // Draw wheels
+        final wheelPaint = Paint()..color = Colors.black87;
+        canvas.drawCircle(
+            Offset(size * 0.3, size * 0.7), size * 0.1, wheelPaint);
+        canvas.drawCircle(
+            Offset(size * 0.7, size * 0.7), size * 0.1, wheelPaint);
 
-      final paragraph = paragraphBuilder.build();
-      paragraph.layout(ui.ParagraphConstraints(width: size.toDouble()));
+        // Draw window
+        final windowPaint = Paint()..color = Colors.white70;
+        canvas.drawRect(
+          Rect.fromLTWH(size * 0.65, size * 0.25, size * 0.15, size * 0.15),
+          windowPaint,
+        );
 
-      canvas.drawParagraph(
-        paragraph,
-        Offset(
-          (size - paragraph.width) / 2,
-          (size - paragraph.height) / 2,
-        ),
-      );
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(size.toInt(), size.toInt());
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
 
-      final picture = recorder.endRecording();
-      final image = await picture.toImage(size, size);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final bytes = byteData!.buffer.asUint8List();
-
-      return BitmapDescriptor.fromBytes(bytes);
+        return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+      }
     } catch (e) {
-      print('Error creating custom marker: $e');
-      throw e;
+      print('Error creating truck icon: $e');
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+    }
+  }
+
+  Future<BitmapDescriptor> _createStationIcon() async {
+    try {
+      // Try to load from assets first
+      try {
+        final Uint8List iconData =
+            await getBytesFromAsset('assets/images/gas_station.png', 100);
+        return BitmapDescriptor.fromBytes(iconData);
+      } catch (e) {
+        print('Asset station icon not found, creating custom icon');
+
+        // Create custom station icon
+        final size = 80.0;
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+
+        // Draw orange circle
+        final paint = Paint()
+          ..color = Colors.orange
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(size * 0.5, size * 0.5), size * 0.4, paint);
+
+        // Draw white border
+        final borderPaint = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3;
+        canvas.drawCircle(
+            Offset(size * 0.5, size * 0.5), size * 0.4, borderPaint);
+
+        // Draw fuel pump icon (simplified)
+        final pumpPaint = Paint()..color = Colors.white;
+        canvas.drawRect(
+          Rect.fromLTWH(size * 0.4, size * 0.3, size * 0.2, size * 0.4),
+          pumpPaint,
+        );
+
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(size.toInt(), size.toInt());
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+        return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+      }
+    } catch (e) {
+      print('Error creating station icon: $e');
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
     }
   }
 
   Future<void> loadIcons() async {
     try {
-      // Load station icon from assets
-      try {
-        final Uint8List markerIcon =
-            await getBytesFromAsset('assets/images/gas_station.png', 500);
-        final Uint8List markerTruckIcon =
-            await getBytesFromAsset('assets/truck.png', 500);
-        stationIcon = BitmapDescriptor.bytes(markerIcon);
-        truckIcon = BitmapDescriptor.bytes(markerTruckIcon);
-      } catch (e) {
-        // Fallback to custom marker
-        stationIcon = await _createCustomMarker(
-          icon: Icons.local_gas_station,
-          color: Colors.orange,
-        );
-        truckIcon =
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-      }
+      print('=== Loading Icons ===');
+
+      // Load truck icon
+      truckIcon = await _createTruckIcon();
+      print('✓ Truck icon loaded');
+
+      // Load station icon
+      stationIcon = await _createStationIcon();
+      print('✓ Station icon loaded');
     } catch (e) {
+      print('❌ Error loading icons: $e');
       // Fallback to default markers
+      truckIcon =
+          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
       stationIcon =
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
     }
@@ -290,7 +312,7 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
       setState(() {
         markers.clear();
 
-        // Truck marker
+        // Truck marker with proper icon
         markers.add(Marker(
           markerId: const MarkerId("truck"),
           position: truck,
@@ -300,7 +322,9 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
             title: _truckName,
             snippet: 'Live location - Updates every 10s',
           ),
-          anchor: const Offset(0.5, 0.5),
+          anchor: const Offset(0.5, 0.5), // Center the icon
+          draggable: false,
+          flat: true, // Makes marker face the camera
         ));
 
         // Station marker
@@ -316,6 +340,7 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
           onTap: () {
             _showStationDetailsModal();
           },
+          anchor: const Offset(0.5, 0.5),
         ));
       });
     }
@@ -379,7 +404,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         '&travelmode=driving',
       );
 
-      // Android - Try Google Navigation first
       if (Platform.isAndroid) {
         final Uri androidUrl = Uri.parse(
           'google.navigation:q=$endLat,$endLng&mode=d',
@@ -391,7 +415,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         }
       }
 
-      // iOS - Try Google Maps first, then Apple Maps
       if (Platform.isIOS) {
         final Uri iosGoogleMaps = Uri.parse(
           'comgooglemaps://?saddr=$startLat,$startLng&daddr=$endLat,$endLng&directionsmode=driving',
@@ -412,7 +435,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         }
       }
 
-      // Fallback to web version
       await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (_isSafeToUpdate) {
@@ -433,7 +455,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
       _showStationDetails = true;
     });
 
-    // Zoom to station
     _safeAnimateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
@@ -535,10 +556,10 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
                           widget.station.fuelPrice!.formattedSavings),
                       if (widget.station.fuelPrice!.effectiveDate != null)
                         _buildDetailRow(
-                            Icons.update,
-                            'Effective',
-                            _formatDate(
-                                widget.station.fuelPrice!.effectiveDate!)),
+                          Icons.update,
+                          'Effective',
+                          _formatDate(widget.station.fuelPrice!.effectiveDate!),
+                        ),
                     ],
                   ),
 
@@ -546,18 +567,14 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
                 _buildDetailSection(
                   title: 'Amenities',
                   icon: Icons.room_service,
-                  children: [
-                    _buildAmenitiesRow(),
-                  ],
+                  children: [_buildAmenitiesRow()],
                 ),
 
                 // Station Facilities
                 _buildDetailSection(
                   title: 'Facilities',
                   icon: Icons.business,
-                  children: [
-                    _buildFacilitiesRow(),
-                  ],
+                  children: [_buildFacilitiesRow()],
                 ),
 
                 // Contact Section
@@ -608,7 +625,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Smart Map Navigation Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -801,7 +817,6 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         backgroundColor: Colors.blue,
       ),
     );
-    // Add your in-app navigation logic here
   }
 
   void _centerOnStation() {
@@ -1009,7 +1024,7 @@ class _LiveTruckNavigationScreenState extends State<LiveTruckNavigationScreen> {
         children: [
           GoogleMap(
             initialCameraPosition: CameraPosition(target: start, zoom: 14),
-            myLocationEnabled: false, // Disabled - using passed truck location
+            myLocationEnabled: false,
             myLocationButtonEnabled: false,
             markers: markers,
             polylines: polylines,

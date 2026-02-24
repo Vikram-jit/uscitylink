@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -8,6 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/controller/route_controller.dart';
@@ -33,9 +37,14 @@ class _StationMapScreenState extends State<StationMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   final Map<MarkerId, Marker> _markers = {};
   bool _isLoading = true;
+  bool _isRouteLoading = false;
+
   Set<Polyline> _polylines = {};
 
-  // Icons - Increased size
+  // API key
+  late String _googleApiKey;
+
+  // Icons
   BitmapDescriptor? _stationIcon;
   BitmapDescriptor? _startIcon;
   BitmapDescriptor? _endIcon;
@@ -57,28 +66,32 @@ class _StationMapScreenState extends State<StationMapScreen> {
   @override
   void initState() {
     super.initState();
+    _loadApiKey();
     _currentCenter = truckLocation != null
         ? LatLng(truckLocation!.latitude, truckLocation!.longitude)
         : LatLng(
             widget.routeData.fromLat as double,
             widget.routeData.fromLng as double,
           );
+
     _initializeMap();
-
-    // Listen for truck location updates from controller
     _setupTruckLocationListener();
-
-    // Start API timer to refresh data every 10 seconds
     _startApiTimer();
+  }
+
+  Future<void> _loadApiKey() async {
+    await dotenv.load();
+    _googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+    if (_googleApiKey.isEmpty) {
+      print('❌ Google Maps API key not found');
+    }
   }
 
   void _startApiTimer() {
     _apiTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         print('🔄 Refreshing truck location data...');
-        // Trigger API call through your controller
-        routeController
-            .fetchRoutes(); // You'll need to implement this in your controller
+        routeController.fetchRoutes();
       }
     });
   }
@@ -92,24 +105,11 @@ class _StationMapScreenState extends State<StationMapScreen> {
   }
 
   void _updateTruckMarkerFromController(VehicleGpsModel location) {
-    final position = Position(
-      latitude: location.latitude,
-      longitude: location.longitude,
-      timestamp: location.timestamp,
-      accuracy: 5.0,
-      altitude: 0.0,
-      heading: location.headingDegrees ?? 0.0,
-      speed: location.speedMilesPerHour ?? 0.0,
-      speedAccuracy: 1.0,
-      altitudeAccuracy: 0.0,
-      headingAccuracy: 5.0,
-    );
+    if (!mounted) return;
 
     setState(() {
-      // Remove old truck marker
       _markers.remove(const MarkerId('truck'));
 
-      // Add updated truck marker with larger size
       _markers[const MarkerId('truck')] = Marker(
         markerId: const MarkerId('truck'),
         position: LatLng(location.latitude, location.longitude),
@@ -123,13 +123,9 @@ class _StationMapScreenState extends State<StationMapScreen> {
           snippet:
               'Speed: ${location.speedMilesPerHour?.toStringAsFixed(1)} mph',
         ),
-        onTap: () => _showTruckInfo(position),
+        onTap: () => _showTruckInfoFromModel(location),
       );
     });
-
-    if (_isTrackingTruck) {
-      _followTruck(position);
-    }
   }
 
   @override
@@ -138,37 +134,44 @@ class _StationMapScreenState extends State<StationMapScreen> {
     super.dispose();
   }
 
-  Future<void> _followTruck(Position position) async {
-    try {
-      final controller = await _controller.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(position.latitude, position.longitude),
-            zoom: _zoomLevel,
-            bearing: position.heading,
-          ),
-        ),
-      );
-    } catch (e) {
-      print('Error following truck: $e');
-    }
-  }
-
   Future<void> _initializeMap() async {
     try {
       await _loadIcons();
       await _createMarkers();
-      await _createRoutePolyline();
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
 
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _zoomToFitAllMarkers();
-      });
+      // Load route in background
+      _fetchRouteInBackground();
     } catch (e) {
       print('Error initializing map: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _fetchRouteInBackground() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isRouteLoading = true;
+    });
+
+    try {
+      await _fetchRoutePolyline();
+    } catch (e) {
+      print('Error fetching route: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRouteLoading = false;
+        });
+      }
     }
   }
 
@@ -183,11 +186,75 @@ class _StationMapScreenState extends State<StationMapScreen> {
     return byteData!.buffer.asUint8List();
   }
 
+  Future<BitmapDescriptor> _createTruckIcon() async {
+    try {
+      // Try to load from assets first
+      try {
+        final Uint8List iconData =
+            await getBytesFromAsset('assets/truck.png', 120);
+        return BitmapDescriptor.fromBytes(iconData);
+      } catch (e) {
+        print('Asset truck icon not found, creating custom icon');
+
+        // Create custom truck icon
+        final size = 100.0;
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+
+        // Draw truck body
+        final paint = Paint()
+          ..color = Colors.blue.shade700
+          ..style = PaintingStyle.fill;
+
+        // Draw rectangle for truck body
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(size * 0.2, size * 0.3, size * 0.6, size * 0.4),
+            Radius.circular(size * 0.1),
+          ),
+          paint,
+        );
+
+        // Draw cabin
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(size * 0.6, size * 0.2, size * 0.25, size * 0.3),
+            Radius.circular(size * 0.05),
+          ),
+          paint,
+        );
+
+        // Draw wheels
+        final wheelPaint = Paint()..color = Colors.black87;
+        canvas.drawCircle(
+            Offset(size * 0.3, size * 0.7), size * 0.1, wheelPaint);
+        canvas.drawCircle(
+            Offset(size * 0.7, size * 0.7), size * 0.1, wheelPaint);
+
+        // Draw window
+        final windowPaint = Paint()..color = Colors.white70;
+        canvas.drawRect(
+          Rect.fromLTWH(size * 0.65, size * 0.25, size * 0.15, size * 0.15),
+          windowPaint,
+        );
+
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(size.toInt(), size.toInt());
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+        return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+      }
+    } catch (e) {
+      print('Error creating truck icon: $e');
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+    }
+  }
+
   Future<void> _loadIcons() async {
     try {
       print('=== Loading Icons ===');
 
-      // Load truck icons with larger size (increased to 100)
+      // Load truck icons
       try {
         final truckIconData = await getBytesFromAsset('assets/truck.png', 100);
         final truckMovingIconData =
@@ -199,11 +266,10 @@ class _StationMapScreenState extends State<StationMapScreen> {
         print('❌ Could not load truck icon: $e');
         _truckIcon = await _createCustomTruckIcon(
             Icons.local_shipping, Colors.blue, 100);
-        _truckMovingIcon = await _createCustomTruckIcon(
-            Icons.local_shipping, Colors.green, 100);
+        _truckMovingIcon = await _createTruckIcon();
       }
 
-      // Load station icon with larger size (increased to 80)
+      // Load station icon
       try {
         final markerIcon =
             await getBytesFromAsset('assets/images/gas_station.png', 80);
@@ -218,7 +284,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
         );
       }
 
-      // Create start/end markers with larger size (increased to 70)
+      // Create start/end markers
       _startIcon = await _createCustomMarker(
         icon: Icons.flag,
         color: Colors.green,
@@ -233,7 +299,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
       print('✓ All icons created successfully');
     } catch (e) {
       print('❌ Error loading icons: $e');
-      // Fallback to defaults (default markers have standard size)
       _truckIcon =
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
       _truckMovingIcon =
@@ -254,13 +319,13 @@ class _StationMapScreenState extends State<StationMapScreen> {
   Future<BitmapDescriptor> _createCustomMarker({
     required IconData icon,
     required Color color,
-    int size = 80, // Increased default size
+    int size = 80,
   }) async {
     try {
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
-      // Draw shadow (scaled with size)
+      // Draw shadow
       final shadowPaint = Paint()
         ..color = Colors.black.withOpacity(0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
@@ -270,7 +335,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
         shadowPaint,
       );
 
-      // Draw main circle (scaled with size)
+      // Draw main circle
       final circlePaint = Paint()
         ..color = color
         ..style = PaintingStyle.fill;
@@ -280,18 +345,18 @@ class _StationMapScreenState extends State<StationMapScreen> {
         circlePaint,
       );
 
-      // Draw white border (scaled with size)
+      // Draw white border
       final borderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4; // Increased border width
+        ..strokeWidth = 4;
       canvas.drawCircle(
         Offset(size / 2, size / 2),
         size / 2 - 6,
         borderPaint,
       );
 
-      // Draw icon (scaled with size)
+      // Draw icon
       final iconStr = String.fromCharCode(icon.codePoint);
       final textStyle = ui.TextStyle(
         fontSize: size * 0.5,
@@ -334,7 +399,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
       print('=== Creating Markers ===');
       final markers = <MarkerId, Marker>{};
 
-      // Add truck marker from controller (larger size already set in icon)
+      // Add truck marker
       if (truckLocation != null) {
         markers[const MarkerId('truck')] = Marker(
           markerId: const MarkerId('truck'),
@@ -351,10 +416,9 @@ class _StationMapScreenState extends State<StationMapScreen> {
           ),
           onTap: () => _showTruckInfoFromModel(truckLocation!),
         );
-        print('✓ Truck marker added');
       }
 
-      // Add station markers from controller's nearbyStations (larger size already set in icon)
+      // Add station markers
       for (var i = 0; i < nearbyStations.length; i++) {
         final station = nearbyStations[i];
         final markerId = MarkerId('station_${station.id}');
@@ -377,7 +441,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
         );
       }
 
-      // Add route start marker (larger size already set in icon)
+      // Add start marker
       markers[const MarkerId('start')] = Marker(
         markerId: const MarkerId('start'),
         position: LatLng(
@@ -393,7 +457,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
         draggable: false,
       );
 
-      // Add route end marker (larger size already set in icon)
+      // Add end marker
       markers[const MarkerId('end')] = Marker(
         markerId: const MarkerId('end'),
         position: LatLng(
@@ -409,50 +473,124 @@ class _StationMapScreenState extends State<StationMapScreen> {
         draggable: false,
       );
 
-      setState(() {
-        _markers.clear();
-        _markers.addAll(markers);
-      });
+      if (mounted) {
+        setState(() {
+          _markers.clear();
+          _markers.addAll(markers);
+        });
+      }
 
       print('=== Markers Created Successfully ===');
       print('Total markers: ${_markers.length}');
-      print('Stations: ${nearbyStations.length}');
     } catch (e) {
       print('❌ Error creating markers: $e');
     }
   }
 
-  Future<void> _createRoutePolyline() async {
+  // SIMPLIFIED: Just fetch one proper route
+// SIMPLIFIED: Just fetch one proper route
+  Future<void> _fetchRoutePolyline() async {
     try {
-      // In a real app, you'd get the full route polyline from Directions API
-      // For now, we'll just draw a straight line
+      if (_googleApiKey.isEmpty) {
+        await _loadApiKey();
+        if (_googleApiKey.isEmpty) return;
+      }
+
+      final origin = "${widget.routeData.fromLat},${widget.routeData.fromLng}";
+      final destination = "${widget.routeData.toLat},${widget.routeData.toLng}";
+
+      final url = "https://maps.googleapis.com/maps/api/directions/json"
+          "?origin=$origin"
+          "&destination=$destination"
+          "&mode=driving"
+          "&key=$_googleApiKey";
+
+      print('📍 Fetching route...');
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode != 200) {
+        _drawSimpleRoute();
+        return;
+      }
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      if (data['status'] != 'OK') {
+        _drawSimpleRoute();
+        return;
+      }
+
+      // Get the first route
+      final route = data['routes'][0];
+
+      // FIXED: Specify type parameters for compute
+      final points = await compute<String, List<LatLng>>(
+          _decodePolyline, route['overview_polyline']['points']);
+
+      if (points.isEmpty) {
+        _drawSimpleRoute();
+        return;
+      }
+
+      print('✅ Route fetched with ${points.length} points');
+
+      // Create the polyline
       final polyline = Polyline(
         polylineId: const PolylineId('route'),
         color: Colors.blue,
-        width: 4,
-        points: [
-          LatLng(
-            widget.routeData.fromLat as double,
-            widget.routeData.fromLng as double,
-          ),
-          LatLng(
-            widget.routeData.toLat as double,
-            widget.routeData.toLng as double,
-          ),
-        ],
+        width: 5,
+        points: points,
+        jointType: JointType.round,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
       );
 
-      setState(() {
-        _polylines = {polyline};
-      });
-
-      print('✓ Route polyline created');
+      if (mounted) {
+        setState(() {
+          _polylines = {polyline};
+        });
+      }
     } catch (e) {
-      print('Error creating polyline: $e');
+      print('❌ Error: $e');
+      _drawSimpleRoute();
     }
   }
 
+// Background task for polyline decoding
+  static List<LatLng> _decodePolyline(String encoded) {
+    try {
+      final points = PolylinePoints.decodePolyline(encoded);
+      return points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    } catch (e) {
+      print('Error decoding polyline: $e');
+      return [];
+    }
+  }
+
+  // Simple fallback route
+  void _drawSimpleRoute() {
+    if (!mounted) return;
+
+    final simpleLine = Polyline(
+      polylineId: const PolylineId('route'),
+      color: Colors.blue,
+      width: 4,
+      points: [
+        LatLng(widget.routeData.fromLat as double,
+            widget.routeData.fromLng as double),
+        LatLng(
+            widget.routeData.toLat as double, widget.routeData.toLng as double),
+      ],
+    );
+
+    setState(() {
+      _polylines = {simpleLine};
+    });
+  }
+
   void _showTruckInfoFromModel(VehicleGpsModel truck) {
+    if (!mounted) return;
+
     final position = Position(
       latitude: truck.latitude,
       longitude: truck.longitude,
@@ -469,6 +607,8 @@ class _StationMapScreenState extends State<StationMapScreen> {
   }
 
   void _showTruckInfo(Position position) {
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -478,39 +618,13 @@ class _StationMapScreenState extends State<StationMapScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Truck Location',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Truck Location',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             _buildInfoRow('Speed', '${position.speed.toStringAsFixed(1)} mph'),
             _buildInfoRow('Heading', '${position.heading.toStringAsFixed(0)}°'),
-            _buildInfoRow(
-                'Accuracy', '±${position.accuracy.toStringAsFixed(1)} m'),
             _buildInfoRow('Last Update', _formatTime(position.timestamp)),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _toggleTruckTracking();
-                    },
-                    icon:
-                        Icon(_isTrackingTruck ? Icons.pause : Icons.play_arrow),
-                    label: Text(_isTrackingTruck
-                        ? 'Pause Tracking'
-                        : 'Resume Tracking'),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -523,157 +637,42 @@ class _StationMapScreenState extends State<StationMapScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(label, style: const TextStyle(color: Colors.grey)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inSeconds < 60) {
-      return '${difference.inSeconds} seconds ago';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return '${difference.inHours} hours ago';
-    }
-  }
-
-  void _toggleTruckTracking() {
-    setState(() {
-      _isTrackingTruck = !_isTrackingTruck;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text(_isTrackingTruck ? 'Tracking enabled' : 'Tracking paused'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
-  Future<void> _zoomToFitAllMarkers() async {
+  Future<void> _followTruck(Position position) async {
     try {
-      if (_markers.isEmpty) return;
-
       final controller = await _controller.future;
-
-      // If only one marker, center on it with good zoom
-      if (_markers.length == 1) {
-        final marker = _markers.values.first;
-        await controller.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: marker.position,
-              zoom: 14.0, // Good zoom for single point
-            ),
-          ),
-        );
-        return;
-      }
-
-      // Calculate center point
-      double latSum = 0;
-      double lngSum = 0;
-      final points = _markers.values.map((m) => m.position).toList();
-
-      for (var point in points) {
-        latSum += point.latitude;
-        lngSum += point.longitude;
-      }
-
-      final center = LatLng(
-        latSum / points.length,
-        lngSum / points.length,
-      );
-
-      // Calculate distances to find appropriate zoom
-      double maxDistance = 0;
-      for (var point in points) {
-        final distance = _calculateDistance(center, point);
-        if (distance > maxDistance) {
-          maxDistance = distance;
-        }
-      }
-
-      // Convert distance to zoom level
-      // Rough formula: zoom = 14 - log2(distance in km)
-      double zoomLevel;
-      if (maxDistance < 1) {
-        // Less than 1km
-        zoomLevel = 15.0;
-      } else if (maxDistance < 5) {
-        // 1-5km
-        zoomLevel = 13.0;
-      } else if (maxDistance < 10) {
-        // 5-10km
-        zoomLevel = 12.0;
-      } else if (maxDistance < 20) {
-        // 10-20km
-        zoomLevel = 11.0;
-      } else if (maxDistance < 50) {
-        // 20-50km
-        zoomLevel = 10.0;
-      } else if (maxDistance < 100) {
-        // 50-100km
-        zoomLevel = 9.0;
-      } else if (maxDistance < 200) {
-        // 100-200km
-        zoomLevel = 8.0;
-      } else if (maxDistance < 500) {
-        // 200-500km
-        zoomLevel = 7.0;
-      } else {
-        zoomLevel = 6.0; // 500km+
-      }
-
-      // Ensure minimum zoom level of 10
-      zoomLevel = zoomLevel < 10 ? 10 : zoomLevel;
-
-      print('📍 Center: $center');
-      print('📍 Max distance: ${maxDistance.toStringAsFixed(2)} km');
-      print('📍 Setting zoom level: $zoomLevel');
-
       await controller.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
-            target: center,
-            zoom: zoomLevel,
+            target: LatLng(position.latitude, position.longitude),
+            zoom: _zoomLevel,
+            bearing: position.heading,
           ),
         ),
       );
     } catch (e) {
-      print('Error zooming to markers: $e');
+      print('Error following truck: $e');
     }
   }
 
-// Helper method to calculate distance between two points in kilometers
-  double _calculateDistance(LatLng p1, LatLng p2) {
-    const double R = 6371; // Earth's radius in km
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
 
-    final dLat = _toRadians(p2.latitude - p1.latitude);
-    final dLon = _toRadians(p2.longitude - p1.longitude);
-
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_toRadians(p1.latitude)) *
-            cos(_toRadians(p2.latitude)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
-  }
-
-  double _toRadians(double degree) {
-    return degree * pi / 180;
+    if (difference.inSeconds < 60) return '${difference.inSeconds}s ago';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    return '${difference.inHours}h ago';
   }
 
   void _showStationDetails(Stations station) {
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -682,10 +681,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
         height: MediaQuery.of(context).size.height * 0.8,
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
@@ -698,9 +694,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            Expanded(
-              child: StationDetailScreen(station: station),
-            ),
+            Expanded(child: StationDetailScreen(station: station)),
           ],
         ),
       ),
@@ -729,18 +723,19 @@ class _StationMapScreenState extends State<StationMapScreen> {
           ),
           markers: Set<Marker>.of(_markers.values),
           polylines: _polylines,
-          myLocationEnabled: false, // Disabled - only show truck and stations
+          myLocationEnabled: false,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
           compassEnabled: true,
-          mapToolbarEnabled: true,
           mapType: MapType.normal,
           onMapCreated: _onMapCreated,
           onCameraMove: (position) {
-            setState(() {
-              _zoomLevel = position.zoom;
-              _currentCenter = position.target;
-            });
+            if (mounted) {
+              setState(() {
+                _zoomLevel = position.zoom;
+                _currentCenter = position.target;
+              });
+            }
           },
           trafficEnabled: true,
         ),
@@ -837,6 +832,38 @@ class _StationMapScreenState extends State<StationMapScreen> {
           ),
         ),
 
+        // Loading indicator for route
+        if (_isRouteLoading)
+          Positioned(
+            top: 100,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text('Loading route...'),
+                ],
+              ),
+            ),
+          ),
+
         // Zoom Controls
         Positioned(
           right: 16,
@@ -868,6 +895,8 @@ class _StationMapScreenState extends State<StationMapScreen> {
             ),
           ),
         ),
+
+        // Bottom Action Buttons
 
         // Bottom Action Buttons
         Positioned(
@@ -1085,78 +1114,92 @@ class _StationMapScreenState extends State<StationMapScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-            ),
+            CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text(
-              'Loading Map...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.blueGrey,
-              ),
-            ),
+            Text('Loading Map...'),
           ],
         ),
       ),
     );
   }
 
-  // Navigation methods
   Future<void> _zoomIn() async {
-    try {
-      final controller = await _controller.future;
-      await controller.animateCamera(CameraUpdate.zoomIn());
-    } catch (e) {
-      print('Error zooming in: $e');
-    }
+    final controller = await _controller.future;
+    await controller.animateCamera(CameraUpdate.zoomIn());
   }
 
   Future<void> _zoomOut() async {
+    final controller = await _controller.future;
+    await controller.animateCamera(CameraUpdate.zoomOut());
+  }
+
+  Future<void> _zoomToFitAllMarkers() async {
+    if (_markers.isEmpty) return;
+
     try {
       final controller = await _controller.future;
-      await controller.animateCamera(CameraUpdate.zoomOut());
+      final bounds = _calculateBounds();
+      await controller.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 50),
+      );
     } catch (e) {
-      print('Error zooming out: $e');
+      print('Error zooming: $e');
     }
+  }
+
+  LatLngBounds _calculateBounds() {
+    double minLat = double.infinity;
+    double maxLat = double.negativeInfinity;
+    double minLng = double.infinity;
+    double maxLng = double.negativeInfinity;
+
+    for (var marker in _markers.values) {
+      minLat = min(minLat, marker.position.latitude);
+      maxLat = max(maxLat, marker.position.latitude);
+      minLng = min(minLng, marker.position.longitude);
+      maxLng = max(maxLng, marker.position.longitude);
+    }
+
+    // Add some padding
+    minLat -= 0.05;
+    maxLat += 0.05;
+    minLng -= 0.05;
+    maxLng += 0.05;
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
   }
 
   Future<void> _goToStart() async {
-    try {
-      final controller = await _controller.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(
-              widget.routeData.fromLat as double,
-              widget.routeData.fromLng as double,
-            ),
-            zoom: 14,
+    final controller = await _controller.future;
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(
+            widget.routeData.fromLat as double,
+            widget.routeData.fromLng as double,
           ),
+          zoom: 14,
         ),
-      );
-    } catch (e) {
-      print('Error going to start: $e');
-    }
+      ),
+    );
   }
 
   Future<void> _goToEnd() async {
-    try {
-      final controller = await _controller.future;
-      await controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(
-              widget.routeData.toLat as double,
-              widget.routeData.toLng as double,
-            ),
-            zoom: 14,
+    final controller = await _controller.future;
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(
+            widget.routeData.toLat as double,
+            widget.routeData.toLng as double,
           ),
+          zoom: 14,
         ),
-      );
-    } catch (e) {
-      print('Error going to end: $e');
-    }
+      ),
+    );
   }
 
   Future<void> openMapSmart() async {
@@ -1166,55 +1209,18 @@ class _StationMapScreenState extends State<StationMapScreen> {
     final endLng = widget.routeData.toLng as double;
 
     try {
-      final Uri webUrl = Uri.parse(
+      final Uri url = Uri.parse(
         'https://www.google.com/maps/dir/?api=1'
         '&origin=$startLat,$startLng'
         '&destination=$endLat,$endLng'
         '&travelmode=driving',
       );
 
-      if (Platform.isAndroid) {
-        final Uri androidUrl = Uri.parse(
-          'google.navigation:q=$endLat,$endLng&mode=d',
-        );
-
-        if (await canLaunchUrl(androidUrl)) {
-          await launchUrl(androidUrl, mode: LaunchMode.externalApplication);
-          return;
-        }
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
       }
-
-      if (Platform.isIOS) {
-        final Uri iosGoogleMaps = Uri.parse(
-          'comgooglemaps://?saddr=$startLat,$startLng&daddr=$endLat,$endLng&directionsmode=driving',
-        );
-
-        if (await canLaunchUrl(iosGoogleMaps)) {
-          await launchUrl(iosGoogleMaps, mode: LaunchMode.externalApplication);
-          return;
-        }
-
-        final Uri appleMaps = Uri.parse(
-          'https://maps.apple.com/?saddr=$startLat,$startLng&daddr=$endLat,$endLng&dirflg=d',
-        );
-
-        if (await canLaunchUrl(appleMaps)) {
-          await launchUrl(appleMaps, mode: LaunchMode.externalApplication);
-          return;
-        }
-      }
-
-      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     } catch (e) {
       print('Error opening maps: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open maps app'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 }

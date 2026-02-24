@@ -37,7 +37,13 @@ void main() async {
     ..registerAdapter(UserModelAdapter())
     ..registerAdapter(CountModelAdapter())
     ..registerAdapter(GroupModelAdapter())
-    ..registerAdapter(UserChannelModelAdapter());
+    ..registerAdapter(UserChannelModelAdapter())
+    ..registerAdapter(RouteModelAdapter())
+    ..registerAdapter(TrucksAdapter())
+    ..registerAdapter(VehicleModelAdapter())
+    ..registerAdapter(StationsAdapter())
+    ..registerAdapter(FuelPriceAdapter())
+    ..registerAdapter(VehicleGpsModelAdapter());
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

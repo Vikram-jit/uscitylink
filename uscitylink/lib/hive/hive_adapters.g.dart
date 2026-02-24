@@ -8,7 +8,7 @@ part of 'hive_adapters.dart';
 
 class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
   @override
-  final int typeId = 0;
+  final typeId = 0;
 
   @override
   DashboardModel read(BinaryReader reader) {
@@ -75,7 +75,7 @@ class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
 
 class ChannelAdapter extends TypeAdapter<Channel> {
   @override
-  final int typeId = 1;
+  final typeId = 1;
 
   @override
   Channel read(BinaryReader reader) {
@@ -121,7 +121,7 @@ class ChannelAdapter extends TypeAdapter<Channel> {
 
 class LatestMessageAdapter extends TypeAdapter<LatestMessage> {
   @override
-  final int typeId = 2;
+  final typeId = 2;
 
   @override
   LatestMessage read(BinaryReader reader) {
@@ -203,7 +203,7 @@ class LatestMessageAdapter extends TypeAdapter<LatestMessage> {
 
 class LatestGroupMessageAdapter extends TypeAdapter<LatestGroupMessage> {
   @override
-  final int typeId = 3;
+  final typeId = 3;
 
   @override
   LatestGroupMessage read(BinaryReader reader) {
@@ -288,7 +288,7 @@ class LatestGroupMessageAdapter extends TypeAdapter<LatestGroupMessage> {
 
 class GroupDashboardAdapter extends TypeAdapter<GroupDashboard> {
   @override
-  final int typeId = 4;
+  final typeId = 4;
 
   @override
   GroupDashboard read(BinaryReader reader) {
@@ -343,7 +343,7 @@ class GroupDashboardAdapter extends TypeAdapter<GroupDashboard> {
 
 class SenderModelAdapter extends TypeAdapter<SenderModel> {
   @override
-  final int typeId = 5;
+  final typeId = 5;
 
   @override
   SenderModel read(BinaryReader reader) {
@@ -386,7 +386,7 @@ class SenderModelAdapter extends TypeAdapter<SenderModel> {
 
 class UserChannelModelAdapter extends TypeAdapter<UserChannelModel> {
   @override
-  final int typeId = 6;
+  final typeId = 6;
 
   @override
   UserChannelModel read(BinaryReader reader) {
@@ -441,7 +441,7 @@ class UserChannelModelAdapter extends TypeAdapter<UserChannelModel> {
 
 class MessageModelAdapter extends TypeAdapter<MessageModel> {
   @override
-  final int typeId = 7;
+  final typeId = 7;
 
   @override
   MessageModel read(BinaryReader reader) {
@@ -541,7 +541,7 @@ class MessageModelAdapter extends TypeAdapter<MessageModel> {
 
 class GroupModelAdapter extends TypeAdapter<GroupModel> {
   @override
-  final int typeId = 8;
+  final typeId = 8;
 
   @override
   GroupModel read(BinaryReader reader) {
@@ -599,7 +599,7 @@ class GroupModelAdapter extends TypeAdapter<GroupModel> {
 
 class UserModelAdapter extends TypeAdapter<UserModel> {
   @override
-  final int typeId = 9;
+  final typeId = 9;
 
   @override
   UserModel read(BinaryReader reader) {
@@ -657,7 +657,7 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
 
 class ChannelModelAdapter extends TypeAdapter<ChannelModel> {
   @override
-  final int typeId = 10;
+  final typeId = 10;
 
   @override
   ChannelModel read(BinaryReader reader) {
@@ -703,7 +703,7 @@ class ChannelModelAdapter extends TypeAdapter<ChannelModel> {
 
 class CountModelAdapter extends TypeAdapter<CountModel> {
   @override
-  final int typeId = 11;
+  final typeId = 11;
 
   @override
   CountModel read(BinaryReader reader) {
@@ -743,7 +743,7 @@ class CountModelAdapter extends TypeAdapter<CountModel> {
 
 class GroupAdapter extends TypeAdapter<Group> {
   @override
-  final int typeId = 12;
+  final typeId = 12;
 
   @override
   Group read(BinaryReader reader) {
@@ -795,7 +795,7 @@ class GroupAdapter extends TypeAdapter<Group> {
 
 class GroupChannelAdapter extends TypeAdapter<GroupChannel> {
   @override
-  final int typeId = 13;
+  final typeId = 13;
 
   @override
   GroupChannel read(BinaryReader reader) {
@@ -835,6 +835,431 @@ class GroupChannelAdapter extends TypeAdapter<GroupChannel> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is GroupChannelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class StationsAdapter extends TypeAdapter<Stations> {
+  @override
+  final typeId = 14;
+
+  @override
+  Stations read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return Stations(
+      id: (fields[0] as num?)?.toInt(),
+      storeNumber: (fields[1] as num?)?.toInt(),
+      name: fields[2] as String?,
+      address: fields[3] as String?,
+      city: fields[4] as String?,
+      state: fields[5] as String?,
+      zipCode: fields[6] as String?,
+      interstate: fields[7] as String?,
+      latitude: (fields[8] as num?)?.toDouble(),
+      longitude: (fields[9] as num?)?.toDouble(),
+      phoneNumber: fields[10] as String?,
+      parkingSpacesCount: (fields[11] as num?)?.toInt(),
+      fuelLaneCount: (fields[12] as num?)?.toInt(),
+      showerCount: (fields[13] as num?)?.toInt(),
+      amenities: fields[14] as String?,
+      restaurants: fields[15] as String?,
+      fuelPrice: fields[16] as FuelPrice?,
+      distanceFromRoute: (fields[18] as num?)?.toDouble(),
+      isCheapestInState: fields[19] as bool?,
+      distanceFromTruck: (fields[20] as num?)?.toDouble(),
+      isRecommended: fields[17] as bool?,
+      isBothNearestAndCheapest: fields[22] as bool?,
+      isNearestStation: fields[21] as bool?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, Stations obj) {
+    writer
+      ..writeByte(23)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.storeNumber)
+      ..writeByte(2)
+      ..write(obj.name)
+      ..writeByte(3)
+      ..write(obj.address)
+      ..writeByte(4)
+      ..write(obj.city)
+      ..writeByte(5)
+      ..write(obj.state)
+      ..writeByte(6)
+      ..write(obj.zipCode)
+      ..writeByte(7)
+      ..write(obj.interstate)
+      ..writeByte(8)
+      ..write(obj.latitude)
+      ..writeByte(9)
+      ..write(obj.longitude)
+      ..writeByte(10)
+      ..write(obj.phoneNumber)
+      ..writeByte(11)
+      ..write(obj.parkingSpacesCount)
+      ..writeByte(12)
+      ..write(obj.fuelLaneCount)
+      ..writeByte(13)
+      ..write(obj.showerCount)
+      ..writeByte(14)
+      ..write(obj.amenities)
+      ..writeByte(15)
+      ..write(obj.restaurants)
+      ..writeByte(16)
+      ..write(obj.fuelPrice)
+      ..writeByte(17)
+      ..write(obj.isRecommended)
+      ..writeByte(18)
+      ..write(obj.distanceFromRoute)
+      ..writeByte(19)
+      ..write(obj.isCheapestInState)
+      ..writeByte(20)
+      ..write(obj.distanceFromTruck)
+      ..writeByte(21)
+      ..write(obj.isNearestStation)
+      ..writeByte(22)
+      ..write(obj.isBothNearestAndCheapest);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is StationsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class FuelPriceAdapter extends TypeAdapter<FuelPrice> {
+  @override
+  final typeId = 15;
+
+  @override
+  FuelPrice read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return FuelPrice(
+      product: fields[0] as String?,
+      yourPrice: fields[1] as String?,
+      retailPrice: fields[2] as String?,
+      savingsTotal: fields[3] as String?,
+      effectiveDate: fields[4] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, FuelPrice obj) {
+    writer
+      ..writeByte(5)
+      ..writeByte(0)
+      ..write(obj.product)
+      ..writeByte(1)
+      ..write(obj.yourPrice)
+      ..writeByte(2)
+      ..write(obj.retailPrice)
+      ..writeByte(3)
+      ..write(obj.savingsTotal)
+      ..writeByte(4)
+      ..write(obj.effectiveDate);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FuelPriceAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class VehicleGpsModelAdapter extends TypeAdapter<VehicleGpsModel> {
+  @override
+  final typeId = 16;
+
+  @override
+  VehicleGpsModel read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return VehicleGpsModel(
+      vehicleId: fields[0] as String,
+      vehicleName: fields[1] as String,
+      timestamp: fields[2] as DateTime,
+      latitude: (fields[3] as num).toDouble(),
+      longitude: (fields[4] as num).toDouble(),
+      headingDegrees: (fields[5] as num?)?.toDouble(),
+      speedMilesPerHour: (fields[6] as num?)?.toDouble(),
+      formattedLocation: fields[7] as String?,
+      fuelPercent: (fields[8] as num?)?.toInt(),
+      fuelPercentTime: fields[9] as DateTime?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, VehicleGpsModel obj) {
+    writer
+      ..writeByte(10)
+      ..writeByte(0)
+      ..write(obj.vehicleId)
+      ..writeByte(1)
+      ..write(obj.vehicleName)
+      ..writeByte(2)
+      ..write(obj.timestamp)
+      ..writeByte(3)
+      ..write(obj.latitude)
+      ..writeByte(4)
+      ..write(obj.longitude)
+      ..writeByte(5)
+      ..write(obj.headingDegrees)
+      ..writeByte(6)
+      ..write(obj.speedMilesPerHour)
+      ..writeByte(7)
+      ..write(obj.formattedLocation)
+      ..writeByte(8)
+      ..write(obj.fuelPercent)
+      ..writeByte(9)
+      ..write(obj.fuelPercentTime);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VehicleGpsModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class RouteModelAdapter extends TypeAdapter<RouteModel> {
+  @override
+  final typeId = 17;
+
+  @override
+  RouteModel read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return RouteModel(
+      id: (fields[0] as num?)?.toInt(),
+      fromLocation: fields[1] as String?,
+      toLocation: fields[2] as String?,
+      distance: (fields[3] as num?)?.toInt(),
+      createdAt: fields[4] as String?,
+      updatedAt: fields[5] as String?,
+      fromAddress: fields[6] as String?,
+      fromCity: fields[7] as String?,
+      fromState: fields[8] as String?,
+      fromZip: fields[9] as String?,
+      fromCountry: fields[10] as String?,
+      fromLat: (fields[11] as num?)?.toDouble(),
+      fromLng: (fields[12] as num?)?.toDouble(),
+      toAddress: fields[13] as String?,
+      toCity: fields[14] as String?,
+      toState: fields[15] as String?,
+      toZip: fields[16] as String?,
+      toCountry: fields[17] as String?,
+      toLat: (fields[18] as num?)?.toDouble(),
+      toLng: (fields[19] as num?)?.toDouble(),
+      trucks: (fields[21] as List?)?.cast<Trucks>(),
+      stations: (fields[22] as List?)?.cast<Stations>(),
+      isSwapped: fields[23] as bool?,
+    )..truck = fields[20] as VehicleModel?;
+  }
+
+  @override
+  void write(BinaryWriter writer, RouteModel obj) {
+    writer
+      ..writeByte(24)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.fromLocation)
+      ..writeByte(2)
+      ..write(obj.toLocation)
+      ..writeByte(3)
+      ..write(obj.distance)
+      ..writeByte(4)
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.updatedAt)
+      ..writeByte(6)
+      ..write(obj.fromAddress)
+      ..writeByte(7)
+      ..write(obj.fromCity)
+      ..writeByte(8)
+      ..write(obj.fromState)
+      ..writeByte(9)
+      ..write(obj.fromZip)
+      ..writeByte(10)
+      ..write(obj.fromCountry)
+      ..writeByte(11)
+      ..write(obj.fromLat)
+      ..writeByte(12)
+      ..write(obj.fromLng)
+      ..writeByte(13)
+      ..write(obj.toAddress)
+      ..writeByte(14)
+      ..write(obj.toCity)
+      ..writeByte(15)
+      ..write(obj.toState)
+      ..writeByte(16)
+      ..write(obj.toZip)
+      ..writeByte(17)
+      ..write(obj.toCountry)
+      ..writeByte(18)
+      ..write(obj.toLat)
+      ..writeByte(19)
+      ..write(obj.toLng)
+      ..writeByte(20)
+      ..write(obj.truck)
+      ..writeByte(21)
+      ..write(obj.trucks)
+      ..writeByte(22)
+      ..write(obj.stations)
+      ..writeByte(23)
+      ..write(obj.isSwapped);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RouteModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class TrucksAdapter extends TypeAdapter<Trucks> {
+  @override
+  final typeId = 18;
+
+  @override
+  Trucks read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return Trucks(
+      id: (fields[0] as num?)?.toInt(),
+      number: fields[1] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, Trucks obj) {
+    writer
+      ..writeByte(2)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.number);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TrucksAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class VehicleModelAdapter extends TypeAdapter<VehicleModel> {
+  @override
+  final typeId = 19;
+
+  @override
+  VehicleModel read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return VehicleModel(
+      id: (fields[0] as num?)?.toInt(),
+      samsara_vehicle_id: fields[2] as String?,
+      number: fields[1] as String?,
+      year: (fields[3] as num?)?.toInt(),
+      make: fields[4] as String?,
+      model: fields[5] as String?,
+      vin: fields[6] as String?,
+      licensePlateNumber: fields[7] as String?,
+      state: fields[8] as String?,
+      type: fields[9] as String?,
+      currentPosition: fields[10] as String?,
+      readyStatus: fields[11] as String?,
+      documents: (fields[15] as List?)?.cast<Documents>(),
+      pre_pass_id: fields[12] as String?,
+      driver_fuel_id: fields[13] as String?,
+      fuel_card_number: fields[14] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, VehicleModel obj) {
+    writer
+      ..writeByte(16)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.number)
+      ..writeByte(2)
+      ..write(obj.samsara_vehicle_id)
+      ..writeByte(3)
+      ..write(obj.year)
+      ..writeByte(4)
+      ..write(obj.make)
+      ..writeByte(5)
+      ..write(obj.model)
+      ..writeByte(6)
+      ..write(obj.vin)
+      ..writeByte(7)
+      ..write(obj.licensePlateNumber)
+      ..writeByte(8)
+      ..write(obj.state)
+      ..writeByte(9)
+      ..write(obj.type)
+      ..writeByte(10)
+      ..write(obj.currentPosition)
+      ..writeByte(11)
+      ..write(obj.readyStatus)
+      ..writeByte(12)
+      ..write(obj.pre_pass_id)
+      ..writeByte(13)
+      ..write(obj.driver_fuel_id)
+      ..writeByte(14)
+      ..write(obj.fuel_card_number)
+      ..writeByte(15)
+      ..write(obj.documents);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VehicleModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

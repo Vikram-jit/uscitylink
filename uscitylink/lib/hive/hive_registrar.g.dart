@@ -11,6 +11,7 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(ChannelModelAdapter());
     registerAdapter(CountModelAdapter());
     registerAdapter(DashboardModelAdapter());
+    registerAdapter(FuelPriceAdapter());
     registerAdapter(GroupAdapter());
     registerAdapter(GroupChannelAdapter());
     registerAdapter(GroupDashboardAdapter());
@@ -18,8 +19,38 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(LatestGroupMessageAdapter());
     registerAdapter(LatestMessageAdapter());
     registerAdapter(MessageModelAdapter());
+    registerAdapter(RouteModelAdapter());
     registerAdapter(SenderModelAdapter());
+    registerAdapter(StationsAdapter());
+    registerAdapter(TrucksAdapter());
     registerAdapter(UserChannelModelAdapter());
     registerAdapter(UserModelAdapter());
+    registerAdapter(VehicleGpsModelAdapter());
+    registerAdapter(VehicleModelAdapter());
+  }
+}
+
+extension IsolatedHiveRegistrar on IsolatedHiveInterface {
+  void registerAdapters() {
+    registerAdapter(ChannelAdapter());
+    registerAdapter(ChannelModelAdapter());
+    registerAdapter(CountModelAdapter());
+    registerAdapter(DashboardModelAdapter());
+    registerAdapter(FuelPriceAdapter());
+    registerAdapter(GroupAdapter());
+    registerAdapter(GroupChannelAdapter());
+    registerAdapter(GroupDashboardAdapter());
+    registerAdapter(GroupModelAdapter());
+    registerAdapter(LatestGroupMessageAdapter());
+    registerAdapter(LatestMessageAdapter());
+    registerAdapter(MessageModelAdapter());
+    registerAdapter(RouteModelAdapter());
+    registerAdapter(SenderModelAdapter());
+    registerAdapter(StationsAdapter());
+    registerAdapter(TrucksAdapter());
+    registerAdapter(UserChannelModelAdapter());
+    registerAdapter(UserModelAdapter());
+    registerAdapter(VehicleGpsModelAdapter());
+    registerAdapter(VehicleModelAdapter());
   }
 }

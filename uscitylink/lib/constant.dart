@@ -2,7 +2,9 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
+import 'package:uscitylink/model/vehicle_gps_model.dart';
 
 class Constant {
   static const String baseUrl = 'http://52.9.12.189:4300/api';
@@ -73,6 +75,41 @@ class Constant {
     } else {
       // Open the box with the specified type
       return await Hive.openBox<DashboardModel>(boxName);
+    }
+  }
+
+  static Future<Box<VehicleGpsModel>> getTruckLocationBox() async {
+    const boxName = HiveBoxes.truckLocationBox;
+
+    if (Hive.isBoxOpen(boxName)) {
+      // Access the box with the correct type
+      return Hive.box<VehicleGpsModel>(boxName);
+    } else {
+      // Open the box with the specified type
+      return await Hive.openBox<VehicleGpsModel>(boxName);
+    }
+  }
+
+  static Future<Box<Stations>> getStationsBox() async {
+    const boxName = HiveBoxes.stationsBox;
+
+    if (Hive.isBoxOpen(boxName)) {
+      return Hive.box<Stations>(
+          boxName); // Change to Stations, not List<Stations>
+    } else {
+      return await Hive.openBox<Stations>(boxName); // Change to Stations
+    }
+  }
+
+  static Future<Box<DateTime>> getlastUpdatedBox() async {
+    const boxName = HiveBoxes.lastUpdatedBox;
+
+    if (Hive.isBoxOpen(boxName)) {
+      // Access the box with the correct type
+      return Hive.box<DateTime>(boxName);
+    } else {
+      // Open the box with the specified type
+      return await Hive.openBox<DateTime>(boxName);
     }
   }
 }

@@ -307,7 +307,7 @@ class StationWidget extends StatelessWidget {
       badgeColor = Colors.green.shade100;
       badgeTextColor = Colors.green.shade800;
       badgeIcon = '🏆';
-      badgeText = 'BEST PRICE';
+      badgeText = 'BEST PRICE & RECOMMENED';
     }
 
     return Container(

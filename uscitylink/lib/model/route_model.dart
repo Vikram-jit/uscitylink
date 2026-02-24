@@ -24,6 +24,7 @@ class RouteModel {
   VehicleModel? truck;
   List<Trucks>? trucks;
   List<Stations>? stations;
+  bool? isSwapped;
 
   RouteModel(
       {this.id,
@@ -47,7 +48,8 @@ class RouteModel {
       this.toLat,
       this.toLng,
       this.trucks,
-      this.stations});
+      this.stations,
+      this.isSwapped});
 
   RouteModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -56,6 +58,7 @@ class RouteModel {
     distance = json['distance'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
+    isSwapped = json['is_swapped'];
     fromAddress = json['from_address'];
     fromCity = json['from_city'];
     fromState = json['from_state'];
@@ -94,6 +97,7 @@ class RouteModel {
     data['to_location'] = this.toLocation;
     data['distance'] = this.distance;
     data['created_at'] = this.createdAt;
+    data['is_swapped'] = this.isSwapped;
     data['updated_at'] = this.updatedAt;
     data['from_address'] = this.fromAddress;
     data['from_city'] = this.fromCity;

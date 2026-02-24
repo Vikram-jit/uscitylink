@@ -4,4 +4,7 @@ class HiveBoxes {
   static const String channelMessages = 'channel_messages_box';
   static const String queueMessageBox = 'queue_message_box';
   static const String mediaQueueBox = 'media_queue_box';
+  static const String truckLocationBox = 'truck_location_box';
+  static const String stationsBox = 'stations_box';
+  static const String lastUpdatedBox = 'last_updated_box';
 }

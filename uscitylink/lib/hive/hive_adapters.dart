@@ -3,9 +3,12 @@ import 'package:uscitylink/model/channel_model.dart';
 import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/model/sender_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/model/user_model.dart';
+import 'package:uscitylink/model/vehicle_gps_model.dart';
+import 'package:uscitylink/model/vehicle_model.dart';
 
 part 'hive_adapters.g.dart';
 
@@ -24,5 +27,11 @@ part 'hive_adapters.g.dart';
   AdapterSpec<UserModel>(),
   AdapterSpec<ChannelModel>(),
   AdapterSpec<CountModel>(),
+  AdapterSpec<Trucks>(),
+  AdapterSpec<VehicleModel>(),
+  AdapterSpec<RouteModel>(),
+  AdapterSpec<Stations>(),
+  AdapterSpec<FuelPrice>(),
+  AdapterSpec<VehicleGpsModel>(),
 ])
 class HiveAdapters {}

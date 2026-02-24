@@ -64,7 +64,7 @@ class GoogleMapController extends GetxController {
       isLoading.value = true;
       error.value = '';
 
-      final trucks = await _fetchLiveTruckLocations(
+      final trucks = await fetchLiveTruckLocations(
         vehicleIds: vehicleIds,
         apiToken: apiToken,
       );
@@ -121,7 +121,7 @@ class GoogleMapController extends GetxController {
   }
 
   // Private method to fetch live truck locations
-  Future<List<VehicleGpsModel>> _fetchLiveTruckLocations({
+  Future<List<VehicleGpsModel>> fetchLiveTruckLocations({
     required List<String> vehicleIds,
     required String apiToken,
   }) async {
