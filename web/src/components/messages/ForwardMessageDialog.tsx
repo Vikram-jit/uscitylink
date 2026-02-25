@@ -60,6 +60,7 @@ const ForwardMessageDialog: React.FC<ForwardMessageDialogProps> = ({ open, onClo
   const debouncedSearchTerm = useDebounce(searchTerm, 200);
   const { data, isLoading, isFetching } = useGetChannelMembersQuery(
     {
+      paginate: true,
       page,
       pageSize: 12,
       search: debouncedSearchTerm,

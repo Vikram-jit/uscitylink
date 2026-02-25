@@ -9,7 +9,7 @@ import { XSquare } from '@phosphor-icons/react/dist/ssr/XSquare';
 import { UsersFour } from '@phosphor-icons/react/dist/ssr/UsersFour';
 import { Truck } from '@phosphor-icons/react/dist/ssr/Truck';
 import { ToiletPaper } from '@phosphor-icons/react/dist/ssr/ToiletPaper';
-
+import { Broadcast } from '@phosphor-icons/react/dist/ssr';
 export const navIcons = {
   'chart-pie': ChartPieIcon,
   'gear-six': GearSixIcon,
@@ -21,5 +21,6 @@ export const navIcons = {
   chat:Chat,
   truck:Truck,
   'users-four':UsersFour,
-  'template':ToiletPaper
+  'template':ToiletPaper,
+  'satellite':Broadcast
 } as Record<string, Icon>;

@@ -11,6 +11,8 @@ import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
+import 'package:uscitylink/controller/route_controller.dart';
+import 'package:uscitylink/controller/station_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/driver_model.dart';
@@ -458,54 +460,227 @@ class LoginController extends GetxController {
     });
   }
 
-  void logOut() async {
-    Get.find<SocketService>().logout();
+  Future<void> logOut() async {
+    try {
+      print('🚪 Starting logout process...');
 
-    final userChannelBox = await Constant.getUserChannelBox();
-    final channelMessagesBox = await Constant.getChannelMessagesBox();
-    final driverDashboardBox = await Constant.getDriverDashboardBox();
-    userChannelBox.clear();
-    // userChannelBox.close();
-    channelMessagesBox.clear();
-    // channelMessagesBox.close();
-    driverDashboardBox.clear();
-    // driverDashboardBox.close();
-    final box = await Constant.getQueueMessageBox();
-    final mediaQueue = await Constant.getMediaQueueBox();
-    box.clear();
-    // box.close();
-    mediaQueue.clear();
-    //  mediaQueue.close();
-    // Dispose registered controllers safely
-    if (Get.isRegistered<NetworkService>()) {
-      Get.delete<NetworkService>();
-      print('🧹 NetworkService disposed');
-    }
+      // Show loading indicator
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
 
-    if (Get.isRegistered<HiveController>()) {
-      Get.delete<HiveController>();
-      print('🧹 HiveController disposed');
-    }
-    if (Get.isRegistered<MessageController>()) {
-      Get.delete<MessageController>();
-      print('🧹 MessageController disposed');
-    }
-    if (Get.isRegistered<ChannelController>()) {
-      Get.delete<ChannelController>();
-      print('🧹 ChannelController disposed');
-    }
-    __authService.logout().then((value) async {
-      // if (value.status == true) {
-      //   Utils.toastMessage("Logout Successfully");
+      // 1. Socket logout
+      try {
+        if (Get.isRegistered<SocketService>()) {
+          Get.find<SocketService>().logout();
+          print('✅ Socket disconnected');
+        }
+      } catch (e) {
+        print('⚠️ Socket logout error: $e');
+      }
 
-      //   Get.offAllNamed(AppRoutes.login);
-      // }
-    }).onError((error, stackTrace) {
-      Utils.snackBar('Error', error.toString());
-    });
-    userPreferenceController.removeStore().then((value) {
+      // 2. FORCE CLEAR ALL HIVE DATA - COMPREHENSIVE APPROACH
+      await _forceClearAllHiveData();
+
+      // 3. Dispose all controllers
+      await _disposeAllControllers();
+
+      // 5. Auth service logout
+      try {
+        await __authService.logout();
+        print('✅ Auth service logout successful');
+      } catch (e) {
+        print('ℹ️ Auth service logout info: $e');
+      }
+      // 4. Clear user preferences
+      try {
+        await userPreferenceController.removeStore();
+        print('✅ User preferences cleared');
+      } catch (e) {
+        print('❌ Error clearing preferences: $e');
+      }
+      // 6. Close loading dialog
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      // 7. Navigate to login
+      print('🚀 Navigating to login screen...');
       Get.offAllNamed(AppRoutes.login);
-    });
+      print('✅ Logout complete');
+    } catch (e) {
+      print('❌ Fatal error during logout: $e');
+
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      // Force navigation even on error
+      Get.offAllNamed(AppRoutes.login);
+    }
+  }
+
+  Future<void> _forceClearAllHiveData() async {
+    print('📦 FORCE CLEARING ALL HIVE DATA...');
+
+    // List of all box names used in the app
+    final boxNames = [
+      HiveBoxes.channelMessages,
+      HiveBoxes.userChannel,
+      HiveBoxes.driverDashboard,
+      HiveBoxes.queueMessageBox,
+      HiveBoxes.mediaQueueBox,
+      HiveBoxes.truckLocationBox,
+      HiveBoxes.stationsBox,
+      HiveBoxes.lastUpdatedBox,
+      'prefs_box',
+      'routes_box',
+      'metadata_box',
+
+      // Add any other box names from your app
+    ];
+
+    // Method 1: Delete boxes completely (most thorough)
+    for (final boxName in boxNames) {
+      try {
+        // Check if box is open and close it
+        if (Hive.isBoxOpen(boxName)) {
+          final box = Hive.box(boxName);
+          await box.clear();
+          await box.close();
+          print('✅ Cleared and closed box: $boxName');
+        }
+
+        // Delete the box entirely from disk
+        await Hive.deleteBoxFromDisk(boxName);
+        print('✅ Deleted box from disk: $boxName');
+      } catch (e) {
+        print('⚠️ Error with box $boxName: $e');
+
+        // Fallback: try to open and clear
+        try {
+          final box = await Hive.openBox(boxName);
+          await box.clear();
+          await box.close();
+          print('✅ Fallback cleared box: $boxName');
+        } catch (e2) {
+          print('❌ Failed to clear box $boxName even with fallback: $e2');
+        }
+      }
+    }
+
+    // Method 2: Clear specific typed boxes using your constants
+    try {
+      // Get fresh instances of each box and clear them
+      final boxes = await Future.wait([
+        Constant.getUserChannelBox().catchError((e) => null),
+        Constant.getChannelMessagesBox().catchError((e) => null),
+        Constant.getDriverDashboardBox().catchError((e) => null),
+        Constant.getTruckLocationBox().catchError((e) => null),
+        Constant.getStationsBox().catchError((e) => null),
+        Constant.getlastUpdatedBox().catchError((e) => null),
+        Constant.getQueueMessageBox().catchError((e) => null),
+        Constant.getMediaQueueBox().catchError((e) => null),
+      ]);
+
+      for (var box in boxes) {
+        if (box != null) {
+          try {
+            await box.clear();
+            await box.close();
+            print('✅ Cleared typed box: ${box.name}');
+          } catch (e) {
+            print('⚠️ Error clearing typed box: $e');
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Error with typed boxes: $e');
+    }
+
+    // Method 3: Clear preferences box separately
+    try {
+      final prefsBox = await Hive.openBox<dynamic>('prefs_box');
+      await prefsBox.clear();
+      await prefsBox.close();
+      print('✅ Cleared prefs box');
+    } catch (e) {
+      print('⚠️ Error clearing prefs box: $e');
+    }
+
+    // Method 4: Clear routes box
+    try {
+      final routesBox = await Hive.openBox<List>('routes_box');
+      await routesBox.clear();
+      await routesBox.close();
+      print('✅ Cleared routes box');
+    } catch (e) {
+      print('⚠️ Error clearing routes box: $e');
+    }
+
+    // Method 5: Clear metadata box
+    try {
+      final metadataBox = await Hive.openBox<int>('metadata_box');
+      await metadataBox.clear();
+      await metadataBox.close();
+      print('✅ Cleared metadata box');
+    } catch (e) {
+      print('⚠️ Error clearing metadata box: $e');
+    }
+
+    print('✅ ALL HIVE DATA FORCE CLEARED');
+  }
+
+  Future<void> _disposeAllControllers() async {
+    print('🧹 Disposing all controllers...');
+
+    final controllerNames = [
+      'NetworkService',
+      'HiveController',
+      'MessageController',
+      'ChannelController',
+      'RouteController',
+      'StationController',
+      'GoogleMapController',
+      'SocketService',
+    ];
+
+    for (var name in controllerNames) {
+      try {
+        if (Get.isRegistered(tag: name)) {
+          Get.delete(tag: name);
+          print('✅ Disposed: $name');
+        }
+      } catch (e) {
+        print('⚠️ Error disposing $name: $e');
+      }
+    }
+  }
+
+// Also add this helper method to verify clearing
+  Future<void> verifyDataCleared() async {
+    print('🔍 VERIFYING DATA CLEARED...');
+
+    try {
+      // Try to reopen boxes and check if they're empty
+      final testBoxes = [
+        await Hive.openBox(HiveBoxes.truckLocationBox),
+        await Hive.openBox(HiveBoxes.stationsBox),
+        await Hive.openBox(HiveBoxes.lastUpdatedBox),
+        await Hive.openBox('prefs_box'),
+        await Hive.openBox('routes_box'),
+      ];
+
+      for (var box in testBoxes) {
+        print('Box ${box.name}: ${box.length} items');
+        await box.close();
+      }
+
+      print('✅ Verification complete');
+    } catch (e) {
+      print('❌ Verification error: $e');
+    }
   }
 
   void changePassword(BuildContext context, String old_password,

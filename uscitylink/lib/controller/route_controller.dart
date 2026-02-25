@@ -151,9 +151,10 @@ class RouteController extends GetxController {
     }
   }
 
-  void toggleSwap() {
+  void toggleSwap() async {
     isRouteSwapped.value = !isRouteSwapped.value;
     _saveSwappedState();
+    await fetchRoutes();
     print('🔄 Swap toggled: ${isRouteSwapped.value}');
 
     update();
@@ -261,7 +262,7 @@ class RouteController extends GetxController {
   }
 
   void _setupPeriodicUpdates() {
-    _truckUpdateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _truckUpdateTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
       if (Get.isRegistered<RouteController>() && !isOffline.value) {
         print('🔄 Periodic truck location update');
         _refreshTruckLocation();

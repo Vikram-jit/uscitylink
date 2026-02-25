@@ -42,6 +42,7 @@ export default function TemplateDialog({
   return (
     <React.Fragment>
       <Dialog
+         maxWidth="lg"
         fullWidth
         open={open}
         TransitionComponent={Transition}

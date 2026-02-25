@@ -30,6 +30,7 @@ export class Message extends Model {
   public temp_id?:string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  public isBroadcastMessage?: boolean;
 
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
@@ -124,6 +125,10 @@ Message.init(
         model: "messages",
         key: "id",
       },
+    },
+    isBroadcastMessage: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {

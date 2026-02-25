@@ -1,4 +1,4 @@
-import { getMessagesByUserId, uploadMiddleware, fileUpload, getMedia, fileUploadWeb, getGroupMessages, quickMessageAndReply, uploadMultipleMiddleware, fileUploadMultiple } from './../controllers/messageController';
+import { getMessagesByUserId, uploadMiddleware, fileUpload, getMedia, fileUploadWeb, getGroupMessages, quickMessageAndReply, uploadMultipleMiddleware, fileUploadMultiple, getBroadCastMessages } from './../controllers/messageController';
 import { Router } from 'express';
 import { createMessage, getMessages } from '../controllers/messageController';
 import { authMiddleware } from '../middleware/authMiddleware';
@@ -9,6 +9,7 @@ import { fileUploadAWS, uploadAwsMiddleware } from '../controllers/fileControlle
 const router = Router();
 
 router.post('/', createMessage);
+router.get('/broadcast',authMiddleware, getBroadCastMessages)
 router.post('/fileUpload',authMiddleware, uploadMiddleware, fileUpload)
 router.post('/multipleFileUpload',authMiddleware, uploadMultipleMiddleware, fileUploadMultiple)
 router.post('/fileAwsUpload',authMiddleware, uploadAwsMiddleware, fileUploadAWS)

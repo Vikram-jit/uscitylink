@@ -45,14 +45,14 @@ const storage = multer.diskStorage({
   destination: (
     req: Request,
     file: Express.Multer.File,
-    cb: (error: Error | null, destination: string) => void
+    cb: (error: Error | null, destination: string) => void,
   ) => {
     cb(null, path.join(__dirname, "../", "../public/uscitylink"));
   },
   filename: (
     req: Request,
     file: Express.Multer.File,
-    cb: (error: Error | null, filename: string) => void
+    cb: (error: Error | null, filename: string) => void,
   ) => {
     cb(null, `${Date.now()}-${file.originalname?.replace(" ", "_")}`);
   },
@@ -99,7 +99,7 @@ export const processFileUpload = async (
     location: string;
     private_chat_id?: string;
     tempId?: string;
-  }>
+  }>,
 ): Promise<void> => {
   const {
     filePath,
@@ -138,7 +138,7 @@ export const processFileUpload = async (
       if (existingMessage) {
         await Message.update(
           { url_upload_type: "server" },
-          { where: { id: existingMessage.id } }
+          { where: { id: existingMessage.id } },
         );
       }
 
@@ -155,7 +155,7 @@ export const processFileUpload = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         } else if (location == "truck") {
           const existingGroupMessage = await GroupMessage.findOne({
@@ -164,7 +164,7 @@ export const processFileUpload = async (
           if (existingGroupMessage) {
             await GroupMessage.update(
               { url_upload_type: "server" },
-              { where: { id: existingGroupMessage.id } }
+              { where: { id: existingGroupMessage.id } },
             );
           }
 
@@ -177,7 +177,7 @@ export const processFileUpload = async (
             "server",
             userId,
             existingGroupMessage!.id,
-            `uscitylink/${fileName}`
+            `uscitylink/${fileName}`,
           );
         } else {
           await notifiyFileUploadStaffToDriver(
@@ -186,7 +186,7 @@ export const processFileUpload = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         }
       } else if (source == "staff_group") {
@@ -197,7 +197,7 @@ export const processFileUpload = async (
           existingMessage!.id,
           "server",
           userId,
-          private_chat_id
+          private_chat_id,
         );
       } else {
         if (location == "group") {
@@ -208,7 +208,7 @@ export const processFileUpload = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         } else {
           await notifiyFileUploadDriverToStaff(
@@ -218,7 +218,7 @@ export const processFileUpload = async (
             existingMessage!.id,
             "server",
             userId,
-            tempId
+            tempId,
           );
         }
       }
@@ -227,18 +227,18 @@ export const processFileUpload = async (
       attempt++;
       console.error(
         `Attempt ${attempt} - Error uploading file ${fileName}:`,
-        error
+        error,
       );
 
       if (attempt >= maxRetries) {
         console.error(
-          `Failed to upload file ${fileName} after ${maxRetries} attempts.`
+          `Failed to upload file ${fileName} after ${maxRetries} attempts.`,
         );
 
         if (existingMessage) {
           await Message.update(
             { url_upload_type: "failed" },
-            { where: { id: existingMessage.id } }
+            { where: { id: existingMessage.id } },
           );
         }
 
@@ -281,7 +281,7 @@ const upload = multer({
 
 export const createMessage = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const {
@@ -320,7 +320,7 @@ export const createMessage = async (
 
 export const getMessages = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const { channelId } = req.params;
@@ -372,7 +372,7 @@ export const getMessages = async (
           });
         }
         return { ...e.dataValues, group };
-      })
+      }),
     );
 
     return res.status(200).json({
@@ -387,9 +387,42 @@ export const getMessages = async (
   }
 };
 
+export const getBroadCastMessages = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
+  try {
+    const messages = await Message.findAll({
+      attributes: [
+        [Sequelize.fn("MIN", Sequelize.col("id")), "id"],
+        "body",
+        "messageTimestampUtc",
+        "senderId",
+        "url",
+        "url_upload_type",
+      ],
+      where: {
+        isBroadcastMessage: true,
+      },
+      group: ["body", "messageTimestampUtc", "senderId"],
+      order: [["messageTimestampUtc", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: `Fetch message successfully`,
+      data: messages,
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+};
+
 export const getGroupMessages = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const senderId = req.user?.id;
@@ -443,7 +476,7 @@ export const getGroupMessages = async (
 
 export const getMessagesByUserId = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const { id } = req.params;
@@ -505,7 +538,7 @@ export const getMessagesByUserId = async (
     });
 
     const truckNumbers = await Promise.all(
-      groupUser.map((e) => e.dataValues.Group.name)
+      groupUser.map((e) => e.dataValues.Group.name),
     );
 
     const totalMessages = messages.count;
@@ -528,7 +561,7 @@ export const getMessagesByUserId = async (
           });
         }
         return { ...e.dataValues, group };
-      })
+      }),
     );
 
     return res.status(200).json({
@@ -590,7 +623,7 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
 
 export const fileUploadMultiple = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const channelId = req.body.channelId || req.activeChannel;
@@ -614,7 +647,7 @@ export const fileUploadMultiple = async (
           groupId: groupId,
           upload_source: req.query.source || "message",
         });
-      })
+      }),
     );
 
     return res.status(201).json({
@@ -631,30 +664,46 @@ export const fileUploadMultiple = async (
 
 export const fileUploadWeb = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const channelId = req.activeChannel;
-    const userId = req.body.userId?.length > 0 ? req.body.userId : req.user?.id;
+    const isMultiple =
+      req.body.isMultiple === "true" || req.body.isMultiple === true;
+
+    const userIds: string[] = isMultiple
+      ? JSON.parse(req.body.userIds || "[]")
+      : [req.body.userId || req.user?.id];
+
     const groupId = req.body.groupId as string;
     const private_chat_id = req.query.private_chat_id as string;
     const source = req.body.source || "message";
+
     if (req.file) {
       const file = req.file as any;
 
-      await Media.create({
+      // Prepare bulk data
+      const mediaEntries = userIds.map((userId: string) => ({
         user_profile_id: userId,
         channelId: channelId,
         groupId: groupId ?? null,
         file_name: req.file?.originalname,
-        file_size: req.file.size,
-        mime_type: req.file.mimetype,
+        file_size: req?.file?.size,
+        mime_type: req.file?.mimetype,
         key: file?.key,
         file_type: req.body.type,
         upload_source: source,
         upload_type: "server",
         private_chat_id: private_chat_id || null,
-      });
+      }));
+
+      if (isMultiple) {
+        // 🔥 Bulk Insert
+        await Media.bulkCreate(mediaEntries);
+      } else {
+        // Normal single insert
+        await Media.create(mediaEntries[0]);
+      }
     }
 
     return res.status(201).json({
@@ -663,9 +712,10 @@ export const fileUploadWeb = async (
       data: req.file,
     });
   } catch (err: any) {
-    return res
-      .status(400)
-      .json({ status: false, message: err.message || "Internal Server Error" });
+    return res.status(400).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 };
 
@@ -877,14 +927,14 @@ export const uploadMiddleware = upload.single("file");
 
 export const quickMessageAndReply = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const { userProfileId, body } = req.body;
     const channelId = req.activeChannel;
 
     const findDriverSocket = global.driverOpenChat.find(
-      (driver) => driver?.driverId === userProfileId
+      (driver) => driver?.driverId === userProfileId,
     );
 
     const messageSave = await Message.create({
@@ -929,7 +979,7 @@ export const quickMessageAndReply = async (
             where: {
               id: messageSave.id,
             },
-          }
+          },
         );
         getSocketInstance()
           .to(isDriverSocket?.id)
@@ -951,7 +1001,7 @@ export const quickMessageAndReply = async (
         if (isUser) {
           if (isUser.device_token) {
             const isChannel = await Channel.findByPk(
-              findStaffActiveChannel?.channelId
+              findStaffActiveChannel?.channelId,
             );
             const messageCount = await UserChannel.sum(
               "recieve_message_count",
@@ -959,7 +1009,7 @@ export const quickMessageAndReply = async (
                 where: {
                   userProfileId: userProfileId,
                 },
-              }
+              },
             );
 
             const userGroupsCount = await GroupUser.sum("message_count", {
@@ -987,7 +1037,7 @@ export const quickMessageAndReply = async (
         if (isUser) {
           if (isUser.device_token) {
             const isChannel = await Channel.findByPk(
-              findStaffActiveChannel?.channelId
+              findStaffActiveChannel?.channelId,
             );
             const messageCount = await UserChannel.sum(
               "recieve_message_count",
@@ -995,7 +1045,7 @@ export const quickMessageAndReply = async (
                 where: {
                   userProfileId: userProfileId,
                 },
-              }
+              },
             );
 
             const userGroupsCount = await GroupUser.sum("message_count", {
@@ -1025,7 +1075,7 @@ export const quickMessageAndReply = async (
             userProfileId: userProfileId, // The user you want to update
             channelId: findStaffActiveChannel?.channelId, // The channel to target
           },
-        }
+        },
       );
     }
     const utcTime = moment.utc().toDate();
@@ -1040,7 +1090,7 @@ export const quickMessageAndReply = async (
           userProfileId: userProfileId,
           channelId: findStaffActiveChannel?.channelId,
         },
-      }
+      },
     );
     //Return Message To Staff After Store
     Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
@@ -1068,7 +1118,7 @@ export const quickMessageAndReply = async (
 
 export const fileUploadByQueue = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     if (!req.files || !Array.isArray(req.files)) {
@@ -1084,39 +1134,38 @@ export const fileUploadByQueue = async (
     const files = req.files as Express.Multer.File[];
     const fileUpload: any = [];
 
-   if(tempId){
-     const isMediaExistSameTempId = await Media.findOne({
-      where: {
-        temp_id: tempId,
-        upload_source: req.query.location || "message",
-      },
-    });
-    if (isMediaExistSameTempId) {
-      for (const file of files) {
-        const filePath = file.path; // Full path to the file
-
-        try {
-          fs.unlink(filePath, (err) => {
-            if (err) {
-              console.error(`Failed to delete ${filePath}:`, err);
-              // Consider adding to a cleanup queue for retry
-            } else {
-              console.log(`Cleaned up: ${filePath}`);
-            }
-          });
-        } catch (error) {
-          console.error(`Error processing ${file.originalname}:`, error);
-        }
-      }
-
-      return res.status(201).json({
-        status: true,
-        message: `File upload successfully`,
-        data: fileUpload,
+    if (tempId) {
+      const isMediaExistSameTempId = await Media.findOne({
+        where: {
+          temp_id: tempId,
+          upload_source: req.query.location || "message",
+        },
       });
-    }
+      if (isMediaExistSameTempId) {
+        for (const file of files) {
+          const filePath = file.path; // Full path to the file
 
-   }
+          try {
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error(`Failed to delete ${filePath}:`, err);
+                // Consider adding to a cleanup queue for retry
+              } else {
+                console.log(`Cleaned up: ${filePath}`);
+              }
+            });
+          } catch (error) {
+            console.error(`Error processing ${file.originalname}:`, error);
+          }
+        }
+
+        return res.status(201).json({
+          status: true,
+          message: `File upload successfully`,
+          data: fileUpload,
+        });
+      }
+    }
     if (tempId) {
       const findTempId = await Message.findOne({
         where: {
@@ -1134,7 +1183,7 @@ export const fileUploadByQueue = async (
           channelId,
           null,
           null,
-          "not-upload"
+          "not-upload",
         );
       }
     }
@@ -1159,7 +1208,7 @@ export const fileUploadByQueue = async (
             "S",
             `uscitylink/${fileNameS3}`,
             null,
-            "not-upload"
+            "not-upload",
           );
         } else if (location == "truck") {
           await messageToDriverByTruckGroup(
@@ -1171,7 +1220,7 @@ export const fileUploadByQueue = async (
             "S",
             `uscitylink/${fileNameS3}`,
             null,
-            "not-upload"
+            "not-upload",
           );
         } else {
           await messageToDriver(
@@ -1183,7 +1232,7 @@ export const fileUploadByQueue = async (
             `uscitylink/${fileNameS3}`,
             null,
             null,
-            "not-upload"
+            "not-upload",
           );
         }
       } else if (uploadBy == "staff_group") {
@@ -1198,7 +1247,7 @@ export const fileUploadByQueue = async (
           `uscitylink/${fileNameS3}`,
           "",
           "",
-          "not-upload"
+          "not-upload",
         );
       } else {
         const socket = global.userSockets[req.user?.id];
@@ -1212,7 +1261,7 @@ export const fileUploadByQueue = async (
             "S",
             `uscitylink/${fileNameS3}`,
             null,
-            "not-upload"
+            "not-upload",
           );
         } else {
           if (tempId) {
@@ -1226,7 +1275,7 @@ export const fileUploadByQueue = async (
                 channelId,
                 null,
                 null,
-                "not-upload"
+                "not-upload",
               );
             } else {
               await driverMessageQueueProcessWithoutSocket(
@@ -1239,7 +1288,7 @@ export const fileUploadByQueue = async (
                 null,
                 "not-upload",
                 userId,
-                null
+                null,
               );
             }
           } else {
@@ -1251,12 +1300,12 @@ export const fileUploadByQueue = async (
               channelId,
               null,
               null,
-              "not-upload"
+              "not-upload",
             );
           }
         }
       }
-      console.log("media")
+      console.log("media");
       // Create media record in the database
       const media = await Media.create({
         temp_id: tempId,
@@ -1273,20 +1322,8 @@ export const fileUploadByQueue = async (
         upload_type: "local",
         private_chat_id: private_chat_id,
       });
- console.log("job",media)
- console.log("fileQueueData",{filePath,
-        fileName: fileNameS3,
-        mediaId: media.id,
-        channelId,
-        groupId,
-        userId: uploadBy == "staff_group" ? req.user?.id : userId,
-        source: uploadBy,
-        location: req.query.source,
-        private_chat_id: private_chat_id,
-        tempId: tempId,})
-        try {
-                // Add job to the queue for the current file
-      const job = await fileUploadQueue.add({
+      console.log("job", media);
+      console.log("fileQueueData", {
         filePath,
         fileName: fileNameS3,
         mediaId: media.id,
@@ -1298,20 +1335,33 @@ export const fileUploadByQueue = async (
         private_chat_id: private_chat_id,
         tempId: tempId,
       });
- console.log("jobId",job)
-      if (!job || !job.id) {
-        media.update({
-          upload_type: "fail_to_add_queue",
+      try {
+        // Add job to the queue for the current file
+        const job = await fileUploadQueue.add({
+          filePath,
+          fileName: fileNameS3,
+          mediaId: media.id,
+          channelId,
+          groupId,
+          userId: uploadBy == "staff_group" ? req.user?.id : userId,
+          source: uploadBy,
+          location: req.query.source,
+          private_chat_id: private_chat_id,
+          tempId: tempId,
         });
-      }
-
-        } catch (error) {
-          console.log(error,"Job Error")
+        console.log("jobId", job);
+        if (!job || !job.id) {
+          media.update({
+            upload_type: "fail_to_add_queue",
+          });
         }
+      } catch (error) {
+        console.log(error, "Job Error");
+      }
 
       fileUpload.push({ ...file, key: `uscitylink/${fileNameS3}` });
     }
-    console.log("last")
+    console.log("last");
     return res.status(201).json({
       status: true,
       message: `File upload successfully`,
@@ -1337,7 +1387,7 @@ export const uploadFromLocal = async (
     userId: string;
     location: string;
     private_chat_id?: string;
-  }>
+  }>,
 ): Promise<void> => {
   const {
     filePath,
@@ -1375,7 +1425,7 @@ export const uploadFromLocal = async (
       if (existingMessage) {
         await Message.update(
           { url_upload_type: "server" },
-          { where: { id: existingMessage.id } }
+          { where: { id: existingMessage.id } },
         );
       }
 
@@ -1392,7 +1442,7 @@ export const uploadFromLocal = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         } else if (location == "truck") {
           const existingGroupMessage = await GroupMessage.findOne({
@@ -1401,7 +1451,7 @@ export const uploadFromLocal = async (
           if (existingGroupMessage) {
             await GroupMessage.update(
               { url_upload_type: "server" },
-              { where: { id: existingGroupMessage.id } }
+              { where: { id: existingGroupMessage.id } },
             );
           }
 
@@ -1414,7 +1464,7 @@ export const uploadFromLocal = async (
             "server",
             userId,
             existingGroupMessage!.id,
-            `uscitylink/${fileName}`
+            `uscitylink/${fileName}`,
           );
         } else {
           await notifiyFileUploadStaffToDriver(
@@ -1423,7 +1473,7 @@ export const uploadFromLocal = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         }
       } else if (source == "staff_group") {
@@ -1434,7 +1484,7 @@ export const uploadFromLocal = async (
           existingMessage!.id,
           "server",
           userId,
-          private_chat_id
+          private_chat_id,
         );
       } else {
         if (location == "group") {
@@ -1445,7 +1495,7 @@ export const uploadFromLocal = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         } else {
           await notifiyFileUploadDriverToStaff(
@@ -1454,7 +1504,7 @@ export const uploadFromLocal = async (
             channelId,
             existingMessage!.id,
             "server",
-            userId
+            userId,
           );
         }
       }
@@ -1463,18 +1513,18 @@ export const uploadFromLocal = async (
       attempt++;
       console.error(
         `Attempt ${attempt} - Error uploading file ${fileName}:`,
-        error
+        error,
       );
 
       if (attempt >= maxRetries) {
         console.error(
-          `Failed to upload file ${fileName} after ${maxRetries} attempts.`
+          `Failed to upload file ${fileName} after ${maxRetries} attempts.`,
         );
 
         if (existingMessage) {
           await Message.update(
             { url_upload_type: "failed" },
-            { where: { id: existingMessage.id } }
+            { where: { id: existingMessage.id } },
           );
         }
 

@@ -2080,7 +2080,8 @@ export async function messageToDriver(
   url: string | null,
   thumbnail: string | null,
   r_message_id: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
+  isBroadcastMessage?: boolean
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -2102,6 +2103,7 @@ export async function messageToDriver(
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
     url_upload_type: url_upload_type || "with-out-media",
+    isBroadcastMessage: isBroadcastMessage || false,
   });
   const message = await Message.findOne({
     where: {
@@ -2272,7 +2274,32 @@ export async function messageToDriver(
     }
   });
 }
-
+export async function messageToMultipleDrivers(
+  io: Server,
+  socket: CustomSocket,
+  userIds: string[],
+  body: string,
+  direction: string,
+  url: string | null,
+  thumbnail: string | null,
+  r_message_id: string | null,
+  url_upload_type?: string
+) {
+  for (const userId of userIds) {
+    await messageToDriver(
+      io,
+      socket,
+      userId,
+      body,
+      direction,
+      url,
+      thumbnail,
+      r_message_id,
+      url_upload_type,
+      true 
+    );
+  }
+}
 export async function messageToDriverByTruckGroup(
   io: Server,
   socket: CustomSocket,

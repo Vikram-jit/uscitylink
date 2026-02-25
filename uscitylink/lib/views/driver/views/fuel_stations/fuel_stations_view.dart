@@ -143,8 +143,9 @@ class _FuelStationsViewState extends State<FuelStationsView> {
           () => Container(
             key: ValueKey(
                 'stations_${route.id}_${routeController.nearByStations.length}'),
-            child:
-                StationWidget(), // This widget uses StationController internally
+            child: routeController.isLoading.value
+                ? const Center(child: CircularProgressIndicator())
+                : StationWidget(), // This widget uses StationController internally
           ),
         ),
         const SizedBox(height: 32),

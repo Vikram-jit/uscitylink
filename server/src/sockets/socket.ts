@@ -20,6 +20,7 @@ import {
   messageToDriverByForward,
   messageToDriverByTruckGroup,
   messageToGroup,
+  messageToMultipleDrivers,
   pinMessage,
   sendMessageToStaffMember,
   unreadAllGroupMessageByStaff,
@@ -604,11 +605,10 @@ export const initSocket = (httpServer: any) => {
           r_message_id
         )
     );
-
-    socket.on(
-      "FORWARD_MESSAGE_TO_DRIVERS",
-      async ({ userId, body, direction, url, thumbnail, url_upload_type }) =>
-        await messageToDriverByForward(
+     socket.on(
+      SocketEvents.SEND_MESSAGE_TO_USER,
+      async ({ userId, body, direction, url, thumbnail, r_message_id }) =>
+        await messageToDriver(
           io,
           socket,
           userId,
@@ -616,7 +616,24 @@ export const initSocket = (httpServer: any) => {
           direction,
           url,
           thumbnail,
-          url_upload_type
+          r_message_id
+        )
+    );
+
+    socket.on(
+      SocketEvents.BROADCAST_TO_USER,
+      async ({ userId, body, direction, url, thumbnail, url_upload_type }) =>
+        await messageToMultipleDrivers(
+          io,
+          socket,
+          userId,
+          body,
+          direction,
+          url,
+          thumbnail,
+          null,
+          url_upload_type,
+
         )
     );
 

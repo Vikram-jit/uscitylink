@@ -14,6 +14,7 @@ export const paths = {
     messages: '/dashboard/messages',
     truck_group: '/dashboard/truckgroup',
     truck_chat: '/dashboard/truck-chat',
+    broadcast_messages: '/dashboard/broadcast-messages',
     templates: '/dashboard/templates',
     trainings: '/dashboard/trainings',
     staff_chat: '/dashboard/staff_chat',

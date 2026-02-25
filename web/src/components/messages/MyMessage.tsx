@@ -22,7 +22,7 @@ export default function MyMessage() {
   const [unreadMessage, setUnReadMessage] = React.useState<string>('0');
 
   const { data, isLoading, refetch, isFetching } = useGetChannelMembersQuery(
-    { page, pageSize: 12, search: searchItem, type: selected ? 'truck' : 'user', unreadMessage: unreadMessage },
+    { paginate:true,  page, pageSize: 12, search: searchItem, type: selected ? 'truck' : 'user', unreadMessage: unreadMessage },
     {
       refetchOnFocus: false,
     }

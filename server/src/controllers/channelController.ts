@@ -236,7 +236,7 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
     const page = parseInt(req.query.page as string) || 1; 
    
     const pageSize = parseInt(req.query.limit as string) || 30; 
-
+    const isPaginate = req.query.paginate === "true";
     const search = req.query.search as string || ''
     const unreadMessage = req.query.unreadMessage  as string || "0"
     const offset = (page - 1) * pageSize;
@@ -431,8 +431,8 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
             "DESC",
           ],
         ],
-        limit: pageSize,
-        offset: offset,
+       ...(isPaginate ? {  limit: pageSize,
+        offset: offset, } : {}),
       })
   
     }

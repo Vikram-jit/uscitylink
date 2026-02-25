@@ -86,7 +86,7 @@ export function SideNav(): React.JSX.Element {
         </Box>
       </Stack>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
-      <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
+      <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' ,overflowY:"auto"}}>
         {renderNavItems({ pathname, items: navItems ,data:data?.data})}
       </Box>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
