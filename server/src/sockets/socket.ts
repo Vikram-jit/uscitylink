@@ -34,9 +34,8 @@ import moment from "moment";
 import { AppVersions } from "../models/AppVersions";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
-import PrivateChatMember from "../models/PrivateChatMember";
 import { Message } from "../models/Message";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 import GroupChannel from "../models/GroupChannel";
 import UserModel from "../models/User"
 

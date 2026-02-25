@@ -101,7 +101,10 @@ const MessageForm: React.FC = ({}) => {
     }, [selectedTemplate]);
   
   const handleSend = async () => {
-   
+     if(selectedUsers.length > 20){
+        toast.error('You can select up to 20 drivers at a time.');
+        return;
+     }
     if (media) {
       const extension = media.name?.split('.')[media.name?.split('.').length - 1];
 
@@ -172,8 +175,14 @@ const MessageForm: React.FC = ({}) => {
             <Autocomplete
               multiple
               value={selectedUsers}
-              options={data?.data?.user_channels || []}
-              disableCloseOnSelect
+options={
+  [...(data?.data?.user_channels || [])].sort((a, b) =>
+    (a?.UserProfile?.username || "")
+      .localeCompare(b?.UserProfile?.username || "", undefined, {
+        sensitivity: "base",
+      })
+  )
+}              disableCloseOnSelect
               loading={isLoading}
               onChange={(_, value) => setSelectedUsers(value)}
               isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
