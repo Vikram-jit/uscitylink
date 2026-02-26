@@ -20,6 +20,7 @@ import driverTrainingRoutes from "./routes/driverTrainingRoutes";
 import templateRoutes from "./routes/templateRoutes";
 import channelMemberRoutes from "./routes/channelMemberRoutes";
 import groupRoutes from "./routes/groupRoutes";
+import broadcastRoutes from "./routes/broadcastRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import messageV2Routes from "./routes/messageRoutesV2";
 import chatRoutes from "./routes/staff/chatRoutes";
@@ -86,6 +87,7 @@ app.get("/:id", async (req, res) => {
 
 // Use authentication routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/broadcast", broadcastRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/channel", channelRoutes);
 app.use("/api/v1/group", groupRoutes);

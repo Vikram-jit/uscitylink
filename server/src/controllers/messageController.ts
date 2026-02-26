@@ -38,6 +38,7 @@ import {
   sendMessageToStaffMember,
 } from "../sockets/messageHandler";
 import GroupMessage from "../models/GroupMessage";
+import BroadcastMessage from "../models/BroadcastMessage";
 
 dotenv.config();
 
@@ -392,31 +393,64 @@ export const getBroadCastMessages = async (
   res: Response,
 ): Promise<any> => {
   try {
-    const messages = await Message.findAll({
-      attributes: [
-        [Sequelize.fn("MIN", Sequelize.col("id")), "id"],
-        "body",
-        "messageTimestampUtc",
-        "senderId",
-        "url",
-        "url_upload_type",
-      ],
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 10;
+    const search = (req.query.search as string) || "";
+    const status = req.query.status as string;
+
+    const offset = (page - 1) * pageSize;
+
+    const where: any = {};
+
+    const { rows, count } = await BroadcastMessage.findAndCountAll({
       where: {
-        isBroadcastMessage: true,
+        ...(status && { status }),
+
+        ...(search && {
+          [Op.or]: [
+            { body: { [Op.like]: `%${search}%` } },
+
+            { "$userProfile.username$": { [Op.like]: `%${search}%` } },
+
+            {
+              "$userProfile.user.driver_number$": { [Op.like]: `%${search}%` },
+            },
+          ],
+        }),
       },
-      group: ["body", "messageTimestampUtc", "senderId"],
-      order: [["messageTimestampUtc", "DESC"]],
+      include: [
+        {
+          model: UserProfile,
+          as: "userProfile",
+          attributes: ["id", "username"],
+          include: [{ model: User, as: "user", attributes: ["driver_number"] }],
+        },
+      ],
+      limit: pageSize,
+      offset,
+      order: [["createdAt", "DESC"]],
     });
 
+    const totalMessages = count;
+    const totalPages = Math.ceil(totalMessages / pageSize);
     return res.status(200).json({
       status: true,
-      message: `Fetch message successfully`,
-      data: messages,
+      data: {
+        messages: rows,
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          total: totalMessages,
+          totalPages,
+        },
+      },
     });
-  } catch (err: any) {
-    return res
-      .status(400)
-      .json({ status: false, message: err.message || "Internal Server Error" });
+  } catch (error) {
+    console.error("Broadcast fetch error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+    });
   }
 };
 

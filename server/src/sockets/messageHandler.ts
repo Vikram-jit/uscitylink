@@ -24,6 +24,7 @@ import GroupChannel from "../models/GroupChannel";
 import retry from "async-retry";
 
 import { primarySequelize } from "../sequelize";
+import BroadcastMessage from "../models/BroadcastMessage";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -63,7 +64,7 @@ export const groupNotificationStaffQueue = new Queue(
       maxRetriesPerRequest: null, // prevents crash on Redis failure
       enableReadyCheck: false, // speeds up startup when Redis is slow
     },
-  }
+  },
 );
 
 groupNotificationStaffQueue.process(async (job) => {
@@ -120,7 +121,7 @@ groupNotificationStaffQueue.process(async (job) => {
           }
         }
       }
-    })
+    }),
   );
 });
 
@@ -197,7 +198,7 @@ notificationQueue.process(async (job: any) => {
                   throw err;
                 }
               },
-            }
+            },
           );
 
           const deviceToken = user.device_token;
@@ -222,7 +223,7 @@ notificationQueue.process(async (job: any) => {
           }
         }
       }
-    })
+    }),
   );
 });
 
@@ -249,7 +250,7 @@ export async function driverMessageQueueProcessWithoutSocket(
   r_message_id: string | null,
   url_upload_type?: string,
   userId?: string,
-  truckId?: string | null
+  truckId?: string | null,
 ) {
   const messageSave = await Message.create({
     channelId: channelId,
@@ -337,7 +338,7 @@ export async function driverMessageQueueProcessWithoutSocket(
                     throw err;
                   }
                 },
-              }
+              },
             );
 
             await message?.update(
@@ -348,13 +349,13 @@ export async function driverMessageQueueProcessWithoutSocket(
                 where: {
                   id: messageSave.id,
                 },
-              }
+              },
             );
 
             isCheckAnyStaffOpenChat += 1;
             io.to(isSocket.id).emit(
               SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-              message
+              message,
             );
           }
         } else {
@@ -363,16 +364,13 @@ export async function driverMessageQueueProcessWithoutSocket(
               const channel = await Channel.findByPk(message?.channelId);
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received on ${channel?.name} channel`
+                `New Message received on ${channel?.name} channel`,
               );
-               io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userId}`
-              );
+              io.to(isSocket.id).emit("notification_user_id", `${userId}`);
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -380,7 +378,7 @@ export async function driverMessageQueueProcessWithoutSocket(
                     userProfileId: userId, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -395,7 +393,7 @@ export async function driverMessageQueueProcessWithoutSocket(
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -403,21 +401,18 @@ export async function driverMessageQueueProcessWithoutSocket(
                     userProfileId: userId, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received`
+                `New Message received`,
               );
-               io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userId}`
-              );
+              io.to(isSocket.id).emit("notification_user_id", `${userId}`);
               isCheckAnyStaffOpenChat += 1;
             }
           }
         }
-      }
+      },
     );
 
     await Promise.all(promises);
@@ -432,7 +427,7 @@ export async function driverMessageQueueProcessWithoutSocket(
             userProfileId: userId,
             channelId: channelId,
           },
-        }
+        },
       );
     }
 
@@ -469,7 +464,7 @@ export async function driverMessageQueueProcessWithoutSocket(
                   throw err;
                 }
               },
-            }
+            },
           );
 
           if (el.role == "staff" && el.channelId == channelId) {
@@ -482,12 +477,9 @@ export async function driverMessageQueueProcessWithoutSocket(
 
               io.to(isSocket?.id).emit(
                 "notification_new_message",
-                `New Message received `
+                `New Message received `,
               );
-               io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userId}`
-              );
+              io.to(isSocket.id).emit("notification_user_id", `${userId}`);
             }
           } else {
             if (el.role == "staff" && el.channelId != channelId) {
@@ -495,16 +487,13 @@ export async function driverMessageQueueProcessWithoutSocket(
               if (isSocket) {
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received on ${channel?.name} channel`
+                  `New Message received on ${channel?.name} channel`,
                 );
-                 io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userId}`
-              );
+                io.to(isSocket.id).emit("notification_user_id", `${userId}`);
               }
             }
           }
-        }
+        },
       );
       await Promise.all(newPromise);
     }
@@ -519,7 +508,7 @@ export async function driverMessageQueueProcessWithoutSocket(
           userProfileId: userId,
           channelId: channelId,
         },
-      }
+      },
     );
 
     if (truckId) {
@@ -532,7 +521,7 @@ export async function driverMessageQueueProcessWithoutSocket(
           where: {
             id: truckId,
           },
-        }
+        },
       );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (e.channelId === channelId && truckId == e.groupId) {
@@ -572,7 +561,7 @@ export async function driverMessageQueueProcessResend(
   channelId: string,
   thumbnail: string | null,
   r_message_id: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   let messageSave: Message | null = await Message.findOne({
     where: {
@@ -667,13 +656,13 @@ export async function driverMessageQueueProcessResend(
                 where: {
                   id: messageSave?.id,
                 },
-              }
+              },
             );
 
             isCheckAnyStaffOpenChat += 1;
             io.to(isSocket.id).emit(
               SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-              message
+              message,
             );
           }
         } else {
@@ -682,16 +671,16 @@ export async function driverMessageQueueProcessResend(
               // const channel = await Channel.findByPk(message?.channelId);
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received by ${message?.dataValues.sender.username}`
+                `New Message received by ${message?.dataValues.sender.username}`,
               );
-               io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${message.userProfileId}`
+                `${message.userProfileId}`,
               );
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -699,7 +688,7 @@ export async function driverMessageQueueProcessResend(
                     userProfileId: socket?.user?.id, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -714,7 +703,7 @@ export async function driverMessageQueueProcessResend(
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -722,21 +711,21 @@ export async function driverMessageQueueProcessResend(
                     userProfileId: socket?.user?.id, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received`
+                `New Message received`,
               );
-               io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${message.userProfileId}`
+                `${message.userProfileId}`,
               );
               isCheckAnyStaffOpenChat += 1;
             }
           }
         }
-      }
+      },
     );
 
     await Promise.all(promises);
@@ -751,7 +740,7 @@ export async function driverMessageQueueProcessResend(
             userProfileId: socket?.user?.id,
             channelId: channelId,
           },
-        }
+        },
       );
     }
 
@@ -782,11 +771,11 @@ export async function driverMessageQueueProcessResend(
 
               io.to(isSocket?.id).emit(
                 "notification_new_message",
-                `New Message received `
+                `New Message received `,
               );
-               io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${message.userProfileId}`
+                `${message.userProfileId}`,
               );
             }
           } else {
@@ -795,16 +784,16 @@ export async function driverMessageQueueProcessResend(
               if (isSocket) {
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received by  ${message?.dataValues.sender.username}`
+                  `New Message received by  ${message?.dataValues.sender.username}`,
                 );
-                 io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${message.userProfileId}`
-              );
+                io.to(isSocket.id).emit(
+                  "notification_user_id",
+                  `${message.userProfileId}`,
+                );
               }
             }
           }
-        }
+        },
       );
       await Promise.all(newPromise);
     }
@@ -819,7 +808,7 @@ export async function driverMessageQueueProcessResend(
           userProfileId: socket?.user?.id,
           channelId: channelId,
         },
-      }
+      },
     );
 
     if (socket?.user?.truck_group_id) {
@@ -832,7 +821,7 @@ export async function driverMessageQueueProcessResend(
           where: {
             id: socket?.user?.truck_group_id,
           },
-        }
+        },
       );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (
@@ -926,9 +915,9 @@ export async function driverMessageQueueProcessResend(
         if (isSocket) {
           io.to(isSocket.id).emit(
             "notification_new_message",
-            `New Message received on ${channel?.name} channel`
+            `New Message received on ${channel?.name} channel`,
           );
-          
+
           if (userDriver) {
             const unreadCount = await MessageStaff.count({
               where: {
@@ -938,10 +927,10 @@ export async function driverMessageQueueProcessResend(
                 staffId: user.id,
               },
             });
-             io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userDriver.userProfileId}`
-              );
+            io.to(isSocket.id).emit(
+              "notification_user_id",
+              `${userDriver.userProfileId}`,
+            );
             const groupUsers: any = await GroupUser.findAll({
               where: {
                 userProfileId: userDriver.userProfileId,
@@ -957,7 +946,7 @@ export async function driverMessageQueueProcessResend(
               ],
             });
             const getTruckNumbers = await Promise.all(
-              groupUsers.map((e: any) => e.Group.name)
+              groupUsers.map((e: any) => e.Group.name),
             );
 
             const newObj = {
@@ -967,9 +956,8 @@ export async function driverMessageQueueProcessResend(
             };
             io.to(isSocket.id).emit(
               "notification_new_message_with_user",
-              newObj
+              newObj,
             );
-           
           }
 
           io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -980,7 +968,7 @@ export async function driverMessageQueueProcessResend(
           });
         }
       }
-    })
+    }),
   );
 }
 
@@ -994,7 +982,7 @@ export async function driverMessageQueueProcess(
   thumbnail: string | null,
   r_message_id: string | null,
   url_upload_type?: string,
-  messageTimestampUtc?: String
+  messageTimestampUtc?: String,
 ) {
   const messageSave = await Message.create({
     channelId: channelId,
@@ -1082,7 +1070,7 @@ export async function driverMessageQueueProcess(
                     throw err;
                   }
                 },
-              }
+              },
             );
             await message?.update(
               {
@@ -1092,13 +1080,13 @@ export async function driverMessageQueueProcess(
                 where: {
                   id: messageSave.id,
                 },
-              }
+              },
             );
 
             isCheckAnyStaffOpenChat += 1;
             io.to(isSocket.id).emit(
               SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-              message
+              message,
             );
           }
         } else {
@@ -1107,16 +1095,16 @@ export async function driverMessageQueueProcess(
               // const channel = await Channel.findByPk(message?.channelId);
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received by  ${message?.dataValues.sender.username}`
+                `New Message received by  ${message?.dataValues.sender.username}`,
               );
-               io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${message.userProfileId}`
+                `${message.userProfileId}`,
               );
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -1124,7 +1112,7 @@ export async function driverMessageQueueProcess(
                     userProfileId: socket?.user?.id, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               isCheckAnyStaffOpenChat += 1;
             }
@@ -1139,7 +1127,7 @@ export async function driverMessageQueueProcess(
               await UserChannel.update(
                 {
                   sent_message_count: Sequelize.literal(
-                    "sent_message_count + 1"
+                    "sent_message_count + 1",
                   ),
                 },
                 {
@@ -1147,21 +1135,21 @@ export async function driverMessageQueueProcess(
                     userProfileId: socket?.user?.id, // The user you want to update
                     channelId: channelId, // The channel to target
                   },
-                }
+                },
               );
               io.to(isSocket.id).emit(
                 "notification_new_message",
-                `New Message received First`
+                `New Message received First`,
               );
-               io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${message.userProfileId}`
+                `${message.userProfileId}`,
               );
               isCheckAnyStaffOpenChat += 1;
             }
           }
         }
-      }
+      },
     );
 
     await Promise.all(promises);
@@ -1188,7 +1176,7 @@ export async function driverMessageQueueProcess(
             userProfileId: socket?.user?.id,
             channelId: channelId,
           },
-        }
+        },
       );
     }
 
@@ -1225,7 +1213,7 @@ export async function driverMessageQueueProcess(
                   throw err;
                 }
               },
-            }
+            },
           );
 
           if (el.role == "staff" && el.channelId == channelId) {
@@ -1238,7 +1226,7 @@ export async function driverMessageQueueProcess(
 
               io.to(isSocket?.id).emit(
                 "notification_new_message",
-                `New Message received second`
+                `New Message received second`,
               );
             }
           } else {
@@ -1247,12 +1235,12 @@ export async function driverMessageQueueProcess(
               if (isSocket) {
                 io.to(isSocket?.id).emit(
                   "notification_new_message",
-                  `New Message received by  ${message?.dataValues.sender.username}`
+                  `New Message received by  ${message?.dataValues.sender.username}`,
                 );
               }
             }
           }
-        }
+        },
       );
       await Promise.all(newPromise);
     }
@@ -1267,7 +1255,7 @@ export async function driverMessageQueueProcess(
           userProfileId: socket?.user?.id,
           channelId: channelId,
         },
-      }
+      },
     );
 
     if (socket?.user?.truck_group_id) {
@@ -1280,7 +1268,7 @@ export async function driverMessageQueueProcess(
           where: {
             id: socket?.user?.truck_group_id,
           },
-        }
+        },
       );
       Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
         if (
@@ -1365,7 +1353,7 @@ export async function driverMessageQueueProcess(
         if (isSocket) {
           io.to(isSocket.id).emit(
             "notification_new_message",
-            `New Message received on ${channel?.name} channel`
+            `New Message received on ${channel?.name} channel`,
           );
           if (userDriver) {
             const unreadCount = await MessageStaff.count({
@@ -1391,7 +1379,7 @@ export async function driverMessageQueueProcess(
               ],
             });
             const getTruckNumbers = await Promise.all(
-              groupUsers.map((e: any) => e.Group.name)
+              groupUsers.map((e: any) => e.Group.name),
             );
 
             const newObj = {
@@ -1401,12 +1389,12 @@ export async function driverMessageQueueProcess(
             };
             io.to(isSocket.id).emit(
               "notification_new_message_with_user",
-              newObj
+              newObj,
             );
-             io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${userDriver.userProfileId}`
-              );
+            io.to(isSocket.id).emit(
+              "notification_user_id",
+              `${userDriver.userProfileId}`,
+            );
           }
 
           io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -1417,7 +1405,7 @@ export async function driverMessageQueueProcess(
           });
         }
       }
-    })
+    }),
   );
 }
 
@@ -1429,10 +1417,10 @@ export async function messageToChannelToUser(
   channelId: string,
   thumbnail: string | null,
   r_message_id: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   const findUserChannel = global.driverOpenChat.find(
-    (e) => e.driverId == socket?.user?.id
+    (e) => e.driverId == socket?.user?.id,
   );
   if (findUserChannel) {
     const messageSave = await Message.create({
@@ -1523,7 +1511,7 @@ export async function messageToChannelToUser(
                       throw err;
                     }
                   },
-                }
+                },
               );
 
               await message?.update(
@@ -1534,13 +1522,13 @@ export async function messageToChannelToUser(
                   where: {
                     id: messageSave.id,
                   },
-                }
+                },
               );
 
               isCheckAnyStaffOpenChat += 1;
               io.to(isSocket.id).emit(
                 SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-                message
+                message,
               );
             }
           } else {
@@ -1549,16 +1537,16 @@ export async function messageToChannelToUser(
                 // const channel = await Channel.findByPk(message?.channelId);
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received on  ${message?.dataValues.sender.username}  channel 1`
+                  `New Message received on  ${message?.dataValues.sender.username}  channel 1`,
                 );
-                 io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${message.userProfileId}`
-              );
+                io.to(isSocket.id).emit(
+                  "notification_user_id",
+                  `${message.userProfileId}`,
+                );
                 await UserChannel.update(
                   {
                     sent_message_count: Sequelize.literal(
-                      "sent_message_count + 1"
+                      "sent_message_count + 1",
                     ),
                   },
                   {
@@ -1566,7 +1554,7 @@ export async function messageToChannelToUser(
                       userProfileId: socket?.user?.id, // The user you want to update
                       channelId: findUserChannel.channelId, // The channel to target
                     },
-                  }
+                  },
                 );
                 isCheckAnyStaffOpenChat += 1;
               }
@@ -1581,7 +1569,7 @@ export async function messageToChannelToUser(
                 await UserChannel.update(
                   {
                     sent_message_count: Sequelize.literal(
-                      "sent_message_count + 1"
+                      "sent_message_count + 1",
                     ),
                   },
                   {
@@ -1589,21 +1577,21 @@ export async function messageToChannelToUser(
                       userProfileId: socket?.user?.id,
                       channelId: findUserChannel.channelId,
                     },
-                  }
+                  },
                 );
                 io.to(isSocket.id).emit(
                   "notification_new_message",
-                  `New Message received`
+                  `New Message received`,
                 );
-                 io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${message.userProfileId}`
-              );
+                io.to(isSocket.id).emit(
+                  "notification_user_id",
+                  `${message.userProfileId}`,
+                );
                 isCheckAnyStaffOpenChat += 1;
               }
             }
           }
-        }
+        },
       );
 
       await Promise.all(promises);
@@ -1618,7 +1606,7 @@ export async function messageToChannelToUser(
               userProfileId: socket?.user?.id,
               channelId: findUserChannel.channelId,
             },
-          }
+          },
         );
       }
 
@@ -1655,7 +1643,7 @@ export async function messageToChannelToUser(
                     throw err;
                   }
                 },
-              }
+              },
             );
 
             if (
@@ -1682,16 +1670,16 @@ export async function messageToChannelToUser(
                 if (isSocket) {
                   io.to(isSocket?.id).emit(
                     "notification_new_message",
-                    `New Message received by ${message?.dataValues.sender.username} `
+                    `New Message received by ${message?.dataValues.sender.username} `,
                   );
-                   io.to(isSocket.id).emit(
-                "notification_user_id",
-                `${message.userProfileId}`
-              );
+                  io.to(isSocket.id).emit(
+                    "notification_user_id",
+                    `${message.userProfileId}`,
+                  );
                 }
               }
             }
-          }
+          },
         );
         await Promise.all(newPromise);
       }
@@ -1706,7 +1694,7 @@ export async function messageToChannelToUser(
             userProfileId: socket?.user?.id,
             channelId: findUserChannel.channelId,
           },
-        }
+        },
       );
       if (socket?.user?.truck_group_id) {
         await Group.update(
@@ -1718,7 +1706,7 @@ export async function messageToChannelToUser(
             where: {
               id: socket?.user?.truck_group_id,
             },
-          }
+          },
         );
         Object.entries(global.staffOpenTruckGroup).forEach(([staffId, e]) => {
           if (
@@ -1796,7 +1784,7 @@ export async function messageToChannelToUser(
           if (isSocket) {
             io.to(isSocket.id).emit(
               "notification_new_message",
-              `New Message received by ${message?.dataValues.sender.username}`
+              `New Message received by ${message?.dataValues.sender.username}`,
             );
             if (userDriver) {
               const unreadCount = await MessageStaff.count({
@@ -1807,9 +1795,9 @@ export async function messageToChannelToUser(
                   staffId: user.id,
                 },
               });
-                io.to(isSocket.id).emit(
+              io.to(isSocket.id).emit(
                 "notification_user_id",
-                `${userDriver.userProfileId}`
+                `${userDriver.userProfileId}`,
               );
               const groupUsers: any = await GroupUser.findAll({
                 where: {
@@ -1826,7 +1814,7 @@ export async function messageToChannelToUser(
                 ],
               });
               const getTruckNumbers = await Promise.all(
-                groupUsers.map((e: any) => e.Group.name)
+                groupUsers.map((e: any) => e.Group.name),
               );
 
               const newObj = {
@@ -1836,9 +1824,8 @@ export async function messageToChannelToUser(
               };
               io.to(isSocket.id).emit(
                 "notification_new_message_with_user",
-                newObj
+                newObj,
               );
-              
             }
 
             io.to(isSocket.id).emit("new_message_count_update_staff", {
@@ -1849,12 +1836,10 @@ export async function messageToChannelToUser(
             });
           }
         }
-      })
+      }),
     );
   }
 }
-
-
 
 //Message To Driver
 
@@ -1866,210 +1851,216 @@ export async function messageToDriverByForward(
   direction: string,
   url: string | null,
   thumbnail: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
-   await Promise.all(userIds?.map(async(userId)=>{
-    
-     const findDriverSocket = global.driverOpenChat.find(
-    (driver) => driver?.driverId === userId
-  );
+  await Promise.all(
+    userIds?.map(async (userId) => {
+      const findDriverSocket = global.driverOpenChat.find(
+        (driver) => driver?.driverId === userId,
+      );
 
-  const messageSave = await Message.create({
-    channelId: findStaffActiveChannel?.channelId,
-    userProfileId: userId,
-    body,
-    messageDirection: direction,
-    deliveryStatus: "sent",
-    messageTimestampUtc: new Date(),
-    senderId: socket?.user?.id,
-    isRead: false,
-    status: "queue",
-    url: url || null,
-    thumbnail: thumbnail || null,
-    reply_message_id: null,
-    url_upload_type: url_upload_type || "with-out-media",
-  });
-  const message = await Message.findOne({
-    where: {
-      id: messageSave.id,
-    },
-    include: [
-      {
-        model: Message,
-        as: "r_message",
+      const messageSave = await Message.create({
+        channelId: findStaffActiveChannel?.channelId,
+        userProfileId: userId,
+        body,
+        messageDirection: direction,
+        deliveryStatus: "sent",
+        messageTimestampUtc: new Date(),
+        senderId: socket?.user?.id,
+        isRead: false,
+        status: "queue",
+        url: url || null,
+        thumbnail: thumbnail || null,
+        reply_message_id: null,
+        url_upload_type: url_upload_type || "with-out-media",
+      });
+      const message = await Message.findOne({
+        where: {
+          id: messageSave.id,
+        },
         include: [
+          {
+            model: Message,
+            as: "r_message",
+            include: [
+              {
+                model: UserProfile,
+                as: "sender",
+                attributes: ["id", "username", "isOnline"],
+                include: [
+                  {
+                    model: User,
+                    as: "user",
+                  },
+                ],
+              },
+            ],
+          },
           {
             model: UserProfile,
             as: "sender",
             attributes: ["id", "username", "isOnline"],
-            include: [
-              {
-                model: User,
-                as: "user",
-              },
-            ],
           },
         ],
-      },
-      {
-        model: UserProfile,
-        as: "sender",
-        attributes: ["id", "username", "isOnline"],
-      },
-    ],
-  });
-  //Check Before send driver active room channel
-  const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
-  const isUser = await UserProfile.findOne({
+      });
+      //Check Before send driver active room channel
+      const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+      const isUser = await UserProfile.findOne({
         where: {
           id: userId,
         },
       });
-  if (
-    findDriverSocket &&
-    findDriverSocket?.channelId == findStaffActiveChannel?.channelId
-  ) {
-    if (isDriverSocket) {
-      await message?.update(
+      if (
+        findDriverSocket &&
+        findDriverSocket?.channelId == findStaffActiveChannel?.channelId
+      ) {
+        if (isDriverSocket) {
+          await message?.update(
+            {
+              deliveryStatus: "seen",
+              status: "sent",
+            },
+            {
+              where: {
+                id: messageSave.id,
+              },
+            },
+          );
+          io.to(isDriverSocket?.id).emit(
+            SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+            message,
+          );
+        }
+      } else {
+        if (isDriverSocket) {
+          io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
+          io.to(isDriverSocket?.id).emit(
+            "new_message_count_update",
+            message?.channelId,
+          );
+          // const isUser = await UserProfile.findOne({
+          //   where: {
+          //     id: userId,
+          //   },
+          // });
+          if (isUser) {
+            if (isUser.device_token) {
+              const isChannel = await Channel.findByPk(
+                findStaffActiveChannel?.channelId,
+              );
+
+              const messageCount = await UserChannel.sum(
+                "recieve_message_count",
+                {
+                  where: {
+                    userProfileId: userId,
+                  },
+                },
+              );
+
+              const userGroupsCount = await GroupUser.sum("message_count", {
+                where: { userProfileId: userId },
+              });
+
+              await sendNotificationToDevice(isUser.device_token, {
+                title: isChannel?.name || "",
+                badge: messageCount + userGroupsCount,
+                body: body,
+                data: {
+                  channelId: isChannel?.id,
+
+                  type: "NEW MESSAGE",
+                  title: isChannel?.name,
+                },
+              });
+            }
+          }
+        } else {
+          // const isUser = await UserProfile.findOne({
+          //   where: {
+          //     id: userId,
+          //   },
+          // });
+          if (isUser) {
+            if (isUser.device_token) {
+              const isChannel = await Channel.findByPk(
+                findStaffActiveChannel?.channelId,
+              );
+              const messageCount = await UserChannel.sum(
+                "recieve_message_count",
+                {
+                  where: {
+                    userProfileId: userId,
+                  },
+                },
+              );
+
+              const userGroupsCount = await GroupUser.sum("message_count", {
+                where: { userProfileId: userId },
+              });
+              await sendNotificationToDevice(isUser.device_token, {
+                title: isChannel?.name || "",
+                badge: messageCount + userGroupsCount,
+                body: body,
+                data: {
+                  channelId: isChannel?.id,
+
+                  type: "NEW MESSAGE",
+                  title: isChannel?.name,
+                },
+              });
+            }
+          }
+        }
+
+        await UserChannel.update(
+          {
+            recieve_message_count: Sequelize.literal(
+              "recieve_message_count + 1",
+            ),
+          },
+          {
+            where: {
+              userProfileId: userId, // The user you want to update
+              channelId: findStaffActiveChannel?.channelId, // The channel to target
+            },
+          },
+        );
+      }
+      const utcTime = moment.utc().toDate();
+
+      await UserChannel.update(
         {
-          deliveryStatus: "seen",
-          status: "sent",
+          last_message_id: message?.id,
+          last_message_utc: utcTime,
         },
         {
           where: {
-            id: messageSave.id,
+            userProfileId: userId,
+            channelId: findStaffActiveChannel?.channelId,
           },
-        }
-      );
-      io.to(isDriverSocket?.id).emit(
-        SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-        message
-      );
-    }
-  } else {
-    if (isDriverSocket) {
-      io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
-      io.to(isDriverSocket?.id).emit(
-        "new_message_count_update",
-        message?.channelId
-      );
-      // const isUser = await UserProfile.findOne({
-      //   where: {
-      //     id: userId,
-      //   },
-      // });
-      if (isUser) {
-        if (isUser.device_token) {
-          const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
-          );
-
-          const messageCount = await UserChannel.sum("recieve_message_count", {
-            where: {
-              userProfileId: userId,
-            },
-          });
-
-          const userGroupsCount = await GroupUser.sum("message_count", {
-            where: { userProfileId: userId },
-          });
-
-          await sendNotificationToDevice(isUser.device_token, {
-            title: isChannel?.name || "",
-            badge: messageCount + userGroupsCount,
-            body: body,
-            data: {
-              channelId: isChannel?.id,
-
-              type: "NEW MESSAGE",
-              title: isChannel?.name,
-            },
-          });
-        }
-      }
-    } else {
-      // const isUser = await UserProfile.findOne({
-      //   where: {
-      //     id: userId,
-      //   },
-      // });
-      if (isUser) {
-        if (isUser.device_token) {
-          const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
-          );
-          const messageCount = await UserChannel.sum("recieve_message_count", {
-            where: {
-              userProfileId: userId,
-            },
-          });
-
-          const userGroupsCount = await GroupUser.sum("message_count", {
-            where: { userProfileId: userId },
-          });
-          await sendNotificationToDevice(isUser.device_token, {
-            title: isChannel?.name || "",
-            badge: messageCount + userGroupsCount,
-            body: body,
-            data: {
-              channelId: isChannel?.id,
-
-              type: "NEW MESSAGE",
-              title: isChannel?.name,
-            },
-          });
-        }
-      }
-    }
-
-    await UserChannel.update(
-      {
-        recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
-      },
-      {
-        where: {
-          userProfileId: userId, // The user you want to update
-          channelId: findStaffActiveChannel?.channelId, // The channel to target
         },
-      }
-    );
-  }
-  const utcTime = moment.utc().toDate();
+      );
+      //Return Message To Staff After Store
 
-  await UserChannel.update(
-    {
-      last_message_id: message?.id,
-      last_message_utc: utcTime,
-    },
-    {
-      where: {
-        userProfileId: userId,
-        channelId: findStaffActiveChannel?.channelId,
-      },
-    }
+      Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
+        if (e.channelId === findStaffActiveChannel?.channelId) {
+          const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+
+          if (isSocket) {
+            io.to(isSocket.id).emit(
+              "notification_forward_message",
+              `Message forwarded to ${isUser?.username} successfully`,
+            );
+          }
+        }
+      });
+    }),
   );
-  //Return Message To Staff After Store
- 
- Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
-    if (e.channelId === findStaffActiveChannel?.channelId) {
-      const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
-
-      if (isSocket) {
-        io.to(isSocket.id).emit(
-          "notification_forward_message",
-         `Message forwarded to ${isUser?.username} successfully`
-        );
-      }
-    }
-  });
-   }))
- 
 }
 
-
-//Message To Driver
 
 export async function messageToDriver(
   io: Server,
@@ -2081,12 +2072,12 @@ export async function messageToDriver(
   thumbnail: string | null,
   r_message_id: string | null,
   url_upload_type?: string,
-  isBroadcastMessage?: boolean
+  isBroadcastMessage?: boolean,
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
   const findDriverSocket = global.driverOpenChat.find(
-    (driver) => driver?.driverId === userId
+    (driver) => driver?.driverId === userId,
   );
 
   const messageSave = await Message.create({
@@ -2151,11 +2142,11 @@ export async function messageToDriver(
           where: {
             id: messageSave.id,
           },
-        }
+        },
       );
       io.to(isDriverSocket?.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-        message
+        message,
       );
     }
   } else {
@@ -2163,7 +2154,7 @@ export async function messageToDriver(
       io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
       io.to(isDriverSocket?.id).emit(
         "new_message_count_update",
-        message?.channelId
+        message?.channelId,
       );
       const isUser = await UserProfile.findOne({
         where: {
@@ -2173,7 +2164,7 @@ export async function messageToDriver(
       if (isUser) {
         if (isUser.device_token) {
           const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
+            findStaffActiveChannel?.channelId,
           );
 
           const messageCount = await UserChannel.sum("recieve_message_count", {
@@ -2208,7 +2199,7 @@ export async function messageToDriver(
       if (isUser) {
         if (isUser.device_token) {
           const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
+            findStaffActiveChannel?.channelId,
           );
           const messageCount = await UserChannel.sum("recieve_message_count", {
             where: {
@@ -2243,7 +2234,7 @@ export async function messageToDriver(
           userProfileId: userId, // The user you want to update
           channelId: findStaffActiveChannel?.channelId, // The channel to target
         },
-      }
+      },
     );
   }
   const utcTime = moment.utc().toDate();
@@ -2258,7 +2249,7 @@ export async function messageToDriver(
         userProfileId: userId,
         channelId: findStaffActiveChannel?.channelId,
       },
-    }
+    },
   );
   //Return Message To Staff After Store
   Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
@@ -2268,7 +2259,209 @@ export async function messageToDriver(
       if (isSocket) {
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          message
+          message,
+        );
+      }
+    }
+  });
+}
+
+//Message To Driver
+
+export async function broadcastMessageToDriver(
+  io: Server,
+  senderId: string,
+  userId: string,
+  body: string,
+  url: string | null,
+ 
+) {
+  const findStaffActiveChannel = global.staffActiveChannel[senderId];
+
+  const findDriverSocket = global.driverOpenChat.find(
+    (driver) => driver?.driverId === userId,
+  );
+
+  const messageSave = await Message.create({
+    channelId: findStaffActiveChannel?.channelId,
+    userProfileId: userId,
+    body,
+    messageDirection: "S",
+    deliveryStatus: "sent",
+    messageTimestampUtc: new Date(),
+    senderId: senderId,
+    isRead: false,
+    status: "queue",
+    url: url || null,
+    thumbnail:  null,
+    reply_message_id: null,
+    url_upload_type: url ? "server" : "with-out-media",
+    isBroadcastMessage: true,
+  });
+  const message = await Message.findOne({
+    where: {
+      id: messageSave.id,
+    },
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [
+              {
+                model: User,
+                as: "user",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    ],
+  });
+  //Check Before send driver active room channel
+  const isDriverSocket = global.userSockets[findDriverSocket?.driverId!];
+
+  if (
+    findDriverSocket &&
+    findDriverSocket?.channelId == findStaffActiveChannel?.channelId
+  ) {
+    if (isDriverSocket) {
+      await message?.update(
+        {
+          deliveryStatus: "seen",
+          status: "sent",
+        },
+        {
+          where: {
+            id: messageSave.id,
+          },
+        },
+      );
+      io.to(isDriverSocket?.id).emit(
+        SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+        message,
+      );
+    }
+  } else {
+    if (isDriverSocket) {
+      io.to(isDriverSocket?.id).emit("update_user_channel_list", message);
+      io.to(isDriverSocket?.id).emit(
+        "new_message_count_update",
+        message?.channelId,
+      );
+      const isUser = await UserProfile.findOne({
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId,
+          );
+
+          const messageCount = await UserChannel.sum("recieve_message_count", {
+            where: {
+              userProfileId: userId,
+            },
+          });
+
+          const userGroupsCount = await GroupUser.sum("message_count", {
+            where: { userProfileId: userId },
+          });
+
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            badge: messageCount + userGroupsCount,
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      }
+    } else {
+      const isUser = await UserProfile.findOne({
+        where: {
+          id: userId,
+        },
+      });
+      if (isUser) {
+        if (isUser.device_token) {
+          const isChannel = await Channel.findByPk(
+            findStaffActiveChannel?.channelId,
+          );
+          const messageCount = await UserChannel.sum("recieve_message_count", {
+            where: {
+              userProfileId: userId,
+            },
+          });
+
+          const userGroupsCount = await GroupUser.sum("message_count", {
+            where: { userProfileId: userId },
+          });
+          await sendNotificationToDevice(isUser.device_token, {
+            title: isChannel?.name || "",
+            badge: messageCount + userGroupsCount,
+            body: body,
+            data: {
+              channelId: isChannel?.id,
+
+              type: "NEW MESSAGE",
+              title: isChannel?.name,
+            },
+          });
+        }
+      }
+    }
+
+    await UserChannel.update(
+      {
+        recieve_message_count: Sequelize.literal("recieve_message_count + 1"),
+      },
+      {
+        where: {
+          userProfileId: userId, // The user you want to update
+          channelId: findStaffActiveChannel?.channelId, // The channel to target
+        },
+      },
+    );
+  }
+  const utcTime = moment.utc().toDate();
+
+  await UserChannel.update(
+    {
+      last_message_id: message?.id,
+      last_message_utc: utcTime,
+    },
+    {
+      where: {
+        userProfileId: userId,
+        channelId: findStaffActiveChannel?.channelId,
+      },
+    },
+  );
+  //Return Message To Staff After Store
+  Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
+    if (e.channelId === findStaffActiveChannel?.channelId) {
+      const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
+
+      if (isSocket) {
+        io.to(isSocket.id).emit(
+          SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
+          message,
         );
       }
     }
@@ -2277,27 +2470,25 @@ export async function messageToDriver(
 export async function messageToMultipleDrivers(
   io: Server,
   socket: CustomSocket,
-  userIds: string[],
+  userIds: string,
   body: string,
   direction: string,
   url: string | null,
   thumbnail: string | null,
   r_message_id: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
-  for (const userId of userIds) {
-    await messageToDriver(
-      io,
-      socket,
-      userId,
+  try {
+    const entries = JSON.parse(userIds || "[]").map((userId: string) => ({
+      sender_id: socket?.user?.id,
+      user_id: userId,
       body,
-      direction,
-      url,
-      thumbnail,
-      r_message_id,
-      url_upload_type,
-      true 
-    );
+      url: url || null,
+      status: "pending" as "pending",
+    }));
+    await BroadcastMessage.bulkCreate(entries);
+  } catch (error) {
+    console.error("Broadcast insert error:", error);
   }
 }
 export async function messageToDriverByTruckGroup(
@@ -2309,7 +2500,7 @@ export async function messageToDriverByTruckGroup(
   direction: string,
   url: string | null,
   thumbnail: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -2366,7 +2557,7 @@ export async function messageToDriverByTruckGroup(
       if (isSocket) {
         io.to(isSocket.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
-          group_message
+          group_message,
         );
         io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
         isSendToStaff = true;
@@ -2379,7 +2570,7 @@ export async function messageToDriverByTruckGroup(
     if (isSocket) {
       io.to(isSocket.id).emit(
         SocketEvents.RECEIVE_MESSAGE_BY_GROUP,
-        group_message
+        group_message,
       );
       io.to(isSocket.id).emit("receive_message_group_truck", newSaveStaff);
       io.sockets.emit("receive_message_group_truck", newSaveStaff);
@@ -2389,7 +2580,7 @@ export async function messageToDriverByTruckGroup(
   console.log("Channel_testing", isSendToStaff);
   for (const driverId of userIds || []) {
     const findDriverSocket = global.driverOpenChat.find(
-      (driver) => driver?.driverId === driverId
+      (driver) => driver?.driverId === driverId,
     );
     const messageSave = await Message.create({
       channelId: findStaffActiveChannel?.channelId,
@@ -2449,22 +2640,22 @@ export async function messageToDriverByTruckGroup(
             where: {
               id: messageSave.id,
             },
-          }
+          },
         );
         io.to(isDriverSocket?.id).emit(
           SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
-          modifiedMessage
+          modifiedMessage,
         );
       }
     } else {
       if (isDriverSocket) {
         io.to(isDriverSocket?.id).emit(
           "update_user_channel_list",
-          modifiedMessage
+          modifiedMessage,
         );
         io.to(isDriverSocket?.id).emit(
           "new_message_count_update",
-          message?.channelId
+          message?.channelId,
         );
         const isUser = await UserProfile.findOne({
           where: {
@@ -2473,7 +2664,7 @@ export async function messageToDriverByTruckGroup(
         });
         if (isUser && isUser.device_token) {
           const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
+            findStaffActiveChannel?.channelId,
           );
           const messageCount = await UserChannel.sum("recieve_message_count", {
             where: {
@@ -2503,7 +2694,7 @@ export async function messageToDriverByTruckGroup(
         });
         if (isUser && isUser.device_token) {
           const isChannel = await Channel.findByPk(
-            findStaffActiveChannel?.channelId
+            findStaffActiveChannel?.channelId,
           );
           const messageCount = await UserChannel.sum("recieve_message_count", {
             where: {
@@ -2536,7 +2727,7 @@ export async function messageToDriverByTruckGroup(
             userProfileId: driverId, // The user you want to update
             channelId: findStaffActiveChannel?.channelId, // The channel to target
           },
-        }
+        },
       );
     }
 
@@ -2550,7 +2741,7 @@ export async function messageToDriverByTruckGroup(
           userProfileId: driverId,
           channelId: findStaffActiveChannel?.channelId,
         },
-      }
+      },
     );
   }
   await Group.update(
@@ -2561,14 +2752,14 @@ export async function messageToDriverByTruckGroup(
       where: {
         id: groupId,
       },
-    }
+    },
   );
 }
 
 export async function deleteMessage(
   io: Server,
   socket: CustomSocket,
-  messageId: string
+  messageId: string,
 ) {
   if (messageId) {
     const message = await Message.findByPk(messageId);
@@ -2597,7 +2788,7 @@ export async function pinMessage(
   socket: CustomSocket,
   messageId: string,
   value: string,
-  type: string
+  type: string,
 ) {
   if (messageId) {
     if (type == "driver") {
@@ -2609,7 +2800,7 @@ export async function pinMessage(
           where: {
             id: messageId,
           },
-        }
+        },
       );
     } else {
       await Message.update(
@@ -2620,7 +2811,7 @@ export async function pinMessage(
           where: {
             id: messageId,
           },
-        }
+        },
       );
     }
 
@@ -2632,7 +2823,7 @@ export async function pinMessage(
 export async function unreadAllMessage(
   io: Server,
   socket: CustomSocket,
-  channelId: string
+  channelId: string,
 ) {
   if (channelId) {
     await UserChannel.update(
@@ -2644,7 +2835,7 @@ export async function unreadAllMessage(
           channelId: channelId,
           userProfileId: socket?.user?.id,
         },
-      }
+      },
     );
     await Message.update(
       {
@@ -2658,7 +2849,7 @@ export async function unreadAllMessage(
             [Op.ne]: socket?.user?.id,
           },
         },
-      }
+      },
     );
 
     io.to(socket.id).emit("update_channel_message_count", channelId);
@@ -2670,7 +2861,7 @@ export async function unreadAllStaffMessage(
   socket: CustomSocket,
   chat_id: string,
   user_id: string,
-  type: string
+  type: string,
 ) {
   // console.log(chat_id, user_id, type, "staff_message");
   if (chat_id) {
@@ -2707,7 +2898,7 @@ export async function unreadAllStaffMessage(
           private_chat_id: chat_id,
           userProfileId: socket.user?.id,
         },
-      }
+      },
     );
 
     const staffChatOpen = global.staff_open_staff_chat[user_id];
@@ -2729,9 +2920,9 @@ export async function unreadAllUserMessage(
   io: Server,
   socket: CustomSocket,
   channelId: string,
-  userId: string
+  userId: string,
 ) {
-  console.log(channelId,userId,"===============")
+  console.log(channelId, userId, "===============");
   if (channelId) {
     const limit = 100; // or a smaller safe chunk
     await primarySequelize.transaction(async (t) => {
@@ -2758,7 +2949,7 @@ export async function unreadAllUserMessage(
           channelId: channelId,
           userProfileId: userId,
         },
-      }
+      },
     );
     await Message.update(
       {
@@ -2770,13 +2961,13 @@ export async function unreadAllUserMessage(
           userProfileId: userId,
           senderId: userId,
         },
-      }
+      },
     );
 
     //check driver active channel
 
     const isDriverActiveChat = global.driverOpenChat.find(
-      (driver) => driver.channelId == channelId
+      (driver) => driver.channelId == channelId,
     );
 
     if (isDriverActiveChat) {
@@ -2806,7 +2997,7 @@ export async function messageToGroup(
   direction: string,
   url: string | null,
   thumbnail: string | null,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   const group = await Group.findByPk(groupId);
   const channel = await Channel.findByPk(channelId);
@@ -2861,7 +3052,7 @@ export async function messageToGroup(
 
       io.to(isStaffSocket.id).emit(
         "notification_group",
-        `New Group Message Received in ${group?.name} on ${channel?.name}`
+        `New Group Message Received in ${group?.name} on ${channel?.name}`,
       );
     }
   });
@@ -2891,7 +3082,7 @@ export async function messageToGroup(
           groupId: groupId,
           userProfileId: user.userProfileId,
         },
-      }
+      },
     );
 
     const isUser = await UserProfile.findOne({
@@ -2927,7 +3118,7 @@ export async function messageToGroup(
       where: {
         groupId: groupId,
       },
-    }
+    },
   );
 
   await Group.update(
@@ -2939,13 +3130,13 @@ export async function messageToGroup(
       where: {
         id: groupId,
       },
-    }
+    },
   );
 }
 export async function unreadAllGroupMessageByUser(
   io: Server,
   socket: CustomSocket,
-  groupId: string
+  groupId: string,
 ) {
   if (groupId) {
     await GroupUser.update(
@@ -2957,7 +3148,7 @@ export async function unreadAllGroupMessageByUser(
           groupId: groupId,
           userProfileId: socket?.user?.id,
         },
-      }
+      },
     );
 
     io.to(socket.id).emit("update_group_message_count", groupId);
@@ -2967,7 +3158,7 @@ export async function unreadAllGroupMessageByUser(
 export async function unreadAllGroupMessageByStaff(
   io: Server,
   socket: CustomSocket,
-  groupId: string
+  groupId: string,
 ) {
   if (groupId) {
     await Group.update(
@@ -2978,7 +3169,7 @@ export async function unreadAllGroupMessageByStaff(
         where: {
           id: groupId,
         },
-      }
+      },
     );
 
     io.to(socket.id).emit("update_group_staff_message_count", groupId);
@@ -2988,7 +3179,7 @@ export async function unreadAllGroupMessageByStaff(
 export async function unreadAllGroupMessageByStaffGroup(
   io: Server,
   socket: CustomSocket,
-  groupId: string
+  groupId: string,
 ) {
   if (groupId) {
     await Group.update(
@@ -2999,7 +3190,7 @@ export async function unreadAllGroupMessageByStaffGroup(
         where: {
           id: groupId,
         },
-      }
+      },
     );
   }
 }
@@ -3010,10 +3201,10 @@ export async function notifiyFileUploadStaffToDriver(
   channelId: string,
   messageId: string,
   type: string,
-  userId: string
+  userId: string,
 ) {
   const findUserChannel = global.driverOpenChat.find(
-    (e) => e.driverId == userId && e.channelId == channelId
+    (e) => e.driverId == userId && e.channelId == channelId,
   );
 
   if (findUserChannel) {
@@ -3052,7 +3243,7 @@ export async function notifiyFileUploadStaffToDriver(
           }
         }
       }
-    }
+    },
   );
   await Promise.all(promises);
 }
@@ -3064,7 +3255,7 @@ export async function notifiyFileUploadStaffToStaff(
   messageId: string,
   type: string,
   userId: string,
-  private_chat_id?: string
+  private_chat_id?: string,
 ) {
   const privateChatMember = await PrivateChatMember.findOne({
     where: {
@@ -3143,7 +3334,7 @@ export async function notifiyFileUploadDriverToStaffGroup(
   channelId: string,
   messageId: string,
   type: string,
-  userId: string
+  userId: string,
 ) {
   let isCheckUserInGroup = true;
   Object.values(global.group_open_chat[groupId]).map((e) => {
@@ -3186,10 +3377,10 @@ export async function notifiyFileUploadDriverToStaff(
   messageId: string,
   type: string,
   userId: string,
-  tempId?: string
+  tempId?: string,
 ) {
   const findUserChannel = global.driverOpenChat.find(
-    (e) => e.driverId == socket?.user?.id && e.channelId == channelId
+    (e) => e.driverId == socket?.user?.id && e.channelId == channelId,
   );
 
   if (findUserChannel) {
@@ -3230,7 +3421,7 @@ export async function notifiyFileUploadDriverToStaff(
           });
         }
       }
-    }
+    },
   );
   await Promise.all(promises);
 }
@@ -3244,7 +3435,7 @@ export async function notifiyFileUploadTruckGroupMembers(
   type: string,
   userId: string,
   groupMessageId: string,
-  fileName?: string
+  fileName?: string,
 ) {
   const users = await GroupUser.findAll({
     where: {
@@ -3268,7 +3459,7 @@ export async function notifiyFileUploadTruckGroupMembers(
       const findUserChannel = global.driverOpenChat.find(
         (e) =>
           e.driverId == item.dataValues.userProfileId &&
-          e.channelId == channelId
+          e.channelId == channelId,
       );
 
       if (findUserChannel) {
@@ -3278,7 +3469,7 @@ export async function notifiyFileUploadTruckGroupMembers(
           messageId: message?.id,
         });
       }
-    })
+    }),
   );
 
   const promises = Object.entries(global.staffOpenTruckGroup).map(
@@ -3303,7 +3494,7 @@ export async function notifiyFileUploadTruckGroupMembers(
           });
         }
       }
-    }
+    },
   );
   await Promise.all(promises);
 }
@@ -3318,7 +3509,7 @@ export async function sendMessageToStaffMember(
   url: string,
   thumbnail: string,
   r_message_id?: string,
-  url_upload_type?: string
+  url_upload_type?: string,
 ) {
   const onlineUserId = socket.user?.id as string;
 
@@ -3391,7 +3582,7 @@ export async function sendMessageToStaffMember(
       where: {
         id: private_chat_id,
       },
-    }
+    },
   );
 
   const isSocket = global.userSockets[userProfile!];
@@ -3441,7 +3632,7 @@ export async function sendMessageToStaffMember(
     if (isSocket) {
       io.to(isSocket.id).emit(
         "notification_new_message",
-        `New Message Received in Staff Chat`
+        `New Message Received in Staff Chat`,
       );
     }
   }
@@ -3452,7 +3643,7 @@ export async function getMessageByTempId(
   io: Server,
   socket: CustomSocket,
   messageId: string,
-  channelId: string
+  channelId: string,
 ) {
   let type = "msg";
   let message: Message | null = null;

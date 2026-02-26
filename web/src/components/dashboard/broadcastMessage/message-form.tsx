@@ -101,10 +101,7 @@ const MessageForm: React.FC = ({}) => {
     }, [selectedTemplate]);
   
   const handleSend = async () => {
-     if(selectedUsers.length > 20){
-        toast.error('You can select up to 20 drivers at a time.');
-        return;
-     }
+      
     if (media) {
       const extension = media.name?.split('.')[media.name?.split('.').length - 1];
 
@@ -122,17 +119,18 @@ const MessageForm: React.FC = ({}) => {
           dispatch(hideLoader());
           socket.emit('broadcast_to_user', {
             body: message,
-            userId: selectedUsers.map((user) => user.UserProfile.id),
+            userId: JSON.stringify(selectedUsers.map((user) => user.UserProfile.id)),
             direction: 'S',
             url: res?.data?.key,
             thumbnail: res?.data?.thumbnail,
             url_upload_type: 'server',
           });
+                    dispatch(apiSlice.util.invalidateTags(['messages','media'])); 
+    
           setMessage('');
           setMedia(null);
           toast.success('Message sent successfully!');
           setSelectedUsers([]);
-          dispatch(apiSlice.util.invalidateTags(['messages','media'])); // Invalidate messages and media cache to refetch updated data
         }
       } catch (error) {
         dispatch(hideLoader());
@@ -144,7 +142,7 @@ const MessageForm: React.FC = ({}) => {
     }
     socket.emit('broadcast_to_user', {
       body: message,
-      userId: selectedUsers.map((user) => user.UserProfile.id),
+      userId: JSON.stringify(selectedUsers.map((user) => user.UserProfile.id)),
       direction: 'S',
       ...(url ? { url, url_upload_type: 'server' } : {}),
     });
@@ -152,9 +150,9 @@ const MessageForm: React.FC = ({}) => {
     toast.success('Message sent successfully!');
     setSelectedUsers([]);
     setUrl('');
+    setMedia(null);
     setSelectedTemplate({ name: '', body: '' ,url:''});
-     dispatch(apiSlice.util.invalidateTags(['messages','media'])); // Invalidate messages and media cache to refetch updated data
-  };
+ dispatch(apiSlice.util.invalidateTags(['messages','media']));   };
 
   return (
     <Card elevation={3} style={{ marginTop: 15, borderRadius: 6 }}>

@@ -23,12 +23,30 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
       {
         status: boolean;
         message: string;
-        data: MessageModel[];
+        data: {
+          messages: {
+            id: number;
+            sender_id: string;
+            user_id: string;
+            body: string;
+            url: string | null;
+            status: string;
+            createdAt: string;
+            updatedAt: string;
+            userProfile: UserProfile;
+          }[];
+          pagination: {
+            currentPage: number;
+            pageSize: number;
+            totalMessages: number;
+            totalPages: number;
+          };
+        };
       },
-      { resetKey?: number }
+      { resetKey?: number, page: number, pageSize: number,search?:string ,status?:string}
     >({
       query: (payload) => ({
-        url: `message/broadcast?resetKey=${payload.resetKey}`,
+        url: `message/broadcast?resetKey=${payload.resetKey}&page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search}&status=${payload.status}`,
         method: 'GET',
       }),
       keepUnusedDataFor: 0,
@@ -87,7 +105,6 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: formData.formData,
         formData: true,
-       
       }),
 
       invalidatesTags: ['media', 'messages'],

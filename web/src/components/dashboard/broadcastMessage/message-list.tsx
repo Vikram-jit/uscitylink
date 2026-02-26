@@ -1,94 +1,201 @@
 'use client';
 
-import React from 'react';
-import { useGetMessagesBroadcastQuery } from '@/redux/MessageApiSlice';
+import React, { useState } from 'react';
+import {
+  Avatar,
+  Box,
+  Chip,
+  CircularProgress,
+  MenuItem,
+  Pagination,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
 import CampaignIcon from '@mui/icons-material/Campaign';
-import { Avatar, Box, Card, CardContent, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import moment from 'moment';
-
-import LinkifyText from '@/components/LinkifyText';
+import { useGetMessagesBroadcastQuery } from '@/redux/MessageApiSlice';
 import MediaComponent from '@/components/messages/MediaComment';
 
 export default function MessageList() {
-  const { data, isLoading } = useGetMessagesBroadcastQuery({});
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
 
-  if (isLoading) {
-    return (
-      <Box textAlign="center" mt={5}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const { data, isLoading } = useGetMessagesBroadcastQuery({
+    page,
+    pageSize: 10,
+    search,
+    status,
+  });
 
-  const messages = data?.data || [];
+  const messages = data?.data?.messages || [];
+  const totalPages = data?.data?.pagination?.totalPages || 1;
 
   return (
-    <Box maxWidth={900} mx="auto" mt={4}>
+    <Box maxWidth={1200} mx="auto" mt={4}>
       <Typography variant="h5" fontWeight={600} mb={3}>
-        Broadcast History
+        Broadcast List
       </Typography>
 
-      {messages.length === 0 ? (
-        <Typography color="text.secondary">No broadcast messages found.</Typography>
-      ) : (
-        <Stack spacing={2}>
-          {messages.map((message: any) => (
-            <Card
-              key={message.id}
-              elevation={2}
-              sx={{
-                borderRadius: 3,
-                transition: '0.2s',
-                '&:hover': { boxShadow: 6 },
-              }}
-            >
-              <CardContent >
-                <Stack direction="row" spacing={2}>
-                  <Avatar sx={{ bgcolor: 'primary.main' }}>
-                    <CampaignIcon />
-                  </Avatar>
+      {/* 🔎 Toolbar */}
+      <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <TextField
+            label="Search Broadcast..."
+            fullWidth
+            value={search}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
+          />
 
-                  <Box flex={1}>
-                    {/* Header */}
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography fontWeight={600}>{message?.sender?.username || 'Staff'}</Typography>
-
-                      <Typography variant="caption" color="text.secondary">
-                        {moment(message.messageTimestampUtc).format('DD MMM YYYY, hh:mm A')}
-                      </Typography>
-                    </Stack>
-
-                    <Divider sx={{ my: 1 }} />
-  {message.url && (
-        <Paper
-         
-        >
-                    {/* Message Body */}
-                    { message.url_upload_type == 'not-upload' || message.url_upload_type == 'local' ? (
-                      <MediaComponent
-                        messageDirection={message.messageDirection}
-                        type={'server'}
-                        thumbnail={`http://52.9.12.189:4300/${message.url}`}
-                        url={`http://52.9.12.189:4300/${message.url}`}
-                        name={message.url ? message.url : ' '}
-                      />
-                    ) : (
-                      <MediaComponent
-                        messageDirection={message.messageDirection}
-                        type={message.url_upload_type}
-                        thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${message.thumbnail}`}
-                        url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${message.url}`}
-                        name={message.url ? message.url : ' '}
-                      />
-                    )}</Paper> )}
-                    {message.body && <LinkifyText text={message.body} />}
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          ))}
+          <TextField
+            select
+            label="Status"
+            value={status}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value);
+            }}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="processing">Processing</MenuItem>
+            <MenuItem value="sent">Sent</MenuItem>
+            <MenuItem value="failed">Failed</MenuItem>
+          </TextField>
         </Stack>
-      )}
+      </Paper>
+
+      {/* 📊 Table */}
+      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        {isLoading ? (
+          <Box textAlign="center" py={5}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell><b>Broadcast</b></TableCell>
+                  <TableCell><b>Message</b></TableCell>
+                  <TableCell><b>Media</b></TableCell>
+                  <TableCell><b>Status</b></TableCell>
+                  <TableCell><b>Created At</b></TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {messages.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center">
+                      No broadcast messages found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  messages.map((message: any) => (
+                    <TableRow
+                      key={message.id}
+                      hover
+                      sx={{
+                        '&:hover': {
+                          backgroundColor: 'rgba(0,0,0,0.03)',
+                        },
+                      }}
+                    >
+                      <TableCell>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Avatar
+                            sx={{
+                              bgcolor: 'primary.main',
+                              width: 32,
+                              height: 32,
+                            }}
+                          >
+                            <CampaignIcon fontSize="small" />
+                          </Avatar>
+                          <Typography fontWeight={500}>
+                            {message?.userProfile?.username} ({message?.userProfile?.user?.driver_number || ''})
+                          </Typography>
+                        </Stack>
+                      </TableCell>
+
+                      <TableCell sx={{ maxWidth: 350 }}>
+                        <Typography
+                          variant="body2"
+                          noWrap
+                          sx={{ maxWidth: 350 }}
+                        >
+                          {message.body}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                         {message.url ? (
+                          <MediaComponent
+                            url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${message.url}`}
+                            name={message.url ?? ''}
+                            width={50}
+                            height={50}
+                          />
+                        ) : (
+                         "-"
+                        )   }
+                      </TableCell>
+
+                      <TableCell>
+                        <Chip
+                          label={message.status}
+                          size="small"
+                          color={
+                            message.status === 'sent'
+                              ? 'success'
+                              : message.status === 'processing'
+                              ? 'info'
+                              : message.status === 'pending'
+                              ? 'warning'
+                              : 'error'
+                          }
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="caption">
+                          {moment(message.createdAt).format(
+                            'DD MMM YYYY, hh:mm A'
+                          )}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+
+      {/* 📄 Pagination */}
+      <Box display="flex" justifyContent="flex-end" mt={3}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+        />
+      </Box>
     </Box>
   );
 }
