@@ -27,7 +27,7 @@ export async function processBroadcastJobs(
 
       const pendingJobs = await BroadcastMessage.findAll({
         where: { status: "pending" },
-        limit: 10,
+        limit: 20,
         order: [["createdAt", "ASC"]],
         lock: true,
         skipLocked: true,
