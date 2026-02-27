@@ -25,6 +25,7 @@ import retry from "async-retry";
 
 import { primarySequelize } from "../sequelize";
 import BroadcastMessage from "../models/BroadcastMessage";
+import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -2479,7 +2480,12 @@ export async function messageToMultipleDrivers(
   url_upload_type?: string,
 ) {
   try {
+    const broadcastMessageLog = await BroadcastMessageLog.create({
+      body,
+      url: url || null,
+    }); 
     const entries = JSON.parse(userIds || "[]").map((userId: string) => ({
+      broadcast_message_log_id: broadcastMessageLog.id,
       sender_id: socket?.user?.id,
       user_id: userId,
       body,
@@ -2487,6 +2493,10 @@ export async function messageToMultipleDrivers(
       status: "pending" as "pending",
     }));
     await BroadcastMessage.bulkCreate(entries);
+    await BroadcastMessageLog.update(
+      { totalMessages: entries.length },
+      { where: { id: broadcastMessageLog.id } },
+    );
   } catch (error) {
     console.error("Broadcast insert error:", error);
   }

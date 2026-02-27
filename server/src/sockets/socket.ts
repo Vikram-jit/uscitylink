@@ -604,20 +604,7 @@ export const initSocket = (httpServer: any) => {
           r_message_id
         )
     );
-     socket.on(
-      SocketEvents.SEND_MESSAGE_TO_USER,
-      async ({ userId, body, direction, url, thumbnail, r_message_id }) =>
-        await messageToDriver(
-          io,
-          socket,
-          userId,
-          body,
-          direction,
-          url,
-          thumbnail,
-          r_message_id
-        )
-    );
+    
 
     socket.on(
       SocketEvents.BROADCAST_TO_USER,

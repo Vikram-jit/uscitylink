@@ -3,36 +3,31 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up (queryInterface, Sequelize) {
-   await queryInterface.createTable("broadcast_messages", {
-   id: {
+   await queryInterface.createTable("broadcast_message_logs", {
+    id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4, // Automatically generate UUID
         primaryKey: true,
         allowNull: false,
       },
-  broadcast_message_log_id: {
-     type: Sequelize.UUID,
-    allowNull: false,
-  },
-  sender_id: {
-    type: Sequelize.STRING,
-    allowNull: false,
-  },
-  user_id: {
-    type: Sequelize.STRING,
-    allowNull: false,
-  },
+  
   body: {
     type: Sequelize.TEXT,
-    allowNull: false,
+    allowNull: true,
   },
    url: {
     type: Sequelize.TEXT,
     allowNull: true,
   },
-  status: {
-    type: Sequelize.ENUM("pending", "processing", "sent", "failed"),
-    defaultValue: "pending",
+  totalMessages: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    defaultValue: 0,
+  },
+   sentMessages: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    defaultValue: 0,
   },
   createdAt: Sequelize.DATE,
   updatedAt: Sequelize.DATE,
@@ -41,7 +36,7 @@ module.exports = {
   },
 
   async down (queryInterface, Sequelize) {
-        await queryInterface.dropTable("broadcast_messages");
+        await queryInterface.dropTable("broadcast_message_logs");
 
   }
 };

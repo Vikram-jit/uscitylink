@@ -4,6 +4,7 @@ import { UserProfile } from "./UserProfile";
 
 interface BroadcastMessageAttributes {
   id: number;
+  broadcast_message_log_id: string;
   sender_id:string;
   user_id: string;
   body: string;
@@ -25,6 +26,7 @@ class BroadcastMessage
 {
   public id!: number;
     public sender_id!: string;
+    public broadcast_message_log_id!: string;
   public user_id!: string;
   public body!: string;
   public url!: string | null;
@@ -37,9 +39,13 @@ class BroadcastMessage
 BroadcastMessage.init(
   {
     id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+    },
+    broadcast_message_log_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
     },
     sender_id: {
       type: DataTypes.STRING,

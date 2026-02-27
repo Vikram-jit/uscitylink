@@ -39,6 +39,7 @@ import {
 } from "../sockets/messageHandler";
 import GroupMessage from "../models/GroupMessage";
 import BroadcastMessage from "../models/BroadcastMessage";
+import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
 
 dotenv.config();
 
@@ -402,7 +403,7 @@ export const getBroadCastMessages = async (
 
     const where: any = {};
 
-    const { rows, count } = await BroadcastMessage.findAndCountAll({
+    const { rows, count } = await BroadcastMessageLog.findAndCountAll({
       where: {
         ...(status && { status }),
 
