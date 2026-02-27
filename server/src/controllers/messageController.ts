@@ -401,31 +401,20 @@ export const getBroadCastMessages = async (
 
     const offset = (page - 1) * pageSize;
 
-    const where: any = {};
 
     const { rows, count } = await BroadcastMessageLog.findAndCountAll({
       where: {
-        ...(status && { status }),
 
         ...(search && {
           [Op.or]: [
             { body: { [Op.like]: `%${search}%` } },
 
-            { "$userProfile.username$": { [Op.like]: `%${search}%` } },
-
-            {
-              "$userProfile.user.driver_number$": { [Op.like]: `%${search}%` },
-            },
+           
           ],
         }),
       },
       include: [
-        {
-          model: UserProfile,
-          as: "userProfile",
-          attributes: ["id", "username"],
-          include: [{ model: User, as: "user", attributes: ["driver_number"] }],
-        },
+       
       ],
       limit: pageSize,
       offset,

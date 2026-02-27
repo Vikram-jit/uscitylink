@@ -59,7 +59,7 @@ export default function MessageList() {
             }}
           />
 
-          <TextField
+          {/* <TextField
             select
             label="Status"
             value={status}
@@ -74,7 +74,7 @@ export default function MessageList() {
             <MenuItem value="processing">Processing</MenuItem>
             <MenuItem value="sent">Sent</MenuItem>
             <MenuItem value="failed">Failed</MenuItem>
-          </TextField>
+          </TextField> */}
         </Stack>
       </Paper>
 
@@ -89,10 +89,12 @@ export default function MessageList() {
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell><b>Broadcast</b></TableCell>
+                  <TableCell><b>Broadcast Id</b></TableCell>
                   <TableCell><b>Message</b></TableCell>
                   <TableCell><b>Media</b></TableCell>
                   <TableCell><b>Status</b></TableCell>
+                  <TableCell><b>Total Messages</b></TableCell>
+                  <TableCell><b>Sent Messages</b></TableCell>
                   <TableCell><b>Created At</b></TableCell>
                 </TableRow>
               </TableHead>
@@ -105,7 +107,7 @@ export default function MessageList() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  messages.map((message: any) => (
+                  messages.map((message) => (
                     <TableRow
                       key={message.id}
                       hover
@@ -127,7 +129,7 @@ export default function MessageList() {
                             <CampaignIcon fontSize="small" />
                           </Avatar>
                           <Typography fontWeight={500}>
-                            {message?.userProfile?.username} ({message?.userProfile?.user?.driver_number || ''})
+                            {message?.id?.slice(0, 8).toUpperCase() ?? '-'}
                           </Typography>
                         </Stack>
                       </TableCell>
@@ -157,20 +159,26 @@ export default function MessageList() {
 
                       <TableCell>
                         <Chip
-                          label={message.status}
+                          label={message.totalMessages == message.sentMessages ? 'Sent' :  'Processing' }
                           size="small"
                           color={
-                            message.status === 'sent'
+                            message.totalMessages == message.sentMessages
                               ? 'success'
-                              : message.status === 'processing'
-                              ? 'info'
-                              : message.status === 'pending'
-                              ? 'warning'
-                              : 'error'
+                              : 'warning'
+                             
                           }
                         />
                       </TableCell>
-
+                            <TableCell>
+                        <Typography variant="body2">
+                          {message.totalMessages}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {message.sentMessages}
+                        </Typography>
+                      </TableCell>  
                       <TableCell>
                         <Typography variant="caption">
                           {moment(message.createdAt).format(

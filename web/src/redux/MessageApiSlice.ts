@@ -25,15 +25,15 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: {
           messages: {
-            id: number;
-            sender_id: string;
-            user_id: string;
+            id: string;
+            totalMessages: number;
+            sentMessages: number;
             body: string;
             url: string | null;
-            status: string;
+
             createdAt: string;
             updatedAt: string;
-            userProfile: UserProfile;
+       
           }[];
           pagination: {
             currentPage: number;

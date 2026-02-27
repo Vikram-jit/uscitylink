@@ -3,32 +3,44 @@ const config = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+
   env: {
-    API_URL: process.env.NEXT_ENV == 'development' ? 'http://localhost:4300/api/v1/' : 'http://52.8.75.98:4300/api/v1/',
-    SOCKET_URL: process.env.NEXT_ENV == 'development' ? 'http://localhost:4300' : 'http://52.8.75.98:4300',
+    API_URL:
+      process.env.NEXT_ENV == "development"
+        ? "http://localhost:4300/api/v1/"
+        : "http://52.8.75.98:4300/api/v1/",
+    SOCKET_URL:
+      process.env.NEXT_ENV == "development"
+        ? "http://localhost:4300"
+        : "http://52.8.75.98:4300",
   },
+
   images: {
-    domains: [
-      '52.9.12.189',
-      'ciity-sms.s3.us-west-1.amazonaws.com', // Add this line to allow images from the AWS S3 domain
-      'localhost', // Add this line to allow images from the AWS S3 domain
-      // You can add other allowed image domains here if necessary
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "**",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
+
   async headers() {
     return [
       {
-        source: '/(.*)', // applies to all routes, adjust if needed
+        source: "/(.*)",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'no-store', // Prevents browser caching
+            key: "Cache-Control",
+            value: "no-store",
           },
         ],
       },
     ];
   },
-
 };
 
 export default config;

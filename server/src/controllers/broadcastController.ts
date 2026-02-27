@@ -3,6 +3,7 @@ import BroadcastMessage from "../models/BroadcastMessage";
 import { primarySequelize } from "../sequelize";
 import { broadcastMessageToDriver } from "../sockets/messageHandler";
 import { getSocketInstance } from "../sockets/socket";
+import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
 
 export async function processBroadcastJobs(
   req: Request,
@@ -69,6 +70,10 @@ export async function processBroadcastJobs(
         );
 
         await job.update({ status: "sent" });
+        await BroadcastMessageLog.increment(
+          { sentMessages: 1 },
+          { where: { id: job.broadcast_message_log_id } }
+        );
         processedCount++;
 
       } catch (err) {
