@@ -14,6 +14,8 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 import 'package:path_provider/path_provider.dart';
 
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
@@ -91,6 +93,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: AppRoutes.splashView,
       getPages: AppRoutes.routes,
+      navigatorObservers: [routeObserver],
     );
   }
 }

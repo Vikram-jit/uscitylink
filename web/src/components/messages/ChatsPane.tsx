@@ -132,7 +132,7 @@ export default function ChatsPane(props: ChatsPaneProps) {
           >
             {chats?.user_channels?.map((chat) => (
               <ChatListItem
-                key={chat.userProfileId}
+                key={chat?.userProfileId}
                 id={chat?.userProfileId}
                 user={chat}
                 channelId={chats.id}

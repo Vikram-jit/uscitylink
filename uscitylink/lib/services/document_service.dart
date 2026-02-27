@@ -1,6 +1,8 @@
+import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
+import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/model/pagination_model.dart';
 import 'package:uscitylink/model/route_model.dart';
@@ -228,6 +230,7 @@ class DocumentService {
             status: response['status'] ?? true,
           );
         } else {
+          await _forceClearAllHiveData();
           throw Exception('Expected a list in response["data"]');
         }
       } else {
@@ -237,6 +240,107 @@ class DocumentService {
       print(e);
       throw Exception('Error fetching template: $e');
     }
+  }
+
+  Future<void> _forceClearAllHiveData() async {
+    print('📦 FORCE CLEARING ALL HIVE DATA...');
+
+    // List of all box names used in the app
+    final boxNames = [
+      HiveBoxes.truckLocationBox,
+      HiveBoxes.stationsBox,
+      HiveBoxes.lastUpdatedBox,
+      'prefs_box',
+      'routes_box',
+      'metadata_box',
+
+      // Add any other box names from your app
+    ];
+
+    // Method 1: Delete boxes completely (most thorough)
+    for (final boxName in boxNames) {
+      try {
+        // Check if box is open and close it
+        if (Hive.isBoxOpen(boxName)) {
+          final box = Hive.box(boxName);
+          await box.clear();
+          await box.close();
+          print('✅ Cleared and closed box: $boxName');
+        }
+
+        // Delete the box entirely from disk
+        await Hive.deleteBoxFromDisk(boxName);
+        print('✅ Deleted box from disk: $boxName');
+      } catch (e) {
+        print('⚠️ Error with box $boxName: $e');
+
+        // Fallback: try to open and clear
+        try {
+          final box = await Hive.openBox(boxName);
+          await box.clear();
+          await box.close();
+          print('✅ Fallback cleared box: $boxName');
+        } catch (e2) {
+          print('❌ Failed to clear box $boxName even with fallback: $e2');
+        }
+      }
+    }
+
+    // Method 2: Clear specific typed boxes using your constants
+    try {
+      // Get fresh instances of each box and clear them
+      final boxes = await Future.wait([
+        Constant.getTruckLocationBox().catchError((e) => null),
+        Constant.getStationsBox().catchError((e) => null),
+        Constant.getlastUpdatedBox().catchError((e) => null),
+      ]);
+
+      for (var box in boxes) {
+        if (box != null) {
+          try {
+            await box.clear();
+            await box.close();
+            print('✅ Cleared typed box: ${box.name}');
+          } catch (e) {
+            print('⚠️ Error clearing typed box: $e');
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Error with typed boxes: $e');
+    }
+
+    // Method 3: Clear preferences box separately
+    try {
+      final prefsBox = await Hive.openBox<dynamic>('prefs_box');
+      await prefsBox.clear();
+      await prefsBox.close();
+      print('✅ Cleared prefs box');
+    } catch (e) {
+      print('⚠️ Error clearing prefs box: $e');
+    }
+
+    // Method 4: Clear routes box
+    try {
+      final routesBox = await Hive.openBox<List>('routes_box');
+      await routesBox.clear();
+      await routesBox.close();
+      print('✅ Cleared routes box');
+    } catch (e) {
+      print('⚠️ Error clearing routes box: $e');
+    }
+
+    // Method 5: Clear metadata box
+    try {
+      final metadataBox = await Hive.openBox<int>('metadata_box');
+      await metadataBox.clear();
+      await metadataBox.close();
+      print('✅ Cleared metadata box');
+    } catch (e) {
+      print('⚠️ Error clearing metadata box: $e');
+    }
+
+    print('✅ ALL HIVE DATA FORCE CLEARED');
   }
 
   Future<ApiResponse<VehicleModel>> getVechicleById(

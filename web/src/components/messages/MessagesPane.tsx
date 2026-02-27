@@ -189,7 +189,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         // Update user list if necessary
         setUserList((prevUserList) => {
           if (!prevUserList) return prevUserList;
-          const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+          const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
             if (channel.userProfileId === message.userProfileId) {
               return { ...channel, sent_message_count: 0, last_message: message };
             }
@@ -389,7 +389,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
       )}
 
       {mediaPanel ? (
-        <MediaPane userId={props.userId} source="channel" channelId={'null'} />
+        <MediaPane userId={props?.userId} source="channel" channelId={'null'} />
       ) : (
         <>
           {data && messages.length > 0 ? (

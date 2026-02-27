@@ -8,6 +8,7 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
+import 'package:uscitylink/main.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -31,7 +32,7 @@ class DriverDashboard extends StatefulWidget {
 }
 
 class _DriverDashboardState extends State<DriverDashboard>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   SocketService socketService = Get.find<SocketService>();
   DashboardController _dashboardController = Get.put(DashboardController());
   ChannelController channelController = Get.find<ChannelController>();
@@ -74,8 +75,20 @@ class _DriverDashboardState extends State<DriverDashboard>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void didPopNext() {
+    _dashboardController.getDashboard();
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
     super.dispose();
   }
 
@@ -247,19 +260,16 @@ class _DriverDashboardState extends State<DriverDashboard>
                         ),
                         InkWell(
                           onTap: () {
-                            Get.to(() => DriverProfileView());
+                            Get.to(() => FuelStationsView());
                           },
                           child: StatCard(
-                            isDocumentExpired: _dashboardController
-                                    .dashboard.value.isDocumentExpired ??
-                                false,
-                            icon: Icons.person,
-                            title: "MY INFORMATION",
+                            title: "FUEL STATIONS",
                             value: 0,
+                            icon: Icons.ev_station,
                             gradientColors: [
                               Color(0xFFffffff),
                               Color(0xFFffffff),
-                            ],
+                            ], // Gradient colors
                           ),
                         ),
                       ],
@@ -326,7 +336,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                           child: StatCard(
                             title: "PAY SUMMARY",
                             value:
-                                "\$${_dashboardController.dashboard.value.totalAmount}" ??
+                                "\$${_dashboardController?.dashboard?.value?.totalAmount ?? 0}" ??
                                     "\$0",
                             icon: Icons.money,
                             gradientColors: [
@@ -337,16 +347,19 @@ class _DriverDashboardState extends State<DriverDashboard>
                         ),
                         InkWell(
                           onTap: () {
-                            Get.to(() => TrainingView());
+                            Get.to(() => DriverProfileView());
                           },
                           child: StatCard(
-                            title: "TRAINING SECTION",
+                            isDocumentExpired: _dashboardController
+                                    .dashboard.value.isDocumentExpired ??
+                                false,
+                            icon: Icons.person,
+                            title: "MY INFORMATION",
                             value: 0,
-                            icon: Icons.class_,
                             gradientColors: [
                               Color(0xFFffffff),
                               Color(0xFFffffff),
-                            ], // Gradient colors
+                            ],
                           ),
                         ),
                       ],
@@ -358,12 +371,12 @@ class _DriverDashboardState extends State<DriverDashboard>
                       children: [
                         InkWell(
                           onTap: () {
-                            Get.to(() => FuelStationsView());
+                            Get.to(() => TrainingView());
                           },
                           child: StatCard(
-                            title: "FUEL STATIONS",
+                            title: "TRAINING SECTION",
                             value: 0,
-                            icon: Icons.ev_station,
+                            icon: Icons.class_,
                             gradientColors: [
                               Color(0xFFffffff),
                               Color(0xFFffffff),

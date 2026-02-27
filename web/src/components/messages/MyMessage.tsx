@@ -56,11 +56,11 @@ export default function MyMessage() {
         }
         setUserList((prevUserList) => {
           if (!prevUserList) {
-            return data.data;
+            return data?.data;
           }
 
-          const existingUserIds = new Set(prevUserList.user_channels.map((user) => user.id));
-          const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user.id));
+          const existingUserIds = new Set(prevUserList?.user_channels.map((user) => user?.id));
+          const uniqueUsers = newUsers.filter((user) => !existingUserIds.has(user?.id));
 
           return {
             ...prevUserList,
@@ -102,7 +102,7 @@ export default function MyMessage() {
   React.useEffect(() => {
     if (socket) {
       const handleUpdateUserList = (user: UserChannel) => {
-        if (data?.data?.id === user.channelId) {
+        if (data?.data?.id === user?.channelId) {
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList;
 
@@ -110,8 +110,8 @@ export default function MyMessage() {
 
             let found = false;
 
-            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-              if (channel.channelId === newChannelId && channel.userProfileId === newUserProfileId) {
+            const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
+              if (channel?.channelId === newChannelId && channel?.userProfileId === newUserProfileId) {
                 found = true;
                 return {
                   ...channel,
@@ -149,8 +149,8 @@ export default function MyMessage() {
             if (!prevUserList) return prevUserList; // Return if no user list exists
 
             // Map through the user channels to find and update the user
-            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-              if (channel.userProfileId === userId) {
+            const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
+              if (channel?.userProfileId === userId) {
                 return {
                   ...channel,
                   unreadCount: channel.unreadCount + 1,
@@ -190,9 +190,9 @@ export default function MyMessage() {
 
             // Create a new list by mapping through the user_channels
             const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-              if (channel.userProfileId === userId) {
+              if (channel?.userProfileId === userId) {
                 // Only update the UserProfile if isOnline has changed
-                if (channel.UserProfile.isOnline !== isOnline) {
+                if (channel?.UserProfile?.isOnline !== isOnline) {
                   return {
                     ...channel,
                     UserProfile: {
@@ -207,7 +207,7 @@ export default function MyMessage() {
 
             // Check if any changes occurred
             const isChanged = updatedUserChannels.some((channel, index) => {
-              return channel !== prevUserList.user_channels[index];
+              return channel !== prevUserList?.user_channels[index];
             });
 
             if (!isChanged) {
@@ -220,11 +220,11 @@ export default function MyMessage() {
       });
 
       socket.on('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
-        if (userList && userList.id === channelId) {
+        if (userList && userList?.id === channelId) {
           setUserList((prevUserList) => {
             if (!prevUserList) return prevUserList;
 
-            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+            const updatedUserChannels = prevUserList?.user_channels.map((channel) => {
               if (channel.userProfileId === userId) {
                 return {
                   ...channel,

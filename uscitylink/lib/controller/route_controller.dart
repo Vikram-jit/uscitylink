@@ -230,29 +230,35 @@ class RouteController extends GetxController {
   }
 
   void _loadCachedData() {
-    // Load cached truck
-    if (_truckBox.containsKey('current')) {
-      final cachedTruck = _truckBox.get('current');
-      if (cachedTruck != null) {
-        truckLocation.value = cachedTruck;
-        print('📦 Loaded cached truck location');
+    /// 🔥 Check if box is open before accessing
+    if (Hive.isBoxOpen('truckBoxName')) {
+      if (_truckBox.containsKey('current')) {
+        final cachedTruck = _truckBox.get('current');
+        if (cachedTruck != null) {
+          truckLocation.value = cachedTruck;
+          print('📦 Loaded cached truck location');
+        }
       }
     }
 
-    // Load cached stations using the new method
-    final loadedStations = _loadStationsList();
-    if (loadedStations.isNotEmpty) {
-      nearByStations.value = loadedStations;
-      _groupNearbyStations();
-      print('📦 Loaded ${loadedStations.length} cached stations');
+    /// Stations
+    if (Hive.isBoxOpen('stationsBoxName')) {
+      final loadedStations = _loadStationsList();
+      if (loadedStations.isNotEmpty) {
+        nearByStations.value = loadedStations;
+        _groupNearbyStations();
+        print('📦 Loaded ${loadedStations.length} cached stations');
+      }
     }
 
-    // Load cached routes
-    if (_routesBox.containsKey('routes')) {
-      final cachedRoutes = _routesBox.get('routes');
-      if (cachedRoutes != null) {
-        routes.value = cachedRoutes.cast<RouteModel>();
-        print('📦 Loaded ${routes.length} cached routes');
+    /// Routes
+    if (Hive.isBoxOpen('routesBoxName')) {
+      if (_routesBox.containsKey('routes')) {
+        final cachedRoutes = _routesBox.get('routes');
+        if (cachedRoutes != null) {
+          routes.value = cachedRoutes.cast<RouteModel>();
+          print('📦 Loaded ${routes.length} cached routes');
+        }
       }
     }
   }
@@ -309,7 +315,6 @@ class RouteController extends GetxController {
     isLoading.value = true;
 
     try {
-      print('🌐 Fetching fresh routes from API...');
       var response = await DocumentService().getRoutes();
 
       if (response.status == true) {
@@ -331,7 +336,6 @@ class RouteController extends GetxController {
           String truckId = response.data[0].truck?.samsara_vehicle_id ?? "";
 
           // Always fetch fresh truck location when online
-          print('🔄 Fetching fresh truck location...');
           List<TruckWithNearbyStations> truckWithNearbyStations =
               await googleMapController.getTrucksWithNearbyStations(
                   vehicleIds: [truckId],
@@ -384,19 +388,19 @@ class RouteController extends GetxController {
         }
       }
     } catch (e) {
-      print("❌ Error fetching routes: $e");
+      print(e);
       _ensureCachedDataLoaded();
 
-      if (!Get.isSnackbarOpen) {
-        Get.snackbar(
-          'Connection Error',
-          'Could not fetch fresh data. Showing cached version.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
-        );
-      }
+      // if (!Get.isSnackbarOpen) {
+      //   Get.snackbar(
+      //     'Connection Error',
+      //     'Could not fetch fresh data. Showing cached version.',
+      //     snackPosition: SnackPosition.BOTTOM,
+      //     backgroundColor: Colors.red,
+      //     colorText: Colors.white,
+      //     duration: const Duration(seconds: 3),
+      //   );
+      // }
     } finally {
       isLoading.value = false;
     }
@@ -405,7 +409,6 @@ class RouteController extends GetxController {
   Future<LatLng?> getTuckLocation({bool forceRefresh = false}) async {
     // Check if offline
     if (isOffline.value) {
-      print('📴 Offline - returning cached location');
       final cachedTruck = _truckBox.get('current');
       if (cachedTruck != null) {
         return LatLng(cachedTruck.latitude, cachedTruck.longitude);
@@ -446,7 +449,7 @@ class RouteController extends GetxController {
         }
       }
     } catch (e) {
-      print("❌ Error fetching truck location: $e");
+      print("Error fetching truck location: $e");
 
       // Only use cache on error
       final cachedTruck = _truckBox.get('current');
@@ -488,19 +491,19 @@ class RouteController extends GetxController {
 
       final routePoints =
           await _getRoutePoints(truckLocation, destination, googleApi);
-      print("✅ Route found with ${routePoints.length} points");
 
       final allStations = stateGroups.expand((g) => g.stations).toList();
+
+      // 🔹 Reset flags
       for (var station in allStations) {
         station.isRecommended = false;
         station.isCheapestInState = false;
         station.isNearestStation = false;
-        station.isBothNearestAndCheapest = false;
+        station.distanceFromRoute = null;
+        station.distanceFromTruck = null;
       }
 
-      int stationsNearRoute = 0;
-      int stationsNearTruck = 0;
-
+      // 🔹 Calculate distance from route and truck
       for (var station in allStations) {
         final stationPoint = LatLng(
           station.latitude ?? 0,
@@ -508,6 +511,7 @@ class RouteController extends GetxController {
         );
 
         double minRouteDistance = double.infinity;
+
         for (var routePoint in routePoints) {
           final distance =
               _calculateDistance(stationPoint, routePoint) / 1609.34;
@@ -515,182 +519,112 @@ class RouteController extends GetxController {
             minRouteDistance = distance;
           }
         }
+
         station.distanceFromRoute = minRouteDistance;
 
         station.distanceFromTruck =
             _calculateDistance(stationPoint, truckLocation) / 1609.34;
 
         if (minRouteDistance <= radiusMiles) {
-          stationsNearRoute++;
           station.isRecommended = true;
         }
       }
 
-      Stations? nearestStation;
-      double nearestDistance = double.infinity;
+      // =========================================================
+      // 🔴 CASE 1: Fuel ≤ 30% → NEAREST PER STATE
+      // =========================================================
+      if (truckFuelPercent != null && truckFuelPercent <= 30) {
+        for (var group in stateGroups) {
+          if (group.stations.isEmpty) continue;
 
-      for (var station in allStations) {
-        if (station.distanceFromTruck! < nearestDistance) {
-          nearestDistance = station.distanceFromTruck!;
-          nearestStation = station;
+          Stations? nearest;
+          double nearestDistance = double.infinity;
+
+          for (var station in group.stations) {
+            if (station.distanceFromTruck != null &&
+                station.distanceFromTruck! < nearestDistance) {
+              nearestDistance = station.distanceFromTruck!;
+              nearest = station;
+            }
+          }
+
+          if (nearest != null) {
+            nearest.isNearestStation = true;
+          }
         }
       }
 
-      for (var group in stateGroups) {
-        if (group.stations.isEmpty) continue;
+      // =========================================================
+      // 🟡 CASE 2: 30% < Fuel < 50% → CHEAPEST PER STATE
+      // =========================================================
+      else if (truckFuelPercent != null &&
+          truckFuelPercent > 30 &&
+          truckFuelPercent < 50) {
+        for (var group in stateGroups) {
+          if (group.stations.isEmpty) continue;
 
-        Stations? cheapestInState;
-        double? lowestPrice;
+          Stations? cheapest;
+          double? lowestPrice;
 
-        for (var station in group.stations) {
-          if (station.fuelPrice?.yourPrice != null) {
-            final price = double.tryParse(station.fuelPrice!.yourPrice!);
+          for (var station in group.stations) {
+            final price = double.tryParse(station.fuelPrice?.yourPrice ?? '');
             if (price != null) {
               if (lowestPrice == null || price < lowestPrice) {
                 lowestPrice = price;
-                cheapestInState = station;
-              }
-            }
-          }
-        }
-
-        if (cheapestInState != null) {
-          print(
-              '   🏆 ${group.stateName} cheapest: ${cheapestInState.name} (ID: ${cheapestInState.id}) at \$${lowestPrice}');
-        }
-      }
-
-      if (truckFuelPercent != null && truckFuelPercent <= 30) {
-        if (nearestStation != null) {
-          bool isNearestAlsoCheapest = false;
-
-          final nearestState = nearestStation.state;
-          final nearestStateGroup = stateGroups.firstWhere(
-            (g) => g.stateCode == nearestState,
-            orElse: () =>
-                StationGroup(stateCode: '', stateName: '', stations: []),
-          );
-
-          if (nearestStateGroup.stations.isNotEmpty) {
-            double? lowestPriceInState;
-            Stations? cheapestInState;
-
-            for (var station in nearestStateGroup.stations) {
-              if (station.fuelPrice?.yourPrice != null) {
-                final price = double.tryParse(station.fuelPrice!.yourPrice!);
-                if (price != null) {
-                  if (lowestPriceInState == null ||
-                      price < lowestPriceInState) {
-                    lowestPriceInState = price;
-                    cheapestInState = station;
-                  }
-                }
-              }
-            }
-
-            if (cheapestInState != null &&
-                cheapestInState.id == nearestStation.id) {
-              isNearestAlsoCheapest = true;
-            }
-          }
-        }
-
-        for (var group in stateGroups) {
-          if (group.stations.isEmpty) continue;
-
-          Stations? cheapestInState;
-          double? lowestPrice;
-
-          for (var station in group.stations) {
-            if (station.fuelPrice?.yourPrice != null) {
-              final price = double.tryParse(station.fuelPrice!.yourPrice!);
-              if (price != null) {
-                if (lowestPrice == null || price < lowestPrice) {
-                  lowestPrice = price;
-                  cheapestInState = station;
-                }
+                cheapest = station;
               }
             }
           }
 
-          if (cheapestInState != null) {
-            if (nearestStation != null &&
-                cheapestInState.id == nearestStation.id) {
-              continue;
-            }
-            cheapestInState.isCheapestInState = true;
-          }
-        }
-      } else if (truckFuelPercent != null && truckFuelPercent < 50) {
-        for (var group in stateGroups) {
-          if (group.stations.isEmpty) continue;
-
-          Stations? cheapestInState;
-          double? lowestPrice;
-
-          for (var station in group.stations) {
-            if (station.fuelPrice?.yourPrice != null) {
-              final price = double.tryParse(station.fuelPrice!.yourPrice!);
-              if (price != null) {
-                if (lowestPrice == null || price < lowestPrice) {
-                  lowestPrice = price;
-                  cheapestInState = station;
-                }
-              }
-            }
-          }
-
-          if (cheapestInState != null) {
-            cheapestInState.isCheapestInState = true;
+          if (cheapest != null) {
+            cheapest.isCheapestInState = true;
           }
         }
       }
 
+      // =========================================================
+      // 🔹 Calculate min distance per state
+      // =========================================================
       for (var group in stateGroups) {
         double minStateDistance = double.infinity;
+
         for (var station in group.stations) {
           if (station.distanceFromTruck != null &&
               station.distanceFromTruck! < minStateDistance) {
             minStateDistance = station.distanceFromTruck!;
           }
         }
+
         group.minDistanceFromTruck = minStateDistance;
       }
 
-      stateGroups.sort((a, b) {
-        final distA = a.minDistanceFromTruck ?? double.infinity;
-        final distB = b.minDistanceFromTruck ?? double.infinity;
-        return distA.compareTo(distB);
-      });
+      stateGroups.sort((a, b) => (a.minDistanceFromTruck ?? double.infinity)
+          .compareTo(b.minDistanceFromTruck ?? double.infinity));
 
+      // =========================================================
+      // 🔹 Sort stations inside each state
+      // =========================================================
       for (var group in stateGroups) {
         group.stations.sort((a, b) {
+          // 🔴 Fuel ≤ 30 → nearest per state first
           if (truckFuelPercent != null && truckFuelPercent <= 30) {
-            if (a.isBothNearestAndCheapest == true &&
-                b.isBothNearestAndCheapest != true) return -1;
-            if (a.isBothNearestAndCheapest != true &&
-                b.isBothNearestAndCheapest == true) return 1;
-
             if (a.isNearestStation == true && b.isNearestStation != true)
               return -1;
             if (a.isNearestStation != true && b.isNearestStation == true)
               return 1;
-
-            if (a.isCheapestInState == true && b.isCheapestInState != true)
-              return -1;
-            if (a.isCheapestInState != true && b.isCheapestInState == true)
-              return 1;
           }
 
+          // 🟡 Fuel 30–50 → cheapest first
           if (truckFuelPercent != null &&
-              truckFuelPercent < 50 &&
-              truckFuelPercent > 30) {
+              truckFuelPercent > 30 &&
+              truckFuelPercent < 50) {
             if (a.isCheapestInState == true && b.isCheapestInState != true)
               return -1;
             if (a.isCheapestInState != true && b.isCheapestInState == true)
               return 1;
           }
 
+          // 💰 Default price sorting
           final priceA = double.tryParse(a.fuelPrice?.yourPrice ?? '');
           final priceB = double.tryParse(b.fuelPrice?.yourPrice ?? '');
 
@@ -701,35 +635,10 @@ class RouteController extends GetxController {
           if (priceA != null) return -1;
           if (priceB != null) return 1;
 
-          return (a.distanceFromTruck ?? 0).compareTo(b.distanceFromTruck ?? 0);
+          // 📍 Distance fallback
+          return (a.distanceFromTruck ?? double.infinity)
+              .compareTo(b.distanceFromTruck ?? double.infinity);
         });
-      }
-
-      for (var group in stateGroups) {
-        print('\n📍 ${group.stateName} (${group.stations.length} stations):');
-
-        for (var station in group.stations) {
-          final price = double.tryParse(station.fuelPrice?.yourPrice ?? '');
-          final priceStr =
-              price != null ? '\$${price.toStringAsFixed(2)}' : 'No price';
-
-          String marker = '';
-          if (station.isBothNearestAndCheapest == true) {
-            marker = '⭐ ';
-          } else if (station.isNearestStation == true) {
-            marker = '🚨 ';
-          } else if (station.isCheapestInState == true) {
-            marker = '🏆 ';
-          }
-
-          final nearRoute = station.distanceFromRoute != null &&
-                  station.distanceFromRoute! <= radiusMiles
-              ? ' (Near Route)'
-              : '';
-
-          print(
-              '   ${marker}${station.name} (ID: ${station.id}) - ${priceStr} - ${station.distanceFromTruck!.toStringAsFixed(1)} miles from truck${nearRoute}');
-        }
       }
 
       update();
