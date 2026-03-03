@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   Avatar,
   Box,
+  Button,
   Chip,
   CircularProgress,
   MenuItem,
@@ -24,11 +25,26 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import moment from 'moment';
 import { useGetMessagesBroadcastQuery } from '@/redux/MessageApiSlice';
 import MediaComponent from '@/components/messages/MediaComment';
+import BroadcastMessagesDialog from './BroadcastMessagesDialog';
+import { UserProfile } from '@/redux/models/ChannelModel';
 
 export default function MessageList() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+const [open, setOpen] = React.useState(false);
+const [broadcastMessages,setBroadcastMessages] = React.useState<{
+              id: string;
+              broadcast_message_log_id: string;
+              sender_id: string;
+              user_id: string;
+              body: string;
+              url: string | null;
+              status: string;
+              createdAt: string;
+              updatedAt: string;
+              userProfile: UserProfile;
+            }[]>([])
 
   const { data, isLoading } = useGetMessagesBroadcastQuery({
     page,
@@ -45,7 +61,14 @@ export default function MessageList() {
       <Typography variant="h5" fontWeight={600} mb={3}>
         Broadcast List
       </Typography>
-
+{open && <BroadcastMessagesDialog
+  open={open}
+  onClose={()=>{
+    setBroadcastMessages([])
+     setOpen(false)
+  }}
+  data={broadcastMessages}
+/>}
       {/* 🔎 Toolbar */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -96,6 +119,7 @@ export default function MessageList() {
                   <TableCell><b>Total Messages</b></TableCell>
                   <TableCell><b>Sent Messages</b></TableCell>
                   <TableCell><b>Created At</b></TableCell>
+                  <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
 
@@ -185,6 +209,12 @@ export default function MessageList() {
                             'DD MMM YYYY, hh:mm A'
                           )}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outlined" onClick={()=>{
+                          setBroadcastMessages(message.broadcast_messages)
+                          setOpen((prev)=>!prev)
+                        }}>Detail</Button>
                       </TableCell>
                     </TableRow>
                   ))

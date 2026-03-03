@@ -414,7 +414,18 @@ export const getBroadCastMessages = async (
         }),
       },
       include: [
-       
+       {
+        model:BroadcastMessage,
+       as: "broadcast_messages",
+        include:[{
+          model:UserProfile,
+          as:"userProfile",
+          include:[{
+            model:User,
+            as:"user"
+          }]
+        }]
+       }
       ],
       limit: pageSize,
       offset,

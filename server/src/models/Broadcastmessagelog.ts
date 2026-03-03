@@ -5,6 +5,7 @@ import {
   Sequelize,
 } from "sequelize";
 import { primarySequelize } from "../sequelize";
+import BroadcastMessage from "./BroadcastMessage";
 
 export interface BroadcastMessageLogAttributes {
   id: string;
@@ -78,3 +79,9 @@ export class BroadcastMessageLog
 }
 
 BroadcastMessageLog.initModel(primarySequelize);
+
+BroadcastMessageLog.hasMany(BroadcastMessage, {
+  foreignKey: "broadcast_message_log_id",
+  as: "broadcast_messages",
+});
+

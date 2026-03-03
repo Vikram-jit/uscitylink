@@ -80,5 +80,11 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 <string>This app uses your location to show your position on the map and nearby fuel stations.</string>
 
+    
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app uses your location to show your position on the map and nearby fuel stations.</string>
+    
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>This app uses your location to show your position on the map and nearby fuel stations.</string>
 </dict>
 </plist>

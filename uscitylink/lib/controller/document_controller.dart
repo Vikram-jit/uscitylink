@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gal/gal.dart';
 import 'package:get/get.dart';
-// import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 
 class DocumentController extends GetxController {
-  // Reactive variables to manage UI state
-  var isSaving = false.obs; // To indicate if the image is being saved
-  var isDownloading = false.obs; // To indicate if the image is being downloaded
+  var isSaving = false.obs;
+  var isDownloading = false.obs;
   var saveSuccess = false.obs;
   var errorMessage = ''.obs;
   List<String> videoExtensions = [
@@ -28,102 +26,79 @@ class DocumentController extends GetxController {
     'wmv'
   ];
 
-  // Function to save image to gallery
+  Future<bool> requestIOSGalleryPermission() async {
+    if (!Platform.isIOS) return true;
+
+    var status = await Permission.photos.status;
+    print("Before request: $status");
+
+    if (status.isGranted || status.isLimited) {
+      return true;
+    }
+
+    // 🔥 This forces popup
+    status = await Permission.photos.request();
+    print("After request: $status");
+
+    if (status.isGranted || status.isLimited) {
+      return true;
+    }
+
+    if (status.isPermanentlyDenied) {
+      print("Permission permanently denied");
+      openAppSettings();
+    }
+
+    return false;
+  }
+
   Future<void> saveImageToGallery(String imageUrl) async {
-    // Utils.showLoader();
-    // Show loader while saving
     isSaving.value = true;
-    isDownloading.value = true; // Show downloading indicator
-
-    // Request storage permission (for Android)
-    PermissionStatus status = await Permission.storage.request();
-    var statusImages = await Permission.photos.request();
-    var statusVideos = await Permission.videos.request();
-
-    if (statusImages.isDenied || statusVideos.isDenied) {
-      // Request permission again or show explanation
-      print("Permission denied. Please grant storage permissions.");
-      errorMessage.value = "Permission Denied!";
-      showErrorSnackBar("Permission Denied!"); // Show snack bar
-      isSaving.value = false;
-      isDownloading.value = false;
-      openAppSettings();
-      return;
-    }
-    if (statusImages.isPermanentlyDenied || statusVideos.isPermanentlyDenied) {
-      errorMessage.value = "Permission Denied!";
-      showErrorSnackBar("Permission Denied!"); // Show snack bar
-      isSaving.value = false;
-      isDownloading.value = false;
-      // If permission is permanently denied, open settings to allow manual permission change
-      openAppSettings();
-      return;
-    }
-    // if (!status.isGranted) {
-    //   errorMessage.value = "Permission Denied!";
-    //   showErrorSnackBar("Permission Denied!"); // Show snack bar
-    //   isSaving.value = false;
-    //   isDownloading.value = false;
-    //   openAppSettings();
-    //   return;
-    // }
+    isDownloading.value = true;
+    saveSuccess.value = false;
 
     try {
-      String extension = imageUrl.split('.').last.toLowerCase();
-      if (videoExtensions.contains(extension)) {
-        final tempDir = await getTemporaryDirectory();
-        final tempFilePath = '${tempDir.path}/done.mp4';
-
-        print('Downloading video...');
-
-        final response = await http.get(Uri.parse(imageUrl));
-        if (response.statusCode == 200) {
-          // Step 3: Save the video to the local temporary file
-          final file = File(tempFilePath);
-          await file.writeAsBytes(response.bodyBytes);
-          print('Video downloaded to $tempFilePath');
-
-          // Step 4: Save the video to gallery using Gal
-          await Gal.putVideo(tempFilePath);
-          // print('Video saved to gallery in album: $album');
-        } else {
-          print(
-              "Failed to download video. Status code: ${response.statusCode}");
-        }
-      } else {
-        // Fetch the image from the URL as bytes
-        final ByteData data =
-            await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
-        final Uint8List bytes = data.buffer.asUint8List();
-
-        await Gal.putImageBytes(bytes);
+      bool allowed = await requestIOSGalleryPermission();
+      if (!allowed) {
+        showErrorSnackBar("Permission Denied");
+        return;
       }
 
-      // if (result['isSuccess']) {
-      //   Utils.hideLoader();
-      //   saveSuccess.value = true;
-      //   showSuccessSnackBar(
-      //       "Image Saved Successfully!"); // Show success snackbar
-      //   errorMessage.value = ''; // Clear any previous errors
-      // } else {
-      //   Utils.hideLoader();
-      //   saveSuccess.value = false;
-      //   errorMessage.value = 'Failed to Save Image!';
-      //   showErrorSnackBar("Failed to Save Image!"); // Show error snackbar
-      // }
-      //Utils.hideLoader();
-    } catch (e) {
-      //Utils.hideLoader();
+      String extension = imageUrl.split('.').last.toLowerCase();
 
-      saveSuccess.value = false;
-      errorMessage.value = 'Error saving image: $e';
-      showErrorSnackBar("Error saving image: $e"); // Show error snackbar
-    } finally {
+      if (videoExtensions.contains(extension)) {
+        final tempDir = await getTemporaryDirectory();
+        final tempFilePath = '${tempDir.path}/temp_video.mp4';
+
+        final response = await http.get(Uri.parse(imageUrl));
+
+        if (response.statusCode != 200) {
+          throw Exception("Video download failed");
+        }
+
+        final file = File(tempFilePath);
+        await file.writeAsBytes(response.bodyBytes);
+
+        await Gal.putVideo(tempFilePath);
+      } else {
+        final response = await http.get(Uri.parse(imageUrl));
+
+        if (response.statusCode != 200) {
+          throw Exception("Image download failed");
+        }
+
+        await Gal.putImageBytes(response.bodyBytes);
+      }
+
       saveSuccess.value = true;
-      showSuccessSnackBar("Image Saved Successfully!");
-      //Utils.hideLoader();
-      isSaving.value = false; // Set saving state to false when done
-      isDownloading.value = false; // Set downloading state to false when done
+      showSuccessSnackBar("Saved Successfully!");
+    } catch (e) {
+      saveSuccess.value = false;
+      errorMessage.value = 'Error saving: $e';
+      showErrorSnackBar("Error saving file");
+    } finally {
+      isSaving.value = false;
+      isDownloading.value = false;
     }
   }
 

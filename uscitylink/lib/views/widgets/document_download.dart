@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 // import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:get/get.dart';
@@ -182,66 +184,248 @@ class _DocumentDownloadState extends State<DocumentDownload> {
     );
   }
 
-  Future<void> _shareFile(fileUrl) async {
+  Future<void> _shareFile(String fileUrl) async {
+    BuildContext? context = Get.context;
+
     try {
-      // Get the file from the cache
-      // final file = await DefaultCacheManager().getSingleFile(fileUrl);
+      if (context == null) return;
 
-      // Share the file using share_plus
-      await Share.shareUri(Uri.parse(fileUrl));
+      // Show loading
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
 
-      // Show a confirmation message
-      ScaffoldMessenger.of(Get.context!).showSnackBar(
-        const SnackBar(content: Text("Sharing file...")),
+      // Download file
+      File? localFile = await _downloadFile(fileUrl);
+
+      // Close loading
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      // ❌ If download failed, stop here
+      if (localFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Unable to download file"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final box = context.findRenderObject() as RenderBox?;
+
+      // ✅ iOS share with position
+      if (Platform.isIOS && box != null) {
+        await Share.shareXFiles(
+          [XFile(localFile.path)],
+          text: 'Check out this file!',
+          subject: 'Shared from ChatBox',
+          sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+        );
+      } else {
+        // ✅ Android / fallback
+        await Share.shareXFiles(
+          [XFile(localFile.path)],
+          text: 'Check out this file!',
+        );
+      }
+
+      // Success snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("File shared successfully"),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
-      // Handle errors
-      ScaffoldMessenger.of(Get.context!).showSnackBar(
-        SnackBar(content: Text("Share failed: $e")),
-      );
+      // Close dialog if still open
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Share failed: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // Function to download the file
-  void _downloadFile() async {
-    try {
-      var fileInfo = await DefaultCacheManager().getSingleFile(widget.file);
-      print('File downloaded: ${fileInfo.path}');
-      ScaffoldMessenger.of(Get.context!).showSnackBar(
-          const SnackBar(content: Text("File downloaded successfully!")));
-    } catch (e) {
-      print("Download failed: $e");
-      ScaffoldMessenger.of(Get.context!)
-          .showSnackBar(const SnackBar(content: Text("Download failed")));
+  Future<String> _getUniqueFilePath(String filePath) async {
+    int counter = 1;
+    String newPath = filePath;
+
+    while (await File(newPath).exists()) {
+      final extension = filePath.contains('.')
+          ? filePath.substring(filePath.lastIndexOf('.'))
+          : '';
+
+      final name = filePath.replaceAll(extension, '');
+
+      newPath = "${name}_$counter$extension";
+      counter++;
     }
+
+    return newPath;
   }
 
-  Future<void> _download(String fileUrl) async {
+  Future<File?> _downloadFile(String fileUrl) async {
     try {
-      // Get file extension
-      String extension = fileUrl.split('.').last.toLowerCase();
+      if (fileUrl.trim().isEmpty) {
+        throw Exception("Invalid file URL");
+      }
 
-      // Fetch the file from the URL
+      final uri = Uri.tryParse(fileUrl);
+      if (uri == null || (!uri.isScheme('http') && !uri.isScheme('https'))) {
+        throw Exception("Invalid URL format");
+      }
+
+      print('📥 Downloading: $fileUrl');
+
+      // Download using cache manager
       final file = await DefaultCacheManager().getSingleFile(fileUrl);
 
-      // Get the appropriate directory to store the file
-      Directory appDocDirectory = await getApplicationDocumentsDirectory();
-      String localPath =
-          '${appDocDirectory.path}/${file.uri.pathSegments.last}';
+      if (!await file.exists()) {
+        throw Exception("File not found after download");
+      }
 
-      // Copy the file from the cache to the local directory
-      final savedFile = await file.copy(localPath);
+      final fileSize = await file.length();
+      if (fileSize == 0) {
+        throw Exception("Downloaded file is empty");
+      }
 
-      // Show confirmation
-      ScaffoldMessenger.of(Get.context!).showSnackBar(
-        SnackBar(content: Text("File downloaded to $localPath")),
-      );
+      print("📦 File size: ${_formatFileSize(fileSize)}");
+
+      // Get app directory
+      final directory = await getApplicationDocumentsDirectory();
+
+      final downloadDir = Directory('${directory.path}/Downloads');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+
+      // Generate safe filename
+      final fileName = _generateSafeFileName(uri);
+      String savePath = '${downloadDir.path}/$fileName';
+
+      savePath = await _getUniqueFilePath(savePath);
+
+      final savedFile = await file.copy(savePath);
+
+      print("✅ Saved at: $savePath");
+
+      return savedFile;
     } catch (e) {
-      // Handle error
-      ScaffoldMessenger.of(Get.context!).showSnackBar(
-        SnackBar(content: Text("Download failed: $e")),
-      );
+      print("❌ Download error: $e");
+
+      if (Get.context != null) {
+        ScaffoldMessenger.of(Get.context!).showSnackBar(
+          SnackBar(
+            content: Text(_getErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
+      return null;
     }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    if (error == null) {
+      return "Something went wrong";
+    }
+
+    // 🔌 Network errors
+    if (error is SocketException) {
+      return "No internet connection";
+    }
+
+    // ⏳ Timeout
+    if (error is TimeoutException) {
+      return "Connection timeout. Please try again";
+    }
+
+    // 🌐 HTTP errors
+    if (error is HttpException) {
+      return "Server error occurred";
+    }
+
+    // 📂 File system errors
+    if (error is FileSystemException) {
+      if (error.osError?.message.contains("No space") ?? false) {
+        return "Insufficient storage space";
+      }
+      return "Storage access error";
+    }
+
+    // 📱 Platform specific errors
+    if (error is PlatformException) {
+      if (error.message?.toLowerCase().contains("permission") ?? false) {
+        return "Permission denied";
+      }
+      return error.message ?? "Platform error occurred";
+    }
+
+    // 🔎 String fallback checks
+    final message = error.toString().toLowerCase();
+
+    if (message.contains("404")) {
+      return "File not found";
+    }
+
+    if (message.contains("403")) {
+      return "Access denied";
+    }
+
+    if (message.contains("network")) {
+      return "Network error";
+    }
+
+    if (message.contains("timeout")) {
+      return "Connection timeout";
+    }
+
+    if (message.contains("empty")) {
+      return "Downloaded file is empty";
+    }
+
+    if (message.contains("permission")) {
+      return "Permission denied";
+    }
+
+    return "Something went wrong. Please try again";
+  }
+
+  String _generateSafeFileName(Uri uri) {
+    String name = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+
+    if (name.isEmpty || !name.contains('.')) {
+      return 'file_${DateTime.now().millisecondsSinceEpoch}.bin';
+    }
+
+    return name.replaceAll(RegExp(r'[^\w\.\-]'), '_');
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes <= 0) return "0 B";
+
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    int index = 0;
+    double size = bytes.toDouble();
+
+    while (size >= 1024 && index < units.length - 1) {
+      size /= 1024;
+      index++;
+    }
+
+    return "${size.toStringAsFixed(2)} ${units[index]}";
   }
 
   // Widget to build the image preview

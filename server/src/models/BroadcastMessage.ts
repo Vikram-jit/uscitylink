@@ -87,3 +87,4 @@ UserProfile.hasMany(BroadcastMessage, {
   foreignKey: "user_id",
   as: "broadcastMessages",
 });
+

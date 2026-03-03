@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:get/get.dart';
+import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/data/app_exceptions.dart';
 import 'package:uscitylink/data/network/base_api_services.dart';
@@ -14,8 +16,11 @@ class NetworkApiService extends BaseApiServices {
   UserPreferenceController userPreferenceController =
       UserPreferenceController();
 
+  bool _isLoggingOut = false; // Flag to prevent multiple logout calls
+
   @override
   Future getApi(String url) async {
+    if (_isLoggingOut) return;
     try {
       dynamic responseJson;
       final headers = {
@@ -42,6 +47,7 @@ class NetworkApiService extends BaseApiServices {
 
   @override
   Future postApi(dynamic data, String url) async {
+    if (_isLoggingOut) return;
     try {
       Utils.showLoader();
       dynamic responseJson;
@@ -72,6 +78,7 @@ class NetworkApiService extends BaseApiServices {
   }
 
   Future putApi(dynamic data, String url) async {
+    if (_isLoggingOut) return;
     try {
       Utils.showLoader();
       dynamic responseJson;
@@ -102,6 +109,7 @@ class NetworkApiService extends BaseApiServices {
   }
 
   Future deleteApi(String url) async {
+    if (_isLoggingOut) return;
     try {
       Utils.showLoader();
       dynamic responseJson;
@@ -390,24 +398,41 @@ class NetworkApiService extends BaseApiServices {
       throw Exception("An unexpected error occurred: $e");
     }
   }
-}
 
-dynamic returnResponse(http.Response response) {
-  dynamic responseJson = jsonDecode(response.body);
-  switch (response.statusCode) {
-    case 200:
-      Utils.hideLoader();
-      return responseJson;
-    case 201:
-      Utils.hideLoader();
-      return responseJson;
-    case 400:
-      Utils.hideLoader();
-      throw Exception(responseJson['message']);
+  dynamic returnResponse(http.Response response) async {
+    dynamic responseJson = jsonDecode(response.body);
+    switch (response.statusCode) {
+      case 200:
+        Utils.hideLoader();
+        return responseJson;
+      case 201:
+        Utils.hideLoader();
+        return responseJson;
+      case 401:
+      case 403:
+        Utils.hideLoader();
 
-    default:
-      Utils.hideLoader();
-      throw Exception(responseJson['message']);
+        if (!_isLoggingOut) {
+          _isLoggingOut = true;
+
+          print("🔒 Session expired. Logging out...");
+
+          if (Get.isRegistered<LoginController>()) {
+            await Get.find<LoginController>().logOut();
+          }
+
+          _isLoggingOut = false;
+        }
+
+        return;
+      case 400:
+        Utils.hideLoader();
+        throw Exception(responseJson['message']);
+
+      default:
+        Utils.hideLoader();
+        throw Exception(responseJson['message']);
+    }
   }
 }
 

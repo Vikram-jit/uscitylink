@@ -33,7 +33,18 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
 
             createdAt: string;
             updatedAt: string;
-       
+            broadcast_messages: {
+              id: string;
+              broadcast_message_log_id: string;
+              sender_id: string;
+              user_id: string;
+              body: string;
+              url: string | null;
+              status: string;
+              createdAt: string;
+              updatedAt: string;
+              userProfile: UserProfile;
+            }[];
           }[];
           pagination: {
             currentPage: number;
@@ -43,7 +54,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
           };
         };
       },
-      { resetKey?: number, page: number, pageSize: number,search?:string ,status?:string}
+      { resetKey?: number; page: number; pageSize: number; search?: string; status?: string }
     >({
       query: (payload) => ({
         url: `message/broadcast?resetKey=${payload.resetKey}&page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search}&status=${payload.status}`,
