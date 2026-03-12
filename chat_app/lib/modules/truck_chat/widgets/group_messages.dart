@@ -16,24 +16,25 @@ class GroupMessages extends StatelessWidget {
         return const Center(child: CircularProgressIndicator());
       }
 
+      final messages = controller.messages;
+      final hasMore = controller.hasMore.value;
+
       return ListView.builder(
         controller: controller.scrollController,
         reverse: true,
         padding: const EdgeInsets.all(16),
-        itemCount:
-            controller.messages.length + (controller.hasMore.value ? 1 : 0),
+        itemCount: messages.length + (hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          // 🔄 Loader at top
-          if (index == controller.messages.length) {
+          if (index == messages.length) {
             return const Padding(
               padding: EdgeInsets.all(8),
               child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          final message = controller.messages[index];
-          final prevMessage = index + 1 < controller.messages.length
-              ? controller.messages[index + 1]
+          final message = messages[index];
+          final prevMessage = index + 1 < messages.length
+              ? messages[index + 1]
               : null;
 
           final bool showDateDivider =

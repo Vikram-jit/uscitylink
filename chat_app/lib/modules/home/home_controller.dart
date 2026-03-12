@@ -1,7 +1,6 @@
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
-import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:get/get.dart';
 

@@ -86,7 +86,8 @@ class DriverListSidebar extends StatelessWidget {
                         children: [
                           Obx(() {
                             return UserStatusTile(
-                              name: member.userProfile?.username ?? "-",
+                              name:
+                                  "${member.userProfile?.username} (${member.userProfile?.user?.driverNumber})",
                               id: member.userProfile?.id ?? "-",
                               isOnline: member.userProfile?.isOnline ?? false,
                               isTyping: controller.isUserTyping(
@@ -94,6 +95,7 @@ class DriverListSidebar extends StatelessWidget {
                               ),
                               unreadCount: member.unreadCount ?? 0,
                               message: member.lastMessage?.body ?? "-",
+                              truckNumber: member.assginTrucks ?? "-",
                             );
                           }),
 

@@ -80,18 +80,23 @@ class GroupMessageController extends GetxController {
   }
 
   void _onScroll() {
-    // reverse list → top reached
+    print("SCROLL: ${scrollController.position.pixels}");
+    print("MAX: ${scrollController.position.maxScrollExtent}");
+
     if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 40 &&
+            scrollController.position.maxScrollExtent - 50 &&
         !isLoading.value &&
         hasMore.value) {
+      print("LOAD MORE TRIGGERED");
       loadMore(_homeController.groupId.value);
     }
   }
 
   Future<void> loadMore(String userId) async {
-    if (!hasMore.value) return;
-    currentPage++;
+    if (!hasMore.value || isLoading.value) return;
+
+    currentPage.value++;
+
     await _fetch(userId, currentPage.value);
   }
 

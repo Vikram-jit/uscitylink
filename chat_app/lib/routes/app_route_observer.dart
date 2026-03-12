@@ -1,4 +1,5 @@
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
 import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,6 +21,12 @@ class AppRouteObserver extends GetObserver {
 
       controller.resetPagination();
       controller.getChannelMembers(page: 1);
+      controller.attachScroll();
+    }
+
+    if (routeName == AppRoutes.truckChat) {
+      final controller = Get.find<GroupController>();
+      controller.refreshData();
       controller.attachScroll();
     }
   }

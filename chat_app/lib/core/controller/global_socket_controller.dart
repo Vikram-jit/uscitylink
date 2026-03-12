@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
+import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../services/socket_service.dart';
@@ -25,10 +26,18 @@ class GlobalSocketController extends GetxController {
       onNotification: _handleNotification,
       onNotificationId: _handleNotificationId,
       onOnlineDriverFn: _handleOnlineDriverFn,
+      onNewMessageWithUser: _handleNewMessageWithUser,
     );
   }
 
   // ---------- HANDLERS ----------
+
+  void _handleNewMessageWithUser(dynamic data) async {
+    UserChannels userChannels = UserChannels.fromJson(data);
+    if (Get.isRegistered<ChannelController>()) {
+      Get.find<ChannelController>().replaceChannelMember(userChannels);
+    }
+  }
 
   void _handleOnlineDriverFn(dynamic data) async {
     if (Get.isRegistered<OverviewController>()) {
@@ -47,7 +56,7 @@ class GlobalSocketController extends GetxController {
     // 🔕 If user never interacted → NO SOUND (but show snackbar)
     if (!interaction.hasInteracted.value) {
       Get.snackbar(
-        "New Message Recived",
+        "New Message Reciveds",
         message ?? "",
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.white.withValues(alpha: 0.9),
@@ -79,7 +88,7 @@ class GlobalSocketController extends GetxController {
       print("Audio play failed: $e");
     }
     Get.snackbar(
-      "New Message Recived",
+      "New Message Recivedss",
       message ?? "",
       snackPosition: SnackPosition.TOP,
       backgroundColor: Colors.white.withValues(alpha: 0.9),

@@ -9,22 +9,25 @@ import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:get/get.dart';
 
-class InitialBindings extends Bindings {
+class AppBindings extends Bindings {
   @override
   void dependencies() {
+    /// SERVICES
     Get.put(UserInteractionService(), permanent: true);
-
     Get.put(GlobalSocketController(), permanent: true);
-    Get.lazyPut<ChannelController>(() => ChannelController(), fenix: true);
-    Get.put(HomeController());
+    Get.put(GlobalSearchController(), permanent: true);
 
-    Get.put(OverviewController());
-    Get.put(GroupController());
+    /// HOME
+    Get.lazyPut<HomeController>(() => HomeController(), fenix: true);
+    Get.lazyPut<OverviewController>(() => OverviewController(), fenix: true);
+    Get.lazyPut<ChannelController>(() => ChannelController(), fenix: true);
     Get.lazyPut<MessageController>(() => MessageController(), fenix: true);
+
+    /// GROUP CHAT
+    Get.lazyPut<GroupController>(() => GroupController(), fenix: true);
     Get.lazyPut<GroupMessageController>(
       () => GroupMessageController(),
       fenix: true,
     );
-    Get.put(GlobalSearchController(), permanent: true);
   }
 }

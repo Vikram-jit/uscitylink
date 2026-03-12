@@ -1,7 +1,3 @@
-import 'dart:convert';
-
-import 'package:chat_app/core/services/socket_service.dart';
-import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
 import 'package:chat_app/modules/home/models/channel_model.dart';
@@ -26,7 +22,6 @@ class ChannelController extends GetxController {
   int itemsPerPage = 10;
   int totalItems = 0;
   int totalPages = 0;
-  final SocketService _socketService = SocketService();
 
   final hasMore = true.obs;
   final ScrollController scrollController = ScrollController();
@@ -83,6 +78,22 @@ class ChannelController extends GetxController {
 
   bool isUserTyping(String userId) {
     return typingUsers[userId] ?? false;
+  }
+
+  void replaceChannelMember(UserChannels user) {
+    int index = channelMembers.indexWhere(
+      (channel) =>
+          channel.channelId == user.channelId &&
+          channel.userProfileId == user.userProfileId,
+    );
+
+    if (index != -1) {
+      // remove from current position
+      channelMembers.removeAt(index);
+    }
+
+    // add at top
+    channelMembers.insert(0, user);
   }
 
   void handleReceiveMessage(MessageModel message) {
@@ -259,6 +270,21 @@ class ChannelController extends GetxController {
   Future<void> loadNextPage() async {
     if (!isLoading.value && hasMore.value) {
       await getChannelMembers(page: currentPage.value + 1);
+    }
+  }
+
+  void handleUpdateUnreadCount(data) {
+    final profileId = data["userId"] ?? "";
+
+    int index = channelMembers.indexWhere(
+      (channel) => channel.userProfileId == profileId,
+    );
+
+    if (index != -1) {
+      channelMembers[index].unreadCount = 0;
+
+      // Notify GetX that the list has changed
+      channelMembers.refresh();
     }
   }
 

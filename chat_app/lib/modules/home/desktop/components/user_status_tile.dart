@@ -15,6 +15,7 @@ class UserStatusTile extends StatefulWidget {
   final bool isTyping;
   final int unreadCount;
   final String message;
+  final String truckNumber;
 
   const UserStatusTile({
     super.key,
@@ -25,6 +26,7 @@ class UserStatusTile extends StatefulWidget {
     this.isTyping = false,
     this.unreadCount = 0,
     this.message = "",
+    this.truckNumber = "",
   });
 
   @override
@@ -155,6 +157,16 @@ class _UserStatusTileState extends State<UserStatusTile> {
                           color: isSelected ? Colors.white : AppColors.primary,
                         ),
                       ),
+                      if (widget.truckNumber.isNotEmpty)
+                        Text(
+                          "Assgined Truck Groups : ${widget.truckNumber}",
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       if (widget.message.isNotEmpty)
                         Column(
                           children: [

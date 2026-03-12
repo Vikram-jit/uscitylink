@@ -1,13 +1,13 @@
 import 'package:chat_app/core/controller/global_search_controller.dart';
 import 'package:chat_app/core/theme/colors.dart';
-import 'package:chat_app/modules/driver_chat/widgets/driver_list_sidebar.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
-import 'package:chat_app/modules/home/desktop/widgets/chat_header.dart';
 import 'package:chat_app/modules/home/desktop/widgets/left_sidebar.dart';
 import 'package:chat_app/modules/home/desktop/widgets/message_input.dart';
-import 'package:chat_app/modules/home/desktop/widgets/message_list.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_header.dart';
 import 'package:chat_app/modules/truck_chat/widgets/group_list.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_messages.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,6 +19,7 @@ class DesktopView extends StatelessWidget {
   final msgController = Get.find<MessageController>();
   final searchCtrl = Get.find<GlobalSearchController>();
   final searchKey = GlobalKey();
+  final groupMsgController = Get.find<GroupMessageController>();
 
   @override
   Widget build(BuildContext context) {
@@ -116,20 +117,22 @@ class DesktopView extends StatelessWidget {
                           ),
                         ),
                         child: Obx(() {
-                          if (controller.driverId.isEmpty)
-                            return Center(child: Text("Select Chat"));
+                          if (controller.groupId.isEmpty)
+                            return Center(child: Text("Select Group for Chat"));
                           return Container(
                             color: Colors.white,
                             child: Column(
                               children: [
-                                ChatHeader(
+                                GroupHeader(
                                   userName: controller.selectedName.value,
                                 ), // DM Header
                                 Expanded(
                                   child: Obx(() {
-                                    switch (msgController.currentTab.value) {
+                                    switch (groupMsgController
+                                        .currentTab
+                                        .value) {
                                       case 0:
-                                        return MessageList(); // Messages
+                                        return GroupMessages(); // Messages
                                       case 1:
                                         return Text(
                                           "Files",
@@ -137,26 +140,10 @@ class DesktopView extends StatelessWidget {
                                       case 2:
                                         return Text("Pins"); // Pins Tab Content
                                       default:
-                                        return MessageList();
+                                        return GroupMessages();
                                     }
                                   }),
                                 ),
-
-                                if (msgController.isTyping.value)
-                                  Align(
-                                    alignment: AlignmentGeometry.topLeft,
-                                    child: Container(
-                                      margin: EdgeInsets.only(left: 10),
-                                      child: Text(
-                                        msgController.typingMsg.value,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
                                 if (msgController.currentTab.value ==
                                     0) // DM Message List
                                   MessageInput(),

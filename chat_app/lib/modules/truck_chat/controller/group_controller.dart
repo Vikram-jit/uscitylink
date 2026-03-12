@@ -47,6 +47,11 @@ class GroupController extends GetxController {
     }
   }
 
+  void attachScroll() {
+    scrollController.removeListener(_onScroll);
+    scrollController.addListener(_onScroll);
+  }
+
   void resetPagination() {
     isLoading.value = false;
     currentPage.value = 1;

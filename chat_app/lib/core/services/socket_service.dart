@@ -16,7 +16,7 @@ class SocketService {
     if (socket != null && socket!.connected) return;
 
     socket = IO.io(
-      "http://localhost:4300",
+      "http://52.9.12.189:4300",
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': token})
@@ -35,12 +35,14 @@ class SocketService {
     required void Function(String message) onNotification,
     required void Function(String message) onNotificationId,
     required void Function(dynamic data) onOnlineDriverFn,
+    required void Function(dynamic data) onNewMessageWithUser,
   }) {
     if (socket == null) return;
 
     socket!.off('notification_new_message');
     socket!.off('notification_user_id');
     socket!.off('user_online_driver_web');
+    socket!.off('notification_new_message_with_user');
 
     socket!.on('notification_new_message', (data) {
       final message = data.toString();
@@ -54,6 +56,8 @@ class SocketService {
     socket!.on("user_online_driver_web", (data) {
       onOnlineDriverFn(data);
     });
+
+    socket!.on("notification_new_message_with_user", onNewMessageWithUser);
   }
 
   void _registerBaseListeners() {

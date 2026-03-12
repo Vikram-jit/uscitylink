@@ -41,6 +41,9 @@ class OverviewController extends GetxController {
 
     socket.on("update_channel_sent_message_count", (data) {
       unreadCountByProfileId(data);
+      if (Get.isRegistered<ChannelController>()) {
+        unreadCounChannelUsers(data);
+      }
     });
   }
 
@@ -195,5 +198,9 @@ class OverviewController extends GetxController {
     drivers[index] = updatedDriver;
 
     overview.value = currentOverview.copyWith(onlineDrivers: drivers);
+  }
+
+  void unreadCounChannelUsers(dynamic data) {
+    Get.find<ChannelController>().handleUpdateUnreadCount(data);
   }
 }
