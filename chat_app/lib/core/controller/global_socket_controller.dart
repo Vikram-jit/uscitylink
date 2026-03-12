@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chat_app/core/services/user_interaction_service.dart';
+import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
@@ -17,6 +18,16 @@ class GlobalSocketController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final token = StorageService.syncGetToken();
+
+    if (token != null && token.isNotEmpty) {
+      _socket.connect(token); // ✅ connect socket
+    }
+    if (_socket.socket?.connected == true) {
+      print("🟢 Socket already connected");
+    } else {
+      print("🔴 Socket not connected yet");
+    }
     _registerGlobalListeners();
   }
 

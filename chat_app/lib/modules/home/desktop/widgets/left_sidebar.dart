@@ -1,5 +1,5 @@
+import 'package:chat_app/core/controller/global_socket_controller.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
-import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/sidebar_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/sidebar_icon.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
@@ -110,8 +110,18 @@ class LeftSidebar extends StatelessWidget {
               PopupMenuItem(
                 child: Text("Logout", style: TextStyle(color: Colors.red)),
                 onTap: () async {
+                  if (Get.isRegistered<GlobalSocketController>()) {
+                    Get.find<GlobalSocketController>().onClose();
+                  }
+
+                  // 2️⃣ Clear storage
                   await StorageService.clear();
-                  Get.offAndToNamed(AppRoutes.login);
+
+                  // 3️⃣ Remove all GetX controllers
+                  Get.deleteAll(force: true);
+
+                  // 4️⃣ Navigate to login
+                  Get.offAllNamed(AppRoutes.login);
                 },
               ),
             ],

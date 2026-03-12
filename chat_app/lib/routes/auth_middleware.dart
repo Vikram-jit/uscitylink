@@ -9,7 +9,7 @@ class AuthMiddleware extends GetMiddleware {
   @override
   RouteSettings? redirect(String? route) {
     final token = StorageService.syncGetToken();
-    print(token);
+
     // ❌ NOT logged in → block protected routes
     if (token == null || token.isEmpty) {
       if (route != AppRoutes.login) {
