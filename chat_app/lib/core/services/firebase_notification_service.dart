@@ -1,6 +1,4 @@
-import 'package:chat_app/web_badge_interop.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 
 class FirebaseNotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;

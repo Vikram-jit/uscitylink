@@ -49066,42 +49066,42 @@ if(A.aR(a,null,s).w.a.a>=1100)return this.e
 if(A.aR(a,null,s).w.a.a>=700&&A.aR(a,null,s).w.a.a<1100)return this.d
 return this.c}}
 A.axU.prototype={
-a1M(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d="http://52.9.12.189:4300",c="query",b=f.a
-if(b!=null&&b.w)return
-b=t.N
+a1M(a){var s,r,q,p,o,n,m,l,k,j,i,h,g,f=this,e=null,d="query",c=f.a
+if(c!=null&&c.w)return
+c=t.N
 s=t.z
-r=A.u(b,s)
+r=A.u(c,s)
 r.l(0,"transports",A.b(["websocket"],t.s))
 r.l(0,"auth",A.ac(["token",a],s,s))
 r.F(0,"reconnection")
 r.l(0,"reconnectionAttempts",5)
 r.l(0,"reconnectionDelay",1000)
 r.l(0,"autoConnect",!1)
-q=A.e1(d,0,e)
+q=A.e1("/",0,e)
 p=q.geE()+"://"+q.gmb()+":"+q.gr3()
 o=q.geb()
 n=$.aRa.aa(p)&&$.aRa.h(0,p).d.aa(o)
 m=J.e(r.h(0,"forceNew"),!0)||J.e(r.h(0,"force new connection"),!0)||!1===r.h(0,"multiplex")||n
 l=A.bZ()
-if(m){$.b74().aX(B.x,"ignoring socket cache for http://52.9.12.189:4300",e,e)
-l.b=A.b_3(r,d)}else{k=$.aRa.h(0,p)
-if(k==null){k=A.b_3(r,d)
-$.aRa.l(0,p,k)}l.b=k}if(q.gmq().length!==0&&r.h(0,c)==null)r.l(0,c,q.gmq())
-else{k=r.h(0,c)
-if(t.f.b(k))r.l(0,c,A.bkp(r.h(0,c)))}k=l.aV()
+if(m){$.b74().aX(B.x,"ignoring socket cache for /",e,e)
+l.b=A.b_3(r,"/")}else{k=$.aRa.h(0,p)
+if(k==null){k=A.b_3(r,"/")
+$.aRa.l(0,p,k)}l.b=k}if(q.gmq().length!==0&&r.h(0,d)==null)r.l(0,d,q.gmq())
+else{k=r.h(0,d)
+if(t.f.b(k))r.l(0,d,A.bkp(r.h(0,d)))}k=l.aV()
 j=q.geb().length===0?"/":q.geb()
 i=k.d
 h=i.h(0,j)
 if(h==null){g=t.sB
-h=new A.Ih(k,[],[],[],j,r,A.u(s,s),A.u(s,s),[],[],A.ca(e,e,e,b,g),A.ca(e,e,e,b,g),A.b([],t.hx))
-r.h(0,c)
+h=new A.Ih(k,[],[],[],j,r,A.u(s,s),A.u(s,s),[],[],A.ca(e,e,e,c,g),A.ca(e,e,e,c,g),A.b([],t.hx))
+r.h(0,d)
 h.y=r.h(0,"auth")
-b=k.db
-b===$&&A.a()
-if(b)h.Mq()
-i.l(0,j,h)}else{b=k.db
-b===$&&A.a()
-if(b&&h.cx==null)h.Mq()}f.a=h
+c=k.db
+c===$&&A.a()
+if(c)h.Mq()
+i.l(0,j,h)}else{c=k.db
+c===$&&A.a()
+if(c&&h.cx==null)h.Mq()}f.a=h
 f.au_()
 f.a.Mq()},
 aFz(a,b,c,d){var s=this,r="notification_new_message",q="notification_user_id",p="user_online_driver_web",o="notification_new_message_with_user",n=s.a
@@ -119333,7 +119333,7 @@ q.rO($.aWB())
 return q})
 r($,"baO","aWJ",()=>new A.aix())
 s($,"bmA","ko",()=>{var q="application/json",p=new A.ad_(),o=A.c_(0,0,10),n=A.c_(0,0,10),m=A.c_(0,0,10)
-m=A.b8e("http://52.9.12.189:4300/api/v1",o,A.ac(["Accept",q,"Content-Type",q],t.N,t.z),n,m)
+m=A.b8e("/api/v1",o,A.ac(["Accept",q,"Content-Type",q],t.N,t.z),n,m)
 n=A.b3z()
 o=new A.Ts(A.b([B.H3],A.al("z<fs?>")))
 o.M(o,B.PZ)
