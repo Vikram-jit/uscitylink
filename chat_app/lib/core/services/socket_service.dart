@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -36,6 +38,7 @@ class SocketService {
     required void Function(String message) onNotificationId,
     required void Function(dynamic data) onOnlineDriverFn,
     required void Function(dynamic data) onNewMessageWithUser,
+    required void Function(dynamic data) onTypingDriver,
   }) {
     if (socket == null) return;
 
@@ -43,6 +46,12 @@ class SocketService {
     socket!.off('notification_user_id');
     socket!.off('user_online_driver_web');
     socket!.off('notification_new_message_with_user');
+    socket!.off('typingUserWeb');
+
+    socket!.on("typingUserWeb", (data) {
+      print(jsonEncode(data));
+      onTypingDriver(data);
+    });
 
     socket!.on('notification_new_message', (data) {
       final message = data.toString();

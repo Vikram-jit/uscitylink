@@ -9,7 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class DriverListSidebar extends StatelessWidget {
-  DriverListSidebar({super.key});
+  final bool isTyping;
+  final String selectDriverId;
+  DriverListSidebar({
+    super.key,
+    required this.isTyping,
+    required this.selectDriverId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +96,13 @@ class DriverListSidebar extends StatelessWidget {
                                   "${member.userProfile?.username} (${member.userProfile?.user?.driverNumber})",
                               id: member.userProfile?.id ?? "-",
                               isOnline: member.userProfile?.isOnline ?? false,
-                              isTyping: controller.isUserTyping(
-                                member.userProfile?.id ?? "",
-                              ),
+                              isTyping:
+                                  isTyping &&
+                                      selectDriverId == member.userProfile?.id
+                                  ? isTyping
+                                  : controller.isUserTyping(
+                                      member.userProfile?.id ?? "",
+                                    ),
                               unreadCount: member.unreadCount ?? 0,
                               message: member.lastMessage?.body ?? "-",
                               truckNumber: member.assginTrucks ?? "-",

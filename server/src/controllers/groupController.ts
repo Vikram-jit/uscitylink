@@ -468,6 +468,32 @@ export async function groupRemove(req: Request, res: Response): Promise<any> {
 
 export async function groupUpdate(req: Request, res: Response): Promise<any> {
   try {
+
+    const isGroup = await Group.findOne({
+      where: {
+        name: req.body.name,
+      },
+    });
+    if (isGroup) {
+      const isCheck = await GroupChannel.findOne({
+        where: {
+          groupId: isGroup?.id,
+          channelId: req.activeChannel,
+        },
+      });
+ await Group.update(
+      {
+        description: req.body.description,
+      },
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
+      if (isCheck) throw new Error("Group already exist. Only Update Description.");
+    }
+
     await Group.update(
       {
         name: req.body.name,

@@ -39,10 +39,10 @@ class MessageController extends GetxController {
   final msgText = "".obs;
 
   final typingMsg = "".obs;
+  final typingUserId = "".obs;
   final isTyping = false.obs;
 
   final isTypingStaff = false.obs;
-  DateTime? _typingStartTime;
   Timer? _typingTimer;
 
   @override
@@ -102,6 +102,8 @@ class MessageController extends GetxController {
     truckNumber.value = "";
     messages.clear();
     totalItems = 0;
+    totalPages = 1;
+    hasMore.value = true;
   }
 
   Future<void> loadMessages(String userId, int page) async {
@@ -122,7 +124,12 @@ class MessageController extends GetxController {
         userProfile.value = res.data?.userProfile ?? UserProfileModel();
         truckNumber.value = res.data?.truckNumbers ?? "";
         messages.assignAll(res.data?.messages ?? []);
-        totalItems = res.data?.pagination?.total ?? 0;
+
+        final pagination = res.data?.pagination;
+        totalItems = pagination?.total ?? 0;
+        totalPages = pagination?.totalPages ?? 1;
+        hasMore.value =
+            (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
       } else {
         errorText.value = res.message;
       }
@@ -198,9 +205,10 @@ class MessageController extends GetxController {
     final socket = SocketService().socket;
     if (socket == null) return;
 
-    socket.off('typingUser');
+    socket.off('typingUserWeb');
 
-    socket.on('typingUser', (data) {
+    socket.on('typingUserWeb', (data) {
+      typingUserId.value = data["userId"] ?? "";
       if (data["userId"] == _homeController.driverId.value) {
         isTyping.value = data["isTyping"] ?? false;
         typingMsg.value = data["message"] ?? "";

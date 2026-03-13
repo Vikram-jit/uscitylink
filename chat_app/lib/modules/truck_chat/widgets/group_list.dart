@@ -3,7 +3,7 @@ import 'package:chat_app/core/theme/spacing.dart';
 import 'package:chat_app/core/theme/text_styles.dart';
 import 'package:chat_app/modules/home/desktop/components/user_status_tile.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
-import 'package:chat_app/routes/app_routes.dart';
+import 'package:chat_app/modules/truck_chat/widgets/add_group_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -100,17 +100,12 @@ class GroupList extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text("Truck Groups", style: TStyle.channelTitle)),
-          IconButton(
-            icon: const Icon(
-              Icons.settings,
-              color: AppColors.primary,
-              size: 20,
-            ),
-            onPressed: () {},
-          ),
+
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.primary, size: 20),
-            onPressed: () {},
+            onPressed: () {
+              Get.dialog(AddGroupDialog(type: "truck"));
+            },
           ),
         ],
       ),

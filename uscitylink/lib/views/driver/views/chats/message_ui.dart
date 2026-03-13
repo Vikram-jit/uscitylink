@@ -159,7 +159,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
     // messageController.dispose();
 
     WidgetsBinding.instance.removeObserver(this);
-    imagePickerController.dispose();
+    imagePickerController?.dispose();
     filePickerController.dispose();
     _audioController.dispose();
     socketService.updateActiveChannel("");

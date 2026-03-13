@@ -2094,7 +2094,7 @@ export async function messageToDriver(
     url: url || null,
     thumbnail: thumbnail || null,
     reply_message_id: r_message_id || null,
-    url_upload_type: url_upload_type || "with-out-media",
+    url_upload_type: url ?  "server" : "with-out-media",
     isBroadcastMessage: isBroadcastMessage || false,
   });
   const message = await Message.findOne({

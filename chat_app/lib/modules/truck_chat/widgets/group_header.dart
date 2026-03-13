@@ -1,11 +1,9 @@
 import 'package:chat_app/core/theme/colors.dart';
-import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/spacing.dart';
-import '../../../../core/theme/text_styles.dart';
 
 class GroupHeader extends StatefulWidget {
   final String userName;
@@ -57,7 +55,7 @@ class _ChatHeaderState extends State<GroupHeader>
           padding: const EdgeInsets.symmetric(horizontal: Space.lg),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: BorderRadius.only(topRight: Radius.circular(6.0)),
+            borderRadius: const BorderRadius.only(topRight: Radius.circular(6.0)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -67,76 +65,101 @@ class _ChatHeaderState extends State<GroupHeader>
             ],
           ),
           child: Row(
-            // crossAxisAlignment: CrossAxisAlignment.start,
-            // mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Stack(
-                children: [
-                  const SizedBox(height: Space.md),
-                  Obx(() {
-                    return Container(
-                      height: 40, // Slightly larger
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.grey,
-                        borderRadius: BorderRadius.circular(
-                          10,
-                        ), // Smoother radius
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        messageController.group.value.name?[0].toUpperCase() ??
-                            "",
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    );
-                  }),
-                ],
+              GestureDetector(
+                onTap: () => messageController.toggleDetails(),
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  children: [
+                    Stack(
+                      children: [
+                        const SizedBox(height: Space.md),
+                        Obx(() {
+                          return Container(
+                            height: 40,
+                            width: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.grey,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              messageController.group.value.name
+                                      ?.characters
+                                      .take(1)
+                                      .toString()
+                                      .toUpperCase() ??
+                                  "",
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                    const SizedBox(width: Space.md),
+                    SizedBox(
+                      width: 420,
+                      child: Obx(() {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${messageController.group.value.name ?? widget.userName} ",
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.bg,
+                                height: 1.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              "Members Groups : ${messageController.memmbers.map((f) {
+                                final username = f.userProfile?.username ?? "-";
+                                final driverNo =
+                                    f.userProfile?.user?.driverNumber ?? "-";
+                                return "$username ($driverNo)";
+                              }).join(", ")}",
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.bg,
+                                height: 1.2,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ],
+                ),
               ),
-
-              const SizedBox(width: Space.md),
-
-              // 🔹 User Info with Improved Typography
-              Expanded(
-                child: Obx(() {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${messageController.group.value.name ?? widget.userName} ",
-
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.bg,
-                          height: 1.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        "Members Groups : ${messageController.memmbers.map((f) {
-                          final username = f.userProfile?.username ?? "-";
-                          final driverNo = f.userProfile?.user?.driverNumber ?? "-";
-                          return "$username ($driverNo)";
-                        }).join(", ")}",
-
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.bg,
-                          height: 1.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  );
-                }),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  _tabController.animateTo(1);
+                  messageController.switchTab(1);
+                },
+                icon: const Icon(
+                  Icons.photo_library_outlined,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
+                label: Text(
+                  "View Media",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),

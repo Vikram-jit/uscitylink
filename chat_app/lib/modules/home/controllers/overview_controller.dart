@@ -34,6 +34,7 @@ class OverviewController extends GetxController {
       final String userId = data['userId'];
       final bool isTyping = data['isTyping'] ?? false;
       setTyping(userId, isTyping);
+
       if (Get.isRegistered<ChannelController>()) {
         Get.find<ChannelController>().handelUserTyping(data);
       }

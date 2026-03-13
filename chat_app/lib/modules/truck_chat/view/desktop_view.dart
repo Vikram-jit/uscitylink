@@ -6,8 +6,10 @@ import 'package:chat_app/modules/home/desktop/widgets/message_input.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:chat_app/modules/truck_chat/widgets/group_header.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_input.dart';
 import 'package:chat_app/modules/truck_chat/widgets/group_list.dart';
 import 'package:chat_app/modules/truck_chat/widgets/group_messages.dart';
+import 'package:chat_app/modules/truck_chat/widgets/group_detail_view.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -125,28 +127,32 @@ class DesktopView extends StatelessWidget {
                               children: [
                                 GroupHeader(
                                   userName: controller.selectedName.value,
-                                ), // DM Header
+                                ),
                                 Expanded(
                                   child: Obx(() {
+                                    if (groupMsgController.showDetails.value) {
+                                      return GroupDetailView();
+                                    }
+
                                     switch (groupMsgController
                                         .currentTab
                                         .value) {
                                       case 0:
-                                        return GroupMessages(); // Messages
+                                        return GroupMessages();
                                       case 1:
-                                        return Text(
-                                          "Files",
-                                        ); // Files Tab Content
+                                        return const Text("Files");
                                       case 2:
-                                        return Text("Pins"); // Pins Tab Content
+                                        return const Text("Pins");
                                       default:
                                         return GroupMessages();
                                     }
                                   }),
                                 ),
+                                if (groupMsgController.isTyping.value)
+                                  Text(groupMsgController.typingMsg.value),
                                 if (msgController.currentTab.value ==
                                     0) // DM Message List
-                                  MessageInput(),
+                                  GroupInput(),
                               ],
                             ),
                           );

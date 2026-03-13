@@ -103,7 +103,13 @@ class DesktopView extends StatelessWidget {
                 child: Row(
                   children: [
                     LeftSidebar(),
-                    DriverListSidebar(),
+                    Obx(() {
+                      return DriverListSidebar(
+                        selectDriverId: msgController.typingUserId.value,
+
+                        isTyping: msgController.isTyping.value,
+                      );
+                    }),
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.68,
                       child: Container(
@@ -142,20 +148,18 @@ class DesktopView extends StatelessWidget {
                                 ),
 
                                 if (msgController.isTyping.value)
-                                  Align(
-                                    alignment: AlignmentGeometry.topLeft,
-                                    child: Container(
-                                      margin: EdgeInsets.only(left: 10),
-                                      child: Text(
-                                        msgController.typingMsg.value,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.black,
-                                        ),
+                                  Container(
+                                    margin: EdgeInsets.only(left: 10),
+                                    child: Text(
+                                      msgController.typingMsg.value,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),
+
                                 if (msgController.currentTab.value ==
                                     0) // DM Message List
                                   MessageInput(),

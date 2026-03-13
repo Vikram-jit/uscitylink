@@ -4,10 +4,40 @@ import 'package:chat_app/widgets/date_divider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class GroupMessages extends StatelessWidget {
-  GroupMessages({super.key});
+class GroupMessages extends StatefulWidget {
+  const GroupMessages({super.key});
 
+  @override
+  State<GroupMessages> createState() => _GroupMessagesState();
+}
+
+class _GroupMessagesState extends State<GroupMessages> {
   final controller = Get.find<GroupMessageController>();
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 50 &&
+        !controller.isLoading.value &&
+        controller.hasMore.value) {
+      controller.loadMoreForCurrentGroup();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +49,21 @@ class GroupMessages extends StatelessWidget {
       final messages = controller.messages;
       final hasMore = controller.hasMore.value;
 
+      if (messages.isEmpty) {
+        return const Center(
+          child: Text(
+            "No chat yet",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      }
+
       return ListView.builder(
-        controller: controller.scrollController,
+        controller: _scrollController,
         reverse: true,
         padding: const EdgeInsets.all(16),
         itemCount: messages.length + (hasMore ? 1 : 0),

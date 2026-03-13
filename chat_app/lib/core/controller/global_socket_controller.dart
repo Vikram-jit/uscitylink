@@ -38,10 +38,16 @@ class GlobalSocketController extends GetxController {
       onNotificationId: _handleNotificationId,
       onOnlineDriverFn: _handleOnlineDriverFn,
       onNewMessageWithUser: _handleNewMessageWithUser,
+      onTypingDriver: handleDriverTyping,
     );
   }
 
   // ---------- HANDLERS ----------
+  void handleDriverTyping(data) {
+    if (Get.isRegistered<ChannelController>()) {
+      Get.find<ChannelController>().handelUserTyping(data);
+    }
+  }
 
   void _handleNewMessageWithUser(dynamic data) async {
     UserChannels userChannels = UserChannels.fromJson(data);
