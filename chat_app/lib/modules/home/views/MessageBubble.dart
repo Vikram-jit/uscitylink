@@ -1,6 +1,5 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/widgets/media_component.dart';
-import 'package:chat_app/widgets/media_preview_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,9 +17,11 @@ class MessageBubble extends StatelessWidget {
   final String? mediaName;
   final String? uploadType;
   final String? thumbnail;
+  final String id;
 
   const MessageBubble({
     super.key,
+    required this.id,
     required this.name,
     required this.time,
     required this.message,
@@ -134,6 +135,7 @@ class MessageBubble extends StatelessWidget {
                 if (mediaUrl != null) ...[
                   const SizedBox(height: 6),
                   MediaComponent(
+                    messageId: id,
                     url: mediaUrl!,
                     fileName: mediaName ?? '',
                     uploadType: uploadType ?? 'server',

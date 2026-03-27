@@ -1,9 +1,9 @@
 import 'package:chat_app/core/extension/date_extension.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/models/channel_model.dart';
+import 'package:chat_app/modules/home/widgets/create_channel_dialog.dart';
 import 'package:chat_app/widgets/container_header.dart';
 import 'package:chat_app/widgets/data_table.dart';
-import 'package:chat_app/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,7 +35,9 @@ class ChannelScreen extends StatelessWidget {
               showActionButton: true,
               actionButtonText: "New Channel",
               actionButtonIcon: Icons.add,
-              onActionPressed: () {},
+              onActionPressed: () {
+                Get.dialog(CreateChannelDialog(), barrierDismissible: true);
+              },
             ),
 
             const SizedBox(height: 24),

@@ -2,7 +2,6 @@ import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/core/theme/spacing.dart';
 import 'package:chat_app/core/theme/text_styles.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
-import 'package:chat_app/modules/home/controllers/overview_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/user_status_tile.dart';
 import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
@@ -40,14 +39,14 @@ class DriverListSidebar extends StatelessWidget {
                 final controller = Get.find<ChannelController>();
 
                 // This ensures API call on every route change
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (Get.currentRoute == AppRoutes.driverChat &&
-                      controller.channelMembers.isEmpty &&
-                      !controller.isLoadingM.value) {
-                    controller.resetPagination();
-                    controller.getChannelMembers(page: 1);
-                  }
-                });
+                // WidgetsBinding.instance.addPostFrameCallback((_) {
+                //   if (Get.currentRoute == AppRoutes.driverChat &&
+                //       controller.channelMembers.isEmpty &&
+                //       !controller.isLoadingM.value) {
+                //     controller.resetPagination();
+                //     controller.getChannelMembers(page: 1);
+                //   }
+                // });
 
                 if (controller.isLoadingM.value &&
                     controller.channelMembers.isEmpty) {

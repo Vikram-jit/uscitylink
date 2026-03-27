@@ -73,6 +73,14 @@ class LeftSidebar extends StatelessWidget {
             active: isRouteActive(AppRoutes.truckChat),
           ),
           SidebarIcon(Icons.groups, tooltip: "Groups"),
+          SidebarIcon(
+            Icons.broadcast_on_home,
+            tooltip: "Broadcast Messages",
+            onTap: () {
+              Get.toNamed(AppRoutes.broadcastMessages);
+            },
+            active: isRouteActive(AppRoutes.broadcastMessages),
+          ),
 
           const Spacer(),
           SidebarIcon(

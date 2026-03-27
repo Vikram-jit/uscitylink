@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/spacing.dart';
-import '../../../../core/theme/text_styles.dart';
 
 class ChatHeader extends StatefulWidget {
   final String userName;

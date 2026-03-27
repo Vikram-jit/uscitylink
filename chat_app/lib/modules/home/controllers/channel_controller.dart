@@ -1,7 +1,12 @@
+import 'dart:async';
+
+import 'package:chat_app/core/controller/global_loader_controller.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
 import 'package:chat_app/modules/home/models/channel_model.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
+import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/home/services/channel_service.dart';
 import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
@@ -11,18 +16,29 @@ class ChannelController extends GetxController {
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
   var isLoading = false.obs;
   var isLoadingM = false.obs;
+  var isLoadingDrivers = false.obs;
+
   var errorText = "".obs;
+  final selectedDrivers = <UserProfileModel>[].obs;
 
   final RxMap<String, bool> typingUsers = <String, bool>{}.obs;
 
   RxList<ChannelModel> channels = <ChannelModel>[].obs;
   RxList<UserChannels> channelMembers = <UserChannels>[].obs;
 
+  RxList<UserProfileModel> drivers = <UserProfileModel>[].obs;
+
+  final loader = Get.find<GlobalLoaderController>();
+
+  RxString searchText = "".obs;
+  Timer? _debounce;
+
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
   int totalItems = 0;
   int totalPages = 0;
-
+  final isLoadingFirst = false.obs;
+  final isLoadingMore = false.obs;
   final hasMore = true.obs;
   final ScrollController scrollController = ScrollController();
 
@@ -59,6 +75,79 @@ class ChannelController extends GetxController {
       }
 
       channelMembers.refresh();
+    }
+  }
+
+  void onSearch(String value) {
+    searchText.value = value;
+
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      getChannelMembers(page: 1, search: value);
+    });
+  }
+
+  Future<void> handleChannelCreate(String name, String desc) async {
+    if (name.trim().isEmpty) {
+      AppSnackbar.error("Channel name is required");
+
+      return;
+    }
+    loader.show();
+
+    try {
+      final res = await ChannelService().postChannel(
+        name: name,
+        description: desc,
+      );
+
+      if (res.status) {
+        // ✅ close dialog
+        Get.back();
+        loader.hide();
+        getChannels();
+        AppSnackbar.success(res.message);
+      } else {
+        loader.hide();
+        AppSnackbar.error(res.message);
+      }
+    } catch (e) {
+      loader.hide();
+      AppSnackbar.error("Something went wrong");
+
+      print("Create channel error: $e");
+    }
+  }
+
+  Future<void> handleDriverAddToChannel() async {
+    if (selectedDrivers.isEmpty) {
+      AppSnackbar.error("Select atleast one driver.");
+
+      return;
+    }
+    loader.show();
+
+    try {
+      final res = await ChannelService().addMemberToChannel(
+        ids: [...selectedDrivers.map((e) => e.id!)],
+      );
+
+      if (res.status) {
+        // ✅ close dialog
+        Get.back();
+        loader.hide();
+        getChannelMembers();
+        AppSnackbar.success(res.message);
+      } else {
+        loader.hide();
+        AppSnackbar.error(res.message);
+      }
+    } catch (e) {
+      loader.hide();
+      AppSnackbar.error("Something went wrong");
+
+      print("Create channel error: $e");
     }
   }
 
@@ -145,6 +234,8 @@ class ChannelController extends GetxController {
     isLoadingM.value = false;
     currentPage.value = 1;
     hasMore.value = true;
+    isLoadingFirst.value = false;
+    isLoadingMore.value = false;
     totalItems = 0;
     totalPages = 0;
     channelMembers.clear();
@@ -153,23 +244,41 @@ class ChannelController extends GetxController {
 
   Future<void> getChannels() async {
     try {
-      isLoading.value = true;
+      loader.show();
 
       final res = await ChannelService().channels();
 
       if (res.status) {
         channels.value = res.data!;
-        isLoading.value = false;
+        loader.hide();
       } else {
-        isLoading.value = false;
+        loader.hide();
         errorText.value = res.message;
       }
-      isLoading.value = false;
     } catch (e) {
-      isLoading.value = false;
+      loader.hide();
       errorText.value = "Error: $e";
     } finally {
-      isLoading.value = false;
+      loader.hide();
+    }
+  }
+
+  Future<void> getDriverss() async {
+    try {
+      isLoadingDrivers.value = true;
+      final res = await ChannelService().channelMemmbersWithoutAdd();
+
+      if (res.status) {
+        drivers.value = res.data ?? [];
+      } else {
+        errorText.value = res.message;
+      }
+      isLoadingDrivers.value = false;
+    } catch (e) {
+      errorText.value = "Error: $e";
+      isLoadingDrivers.value = false;
+    } finally {
+      isLoadingDrivers.value = false;
     }
   }
 
@@ -177,91 +286,49 @@ class ChannelController extends GetxController {
     scrollController.addListener(_onScroll);
   }
 
-  Future<void> getChannelMembers({int page = 1}) async {
-    // Prevent multiple simultaneous calls
+  Future<void> getChannelMembers({int page = 1, String search = ""}) async {
     if (isLoadingM.value) return;
 
-    // Reset for first page
     if (page == 1) {
+      isLoadingFirst.value = true;
       resetPagination();
-    }
-
-    // Stop if no more pages
-    if (!hasMore.value) {
-      print('No more pages to load');
-      return;
+    } else {
+      isLoadingMore.value = true;
     }
 
     try {
       isLoadingM.value = true;
       currentPage.value = page;
-      print('Loading page $page...');
-      update(); // Force GetBuilder to rebuild
 
       final res = await ChannelService().channelMemmbers(
         page,
         Get.currentRoute == AppRoutes.driverChat ? 30 : 10,
+        search,
+        true,
       );
 
       if (res.status) {
         final newItems = res.data?.userChannels ?? [];
         final pagination = res.data?.pagination;
 
-        print('API Response: ${newItems.length} items');
+        channelMembers.assignAll(newItems);
 
-        if (pagination != null) {
-          totalItems = pagination.total ?? 0;
-          itemsPerPage = pagination.pageSize ?? 0;
-          totalPages = pagination.totalPages ?? 0;
-
-          print(
-            'Pagination: Page $page/$totalPages, ' +
-                'PageSize: $itemsPerPage, Total: $totalItems',
-          );
-
-          // Add new items
-          if (page == 1) {
-            channelMembers.assignAll(newItems);
-          } else {
-            channelMembers.addAll(newItems);
-          }
-
-          // Check if more pages exist
-          hasMore.value = page < totalPages;
-
-          print(
-            'Current items: ${channelMembers.length}, ' +
-                'Has more pages: ${hasMore.value}',
-          );
-        } else {
-          // Fallback if no pagination
-          if (page == 1) {
-            channelMembers.assignAll(newItems);
-          } else {
-            channelMembers.addAll(newItems);
-          }
-          // Assume no more data if we got less than requested
-          hasMore.value = newItems.length >= itemsPerPage;
-        }
-
-        // Notify UI
-        update();
-      } else {
-        errorText.value = res.message;
-        print('API Error: ${res.message}');
+        hasMore.value =
+            (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
+        totalItems = pagination?.total ?? 0;
+        totalPages = pagination?.totalPages ?? 0;
       }
     } catch (e) {
-      errorText.value = "Error: $e";
-      print('Exception: $e');
+      print(e);
     } finally {
       isLoadingM.value = false;
-      print('Loading complete');
+      isLoadingFirst.value = false;
+      isLoadingMore.value = false;
     }
   }
 
   // Method to manually refresh
   Future<void> refreshData() async {
-    print('Manual refresh triggered');
     resetPagination();
     await getChannelMembers(page: 1);
   }

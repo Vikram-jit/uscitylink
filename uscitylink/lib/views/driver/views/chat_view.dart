@@ -79,10 +79,10 @@ class _ChatViewState extends State<ChatView>
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // This will run after the widget tree is built, avoiding the error
-      channelController.getUserChannels();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   // This will run after the widget tree is built, avoiding the error
+    //   channelController.getUserChannels();
+    // });
   }
 
   @override

@@ -169,6 +169,20 @@ class Messages {
 
     return data;
   }
+
+  /// Extract file extension
+  String get extLower {
+    if (url == null) return '';
+    return url!.split('.').last.toLowerCase();
+  }
+
+  bool get isImage => ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(extLower);
+
+  bool get isVideo => ['mp4', 'mov', 'mkv', 'webm'].contains(extLower);
+
+  bool get isAudio => ['mp3', 'wav', 'm4a', 'aac'].contains(extLower);
+
+  bool get isPdf => extLower == 'pdf';
 }
 
 class Sender {

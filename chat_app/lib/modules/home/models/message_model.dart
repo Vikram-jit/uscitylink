@@ -73,29 +73,43 @@ class MessageModel {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['channelId'] = this.channelId;
-    data['temp_id'] = this.tempId;
-    data['userProfileId'] = this.userProfileId;
-    data['private_chat_id'] = this.privateChatId;
-    data['groupId'] = this.groupId;
-    data['body'] = this.body;
-    data['messageDirection'] = this.messageDirection;
-    data['deliveryStatus'] = this.deliveryStatus;
-    data['messageTimestampUtc'] = this.messageTimestampUtc;
-    data['senderId'] = this.senderId;
-    data['url'] = this.url;
-    data['thumbnail'] = this.thumbnail;
-    data['isRead'] = this.isRead;
-    data['status'] = this.status;
-    data['type'] = this.type;
-    data['driverPin'] = this.driverPin;
-    data['staffPin'] = this.staffPin;
-    data['url_upload_type'] = this.urlUploadType;
-    data['reply_message_id'] = this.replyMessageId;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
+    final Map<String, dynamic> data = {};
+    data['id'] = id;
+    data['channelId'] = channelId;
+    data['temp_id'] = tempId;
+    data['userProfileId'] = userProfileId;
+    data['private_chat_id'] = privateChatId;
+    data['groupId'] = groupId;
+    data['body'] = body;
+    data['messageDirection'] = messageDirection;
+    data['deliveryStatus'] = deliveryStatus;
+    data['messageTimestampUtc'] = messageTimestampUtc;
+    data['senderId'] = senderId;
+    data['url'] = url;
+    data['thumbnail'] = thumbnail;
+    data['isRead'] = isRead;
+    data['status'] = status;
+    data['type'] = type;
+    data['driverPin'] = driverPin;
+    data['staffPin'] = staffPin;
+    data['url_upload_type'] = urlUploadType;
+    data['reply_message_id'] = replyMessageId;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
     return data;
   }
+
+  /// Extract file extension
+  String get extLower {
+    if (url == null) return '';
+    return url!.split('.').last.toLowerCase();
+  }
+
+  bool get isImage => ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(extLower);
+
+  bool get isVideo => ['mp4', 'mov', 'mkv', 'webm'].contains(extLower);
+
+  bool get isAudio => ['mp3', 'wav', 'm4a', 'aac'].contains(extLower);
+
+  bool get isPdf => extLower == 'pdf';
 }

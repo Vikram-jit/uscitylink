@@ -92,6 +92,7 @@ class _GroupMessagesState extends State<GroupMessages> {
               if (showDateDivider)
                 DateDivider(date: _parseDate(message.messageTimestampUtc)),
               MessageBubble(
+                id: message.id!,
                 driverNumber: message.sender?.user?.driverNumber ?? "-",
                 thumbnail: message.thumbnail,
                 mediaUrl: message.url,

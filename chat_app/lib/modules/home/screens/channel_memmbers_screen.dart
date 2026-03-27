@@ -1,25 +1,31 @@
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/models/channel_memmber_model.dart';
-
+import 'package:chat_app/modules/home/widgets/add_channel_member_dialog.dart';
 import 'package:chat_app/widgets/container_header.dart';
 import 'package:chat_app/widgets/data_table.dart';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ChannelMemmbersScreen extends StatelessWidget {
   ChannelMemmbersScreen({super.key});
-  final ChannelController _driverController = Get.find<ChannelController>();
+
+  final ChannelController _controller = Get.find<ChannelController>();
 
   @override
   Widget build(BuildContext context) {
+    // ✅ FIRST LOAD CALL (SAFE)
+    if (_controller.channelMembers.isEmpty &&
+        !_controller.isLoadingFirst.value) {
+      _controller.getChannelMembers(page: 1, search: "");
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(6.0),
-          bottomRight: Radius.circular(6.0),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(6),
+          bottomRight: Radius.circular(6),
         ),
       ),
       child: Padding(
@@ -27,234 +33,117 @@ class ChannelMemmbersScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            /// ================= HEADER =================
             ContainerHeader(
-              title: "Channel Memmbers",
-              subtitle: "Manage and monitor all channel memmbers",
-
+              searchHint: "Search members...",
+              title: "Channel Members",
+              subtitle: "Manage and monitor all channel members",
               showActionButton: true,
-              actionButtonText: "New Memmber",
+              actionButtonText: "New Member",
               actionButtonIcon: Icons.add,
-              onActionPressed: () {},
+              onActionPressed: () {
+                Get.dialog(AddChannelMemberDialog(), barrierDismissible: true);
+              },
+              showSearch: true,
+              onSearchChanged: (value) {
+                _controller.onSearch(value);
+              },
             ),
 
             const SizedBox(height: 24),
 
-            // Table Container
+            /// ================= TABLE =================
             Expanded(
-              child: FutureBuilder(
-                future: _driverController.getChannelMembers(page: 1),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData && _driverController.isLoading.isTrue) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              child: Obx(() {
+                /// 🔄 FIRST LOADER
+                if (_controller.isLoadingFirst.value &&
+                    _controller.channelMembers.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}"));
-                  }
+                final users = _controller.channelMembers;
 
-                  return Obx(() {
-                    final usres = _driverController.channelMembers.value;
+                /// ❌ EMPTY STATE
+                if (users.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No members found",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
 
-                    return TableContainer<UserChannels>(
-                      data: usres,
-
+                return Stack(
+                  children: [
+                    /// 📊 TABLE
+                    TableContainer<UserChannels>(
+                      data: users,
                       config: DataTableConfig<UserChannels>(
                         isScrollable: true,
                         title: "Drivers",
-                        columns: [
-                          DataColumn(
-                            label: Text(
-                              "NAME",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "DRIVER NUMBER",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
 
-                          DataColumn(
-                            label: Text(
-                              "EMAIL",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "PHONE NUMBER",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "STATUS",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "IS ONLINE",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "ACTION",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
+                        /// 🔹 HEADERS
+                        columns: [
+                          DataColumn(label: _headerText("NAME")),
+                          DataColumn(label: _headerText("DRIVER NUMBER")),
+                          DataColumn(label: _headerText("EMAIL")),
+                          DataColumn(label: _headerText("PHONE")),
+                          DataColumn(label: _headerText("STATUS")),
+                          DataColumn(label: _headerText("ONLINE")),
+                          DataColumn(label: _headerText("ACTION")),
                         ],
+
+                        /// 🔹 ROWS
                         buildRows: (data) => data.asMap().entries.map((entry) {
                           final index = entry.key;
                           final driver = entry.value;
-                          final isAlternate = index % 2 == 1;
+                          final isAlt = index % 2 == 1;
 
                           return DataRow(
                             color: MaterialStateProperty.resolveWith<Color?>(
-                              (Set<MaterialState> states) =>
-                                  isAlternate ? Colors.grey.shade50 : null,
+                              (states) => isAlt ? Colors.grey.shade50 : null,
                             ),
                             cells: [
+                              DataCell(_cellText(driver.userProfile?.username)),
                               DataCell(
-                                SizedBox(
-                                  width: 120,
-                                  child: Text(
-                                    driver.userProfile?.username ?? "-",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
+                                _cellText(
+                                  driver.userProfile?.user?.driverNumber,
                                 ),
                               ),
                               DataCell(
-                                SizedBox(
-                                  width: 60,
-                                  child: Text(
-                                    driver.userProfile?.user?.driverNumber ??
-                                        "-",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.grey.shade800,
-                                    ),
+                                _cellText(driver.userProfile?.user?.email),
+                              ),
+                              DataCell(
+                                _cellText(
+                                  driver.userProfile?.user?.phoneNumber,
+                                ),
+                              ),
+                              DataCell(_cellText(driver.status)),
+
+                              /// 🟢 ONLINE DOT
+                              DataCell(
+                                Center(
+                                  child: CircleAvatar(
+                                    radius: 5,
+                                    backgroundColor:
+                                        driver.userProfile?.isOnline == true
+                                        ? Colors.green
+                                        : Colors.red,
                                   ),
                                 ),
                               ),
 
-                              DataCell(
-                                Text(
-                                  driver.userProfile?.user?.email ?? "-",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  driver.userProfile?.user?.phoneNumber ?? "-",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  driver?.status ?? "-",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                SizedBox(
-                                  width: 10,
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    child: CircleAvatar(
-                                      backgroundColor:
-                                          driver?.userProfile?.isOnline ?? false
-                                          ? Colors.green
-                                          : Colors.red,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
+                              /// ⚙️ ACTION
                               DataCell(
                                 Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    Tooltip(
-                                      message: "DEACTIVATE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.edit),
-                                      ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 18),
+                                      onPressed: () {},
                                     ),
-                                    Tooltip(
-                                      message: "REMOVE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.delete),
-                                      ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, size: 18),
+                                      onPressed: () {},
                                     ),
                                   ],
                                 ),
@@ -262,13 +151,14 @@ class ChannelMemmbersScreen extends StatelessWidget {
                             ],
                           );
                         }).toList(),
-                        totalItems: _driverController
-                            .totalItems, // Total items in database
-                        currentPage: _driverController.currentPage.value,
-                        itemsPerPage: _driverController.itemsPerPage,
+
+                        /// 🔹 PAGINATION
+                        totalItems: _controller.totalItems,
+                        currentPage: _controller.currentPage.value,
+                        itemsPerPage: _controller.itemsPerPage,
+
                         onPageChanged: (page) {
-                          _driverController.currentPage.value = page;
-                          _driverController.getChannelMembers(page: page);
+                          _controller.getChannelMembers(page: page);
                         },
 
                         showHeader: false,
@@ -276,13 +166,66 @@ class ChannelMemmbersScreen extends StatelessWidget {
                         showActions: true,
                         primaryColor: const Color(0xFF4A154B),
                       ),
-                    );
-                  });
-                },
-              ),
+                    ),
+
+                    /// 🔄 PAGINATION LOADER
+                    if (_controller.isLoadingMore.value)
+                      Positioned(
+                        bottom: 12,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// ================= HELPERS =================
+
+  Widget _headerText(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.poppins(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey.shade600,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+
+  Widget _cellText(String? text) {
+    return Text(
+      text ?? "-",
+      style: GoogleFonts.poppins(
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+        color: Colors.grey.shade800,
       ),
     );
   }

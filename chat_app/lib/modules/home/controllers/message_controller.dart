@@ -13,6 +13,7 @@ import 'package:get/get.dart';
 class MessageController extends GetxController {
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
   final messages = <Messages>[].obs;
+  final messagesMedia = <Messages>[].obs;
   final isLoading = false.obs;
   final userProfile = UserProfileModel().obs;
 
@@ -35,6 +36,7 @@ class MessageController extends GetxController {
   final channelId = "".obs;
 
   HomeController _homeController = Get.find<HomeController>();
+
   final msgInputController = TextEditingController();
   final msgText = "".obs;
 
@@ -100,7 +102,10 @@ class MessageController extends GetxController {
     currentPage.value = 1;
     userProfile.value = UserProfileModel();
     truckNumber.value = "";
+
     messages.clear();
+    messagesMedia.clear();
+
     totalItems = 0;
     totalPages = 1;
     hasMore.value = true;
@@ -111,8 +116,16 @@ class MessageController extends GetxController {
       if (scrollController.hasClients) {
         scrollController.jumpTo(0);
       }
+
       isLoading.value = true;
       currentPage.value = page;
+
+      // ✅ Reset everything for page 1
+      if (page == 1) {
+        messages.clear();
+        messagesMedia.clear();
+        hasMore.value = true;
+      }
 
       final res = await MessageService().getMessages(
         userId,
@@ -123,11 +136,22 @@ class MessageController extends GetxController {
       if (res.status) {
         userProfile.value = res.data?.userProfile ?? UserProfileModel();
         truckNumber.value = res.data?.truckNumbers ?? "";
-        messages.assignAll(res.data?.messages ?? []);
+
+        final newMessages = res.data?.messages ?? [];
+
+        messages.assignAll(newMessages);
+
+        final mediaMessages = newMessages
+            .where((m) => m.url != null && m.url!.isNotEmpty)
+            .toList();
+
+        messagesMedia.assignAll(mediaMessages);
 
         final pagination = res.data?.pagination;
+
         totalItems = pagination?.total ?? 0;
         totalPages = pagination?.totalPages ?? 1;
+
         hasMore.value =
             (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
       } else {
@@ -149,10 +173,21 @@ class MessageController extends GetxController {
         page,
         itemsPerPage,
       );
-      if (res.status) {
-        final pagination = res.data?.pagination;
 
-        messages.addAll(res.data?.messages ?? []);
+      if (res.status) {
+        final newMessages = res.data?.messages ?? [];
+
+        // ✅ append messages
+        messages.addAll(newMessages);
+
+        // ✅ append only media messages
+        final mediaMessages = newMessages
+            .where((m) => m.url != null && m.url!.isNotEmpty)
+            .toList();
+
+        messagesMedia.addAll(mediaMessages);
+
+        final pagination = res.data?.pagination;
 
         hasMore.value =
             (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
@@ -218,16 +253,21 @@ class MessageController extends GetxController {
 
   void handleIncomingMessage(Messages message, MessageModel messageModel) {
     final homeController = Get.find<HomeController>();
-    // 1️⃣ If message belongs to current open chat → add to messages
+
     if (message.userProfileId == homeController.driverId.value) {
       messages.insert(0, message);
 
-      // Scroll handling
+      // ✅ add media automatically
+      if (message.url != null && message.url!.isNotEmpty) {
+        messagesMedia.insert(0, message);
+      }
+
       if (!isAtBottom.value) {
         showScrollToBottomButton.value = true;
         scrollButtonTitle.value = "New Message";
       }
     }
+
     if (Get.isRegistered<ChannelController>()) {
       Get.find<ChannelController>().handleReceiveMessage(messageModel);
     }

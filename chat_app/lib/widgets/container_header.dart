@@ -10,7 +10,7 @@ class ContainerHeader extends StatelessWidget {
   final String? actionButtonText;
   final IconData? actionButtonIcon;
   final VoidCallback? onActionPressed;
-  final VoidCallback? onSearchChanged;
+  final Function(String)? onSearchChanged;
   final List<Widget>? trailingActions;
   final bool isTrailingActions;
   final Color? primaryColor;
@@ -110,8 +110,9 @@ class ContainerHeader extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
-                            onChanged: (value) => onSearchChanged?.call(),
+                            onChanged: onSearchChanged,
                             decoration: InputDecoration(
+                              fillColor: Colors.white,
                               hintText: searchHint ?? "Search...",
                               hintStyle: GoogleFonts.inter(
                                 fontSize: 14,
