@@ -38,16 +38,6 @@ class DriverListSidebar extends StatelessWidget {
               child: Obx(() {
                 final controller = Get.find<ChannelController>();
 
-                // This ensures API call on every route change
-                // WidgetsBinding.instance.addPostFrameCallback((_) {
-                //   if (Get.currentRoute == AppRoutes.driverChat &&
-                //       controller.channelMembers.isEmpty &&
-                //       !controller.isLoadingM.value) {
-                //     controller.resetPagination();
-                //     controller.getChannelMembers(page: 1);
-                //   }
-                // });
-
                 if (controller.isLoadingM.value &&
                     controller.channelMembers.isEmpty) {
                   return const Center(child: CircularProgressIndicator());

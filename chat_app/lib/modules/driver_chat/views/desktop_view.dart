@@ -4,6 +4,7 @@ import 'package:chat_app/modules/driver_chat/widgets/driver_list_sidebar.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/desktop/widgets/chat_header.dart';
 import 'package:chat_app/modules/home/desktop/widgets/left_sidebar.dart';
+import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
 import 'package:chat_app/modules/home/desktop/widgets/message_input.dart';
 import 'package:chat_app/modules/home/desktop/widgets/message_list.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
@@ -136,11 +137,9 @@ class DesktopView extends StatelessWidget {
                                       case 0:
                                         return MessageList(); // Messages
                                       case 1:
-                                        return Text(
-                                          "Files",
-                                        ); // Files Tab Content
+                                        return MediaGallery(); // Files Tab Content
                                       case 2:
-                                        return Text("Pins"); // Pins Tab Content
+                                        return MessageList(); // Messages Tab Content
                                       default:
                                         return MessageList();
                                     }
@@ -160,9 +159,12 @@ class DesktopView extends StatelessWidget {
                                     ),
                                   ),
 
-                                if (msgController.currentTab.value ==
-                                    0) // DM Message List
-                                  MessageInput(),
+                                Obx(() {
+                                  return MessageInput(
+                                    isPinMessage:
+                                        msgController.currentTab.value,
+                                  );
+                                }),
                               ],
                             ),
                           );

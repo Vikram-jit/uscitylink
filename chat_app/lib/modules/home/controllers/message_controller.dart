@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:chat_app/core/helpers/media_file_helper.dart';
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/home/models/media_model.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
@@ -13,9 +15,12 @@ import 'package:get/get.dart';
 class MessageController extends GetxController {
   var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
   final messages = <Messages>[].obs;
+  final pinMessages = <Messages>[].obs;
   final messagesMedia = <Messages>[].obs;
+  final media = <MediaModel>[].obs;
   final isLoading = false.obs;
   final userProfile = UserProfileModel().obs;
+  final selectMessageReply = Rxn<Messages>();
 
   RxString truckNumber = "".obs;
   RxInt currentPage = 1.obs;
@@ -29,6 +34,8 @@ class MessageController extends GetxController {
   var errorText = "".obs;
 
   final hasMore = true.obs;
+  final hasMoreMedia = true.obs;
+  int currentMediaPage = 1;
 
   int totalPages = 1;
 
@@ -88,14 +95,77 @@ class MessageController extends GetxController {
     }
   }
 
-  Future<void> loadMore(String userId) async {
+  Future<void> loadMoreMedia(String userId) async {
+    if (!hasMoreMedia.value || isLoading.value) return;
+
+    currentMediaPage++;
+    await fetchMedia(userId, currentMediaPage);
+  }
+
+  void pinMessage(String messageId, String staffPin) {
+    final newValue = staffPin == '0' ? '1' : '0';
+
+    // 🔹 Emit to server
+    SocketService().emit('pin_message', {
+      "messageId": messageId,
+      "value": newValue,
+      "type": 'staff',
+    });
+
+    // 🔹 Update locally in messages list
+    final index = messages.indexWhere((m) => m.id == messageId);
+
+    if (index != -1) {
+      messages[index].staffPin = newValue;
+
+      // 👉 Important: refresh UI
+      messages.refresh();
+    }
+  }
+
+  void deleteMessage(String messageId) {
+    // 🔹 Emit to server
+    SocketService().emit('delete_message', {"messageId": messageId});
+
+    // 🔹 Update locally in messages list
+    final index = messages.indexWhere((m) => m.id == messageId);
+
+    if (index != -1) {
+      messages.removeAt(index);
+
+      messages.refresh();
+    }
+  }
+
+  Future<void> loadMore(String userId, {String? pinMessage}) async {
     if (!hasMore.value) return;
     currentPage++;
-    await _fetch(userId, currentPage.value);
+    await _fetch(userId, currentPage.value, pinMessage);
   }
 
   void switchTab(int index) {
     currentTab.value = index;
+    // reset pagination
+    currentPage.value = 1;
+    hasMore.value = true;
+
+    switch (index) {
+      case 0:
+        messages.clear();
+        loadMessages(_homeController.driverId.value, 1);
+        break;
+      case 1:
+        media.clear();
+        fetchMedia(_homeController.driverId.value, 1);
+        break;
+      case 2:
+        messages.clear();
+        _fetch(_homeController.driverId.value, 1, "1");
+        break;
+      default:
+        messages.clear();
+        loadMessages(_homeController.driverId.value, 1);
+    }
   }
 
   clearChat() {
@@ -109,6 +179,8 @@ class MessageController extends GetxController {
     totalItems = 0;
     totalPages = 1;
     hasMore.value = true;
+    media.clear();
+    hasMoreMedia.value = true;
   }
 
   Future<void> loadMessages(String userId, int page) async {
@@ -124,6 +196,9 @@ class MessageController extends GetxController {
       if (page == 1) {
         messages.clear();
         messagesMedia.clear();
+        media.clear();
+        currentMediaPage = 1;
+        hasMoreMedia.value = true;
         hasMore.value = true;
       }
 
@@ -131,6 +206,7 @@ class MessageController extends GetxController {
         userId,
         page,
         itemsPerPage,
+        "0",
       );
 
       if (res.status) {
@@ -164,7 +240,7 @@ class MessageController extends GetxController {
     }
   }
 
-  Future<void> _fetch(String userId, int page) async {
+  Future<void> _fetch(String userId, int page, String? pinMessage) async {
     try {
       isLoading.value = true;
 
@@ -172,15 +248,14 @@ class MessageController extends GetxController {
         userId,
         page,
         itemsPerPage,
+        pinMessage,
       );
 
       if (res.status) {
         final newMessages = res.data?.messages ?? [];
 
-        // ✅ append messages
         messages.addAll(newMessages);
 
-        // ✅ append only media messages
         final mediaMessages = newMessages
             .where((m) => m.url != null && m.url!.isNotEmpty)
             .toList();
@@ -193,6 +268,37 @@ class MessageController extends GetxController {
             (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
 
         totalPages = pagination?.totalPages ?? 1;
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> fetchMedia(String userId, int page) async {
+    try {
+      isLoading.value = true;
+
+      final res = await MessageService().getMediaMessages(
+        userId,
+        page,
+        itemsPerPage,
+      );
+
+      if (res.status) {
+        final newMessages = res.data?.media ?? [];
+
+        // media.addAll(newMessages);
+
+        final mediaMessages = newMessages
+            .where((m) => m.key != null && m.key!.isNotEmpty)
+            .toList();
+
+        media.addAll(mediaMessages);
+
+        hasMoreMedia.value =
+            (res.data?.page ?? 1) < (res.data?.totalPages ?? 1);
+
+        totalPages = res.data?.totalPages ?? 1;
       }
     } finally {
       isLoading.value = false;

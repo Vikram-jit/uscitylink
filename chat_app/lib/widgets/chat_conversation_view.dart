@@ -56,7 +56,8 @@ class ChatConversationView extends StatelessWidget {
               ),
             ),
 
-          if (msgController.currentTab.value == 0) MessageInput(),
+          if (msgController.currentTab.value == 0)
+            MessageInput(isPinMessage: 0),
         ],
       ),
     );

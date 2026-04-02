@@ -144,7 +144,7 @@ class DesktopHomeView extends StatelessWidget {
                             ),
                           if (msgController.currentTab.value ==
                               0) // DM Message List
-                            MessageInput(),
+                            MessageInput(isPinMessage: 0),
                         ],
                       ),
                     );

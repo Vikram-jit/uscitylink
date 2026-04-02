@@ -9,7 +9,9 @@ class MediaComponent extends StatelessWidget {
   final String fileName;
   final String uploadType;
   final String messageDirection;
+  final GallertType type;
   final String? thumbnail;
+  final int? initialIndex;
 
   const MediaComponent({
     super.key,
@@ -18,7 +20,9 @@ class MediaComponent extends StatelessWidget {
     required this.fileName,
     required this.uploadType,
     required this.messageDirection,
+    required this.type,
     this.thumbnail,
+    this.initialIndex,
   });
 
   @override
@@ -43,7 +47,11 @@ class MediaComponent extends StatelessWidget {
 
   void _openGallery(BuildContext context) {
     Get.dialog(
-      FileViewerGallery(messageId: messageId),
+      FileViewerGallery(
+        messageId: messageId,
+        initialIndex: initialIndex ?? 0,
+        type: type,
+      ),
       barrierDismissible: true,
       barrierColor: Colors.black.withOpacity(0.9),
       transitionDuration: const Duration(milliseconds: 250),
@@ -104,7 +112,7 @@ class MediaComponent extends StatelessWidget {
             const Icon(Icons.audiotrack, color: Colors.white),
             const SizedBox(width: 8),
             SizedBox(
-              width: 120,
+              width: 180,
               child: Text(
                 fileName,
                 overflow: TextOverflow.ellipsis,
@@ -132,7 +140,7 @@ class MediaComponent extends StatelessWidget {
             const Icon(Icons.picture_as_pdf, color: Colors.red, size: 40),
             const SizedBox(height: 6),
             SizedBox(
-              width: 120,
+              width: 180,
               child: Text(
                 fileName,
                 overflow: TextOverflow.ellipsis,

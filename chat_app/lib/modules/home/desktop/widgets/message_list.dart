@@ -19,7 +19,7 @@ class MessageList extends StatelessWidget {
       return ListView.builder(
         controller: controller.scrollController,
         reverse: true,
-        padding: const EdgeInsets.all(16),
+        // padding: const EdgeInsets.all(16),
         itemCount:
             controller.messages.length + (controller.hasMore.value ? 1 : 0),
         itemBuilder: (context, index) {
@@ -57,6 +57,12 @@ class MessageList extends StatelessWidget {
                 time: _formatTime(_parseDate(message.messageTimestampUtc)),
                 message: message.body ?? "",
                 isMe: message.messageDirection == "R",
+                onReply: () => controller.selectMessageReply.value = message,
+                replyMessage: message.rMessage,
+                staffPin: message.staffPin ?? "",
+                onPin: () =>
+                    controller.pinMessage(message.id!, message.staffPin ?? "0"),
+                onDelete: () => controller.deleteMessage(message.id!),
               ),
             ],
           );

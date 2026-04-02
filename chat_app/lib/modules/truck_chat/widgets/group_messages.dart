@@ -101,6 +101,8 @@ class _GroupMessagesState extends State<GroupMessages> {
                 time: _formatTime(_parseDate(message.messageTimestampUtc)),
                 message: message.body ?? "",
                 isMe: message.messageDirection == "R",
+                replyMessage: message.rMessage,
+                staffPin: message.staffPin ?? "",
               ),
             ],
           );
