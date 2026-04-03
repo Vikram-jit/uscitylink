@@ -403,6 +403,22 @@ export const initSocket = (httpServer: any) => {
     //Staff Open Chat
 
     socket.on(
+      "FORWARD_MESSAGE_TO_DRIVERS",
+      async ({ userId, body, direction, url, thumbnail, url_upload_type }) =>
+        await messageToDriverByForward(
+          io,
+          socket,
+          userId,
+          body,
+          direction,
+          url,
+          thumbnail,
+          url_upload_type
+        )
+    );
+
+
+    socket.on(
       "staff_open_chat",
       async (userId) => await staffOpenChatUpdate(socket, userId)
     );

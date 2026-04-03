@@ -33,7 +33,7 @@ class DriverScreen extends StatelessWidget {
               title: "Drivers",
               subtitle: "Manage and monitor all drivers",
 
-              showActionButton: true,
+              showActionButton: false,
               actionButtonText: "New Driver",
               actionButtonIcon: Icons.add,
               onActionPressed: () {
@@ -137,17 +137,17 @@ class DriverScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          DataColumn(
-                            label: Text(
-                              "ACTION",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
+                          // DataColumn(
+                          //   label: Text(
+                          //     "ACTION",
+                          //     style: GoogleFonts.poppins(
+                          //       fontSize: 11,
+                          //       fontWeight: FontWeight.w600,
+                          //       color: Colors.grey.shade600,
+                          //       letterSpacing: 0.8,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                         buildRows: (data) => data.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -229,38 +229,38 @@ class DriverScreen extends StatelessWidget {
                                 ),
                               ),
 
-                              DataCell(
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Tooltip(
-                                      message: "DEACTIVATE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.edit),
-                                      ),
-                                    ),
-                                    Tooltip(
-                                      message: "REMOVE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.delete),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              // DataCell(
+                              //   Row(
+                              //     crossAxisAlignment: CrossAxisAlignment.start,
+                              //     mainAxisAlignment: MainAxisAlignment.start,
+                              //     children: [
+                              //       Tooltip(
+                              //         message: "DEACTIVATE",
+                              //         textStyle: GoogleFonts.poppins(
+                              //           fontSize: 10,
+                              //           color: Colors.white,
+                              //           letterSpacing: 0.3,
+                              //         ),
+                              //         child: IconButton(
+                              //           onPressed: () {},
+                              //           icon: Icon(Icons.edit),
+                              //         ),
+                              //       ),
+                              //       Tooltip(
+                              //         message: "REMOVE",
+                              //         textStyle: GoogleFonts.poppins(
+                              //           fontSize: 10,
+                              //           color: Colors.white,
+                              //           letterSpacing: 0.3,
+                              //         ),
+                              //         child: IconButton(
+                              //           onPressed: () {},
+                              //           icon: Icon(Icons.delete),
+                              //         ),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
                             ],
                           );
                         }).toList(),

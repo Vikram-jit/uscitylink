@@ -21,6 +21,7 @@ class GroupMessageController extends GetxController {
   final memmbers = <GroupMembers>[].obs;
   final senderId = "".obs;
   final group = GroupModel().obs;
+  final selectMessageReply = Rxn<Messages>();
 
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
@@ -104,6 +105,20 @@ class GroupMessageController extends GetxController {
     await _fetch(userId, currentPage.value);
   }
 
+  void deleteMessage(String messageId) {
+    // 🔹 Emit to server
+    SocketService().emit('delete_message', {"messageId": messageId});
+
+    // 🔹 Update locally in messages list
+    final index = messages.indexWhere((m) => m.id == messageId);
+
+    if (index != -1) {
+      messages.removeAt(index);
+
+      messages.refresh();
+    }
+  }
+
   /// Convenience: load more messages for the currently open group
   Future<void> loadMoreForCurrentGroup() async {
     final id = _homeController.groupId.value;
@@ -184,7 +199,6 @@ class GroupMessageController extends GetxController {
     String? url,
     String? thumbnail,
   }) {
-    print("------");
     String userIds = memmbers
         .where((e) => e.status == "active")
         .map((e) => e.userProfileId) // or e.id depending on your model
@@ -314,10 +328,12 @@ class GroupMessageController extends GetxController {
       // Only react if this user is a member of the current group
       if (userId != null &&
           memmbers.isNotEmpty &&
-          !memmbers.any((m) =>
-              m.userProfileId == userId ||
-              m.userProfile?.id == userId ||
-              m.userProfile?.user?.id == userId)) {
+          !memmbers.any(
+            (m) =>
+                m.userProfileId == userId ||
+                m.userProfile?.id == userId ||
+                m.userProfile?.user?.id == userId,
+          )) {
         return;
       }
 

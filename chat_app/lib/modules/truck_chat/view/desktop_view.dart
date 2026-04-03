@@ -2,7 +2,6 @@ import 'package:chat_app/core/controller/global_search_controller.dart';
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/desktop/widgets/left_sidebar.dart';
-import 'package:chat_app/modules/home/desktop/widgets/message_input.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:chat_app/modules/truck_chat/widgets/group_header.dart';

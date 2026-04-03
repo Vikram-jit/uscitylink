@@ -32,7 +32,7 @@ class UserScreen extends StatelessWidget {
               title: "Users",
               subtitle: "Manage and monitor all users",
 
-              showActionButton: true,
+              showActionButton: false,
               actionButtonText: "New user",
               actionButtonIcon: Icons.add,
               onActionPressed: () {},
@@ -119,17 +119,17 @@ class UserScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          DataColumn(
-                            label: Text(
-                              "ACTION",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade600,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
+                          // DataColumn(
+                          //   label: Text(
+                          //     "ACTION",
+                          //     style: GoogleFonts.poppins(
+                          //       fontSize: 11,
+                          //       fontWeight: FontWeight.w600,
+                          //       color: Colors.grey.shade600,
+                          //       letterSpacing: 0.8,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                         buildRows: (data) => data.asMap().entries.map((entry) {
                           final index = entry.key;

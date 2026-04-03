@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop'; // Mandatory for .toDart getter
 import 'dart:typed_data';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:dio/dio.dart';
@@ -96,7 +97,7 @@ class BroadcastFormController extends GetxController {
       if (message.value.trim().isEmpty && pickedBytes.value == null) return;
 
       if (!isAllSelected.value && selectedUsers.isEmpty) {
-        Get.snackbar("Error", "Select at least one user");
+        AppSnackbar.error("Select at least one user");
         return;
       }
 
@@ -149,10 +150,10 @@ class BroadcastFormController extends GetxController {
       }
 
       _finishAndReset();
-      Get.snackbar("Success", "Message sent successfully");
+      AppSnackbar.success("Message sent successfully");
     } catch (e) {
       if (Get.isDialogOpen ?? false) Get.back();
-      Get.snackbar("Error", "Failed to send message: $e");
+      AppSnackbar.error("Failed to send message: $e");
     }
   }
 

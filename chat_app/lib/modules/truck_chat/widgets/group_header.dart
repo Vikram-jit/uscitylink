@@ -55,7 +55,9 @@ class _ChatHeaderState extends State<GroupHeader>
           padding: const EdgeInsets.symmetric(horizontal: Space.lg),
           decoration: BoxDecoration(
             color: AppColors.white,
-            borderRadius: const BorderRadius.only(topRight: Radius.circular(6.0)),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(6.0),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -84,8 +86,7 @@ class _ChatHeaderState extends State<GroupHeader>
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              messageController.group.value.name
-                                      ?.characters
+                              messageController.group.value.name?.characters
                                       .take(1)
                                       .toString()
                                       .toUpperCase() ??
@@ -122,8 +123,7 @@ class _ChatHeaderState extends State<GroupHeader>
                             Text(
                               "Members Groups : ${messageController.memmbers.map((f) {
                                 final username = f.userProfile?.username ?? "-";
-                                final driverNo =
-                                    f.userProfile?.user?.driverNumber ?? "-";
+                                final driverNo = f.userProfile?.user?.driverNumber ?? "-";
                                 return "$username ($driverNo)";
                               }).join(", ")}",
                               style: GoogleFonts.inter(
@@ -142,25 +142,6 @@ class _ChatHeaderState extends State<GroupHeader>
                 ),
               ),
               const Spacer(),
-              TextButton.icon(
-                onPressed: () {
-                  _tabController.animateTo(1);
-                  messageController.switchTab(1);
-                },
-                icon: const Icon(
-                  Icons.photo_library_outlined,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-                label: Text(
-                  "View Media",
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
             ],
           ),
         ),

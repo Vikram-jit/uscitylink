@@ -1,4 +1,5 @@
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/models/message_response_model.dart' show Messages;
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/services/file_upload_service.dart';
@@ -12,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class MessageInput extends StatefulWidget {
   final int isPinMessage;
+
   const MessageInput({super.key, required this.isPinMessage});
 
   @override
@@ -466,7 +468,7 @@ class _MessageInputState extends State<MessageInput> {
       if (result == null || result.files.isEmpty) return;
       setState(() => _pendingFile = result.files.single);
     } catch (e) {
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      AppSnackbar.error(e.toString());
     }
   }
 
@@ -678,13 +680,7 @@ class _MessageInputState extends State<MessageInput> {
                                     );
                                 if (!res.status || res.key == null) {
                                   setS(() => isSending = false);
-                                  Get.snackbar(
-                                    'Upload failed',
-                                    res.message,
-                                    snackPosition: SnackPosition.TOP,
-                                    backgroundColor: Colors.red,
-                                    colorText: Colors.white,
-                                  );
+                                  AppSnackbar.error(res.message);
                                   return;
                                 }
                                 SocketService().emit('send_message_to_user', {

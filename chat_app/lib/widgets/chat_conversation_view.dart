@@ -23,8 +23,7 @@ class ChatConversationView extends StatelessWidget {
       color: Colors.white,
       child: Column(
         children: [
-          ChatHeader(userName: controller.selectedName.value),
-
+          // ChatHeader(userName: controller.selectedName.value),
           Expanded(
             child: Obx(() {
               switch (msgController.currentTab.value) {

@@ -1,4 +1,5 @@
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -49,13 +50,7 @@ class _UserAddFormDialogState extends State<UserAddFormDialog> {
 
     setState(() => isLoading = false);
     Get.back(result: "success");
-    Get.snackbar(
-      "Success",
-      "User added successfully!",
-      backgroundColor: Colors.green.shade600,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    AppSnackbar.success("User added successfully!");
   }
 
   @override

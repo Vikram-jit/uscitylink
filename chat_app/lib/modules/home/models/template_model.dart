@@ -63,15 +63,37 @@ class Template {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['channelId'] = this.channelId;
-    data['userProfileId'] = this.userProfileId;
-    data['body'] = this.body;
-    data['name'] = this.name;
-    data['url'] = this.url;
-    data['createdAt'] = this.createdAt;
-    data['updatedAt'] = this.updatedAt;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['channelId'] = channelId;
+    data['userProfileId'] = userProfileId;
+    data['body'] = body;
+    data['name'] = name;
+    data['url'] = url;
+    data['createdAt'] = createdAt;
+    data['updatedAt'] = updatedAt;
     return data;
+  }
+
+  Template copyWith({
+    String? id,
+    String? channelId,
+    String? userProfileId,
+    String? body,
+    String? name,
+    String? url,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return Template(
+      id: id ?? this.id,
+      channelId: channelId ?? this.channelId,
+      userProfileId: userProfileId ?? this.userProfileId,
+      body: body ?? this.body,
+      name: name ?? this.name,
+      url: url ?? this.url,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 }

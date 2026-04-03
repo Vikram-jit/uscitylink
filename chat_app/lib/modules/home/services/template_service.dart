@@ -20,4 +20,57 @@ class TemplateService {
           : null,
     );
   }
+
+  Future<BaseResponse<TemplateModel>> createTemplate({
+    required String name,
+    required String body,
+    String? url,
+  }) async {
+    final response = await api.dio.post(
+      "${ApiEndpoints.template}",
+      data: {"name": name, "body": body, "url": url},
+    );
+
+    return BaseResponse<TemplateModel>(
+      status: response.data["status"] ?? false,
+      message: response.data["message"] ?? "",
+      data: response.data["data"] != null
+          ? TemplateModel.fromJson(response.data["data"])
+          : null,
+    );
+  }
+
+  Future<BaseResponse<TemplateModel>> updateTemplate({
+    required String id,
+    required String name,
+    required String body,
+    String? url,
+  }) async {
+    final response = await api.dio.put(
+      "${ApiEndpoints.template}/$id",
+      data: {"name": name, "body": body, "url": url},
+    );
+
+    return BaseResponse<TemplateModel>(
+      status: response.data["status"] ?? false,
+      message: response.data["message"] ?? "",
+      data: response.data["data"] != null
+          ? TemplateModel.fromJson(response.data["data"])
+          : null,
+    );
+  }
+
+  Future<BaseResponse<TemplateModel>> deleteTemplate({
+    required String id,
+  }) async {
+    final response = await api.dio.delete("${ApiEndpoints.template}/$id");
+
+    return BaseResponse<TemplateModel>(
+      status: response.data["status"] ?? false,
+      message: response.data["message"] ?? "",
+      data: response.data["data"] != null
+          ? TemplateModel.fromJson(response.data["data"])
+          : null,
+    );
+  }
 }

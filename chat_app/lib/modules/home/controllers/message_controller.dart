@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:chat_app/core/helpers/media_file_helper.dart';
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
@@ -39,7 +38,26 @@ class MessageController extends GetxController {
 
   int totalPages = 1;
 
-  final ScrollController scrollController = ScrollController();
+  //final ScrollController scrollController = ScrollController();
+
+  ScrollController? _scrollController;
+
+  ScrollController get scrollController {
+    // If disposed or not yet created, make a fresh one
+    if (_scrollController == null || !_scrollController!.hasClients) {
+      _scrollController?.dispose();
+      _scrollController = ScrollController();
+      _scrollController!.addListener(_onScroll);
+    }
+    return _scrollController!;
+  }
+
+  void resetScrollController() {
+    _scrollController?.removeListener(_onScroll);
+    _scrollController?.dispose();
+    _scrollController = null;
+  }
+
   final channelId = "".obs;
 
   HomeController _homeController = Get.find<HomeController>();
@@ -59,7 +77,7 @@ class MessageController extends GetxController {
     super.onInit();
     listenIncomingMessages();
     listenDriverTypling();
-    scrollController.addListener(_onScroll);
+    // scrollController.addListener(_onScroll);
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
     });
@@ -181,10 +199,13 @@ class MessageController extends GetxController {
     hasMore.value = true;
     media.clear();
     hasMoreMedia.value = true;
+    resetScrollController();
   }
 
   Future<void> loadMessages(String userId, int page) async {
     try {
+      resetScrollController();
+
       if (scrollController.hasClients) {
         scrollController.jumpTo(0);
       }
@@ -366,6 +387,15 @@ class MessageController extends GetxController {
       // ✅ add media automatically
       if (message.url != null && message.url!.isNotEmpty) {
         messagesMedia.insert(0, message);
+        media.insert(
+          0,
+          MediaModel(
+            id: message.id!,
+            key: message.url!,
+            thumbnail: message.thumbnail,
+            uploadType: message.urlUploadType,
+          ),
+        );
       }
 
       if (!isAtBottom.value) {
@@ -404,7 +434,9 @@ class MessageController extends GetxController {
   @override
   void onClose() {
     _typingTimer?.cancel();
-    scrollController.dispose();
+    _scrollController?.removeListener(_onScroll);
+    _scrollController?.dispose();
+    _scrollController = null;
     msgInputController.dispose();
     super.onClose();
   }

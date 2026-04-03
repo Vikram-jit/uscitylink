@@ -1,4 +1,5 @@
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/truck_chat/services/group_service.dart';
 import 'package:flutter/material.dart';
@@ -48,22 +49,10 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
           _selectedUsers = preSelected;
         });
       } else {
-        Get.snackbar(
-          "Error",
-          res.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-        );
+        AppSnackbar.error(res.message);
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-      );
+      AppSnackbar.error(e.toString());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -83,13 +72,7 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
 
   Future<void> _submit() async {
     if (_selectedUsers.isEmpty) {
-      Get.snackbar(
-        "Validation",
-        "Please select at least one member.",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-      );
+      AppSnackbar.error("Please select at least one member.");
       return;
     }
     try {
@@ -106,30 +89,12 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
       );
       if (res.status) {
         Get.back(result: true);
-        Get.snackbar(
-          "Success",
-          "Members added successfully.",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-        );
+        AppSnackbar.success("Members added successfully.");
       } else {
-        Get.snackbar(
-          "Error",
-          res.message,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-        );
+        AppSnackbar.error(res.message);
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-      );
+      AppSnackbar.error(e.toString());
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

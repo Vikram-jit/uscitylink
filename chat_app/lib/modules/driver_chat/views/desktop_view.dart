@@ -129,7 +129,7 @@ class DesktopView extends StatelessWidget {
                             child: Column(
                               children: [
                                 ChatHeader(
-                                  userName: controller.selectedName.value,
+                                  // userName: controller.selectedName.value,
                                 ), // DM Header
                                 Expanded(
                                   child: Obx(() {

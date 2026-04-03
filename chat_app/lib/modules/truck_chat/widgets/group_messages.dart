@@ -1,3 +1,5 @@
+import 'package:chat_app/modules/home/controllers/forward_message_controller.dart';
+import 'package:chat_app/modules/home/desktop/widgets/forward_message_dialog.dart';
 import 'package:chat_app/modules/home/views/MessageBubble.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:chat_app/widgets/date_divider.dart';
@@ -103,6 +105,18 @@ class _GroupMessagesState extends State<GroupMessages> {
                 isMe: message.messageDirection == "R",
                 replyMessage: message.rMessage,
                 staffPin: message.staffPin ?? "",
+                onReply: () => controller.selectMessageReply.value = message,
+                onDelete: () => controller.deleteMessage(message.id!),
+                onForward: () {
+                  if (!Get.isRegistered<ForwardMessageController>(
+                    tag: 'forward',
+                  )) {
+                    Get.put(ForwardMessageController(), tag: 'forward');
+                  }
+                  Get.dialog(ForwardMessageDialog(message: message)).then((_) {
+                    Get.delete<ForwardMessageController>(tag: 'forward');
+                  });
+                },
               ),
             ],
           );

@@ -1,4 +1,5 @@
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
@@ -288,50 +289,41 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                         onPressed: group.id == null
                                             ? null
                                             : () async {
-                                                final newName =
-                                                    nameController.text
-                                                        .trim();
+                                                final newName = nameController
+                                                    .text
+                                                    .trim();
                                                 final newDesc =
                                                     descriptionController.text
                                                         .trim();
 
-                                                final ok =
-                                                    await controller
-                                                        .updateCurrentGroup(
-                                                  name: newName,
-                                                  description: newDesc,
-                                                );
+                                                final ok = await controller
+                                                    .updateCurrentGroup(
+                                                      name: newName,
+                                                      description: newDesc,
+                                                    );
 
                                                 if (ok) {
                                                   if (Get.isRegistered<
-                                                      GroupController>()) {
+                                                    GroupController
+                                                  >()) {
                                                     Get.find<GroupController>()
                                                         .refreshData();
                                                   }
                                                   if (Get.isRegistered<
-                                                      HomeController>()) {
+                                                    HomeController
+                                                  >()) {
                                                     Get.find<HomeController>()
-                                                        .selectedName
-                                                        .value = newName;
+                                                            .selectedName
+                                                            .value =
+                                                        newName;
                                                   }
 
-                                                  Get.snackbar(
-                                                    "Success",
+                                                  AppSnackbar.success(
                                                     "Updated Group Successfully.",
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
                                                   );
                                                 } else {
-                                                  Get.snackbar(
-                                                    "Error",
+                                                  AppSnackbar.error(
                                                     controller.errorText.value,
-                                                    backgroundColor: Colors.red,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
                                                   );
                                                 }
                                               },
@@ -399,12 +391,14 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                                 .deleteCurrentGroup();
                                             if (ok) {
                                               if (Get.isRegistered<
-                                                  GroupController>()) {
+                                                GroupController
+                                              >()) {
                                                 Get.find<GroupController>()
                                                     .refreshData();
                                               }
                                               if (Get.isRegistered<
-                                                  HomeController>()) {
+                                                HomeController
+                                              >()) {
                                                 final home =
                                                     Get.find<HomeController>();
                                                 home.groupId.value = "";
@@ -412,25 +406,16 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                               }
 
                                               Get.back();
-                                              Get.snackbar(
-                                                "Success",
+                                              AppSnackbar.success(
                                                 "Deleted Group Successfully.",
-                                                backgroundColor: Colors.green,
-                                                colorText: Colors.white,
-                                                snackPosition:
-                                                    SnackPosition.TOP,
                                               );
                                             } else {
-                                              Get.snackbar(
-                                                "Error",
+                                              AppSnackbar.error(
                                                 controller.errorText.value,
-                                                backgroundColor: Colors.red,
-                                                colorText: Colors.white,
-                                                snackPosition:
-                                                    SnackPosition.TOP,
                                               );
                                             }
                                           },
+
                                     child: const Text("Remove Group"),
                                   ),
                                 ],
@@ -591,23 +576,12 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                                           .status =
                                                       newStatus;
                                                   controller.memmbers.refresh();
-                                                  Get.snackbar(
-                                                    "Success",
+                                                  AppSnackbar.success(
                                                     "Updated Status Successfully.",
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
                                                   );
                                                 } else {
-                                                  Get.snackbar(
-                                                    "Error",
-                                                    res.message,
-                                                    backgroundColor: Colors.red,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
+                                                  AppSnackbar.error(
+                                                    controller.errorText.value,
                                                   );
                                                 }
                                               },
@@ -628,23 +602,12 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                                   controller.memmbers.removeAt(
                                                     index,
                                                   );
-                                                  Get.snackbar(
-                                                    "Success",
+                                                  AppSnackbar.success(
                                                     "Removed Member from group.",
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
                                                   );
                                                 } else {
-                                                  Get.snackbar(
-                                                    "Error",
+                                                  AppSnackbar.error(
                                                     res.message,
-                                                    backgroundColor: Colors.red,
-                                                    colorText: Colors.white,
-                                                    snackPosition:
-                                                        SnackPosition.TOP,
                                                   );
                                                 }
                                               },

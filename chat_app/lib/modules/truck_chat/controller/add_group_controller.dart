@@ -1,3 +1,4 @@
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/models/truck_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
@@ -119,21 +120,9 @@ class AddGroupController extends GetxController {
 
       Get.back();
       resetForm();
-      Get.snackbar(
-        "Success",
-        "Add Group Successfully",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-      );
+      AppSnackbar.success("Add Group Successfully");
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString().replaceFirst("Exception: ", ""),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-      );
+      AppSnackbar.error(e.toString().replaceFirst("Exception: ", ""));
     } finally {
       isLoading.value = false;
     }
