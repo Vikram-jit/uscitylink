@@ -2961,6 +2961,7 @@ export async function unreadAllUserMessage(
         },
       },
     );
+
     await Message.update(
       {
         deliveryStatus: "seen",
@@ -2973,6 +2974,24 @@ export async function unreadAllUserMessage(
         },
       },
     );
+
+    const findGroupUser = await GroupUser.findOne({
+      where:{
+        userProfileId: userId,  
+        status: "active"
+      }
+     })
+
+     if(findGroupUser){
+        await Group.update({
+          message_count: 0
+        },{
+          where:{
+            id: findGroupUser.groupId
+          } 
+        })
+
+     }
 
     //check driver active channel
 

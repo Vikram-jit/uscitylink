@@ -35,14 +35,14 @@ class FileUploadService {
   Future<FileUploadResult> uploadForUserMessage({
     required PlatformFile file,
     required String userId,
+    String? groupId,
   }) async {
     try {
-      final ext = (file.extension ?? "")
-          .toLowerCase()
-          .trim();
+      final ext = (file.extension ?? "").toLowerCase().trim();
 
       final isVideo = _videoExtensions.contains(ext);
-      final isImage = ext == 'png' ||
+      final isImage =
+          ext == 'png' ||
           ext == 'jpg' ||
           ext == 'jpeg' ||
           ext == 'gif' ||
@@ -83,20 +83,19 @@ class FileUploadService {
       final formData = FormData.fromMap({
         "file": multipartFile,
         "userId": userId,
+        "groupId": groupId,
         "source": "message",
         "type": isImage ? "media" : "doc",
       });
 
       final endpoint = isVideo
           ? "/message/fileAwsUpload"
-          : "/message/fileUpload";
+          : "/message/fileUpload?userId=$userId&groupId=$groupId";
 
       final response = await api.dio.post(
         endpoint,
         data: formData,
-        options: Options(
-          contentType: "multipart/form-data",
-        ),
+        options: Options(contentType: "multipart/form-data"),
       );
 
       final data = response.data ?? {};
@@ -120,4 +119,3 @@ class FileUploadService {
     }
   }
 }
-

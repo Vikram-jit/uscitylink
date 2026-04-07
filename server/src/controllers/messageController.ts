@@ -626,17 +626,50 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
     const channelId = req.body.channelId || req.activeChannel;
     const groupId = req.query.groupId || null;
 
-    const userId = req.query.userId || req.user?.id;
-    if (req.file) {
-      const file = req.file as any;
+    const queryUserIds = req.query.userId as string | undefined;
+    const loggedInUserId = req.query.userId || req.user?.id;
 
+    // ✅ Validate file first
+    if (!req.file) {
+      return res.status(400).json({
+        status: false,
+        message: "No file uploaded",
+      });
+    }
+
+    const file = req.file as any;
+
+    // ✅ Case 1: Group + multiple users
+    if (groupId && queryUserIds) {
+      const userIdsArray = queryUserIds.split(",");
+
+      // 🔥 FIX: use Promise.all instead of forEach
+      await Promise.all(
+        userIdsArray.map((id: string) =>
+          Media.create({
+            user_profile_id: id, // ✅ FIXED (use each id)
+            channelId: channelId,
+            file_name: file.originalname,
+            file_size: file.size,
+            mime_type: file.mimetype,
+            key: file.key,
+            file_type: req.body.type,
+            groupId: groupId,
+            upload_source: req.query.source || "truck",
+            upload_type: "server",
+          })
+        )
+      );
+    } 
+    // ✅ Case 2: Single user
+    else {
       await Media.create({
-        user_profile_id: userId,
+        user_profile_id: loggedInUserId,
         channelId: channelId,
-        file_name: req.file?.originalname,
-        file_size: req.file.size,
-        mime_type: req.file.mimetype,
-        key: file?.key,
+        file_name: file.originalname,
+        file_size: file.size,
+        mime_type: file.mimetype,
+        key: file.key,
         file_type: req.body.type,
         groupId: groupId,
         upload_source: req.query.source || "message",
@@ -646,13 +679,15 @@ export const fileUpload = async (req: Request, res: Response): Promise<any> => {
 
     return res.status(201).json({
       status: true,
-      message: `Message sent successfully`,
-      data: req.file,
+      message: "File uploaded successfully",
+      data: file,
     });
+
   } catch (err: any) {
-    return res
-      .status(400)
-      .json({ status: false, message: err.message || "Internal Server Error" });
+    return res.status(400).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 };
 

@@ -1,15 +1,18 @@
 import 'dart:async';
 
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/models/group_message_response_model.dart';
 import 'package:chat_app/models/group_response_model.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
+import 'package:chat_app/modules/home/services/file_upload_service.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
 import 'package:chat_app/modules/truck_chat/services/group_service.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -22,6 +25,7 @@ class GroupMessageController extends GetxController {
   final senderId = "".obs;
   final group = GroupModel().obs;
   final selectMessageReply = Rxn<Messages>();
+  PlatformFile? pendingFile;
 
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
@@ -193,26 +197,67 @@ class GroupMessageController extends GetxController {
     }
   }
 
-  void sendMessage({
+  Future<void> sendMessage({
     required String body,
     String? replyMessageId,
     String? url,
     String? thumbnail,
-  }) {
+  }) async {
     String userIds = memmbers
         .where((e) => e.status == "active")
         .map((e) => e.userProfileId) // or e.id depending on your model
         .join(",");
 
+    if (pendingFile != null) {
+      final resFile = await FileUploadService().uploadForUserMessage(
+        file: pendingFile!,
+        userId: '',
+      );
+      if (!resFile.status || resFile.key == null) {
+        AppSnackbar.error('File upload failed, please try again.');
+        return;
+      }
+      url = resFile.key;
+    }
     SocketService().emit('send_message_to_user_by_group', {
       "userId": userIds,
       "groupId": group.value.id,
       "body": body,
       "direction": 'S',
-      "url": '',
+      "url": url,
     });
-    print("------");
     msgInputController.clear();
+  }
+
+  Future<bool> sendFile() async {
+    String url = "";
+    String userIds = memmbers
+        .where((e) => e.status == "active")
+        .map((e) => e.userProfileId) // or e.id depending on your model
+        .join(",");
+
+    if (pendingFile != null) {
+      final resFile = await FileUploadService().uploadForUserMessage(
+        file: pendingFile!,
+        userId: userIds,
+        groupId: group.value.id ?? '',
+      );
+      if (!resFile.status || resFile.key == null) {
+        AppSnackbar.error('File upload failed, please try again.');
+        return false;
+      }
+      url = resFile.key!;
+    }
+    SocketService().emit('send_message_to_user_by_group', {
+      "userId": userIds,
+      "groupId": group.value.id,
+      "body": msgInputController.text.trim(),
+      "direction": 'S',
+      "url": url,
+    });
+    pendingFile = null;
+    msgInputController.clear();
+    return true;
   }
 
   void listenIncomingMessages() {

@@ -22,7 +22,6 @@ class _GroupInputState extends State<GroupInput> {
   bool _isItalic = false;
   bool _isStrike = false;
   bool _isFocused = false;
-  PlatformFile? _pendingFile;
 
   final _focusNode = FocusNode();
 
@@ -82,7 +81,7 @@ class _GroupInputState extends State<GroupInput> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildToolbar(),
-                if (_pendingFile != null) _buildFilePreview(),
+                if (_c.pendingFile != null) _buildFilePreview(),
                 _buildTextField(),
                 _buildFooter(),
               ],
@@ -153,7 +152,7 @@ class _GroupInputState extends State<GroupInput> {
   // ── File preview ─────────────────────────────────────────────
 
   Widget _buildFilePreview() {
-    final file = _pendingFile!;
+    final file = _c.pendingFile!;
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 8, 10, 0),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -203,7 +202,7 @@ class _GroupInputState extends State<GroupInput> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _pendingFile = null),
+            onTap: () => setState(() => _c.pendingFile = null),
             child: Icon(
               Icons.close_rounded,
               size: 16,
@@ -257,7 +256,6 @@ class _GroupInputState extends State<GroupInput> {
           ),
           maxLines: null,
           keyboardType: TextInputType.multiline,
-          onChanged: (_) => setState(() {}),
         ),
       ),
     );
@@ -277,7 +275,7 @@ class _GroupInputState extends State<GroupInput> {
           const Spacer(),
           Obx(
             () => _SendButton(
-              enabled: _c.msgText.isNotEmpty || _pendingFile != null,
+              enabled: _c.msgText.isNotEmpty || _c.pendingFile != null,
               onSend: _send,
             ),
           ),
@@ -290,9 +288,9 @@ class _GroupInputState extends State<GroupInput> {
 
   void _send() {
     final text = _c.msgText.value.trim();
-    if (text.isEmpty && _pendingFile == null) return;
+    if (text.isEmpty && _c.pendingFile == null) return;
 
-    if (_pendingFile != null) {
+    if (_c.pendingFile != null) {
       _openFileSendDialog();
     } else {
       _c.sendMessage(
@@ -306,7 +304,7 @@ class _GroupInputState extends State<GroupInput> {
   // ── File send dialog ─────────────────────────────────────────
 
   void _openFileSendDialog() {
-    final file = _pendingFile;
+    final file = _c.pendingFile;
     if (file == null) return;
 
     showDialog(
@@ -468,7 +466,7 @@ class _GroupInputState extends State<GroupInput> {
                           ),
                           const SizedBox(height: 6),
                           TextField(
-                            controller: captionCtrl,
+                            controller: _c.msgInputController,
                             maxLines: 3,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
@@ -526,7 +524,7 @@ class _GroupInputState extends State<GroupInput> {
                           onPressed: isSending
                               ? null
                               : () {
-                                  setState(() => _pendingFile = null);
+                                  setState(() => _c.pendingFile = null);
                                   Navigator.pop(ctx);
                                 },
                           style: OutlinedButton.styleFrom(
@@ -549,17 +547,14 @@ class _GroupInputState extends State<GroupInput> {
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton.icon(
-                          onPressed: isSending ? null : null,
-                          icon: isSending
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.send_rounded, size: 15),
+                          onPressed: () async {
+                            final bool result = await _c.sendFile();
+
+                            if (result) {
+                              Navigator.pop(ctx);
+                            }
+                          },
+                          icon: const Icon(Icons.send_rounded, size: 15),
                           label: Text(
                             'Send file',
                             style: GoogleFonts.poppins(
@@ -602,7 +597,7 @@ class _GroupInputState extends State<GroupInput> {
         withData: kIsWeb,
       );
       if (result == null || result.files.isEmpty) return;
-      setState(() => _pendingFile = result.files.single);
+      setState(() => _c.pendingFile = result.files.single);
     } catch (e) {
       AppSnackbar.error(e.toString());
     }

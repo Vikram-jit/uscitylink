@@ -311,7 +311,13 @@ class ChannelController extends GetxController {
         final newItems = res.data?.userChannels ?? [];
         final pagination = res.data?.pagination;
 
-        channelMembers.assignAll(newItems);
+        if (page == 1) {
+          // First page → replace
+          channelMembers.assignAll(newItems);
+        } else {
+          // Next pages → append
+          channelMembers.addAll(newItems);
+        }
 
         hasMore.value =
             (pagination?.currentPage ?? 1) < (pagination?.totalPages ?? 1);
