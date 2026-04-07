@@ -39,7 +39,7 @@ echo "🏗️ Building app-3004..."
 
 cd $APP_3004
 
-NEXT_PUBLIC_API_URL="http://52.9.12.189:4300/api/v1" \
+NEXT_PUBLIC_API_URL="http://52.9.12.189:4300/api/v1/" \
 NEXT_PUBLIC_SOCKET_URL="http://52.9.12.189:4300" \
 npm run build
 
@@ -50,7 +50,7 @@ echo "🏗️ Building app-3012..."
 
 cd $APP_3012
 
-NEXT_PUBLIC_API_URL="https://chatbox-server.truckcrave.com/api/v1" \
+NEXT_PUBLIC_API_URL="https://chatbox-server.truckcrave.com/api/v1/" \
 NEXT_PUBLIC_SOCKET_URL="https://chatbox-server.truckcrave.com" \
 npm run build
 
