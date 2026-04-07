@@ -8,11 +8,11 @@ const config = {
     API_URL:
       process.env.NEXT_ENV == "development"
         ? "http://localhost:4300/api/v1/"
-        : "/api/v1/",
+        : "http://52.8.75.98:4300/api/v1/",
     SOCKET_URL:
       process.env.NEXT_ENV == "development"
         ? "http://localhost:4300"
-        : "/",
+        : "http://52.8.75.98:4300",
   },
 
   images: {
