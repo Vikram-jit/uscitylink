@@ -18,22 +18,6 @@ const SocketContext = createContext<SocketContextType>({
 
 
 
-const getSocketUrl = () => {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-
-    // 👉 Domain case (chatbox)
-    if (host === "chatbox.truckcrave.com") {
-      return "https://chatbox-server.truckcrave.com";
-    }
-
-    // 👉 IP case
-    return "http://52.8.75.98:4300";
-  }
-
-  return process.env.SOCKET_URL || "http://52.8.75.98:4300";
-};
-
 export const useSocket = () => {
   return useContext(SocketContext);
 };
@@ -56,7 +40,7 @@ export const SocketProvider = ({
   const token: any = localStorage.getItem('custom-auth-token');
   const dispatch = useDispatch();
   useEffect(() => {
-    const socketServer = io(getSocketUrl(), {
+    const socketServer = io(process.env.SOCKET_URL, {
       transports: ['websocket'],
       query: { token: token },
       reconnection: true, // Ensure reconnection is enabled

@@ -1,26 +1,10 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 
-const getBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-
-    
-    if (host === "chatbox.truckcrave.com") {
-      return "https://chatbox-server.truckcrave.com/api/v1";
-    }
-
-   
-    return "http://52.8.75.98:4300/api/v1";
-  }
-
-  // fallback (SSR)
-  return process.env.API_URL || "http://52.8.75.98:4300/api/v1";
-};
 
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: getBaseUrl(), // Replace with your API base URL
+  baseUrl: process.env.API_URL, // Replace with your API base URL
   prepareHeaders: (headers) => {
     const token = localStorage.getItem('custom-auth-token'); // Retrieve the token from local storage
 
