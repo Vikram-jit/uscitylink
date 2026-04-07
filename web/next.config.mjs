@@ -8,12 +8,13 @@ const config = {
     API_URL:
       process.env.NEXT_ENV == "development"
         ? "http://localhost:4300/api/v1/"
-        : "http://52.8.75.98:4300/api/v1/",
+        : process.env.NEXT_PUBLIC_API_URL,
     SOCKET_URL:
       process.env.NEXT_ENV == "development"
         ? "http://localhost:4300"
-        : "http://52.8.75.98:4300",
+        : process.env.NEXT_PUBLIC_SOCKET_URL,
   },
+
 
   images: {
     remotePatterns: [
