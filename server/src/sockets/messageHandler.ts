@@ -2538,7 +2538,7 @@ export async function messageToDriverByTruckGroup(
     messageTimestampUtc: utcTime,
     url: url || null,
     thumbnail: thumbnail || null,
-    url_upload_type: url ? "server" : null,
+    url_upload_type: "server" ,
   });
   const newSaveStaff = await Message.create({
     channelId: findStaffActiveChannel?.channelId,

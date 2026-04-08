@@ -749,7 +749,6 @@ export const initSocket = (httpServer: any) => {
           direction,
           url,
           thumbnail,
-          
           reply_message_id
         )
     );
