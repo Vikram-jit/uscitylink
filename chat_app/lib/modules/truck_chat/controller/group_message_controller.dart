@@ -6,8 +6,11 @@ import 'package:chat_app/models/group_message_response_model.dart';
 import 'package:chat_app/models/group_response_model.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
+import 'package:chat_app/modules/home/controllers/message_controller.dart';
+import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
+import 'package:chat_app/modules/home/models/template_model.dart';
 import 'package:chat_app/modules/home/services/file_upload_service.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
@@ -17,7 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class GroupMessageController extends GetxController {
-  var currentTab = 0.obs; // 0 = Messages, 1 = Files, 2 = Pins
+  var currentTab = 0.obs;
   final showDetails = false.obs;
   final messages = <Messages>[].obs;
   final isLoading = false.obs;
@@ -25,6 +28,8 @@ class GroupMessageController extends GetxController {
   final senderId = "".obs;
   final group = GroupModel().obs;
   final selectMessageReply = Rxn<Messages>();
+  final selectTemplateUrl = Rxn<Template>();
+
   PlatformFile? pendingFile;
 
   RxInt currentPage = 1.obs;
@@ -45,6 +50,8 @@ class GroupMessageController extends GetxController {
   final channelId = "".obs;
 
   HomeController _homeController = Get.find<HomeController>();
+  MessageController _messageController = Get.find<MessageController>();
+
   final msgInputController = TextEditingController();
   final msgText = "".obs;
 
@@ -62,7 +69,7 @@ class GroupMessageController extends GetxController {
     super.onInit();
     listenIncomingMessages();
     listenDriverTypling();
-    scrollController.addListener(_onScroll);
+    scrollController.addListener(() => _onScroll());
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
     });
@@ -89,24 +96,23 @@ class GroupMessageController extends GetxController {
   }
 
   void _onScroll() {
-    print("SCROLL: ${scrollController.position.pixels}");
-    print("MAX: ${scrollController.position.maxScrollExtent}");
-
     if (scrollController.position.pixels >=
             scrollController.position.maxScrollExtent - 50 &&
         !isLoading.value &&
         hasMore.value) {
-      print("LOAD MORE TRIGGERED");
-      loadMore(_homeController.groupId.value);
+      loadMore(
+        _homeController.groupId.value,
+        currentTab.value == 2 ? "1" : "0",
+      );
     }
   }
 
-  Future<void> loadMore(String userId) async {
+  Future<void> loadMore(String userId, String pinMessage) async {
     if (!hasMore.value || isLoading.value) return;
 
     currentPage.value++;
 
-    await _fetch(userId, currentPage.value);
+    await _fetch(userId, currentPage.value, pinMessage);
   }
 
   void deleteMessage(String messageId) {
@@ -124,14 +130,42 @@ class GroupMessageController extends GetxController {
   }
 
   /// Convenience: load more messages for the currently open group
-  Future<void> loadMoreForCurrentGroup() async {
+  Future<void> loadMoreForCurrentGroup(String pinMessage) async {
     final id = _homeController.groupId.value;
     if (id.isEmpty) return;
-    await loadMore(id);
+    await loadMore(id, pinMessage);
   }
 
-  void switchTab(int index) {
+  void switchTab(int index, MediaGallerySource source) {
     currentTab.value = index;
+    // reset pagination
+    currentPage.value = 1;
+    hasMore.value = true;
+
+    switch (index) {
+      case 0:
+        messages.clear();
+        _messageController.messagesMedia.clear();
+        loadMessages(_homeController.groupId.value, 1, "0");
+        break;
+      case 1:
+        _messageController.media.clear();
+        _messageController.fetchMedia(
+          source == MediaGallerySource.channel
+              ? _homeController.driverId.value
+              : _homeController.groupId.value,
+          1,
+          source,
+        );
+        break;
+      case 2:
+        messages.clear();
+        loadMessages(_homeController.groupId.value, 1, "1");
+        break;
+      default:
+        messages.clear();
+        loadMessages(_homeController.groupId.value, 1, "0");
+    }
   }
 
   void toggleDetails() {
@@ -150,17 +184,33 @@ class GroupMessageController extends GetxController {
     hasMore.value = true;
   }
 
-  Future<void> loadMessages(String groupId, int page) async {
+  Future<void> loadMessages(String groupId, int page, String pinMessage) async {
     try {
       isLoading.value = true;
       currentPage.value = page;
 
-      final res = await MessageService().getGroupMessages(groupId, page);
+      if (Get.isRegistered<MessageController>()) {
+        _messageController.media.clear();
+        _messageController.messagesMedia.clear();
+      }
+      final res = await MessageService().getGroupMessages(
+        groupId,
+        page,
+        pinMessage,
+      );
 
       if (res.status) {
         memmbers.value = res.data?.members ?? [];
         senderId.value = res.data?.senderId ?? "";
         group.value = res.data?.group ?? GroupModel();
+        final mediaMessages =
+            res.data?.messages ??
+            [].where((m) => m.url != null && m.url!.isNotEmpty).toList();
+        if (Get.isRegistered<MessageController>()) {
+          _messageController.messagesMedia.addAll(
+            mediaMessages as List<Messages>,
+          );
+        }
         messages.assignAll(res.data?.messages ?? []);
         final pagination = res.data?.pagination;
         totalItems = pagination?.total ?? 0;
@@ -177,13 +227,25 @@ class GroupMessageController extends GetxController {
     }
   }
 
-  Future<void> _fetch(String userId, int page) async {
+  Future<void> _fetch(String userId, int page, String pinMessage) async {
     try {
       isLoading.value = true;
 
-      final res = await MessageService().getGroupMessages(userId, page);
+      final res = await MessageService().getGroupMessages(
+        userId,
+        page,
+        pinMessage,
+      );
       if (res.status) {
         final pagination = res.data?.pagination;
+        final mediaMessages =
+            res.data?.messages ??
+            [].where((m) => m.url != null && m.url!.isNotEmpty).toList();
+        if (Get.isRegistered<MessageController>()) {
+          _messageController.messagesMedia.addAll(
+            mediaMessages as List<Messages>,
+          );
+        }
 
         messages.addAll(res.data?.messages ?? []);
 
@@ -197,11 +259,33 @@ class GroupMessageController extends GetxController {
     }
   }
 
+  void pinMessage(String messageId, String staffPin) {
+    final newValue = staffPin == '0' ? '1' : '0';
+
+    // 🔹 Emit to server
+    SocketService().emit('pin_message', {
+      "messageId": messageId,
+      "value": newValue,
+      "type": 'staff',
+    });
+
+    // 🔹 Update locally in messages list
+    final index = messages.indexWhere((m) => m.id == messageId);
+
+    if (index != -1) {
+      messages[index].staffPin = newValue;
+
+      // 👉 Important: refresh UI
+      messages.refresh();
+    }
+  }
+
   Future<void> sendMessage({
     required String body,
     String? replyMessageId,
     String? url,
     String? thumbnail,
+    String? reply_message_id,
   }) async {
     String userIds = memmbers
         .where((e) => e.status == "active")
@@ -225,6 +309,7 @@ class GroupMessageController extends GetxController {
       "body": body,
       "direction": 'S',
       "url": url,
+      "reply_message_id": replyMessageId,
     });
     msgInputController.clear();
   }

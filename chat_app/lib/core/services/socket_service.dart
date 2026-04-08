@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:web/web.dart' as web; // Modern 2026 standard for Web/Wasm
 
-class SocketService {
+class SocketService extends GetxController {
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
   SocketService._internal();
-
+  final RxBool isReconnecting = false.obs;
   IO.Socket? socket;
-
+  Timer? _pingTimer;
   bool get isConnected => socket?.connected ?? false;
+  bool _isReconnectingShown = false;
 
   /// 🔌 Connect socket with auth token
   void connect(String token) {
@@ -31,6 +35,33 @@ class SocketService {
 
     _registerBaseListeners();
     socket!.connect();
+    _startPingCheck(token); // 👈 add this
+  }
+
+  void _startPingCheck(String token) {
+    _pingTimer?.cancel();
+
+    _pingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (socket == null) return;
+
+      if (!socket!.connected) {
+        debugPrint("⚠️ Socket not connected. Reconnecting...");
+
+        try {
+          socket!.connect();
+        } catch (e) {
+          debugPrint("Reconnect failed: $e");
+
+          // fallback recreate socket (important)
+          disconnect();
+          connect(token);
+        }
+      } else {
+        // Optional: send ping event
+        socket!.emit("ping", {"time": DateTime.now().toIso8601String()});
+        debugPrint("✅ Socket alive");
+      }
+    });
   }
 
   void listenNotifications({
@@ -72,14 +103,27 @@ class SocketService {
   void _registerBaseListeners() {
     socket?.on('connect', (_) {
       debugPrint('🟢 Socket connected: ${socket?.id}');
+      if (isReconnecting.value) {
+        isReconnecting.value = false;
+
+        debugPrint("🔄 Reloading app after reconnect...");
+        web.window.location.reload(); // 👈 reload page
+      }
     });
 
     socket?.on('disconnect', (_) {
       debugPrint('🔴 Socket disconnected');
+      isReconnecting.value = true;
     });
 
     socket?.on('connect_error', (err) {
       debugPrint('❌ Socket connect error: $err');
+      isReconnecting.value = true;
+    });
+
+    socket?.on('reconnect_attempt', (_) {
+      debugPrint('🔄 Reconnecting...');
+      isReconnecting.value = true;
     });
   }
 

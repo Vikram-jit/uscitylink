@@ -12,6 +12,7 @@ class MediaComponent extends StatelessWidget {
   final GallertType type;
   final String? thumbnail;
   final int? initialIndex;
+  final bool? isGalleryBool;
 
   const MediaComponent({
     super.key,
@@ -23,6 +24,7 @@ class MediaComponent extends StatelessWidget {
     required this.type,
     this.thumbnail,
     this.initialIndex,
+    this.isGalleryBool = true,
   });
 
   @override
@@ -46,16 +48,19 @@ class MediaComponent extends StatelessWidget {
   // ================= NAVIGATION =================
 
   void _openGallery(BuildContext context) {
-    Get.dialog(
-      FileViewerGallery(
-        messageId: messageId,
-        initialIndex: initialIndex ?? 0,
-        type: type,
-      ),
-      barrierDismissible: true,
-      barrierColor: Colors.black.withOpacity(0.9),
-      transitionDuration: const Duration(milliseconds: 250),
-    );
+    if (isGalleryBool == true) {
+      Get.dialog(
+        FileViewerGallery(
+          messageId: messageId,
+          initialIndex: initialIndex ?? 0,
+          type: type,
+        ),
+        barrierDismissible: true,
+        barrierColor: Colors.black.withOpacity(0.9),
+        transitionDuration: const Duration(milliseconds: 250),
+      );
+      return;
+    }
   }
   // ================= UI =================
 

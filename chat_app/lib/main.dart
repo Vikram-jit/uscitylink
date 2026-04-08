@@ -1,3 +1,4 @@
+import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/core/widgets/global_loader.dart';
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
             children: [
               child!,
               const GlobalLoader(), // ✅ global overlay
+              socketStatusBanner(), // ✅ socket connection status
             ],
           ),
         );
@@ -81,5 +83,58 @@ class MyApp extends StatelessWidget {
 
       unknownRoute: GetPage(name: "/404", page: () => const NotFoundView()),
     );
+  }
+
+  Widget socketStatusBanner() {
+    final socketService = SocketService();
+
+    return Obx(() {
+      // Show nothing when not reconnecting
+      if (!socketService.isReconnecting.value) {
+        return const SizedBox.shrink();
+      }
+
+      // Position the banner safely, respecting the status bar and notch
+      return Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: SafeArea(
+          bottom: false,
+          child: Material(
+            elevation: 4.0,
+            color: Colors.orange,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                vertical: 12.0,
+                horizontal: 16.0,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 12.0),
+                  Flexible(
+                    child: Text(
+                      'Connecting to server...',
+                      style: TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }

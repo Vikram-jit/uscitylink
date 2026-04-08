@@ -526,7 +526,7 @@ export const getMessagesByGroupId = async (
     const { id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-
+    const pin = req.query.pin as string;
     const offset = (page - 1) * pageSize;
     const isGroup = await Group.findByPk(id);
     const isGroupMembers = await GroupUser.findAll({
@@ -549,7 +549,8 @@ export const getMessagesByGroupId = async (
   const messages = await Message.findAndCountAll({
     where:{
       groupId:isGroup?.id,
-      type:"default"
+      type:"default",
+        ...(pin == "1" && { staffPin: "1" }),
     },
     include: [
       {

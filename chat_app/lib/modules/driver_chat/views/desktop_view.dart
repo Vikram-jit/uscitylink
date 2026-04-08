@@ -137,7 +137,9 @@ class DesktopView extends StatelessWidget {
                                       case 0:
                                         return MessageList(); // Messages
                                       case 1:
-                                        return MediaGallery(); // Files Tab Content
+                                        return MediaGallery(
+                                          source: MediaGallerySource.channel,
+                                        ); // Files Tab Content
                                       case 2:
                                         return MessageList(); // Messages Tab Content
                                       default:

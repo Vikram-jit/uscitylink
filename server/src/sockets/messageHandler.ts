@@ -2511,6 +2511,7 @@ export async function messageToDriverByTruckGroup(
   url: string | null,
   thumbnail: string | null,
   url_upload_type?: string,
+  reply_message_id?: string | null,
 ) {
   const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
 
@@ -2537,7 +2538,7 @@ export async function messageToDriverByTruckGroup(
     messageTimestampUtc: utcTime,
     url: url || null,
     thumbnail: thumbnail || null,
-    url_upload_type: url_upload_type || "server",
+    url_upload_type: url ? "server" : null,
   });
   const newSaveStaff = await Message.create({
     channelId: findStaffActiveChannel?.channelId,
@@ -2554,6 +2555,7 @@ export async function messageToDriverByTruckGroup(
     type: "default",
     thumbnail: thumbnail || null,
     url_upload_type: url_upload_type || "server",
+    reply_message_id: reply_message_id || null,
   });
   let isSendToStaff = false;
 

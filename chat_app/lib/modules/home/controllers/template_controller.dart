@@ -65,27 +65,31 @@ class TemplateController extends GetxController {
     PlatformFile? pendingFile,
   }) async {
     isSaving.value = true;
+
     try {
+      String? fileKey;
+
+      // ✅ Upload only ONCE
       if (pendingFile != null) {
         final resFile = await FileUploadService().uploadForUserMessage(
           file: pendingFile,
           userId: '',
+          groupId: '',
         );
+
         if (!resFile.status || resFile.key == null) {
           AppSnackbar.error('File upload failed, please try again.');
           return false;
         }
+
+        fileKey = resFile.key;
       }
 
+      // ✅ Use uploaded key
       final res = await TemplateService().createTemplate(
         name: name,
         body: body,
-        url: pendingFile != null
-            ? (await FileUploadService().uploadForUserMessage(
-                file: pendingFile,
-                userId: '',
-              )).key
-            : null,
+        url: fileKey,
       );
 
       if (res.status) {
@@ -116,6 +120,7 @@ class TemplateController extends GetxController {
         final resFile = await FileUploadService().uploadForUserMessage(
           file: pendingFile,
           userId: '',
+          groupId: '',
         );
         if (!resFile.status || resFile.key == null) {
           AppSnackbar.error('File upload failed, please try again.');

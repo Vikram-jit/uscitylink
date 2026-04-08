@@ -3,6 +3,7 @@ import 'package:chat_app/core/network/base_response.dart';
 import 'package:chat_app/core/network/dio_client.dart';
 import 'package:chat_app/models/group_message_response_model.dart';
 import 'package:chat_app/models/message_response_model.dart';
+import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
 import 'package:chat_app/modules/home/models/media_model.dart';
 
 class MessageService {
@@ -31,10 +32,19 @@ class MessageService {
     String userId,
     int page,
     int pageSize,
+    MediaGallerySource source,
   ) async {
-    final response = await api.dio.get(
-      "${ApiEndpoints.media}?limit=$pageSize&page=$page&type=media&userId=$userId&source=channel&private_chat_id=undefined",
-    );
+    String url = ApiEndpoints.media;
+
+    if (source.name == MediaGallerySource.group.name) {
+      url =
+          "$url/$userId?limit=$pageSize&page=$page&type=media&userId=$userId&source=${source.name}&private_chat_id=undefined";
+    } else {
+      url =
+          "$url/null?limit=$pageSize&page=$page&type=media&userId=$userId&source=${source.name}&private_chat_id=undefined";
+    }
+
+    final response = await api.dio.get("$url");
 
     return BaseResponse<MediaModelResponse>(
       status: response.data["status"] ?? false,
@@ -48,9 +58,10 @@ class MessageService {
   Future<BaseResponse<GroupMessageResponseModel>> getGroupMessages(
     String groupId,
     int page,
+    String? pinMessage,
   ) async {
     final response = await api.dio.get(
-      "${ApiEndpoints.groupMessages}/$groupId?page=$page",
+      "${ApiEndpoints.groupMessages}/$groupId?page=$page&pin=$pinMessage",
     );
 
     return BaseResponse<GroupMessageResponseModel>(

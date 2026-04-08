@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
+import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
 import 'package:chat_app/modules/home/models/media_model.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
+import 'package:chat_app/modules/home/models/template_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +22,7 @@ class MessageController extends GetxController {
   final isLoading = false.obs;
   final userProfile = UserProfileModel().obs;
   final selectMessageReply = Rxn<Messages>();
+  final selectTemplateUrl = Rxn<Template>();
 
   RxString truckNumber = "".obs;
   RxInt currentPage = 1.obs;
@@ -113,11 +116,11 @@ class MessageController extends GetxController {
     }
   }
 
-  Future<void> loadMoreMedia(String userId) async {
+  Future<void> loadMoreMedia(String userId, MediaGallerySource source) async {
     if (!hasMoreMedia.value || isLoading.value) return;
 
     currentMediaPage++;
-    await fetchMedia(userId, currentMediaPage);
+    await fetchMedia(userId, currentMediaPage, source);
   }
 
   void pinMessage(String messageId, String staffPin) {
@@ -161,7 +164,7 @@ class MessageController extends GetxController {
     await _fetch(userId, currentPage.value, pinMessage);
   }
 
-  void switchTab(int index) {
+  void switchTab(int index, MediaGallerySource source) {
     currentTab.value = index;
     // reset pagination
     currentPage.value = 1;
@@ -174,7 +177,13 @@ class MessageController extends GetxController {
         break;
       case 1:
         media.clear();
-        fetchMedia(_homeController.driverId.value, 1);
+        fetchMedia(
+          source == MediaGallerySource.channel
+              ? _homeController.driverId.value
+              : _homeController.groupId.value,
+          1,
+          source,
+        );
         break;
       case 2:
         messages.clear();
@@ -295,7 +304,11 @@ class MessageController extends GetxController {
     }
   }
 
-  Future<void> fetchMedia(String userId, int page) async {
+  Future<void> fetchMedia(
+    String userId,
+    int page,
+    MediaGallerySource source,
+  ) async {
     try {
       isLoading.value = true;
 
@@ -303,6 +316,7 @@ class MessageController extends GetxController {
         userId,
         page,
         itemsPerPage,
+        source,
       );
 
       if (res.status) {

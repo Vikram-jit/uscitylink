@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+enum MediaGallerySource { channel, group }
+
 class MediaGallery extends StatefulWidget {
-  const MediaGallery({super.key});
+  final MediaGallerySource source;
+  const MediaGallery({super.key, required this.source});
 
   @override
   State<MediaGallery> createState() => _MediaGalleryState();
@@ -37,7 +40,12 @@ class _MediaGalleryState extends State<MediaGallery> {
             _scrollController.position.maxScrollExtent - 300 &&
         !_controller.isLoading.value &&
         _controller.hasMoreMedia.value) {
-      _controller.loadMoreMedia(_homeController.driverId.value);
+      _controller.loadMoreMedia(
+        widget.source == MediaGallerySource.channel
+            ? _homeController.driverId.value
+            : _homeController.groupId.value,
+        widget.source,
+      );
     }
   }
 
@@ -45,7 +53,13 @@ class _MediaGalleryState extends State<MediaGallery> {
     _controller.media.clear();
     _controller.currentMediaPage = 1;
     _controller.hasMoreMedia.value = true;
-    await _controller.fetchMedia(_homeController.driverId.value, 1);
+    await _controller.fetchMedia(
+      widget.source == MediaGallerySource.channel
+          ? _homeController.driverId.value
+          : _homeController.groupId.value,
+      1,
+      widget.source,
+    );
   }
 
   @override

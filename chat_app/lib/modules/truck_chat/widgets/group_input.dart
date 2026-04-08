@@ -1,6 +1,8 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
+import 'package:chat_app/widgets/file_viewer_gallery.dart';
+import 'package:chat_app/widgets/media_component.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +56,58 @@ class _GroupInputState extends State<GroupInput> {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+
         children: [
+          Obx(() {
+            return _c.selectTemplateUrl.value != null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Align(
+                            alignment: AlignmentGeometry.centerLeft,
+                            child: Text(
+                              "Selected Template:",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              _c.selectTemplateUrl.value = null;
+                              _c.msgInputController.clear();
+                            },
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: MediaComponent(
+                          isGalleryBool: false,
+                          initialIndex: 0,
+                          type: GallertType.MessageFiles,
+                          messageId: _c.selectTemplateUrl.value?.id ?? "",
+                          url: _c.selectTemplateUrl.value?.url ?? "-",
+                          fileName: _c.selectTemplateUrl.value?.url ?? '',
+                          uploadType: 'server',
+                          messageDirection: "S",
+                          thumbnail: null,
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink();
+          }),
           // ── Reply bar ──
           Obx(() {
             final reply = _c.selectMessageReply.value;
@@ -296,8 +349,11 @@ class _GroupInputState extends State<GroupInput> {
       _c.sendMessage(
         body: text,
         replyMessageId: _c.selectMessageReply.value?.id,
+        url: _c.selectTemplateUrl.value?.url,
+        reply_message_id: _c.selectMessageReply.value?.id,
       );
       _c.selectMessageReply.value = null;
+      _c.selectTemplateUrl.value = null;
     }
   }
 

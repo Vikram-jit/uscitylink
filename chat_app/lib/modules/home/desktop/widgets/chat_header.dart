@@ -1,5 +1,6 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
+import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
 import 'package:chat_app/modules/home/desktop/widgets/template_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -23,7 +24,7 @@ class _ChatHeaderState extends State<ChatHeader>
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        _mc.switchTab(_tabController.index);
+        _mc.switchTab(_tabController.index, MediaGallerySource.channel);
       }
     });
   }
@@ -305,7 +306,8 @@ class _TemplateButtonState extends State<_TemplateButton> {
           onSelected: (template) {
             // Pass selected template to message controller
             final mc = Get.find<MessageController>();
-            // mc.setTemplateMessage(template);
+            mc.selectTemplateUrl(template);
+            mc.msgInputController.text = template.body ?? '';
           },
         ),
         child: AnimatedContainer(

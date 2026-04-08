@@ -15,5 +15,5 @@ class ApiEndpoints {
   static const truckList = "/yard/truckList";
   static const userDriver = "/user/drivers";
   static const addUser = "/channel/addToChannel";
-  static const media = "/media/null";
+  static const media = "/media";
 }

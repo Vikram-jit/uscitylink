@@ -57,7 +57,7 @@ class HomeController extends GetxController {
     // 4) Reset group messages state and load first page
     final gm = Get.find<GroupMessageController>();
     gm.clearChat(); // like setMessage([]), reset pagination etc.
-    gm.loadMessages(id, 1); // initial page
+    gm.loadMessages(id, 1, "0"); // initial page
     // 5) Emit socket events (same as React)
     socket.emit('staff_open_truck__message_count', {'groupId': id, 'count': 0});
     socket.emit('staff_open_truck_chat', id);

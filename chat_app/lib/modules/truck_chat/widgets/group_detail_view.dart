@@ -455,7 +455,11 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                           ),
                                         );
                                         if (added == true) {
-                                          controller.loadMessages(group.id!, 1);
+                                          controller.loadMessages(
+                                            group.id!,
+                                            1,
+                                            "0",
+                                          );
                                         }
                                       },
                                 icon: const Icon(

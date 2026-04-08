@@ -37,7 +37,9 @@ class _GroupMessagesState extends State<GroupMessages> {
     if (position.pixels >= position.maxScrollExtent - 50 &&
         !controller.isLoading.value &&
         controller.hasMore.value) {
-      controller.loadMoreForCurrentGroup();
+      controller.loadMoreForCurrentGroup(
+        controller.currentTab.value == 2 ? "1" : "0",
+      );
     }
   }
 
@@ -105,6 +107,8 @@ class _GroupMessagesState extends State<GroupMessages> {
                 isMe: message.messageDirection == "R",
                 replyMessage: message.rMessage,
                 staffPin: message.staffPin ?? "",
+                onPin: () =>
+                    controller.pinMessage(message.id!, message.staffPin ?? "0"),
                 onReply: () => controller.selectMessageReply.value = message,
                 onDelete: () => controller.deleteMessage(message.id!),
                 onForward: () {

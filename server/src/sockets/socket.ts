@@ -739,7 +739,7 @@ export const initSocket = (httpServer: any) => {
 
     socket.on(
       SocketEvents.SEND_MESSAGE_TO_USER_BY_GROUP,
-      async ({ userId, groupId, body, direction, url, thumbnail }) =>
+      async ({ userId, groupId, body, direction, url, thumbnail,reply_message_id }) =>
         await messageToDriverByTruckGroup(
           io,
           socket,
@@ -748,7 +748,9 @@ export const initSocket = (httpServer: any) => {
           body,
           direction,
           url,
-          thumbnail
+          thumbnail,
+          
+          reply_message_id
         )
     );
 

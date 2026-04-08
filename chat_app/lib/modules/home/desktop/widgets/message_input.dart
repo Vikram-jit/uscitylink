@@ -4,6 +4,8 @@ import 'package:chat_app/models/message_response_model.dart' show Messages;
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/services/file_upload_service.dart';
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/widgets/file_viewer_gallery.dart';
+import 'package:chat_app/widgets/media_component.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -71,6 +73,61 @@ class _MessageInputState extends State<MessageInput> {
         mainAxisSize: MainAxisSize.min,
 
         children: [
+          Obx(() {
+            return _msgCtrl.selectTemplateUrl.value != null
+                ? Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Align(
+                              alignment: AlignmentGeometry.centerLeft,
+                              child: Text(
+                                "Selected Template:",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Spacer(),
+                            GestureDetector(
+                              onTap: () {
+                                _msgCtrl.selectTemplateUrl.value = null;
+                                _msgCtrl.msgInputController.clear();
+                              },
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: MediaComponent(
+                            isGalleryBool: false,
+                            initialIndex: 0,
+                            type: GallertType.MessageFiles,
+                            messageId:
+                                _msgCtrl.selectTemplateUrl.value?.id ?? "",
+                            url: _msgCtrl.selectTemplateUrl.value?.url ?? "-",
+                            fileName:
+                                _msgCtrl.selectTemplateUrl.value?.url ?? '',
+                            uploadType: 'server',
+                            messageDirection: "S",
+                            thumbnail: null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink();
+          }),
           Obx(() {
             final reply = _msgCtrl.selectMessageReply.value;
             if (reply == null) return const SizedBox.shrink();
@@ -374,10 +431,14 @@ class _MessageInputState extends State<MessageInput> {
         body: text,
         userId: _msgCtrl.userProfile.value.id ?? '',
         replyMessageId: _msgCtrl.selectMessageReply.value?.id ?? "",
+        url: _msgCtrl.selectTemplateUrl.value?.url ?? "",
       );
 
       if (_msgCtrl.selectMessageReply.value != null) {
         _msgCtrl.selectMessageReply.value = null;
+      }
+      if (_msgCtrl.selectTemplateUrl.value != null) {
+        _msgCtrl.selectTemplateUrl.value = null;
       }
     }
   }
