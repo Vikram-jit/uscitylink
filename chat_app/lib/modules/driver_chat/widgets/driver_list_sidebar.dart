@@ -3,7 +3,6 @@ import 'package:chat_app/core/theme/spacing.dart';
 import 'package:chat_app/core/theme/text_styles.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/user_status_tile.dart';
-import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -59,7 +58,7 @@ class DriverListSidebar extends StatelessWidget {
                     return false;
                   },
                   child: ListView.builder(
-                    controller: controller.scrollController,
+                    //controller: controller.scrollController,
                     itemCount:
                         controller.channelMembers.length +
                         (controller.hasMore.value ? 1 : 0),

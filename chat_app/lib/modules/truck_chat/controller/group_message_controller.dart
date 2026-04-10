@@ -46,7 +46,7 @@ class GroupMessageController extends GetxController {
 
   int totalPages = 1;
 
-  final ScrollController scrollController = ScrollController();
+  //final ScrollController scrollController = ScrollController();
   final channelId = "".obs;
 
   HomeController _homeController = Get.find<HomeController>();
@@ -69,7 +69,7 @@ class GroupMessageController extends GetxController {
     super.onInit();
     listenIncomingMessages();
     listenDriverTypling();
-    scrollController.addListener(() => onScroll());
+    //scrollController.addListener(() => onScroll());
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
     });
@@ -95,17 +95,17 @@ class GroupMessageController extends GetxController {
     });
   }
 
-  void onScroll() {
-    if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 50 &&
-        !isLoading.value &&
-        hasMore.value) {
-      loadMore(
-        _homeController.groupId.value,
-        currentTab.value == 2 ? "1" : "0",
-      );
-    }
-  }
+  // void onScroll() {
+  //   if (scrollController.position.pixels >=
+  //           scrollController.position.maxScrollExtent - 50 &&
+  //       !isLoading.value &&
+  //       hasMore.value) {
+  //     loadMore(
+  //       _homeController.groupId.value,
+  //       currentTab.value == 2 ? "1" : "0",
+  //     );
+  //   }
+  // }
 
   Future<void> loadMore(String userId, String pinMessage) async {
     if (!hasMore.value || isLoading.value) return;
@@ -518,8 +518,8 @@ class GroupMessageController extends GetxController {
   @override
   void onClose() {
     _typingTimer?.cancel();
-    scrollController.removeListener(onScroll);
-    scrollController.dispose();
+    // scrollController.removeListener(onScroll);
+    // scrollController.dispose();
     msgInputController.dispose();
     super.onClose();
   }

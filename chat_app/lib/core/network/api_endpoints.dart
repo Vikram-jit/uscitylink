@@ -16,4 +16,5 @@ class ApiEndpoints {
   static const userDriver = "/user/drivers";
   static const addUser = "/channel/addToChannel";
   static const media = "/media";
+  static const loginWithToken = "/auth/loginWithToken";
 }

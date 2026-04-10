@@ -66,65 +66,84 @@ class _GroupMessagesState extends State<GroupMessages> {
         );
       }
 
-      return ListView.builder(
-        controller: _scrollController,
-        reverse: true,
-        padding: const EdgeInsets.all(16),
-        itemCount: messages.length + (hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == messages.length) {
-            return const Padding(
-              padding: EdgeInsets.all(8),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          final message = messages[index];
-          final prevMessage = index + 1 < messages.length
-              ? messages[index + 1]
-              : null;
-
-          final bool showDateDivider =
-              prevMessage == null ||
-              !_isSameDay(
-                _parseDate(message.messageTimestampUtc),
-                _parseDate(prevMessage.messageTimestampUtc),
+      return NotificationListener(
+        onNotification: (scrollNotification) {
+          if (scrollNotification is ScrollEndNotification) {
+            final metrics = scrollNotification.metrics;
+            if (metrics.pixels >= metrics.maxScrollExtent - 100 &&
+                !controller.isLoading.value &&
+                controller.hasMore.value) {
+              controller.loadMoreForCurrentGroup(
+                controller.currentTab.value == 2 ? "1" : "0",
               );
-
-          return Column(
-            children: [
-              if (showDateDivider)
-                DateDivider(date: _parseDate(message.messageTimestampUtc)),
-              MessageBubble(
-                id: message.id!,
-                driverNumber: message.sender?.user?.driverNumber ?? "-",
-                thumbnail: message.thumbnail,
-                mediaUrl: message.url,
-                uploadType: message.urlUploadType,
-                name: message.sender?.username ?? "",
-                time: _formatTime(_parseDate(message.messageTimestampUtc)),
-                message: message.body ?? "",
-                isMe: message.messageDirection == "R",
-                replyMessage: message.rMessage,
-                staffPin: message.staffPin ?? "",
-                onPin: () =>
-                    controller.pinMessage(message.id!, message.staffPin ?? "0"),
-                onReply: () => controller.selectMessageReply.value = message,
-                onDelete: () => controller.deleteMessage(message.id!),
-                onForward: () {
-                  if (!Get.isRegistered<ForwardMessageController>(
-                    tag: 'forward',
-                  )) {
-                    Get.put(ForwardMessageController(), tag: 'forward');
-                  }
-                  Get.dialog(ForwardMessageDialog(message: message)).then((_) {
-                    Get.delete<ForwardMessageController>(tag: 'forward');
-                  });
-                },
-              ),
-            ],
-          );
+            }
+          }
+          return false;
         },
+        child: ListView.builder(
+          //controller: _scrollController,
+          reverse: true,
+          padding: const EdgeInsets.all(16),
+          itemCount: messages.length + (hasMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == messages.length) {
+              return const Padding(
+                padding: EdgeInsets.all(8),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final message = messages[index];
+            final prevMessage = index + 1 < messages.length
+                ? messages[index + 1]
+                : null;
+
+            final bool showDateDivider =
+                prevMessage == null ||
+                !_isSameDay(
+                  _parseDate(message.messageTimestampUtc),
+                  _parseDate(prevMessage.messageTimestampUtc),
+                );
+
+            return Column(
+              children: [
+                if (showDateDivider)
+                  DateDivider(date: _parseDate(message.messageTimestampUtc)),
+                MessageBubble(
+                  id: message.id!,
+                  driverNumber: message.sender?.user?.driverNumber ?? "-",
+                  thumbnail: message.thumbnail,
+                  mediaUrl: message.url,
+                  uploadType: message.urlUploadType,
+                  name: message.sender?.username ?? "",
+                  time: _formatTime(_parseDate(message.messageTimestampUtc)),
+                  message: message.body ?? "",
+                  isMe: message.messageDirection == "R",
+                  replyMessage: message.rMessage,
+                  staffPin: message.staffPin ?? "",
+                  onPin: () => controller.pinMessage(
+                    message.id!,
+                    message.staffPin ?? "0",
+                  ),
+                  onReply: () => controller.selectMessageReply.value = message,
+                  onDelete: () => controller.deleteMessage(message.id!),
+                  onForward: () {
+                    if (!Get.isRegistered<ForwardMessageController>(
+                      tag: 'forward',
+                    )) {
+                      Get.put(ForwardMessageController(), tag: 'forward');
+                    }
+                    Get.dialog(ForwardMessageDialog(message: message)).then((
+                      _,
+                    ) {
+                      Get.delete<ForwardMessageController>(tag: 'forward');
+                    });
+                  },
+                ),
+              ],
+            );
+          },
+        ),
       );
     });
   }

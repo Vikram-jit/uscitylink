@@ -49,23 +49,23 @@ class MessageController extends GetxController {
 
   //final ScrollController scrollController = ScrollController();
 
-  ScrollController? _scrollController;
+  // ScrollController? _scrollController;
 
-  ScrollController get scrollController {
-    // If disposed or not yet created, make a fresh one
-    if (_scrollController == null || !_scrollController!.hasClients) {
-      _scrollController?.dispose();
-      _scrollController = ScrollController();
-      _scrollController!.addListener(onScroll);
-    }
-    return _scrollController!;
-  }
+  // ScrollController get scrollController {
+  //   // If disposed or not yet created, make a fresh one
+  //   if (_scrollController == null || !_scrollController!.hasClients) {
+  //     _scrollController?.dispose();
+  //     _scrollController = ScrollController();
+  //     _scrollController!.addListener(onScroll);
+  //   }
+  //   return _scrollController!;
+  // }
 
-  void resetScrollController() {
-    _scrollController?.removeListener(onScroll);
-    _scrollController?.dispose();
-    _scrollController = null;
-  }
+  // void resetScrollController() {
+  //   _scrollController?.removeListener(onScroll);
+  //   _scrollController?.dispose();
+  //   _scrollController = null;
+  // }
 
   final channelId = "".obs;
 
@@ -111,15 +111,15 @@ class MessageController extends GetxController {
     });
   }
 
-  void onScroll() {
-    // reverse list → top reached
-    if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 40 &&
-        !isLoading.value &&
-        hasMore.value) {
-      loadMore(_homeController.driverId.value);
-    }
-  }
+  // void onScroll() {
+  //   // reverse list → top reached
+  //   if (scrollController.position.pixels >=
+  //           scrollController.position.maxScrollExtent - 40 &&
+  //       !isLoading.value &&
+  //       hasMore.value) {
+  //     loadMore(_homeController.driverId.value);
+  //   }
+  // }
 
   Future<void> loadMoreMedia(String userId, MediaGallerySource source) async {
     if (!hasMoreMedia.value || isLoading.value) return;
@@ -213,16 +213,16 @@ class MessageController extends GetxController {
     hasMore.value = true;
     media.clear();
     hasMoreMedia.value = true;
-    resetScrollController();
+    //  resetScrollController();
   }
 
   Future<void> loadMessages(String userId, int page) async {
     try {
-      resetScrollController();
+      // resetScrollController();
 
-      if (scrollController.hasClients) {
-        scrollController.jumpTo(0);
-      }
+      // if (scrollController.hasClients) {
+      //   scrollController.jumpTo(0);
+      // }
 
       isLoading.value = true;
       currentPage.value = page;
@@ -487,9 +487,9 @@ class MessageController extends GetxController {
   @override
   void onClose() {
     _typingTimer?.cancel();
-    _scrollController?.removeListener(onScroll);
-    _scrollController?.dispose();
-    _scrollController = null;
+    // _scrollController?.removeListener(onScroll);
+    // _scrollController?.dispose();
+    // _scrollController = null;
     msgInputController.dispose();
     super.onClose();
   }

@@ -15,11 +15,12 @@ class GroupController extends GetxController {
   int totalPages = 0;
 
   final hasMore = true.obs;
-  final ScrollController scrollController = ScrollController();
+  //final ScrollController scrollController = ScrollController();
 
   @override
   void onInit() {
     super.onInit();
+    //scrollController.addListener(_onScroll);
   }
 
   @override
@@ -31,26 +32,25 @@ class GroupController extends GetxController {
         !isLoading.value) {
       refreshData();
       getGroups(page: currentPage.value);
-      scrollController.removeListener(_onScroll);
-      scrollController.addListener(_onScroll);
+      // scrollController.removeListener(_onScroll);
+      // scrollController.addListener(_onScroll);
     }
   }
 
-  void _onScroll() {
-    if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 80 &&
-        !isLoading.value &&
-        hasMore.value) {
-      // Calculate next page
-      final nextPage = currentPage.value + 1;
-      getGroups(page: nextPage);
-    }
-  }
+  // void _onScroll() {
+  //   if (scrollController.position.pixels >=
+  //           scrollController.position.maxScrollExtent - 80 &&
+  //       !isLoading.value &&
+  //       hasMore.value) {
+  //     // Calculate next page
+  //     final nextPage = currentPage.value + 1;
+  //     getGroups(page: nextPage);
+  //   }
+  // }
 
-  void attachScroll() {
-    scrollController.removeListener(_onScroll);
-    scrollController.addListener(_onScroll);
-  }
+  // void attachScroll() {
+  //   scrollController.removeListener(_onScroll);
+  // }
 
   void resetPagination() {
     isLoading.value = false;
@@ -60,6 +60,13 @@ class GroupController extends GetxController {
     totalPages = 0;
     groups.clear();
     print('Pagination reset');
+  }
+
+  @override
+  void onClose() {
+    // scrollController.removeListener(_onScroll);
+    // scrollController.dispose();
+    super.onClose();
   }
 
   Future<void> getGroups({int page = 1}) async {

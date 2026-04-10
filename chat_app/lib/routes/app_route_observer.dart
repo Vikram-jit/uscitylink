@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/modules/broadcast_messages/Broadcast_controller.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_controller.dart';
@@ -42,9 +45,9 @@ class AppRouteObserver extends GetObserver {
 
     if (routeName == AppRoutes.truckChat) {
       final controller = Get.find<GroupController>();
-
+      SocketService().emit("staff_open_chat", "");
       controller.refreshData();
-      controller.attachScroll();
+      //controller.attachScroll();
     }
     if (routeName == AppRoutes.broadcastMessages) {
       final controller = Get.find<BroadcastController>();

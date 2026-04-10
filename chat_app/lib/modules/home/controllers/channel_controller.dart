@@ -40,7 +40,7 @@ class ChannelController extends GetxController {
   final isLoadingFirst = false.obs;
   final isLoadingMore = false.obs;
   final hasMore = true.obs;
-  final ScrollController scrollController = ScrollController();
+  //final ScrollController scrollController = ScrollController();
 
   @override
   void onInit() {
@@ -56,8 +56,8 @@ class ChannelController extends GetxController {
       resetPagination();
       getChannelMembers(page: 1);
 
-      scrollController.removeListener(_onScroll);
-      scrollController.addListener(_onScroll);
+      // scrollController.removeListener(_onScroll);
+      //scrollController.addListener(_onScroll);
     }
   }
 
@@ -219,16 +219,16 @@ class ChannelController extends GetxController {
     }
   }
 
-  void _onScroll() {
-    if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 80 &&
-        !isLoading.value &&
-        hasMore.value) {
-      // Calculate next page
-      final nextPage = currentPage.value + 1;
-      getChannelMembers(page: nextPage);
-    }
-  }
+  // void _onScroll() {
+  //   if (scrollController.position.pixels >=
+  //           scrollController.position.maxScrollExtent - 80 &&
+  //       !isLoading.value &&
+  //       hasMore.value) {
+  //     // Calculate next page
+  //     final nextPage = currentPage.value + 1;
+  //     getChannelMembers(page: nextPage);
+  //   }
+  // }
 
   void resetPagination() {
     isLoadingM.value = false;
@@ -282,9 +282,9 @@ class ChannelController extends GetxController {
     }
   }
 
-  attachScroll() {
-    scrollController.addListener(_onScroll);
-  }
+  // attachScroll() {
+  //   scrollController.addListener(_onScroll);
+  // }
 
   Future<void> getChannelMembers({int page = 1, String search = ""}) async {
     if (isLoadingM.value) return;
@@ -363,7 +363,7 @@ class ChannelController extends GetxController {
 
   @override
   void onClose() {
-    scrollController.dispose();
+    // scrollController.dispose();
     super.onClose();
   }
 }

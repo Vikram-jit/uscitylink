@@ -5,13 +5,13 @@ class AuthModel {
   AuthModel({this.accessToken, this.user});
 
   AuthModel.fromJson(Map<String, dynamic> json) {
-    accessToken = json['access_token'];
+    accessToken = json['access_toke'] ?? json['access_token'];
     user = json['user'] != null ? new User.fromJson(json['user']) : null;
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['access_token'] = this.accessToken;
+    data['access_toke'] = this.accessToken;
     if (this.user != null) {
       data['user'] = this.user!.toJson();
     }
@@ -23,17 +23,17 @@ class User {
   String? id;
   String? userId;
   String? username;
-  Null? profilePic;
+  String? profilePic;
   String? password;
   String? status;
   String? version;
   String? buildNumber;
   String? appUpdate;
   String? roleId;
-  Null? lastMessageId;
+  String? lastMessageId;
   bool? isOnline;
-  Null? deviceId;
-  Null? deviceToken;
+  String? deviceId;
+  String? deviceToken;
   String? platform;
   String? lastLogin;
   String? channelId;
@@ -70,7 +70,8 @@ class User {
     username = json['username'];
     profilePic = json['profile_pic'];
     password = json['password'];
-    status = json['status'];
+    status = json['status']?.toString();
+
     version = json['version'];
     buildNumber = json['buildNumber'];
     appUpdate = json['appUpdate'];
@@ -94,7 +95,7 @@ class User {
     data['username'] = this.username;
     data['profile_pic'] = this.profilePic;
     data['password'] = this.password;
-    data['status'] = this.status;
+    data['status'] = this.status?.toString();
     data['version'] = this.version;
     data['buildNumber'] = this.buildNumber;
     data['appUpdate'] = this.appUpdate;

@@ -52,7 +52,7 @@ class GroupList extends StatelessWidget {
                     return false;
                   },
                   child: ListView.builder(
-                    controller: controller.scrollController,
+                    //controller: controller.scrollController,
                     itemCount:
                         controller.groups.length +
                         (controller.hasMore.value ? 1 : 0),

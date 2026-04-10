@@ -194,9 +194,9 @@ class GlobalSearchController extends GetxController {
     // 2. Detach scroll listener to prevent memory leaks / disposed view errors
     // msgController.scrollController?.removeListener(msgController.onScroll);
 
-    groupMsgController?.scrollController?.removeListener(
-      groupMsgController.onScroll,
-    );
+    // groupMsgController?.scrollController?.removeListener(
+    //   groupMsgController.onScroll,
+    // );
 
     // 3. Optionally reset tab back to messages
     msgController.currentTab.value = 0;
