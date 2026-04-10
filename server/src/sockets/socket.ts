@@ -933,8 +933,12 @@ export const initSocket = (httpServer: any) => {
         }
       });
         //Web Channel LeftBar
+        console.log(global.staffActiveChannel,"staff===================");
+
        Object.entries(global.staffActiveChannel).map(async ([key, value]) => {
             const isSocket = global.userSockets[key];
+            console.log(value.channelId,data.channelId,"===================");
+            console.log(isSocket.id,"Socket ===================");
              let message = `User Typing....`;
           if (driver) {
             message = `${driver.name} Typing....`;
@@ -1023,8 +1027,11 @@ export const initSocket = (httpServer: any) => {
     });
     socket.on("ping", () => {
       console.log("Received ping from client");
+   
+      global.userSockets[socket?.user?.id!]=socket;
       socket.emit("pong"); // Send back pong message
     });
+  
     socket.on("disconnect", async () => {
       console.log("disconnect");
       const userId = socket?.user?.id!;

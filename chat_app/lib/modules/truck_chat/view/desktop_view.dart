@@ -48,6 +48,7 @@ class DesktopView extends StatelessWidget {
                           height: 30,
                           width: MediaQuery.of(context).size.width * 0.5,
                           child: TextField(
+                            controller: searchCtrl.searchController,
                             key: searchKey,
                             onChanged: (value) => searchCtrl.onSearchChanged(
                               value,

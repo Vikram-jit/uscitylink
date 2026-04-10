@@ -59,7 +59,7 @@ class SocketService extends GetxController {
       } else {
         // Optional: send ping event
         socket!.emit("ping", {"time": DateTime.now().toIso8601String()});
-        debugPrint("✅ Socket alive");
+        debugPrint("✅ Socket alive ${socket!.id}");
       }
     });
   }

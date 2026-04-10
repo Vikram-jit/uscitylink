@@ -77,11 +77,7 @@ class AddGroupDialog extends StatelessWidget {
                   children: [
                     // Group Name / Truck Selection
                     if (type == "truck")
-                      Column(
-                        children: [
-                          _buildTruckPickerField(context),
-                        ],
-                      )
+                      Column(children: [_buildTruckPickerField(context)])
                     else
                       _buildGroupNameField(),
 
@@ -275,7 +271,8 @@ class AddGroupDialog extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      controller.selectedTruck.value?.number ?? "Choose a truck",
+                      controller.selectedTruck.value?.number ??
+                          "Choose a truck",
                       style: TextStyle(
                         color: controller.selectedTruck.value == null
                             ? Colors.grey.shade600
@@ -284,10 +281,7 @@ class AddGroupDialog extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Colors.grey.shade700,
-                  ),
+                  Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700),
                 ],
               ),
             ),
@@ -305,7 +299,9 @@ class AddGroupDialog extends StatelessWidget {
       barrierDismissible: true,
       builder: (ctx) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Container(
             width: 520,
             constraints: const BoxConstraints(maxHeight: 520),
@@ -382,9 +378,9 @@ class AddGroupDialog extends StatelessWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .primaryColor
-                                  .withOpacity(0.1),
+                              color: Theme.of(
+                                context,
+                              ).primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
@@ -394,9 +390,7 @@ class AddGroupDialog extends StatelessWidget {
                           ),
                           title: Text(
                             truck.number ?? "-",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           trailing: selected
                               ? Icon(

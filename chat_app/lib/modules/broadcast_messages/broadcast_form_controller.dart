@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:js_interop'; // Mandatory for .toDart getter
 import 'dart:typed_data';
+import 'package:chat_app/core/controller/global_loader_controller.dart';
 import 'package:chat_app/core/widgets/app_snackbar.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:dio/dio.dart';
-import 'package:web/web.dart' as web; // Modern 2026 standard for Web/Wasm
 
 import 'package:chat_app/core/network/dio_client.dart';
 import 'package:chat_app/core/services/socket_service.dart';
@@ -17,7 +19,6 @@ import 'package:chat_app/modules/broadcast_messages/Broadcast_controller.dart';
 class BroadcastFormController extends GetxController {
   // ================= STATE =================
   final mode = "specific".obs;
-  final message = "".obs;
   final url = "".obs;
   final messageController = TextEditingController();
 
@@ -32,11 +33,13 @@ class BroadcastFormController extends GetxController {
   final isLoading = false.obs;
   final hasMore = true.obs;
   final search = "".obs;
-
+  Rx<PlatformFile?> pendingFile = Rx<PlatformFile?>(null);
   int page = 1;
   final int pageSize = 30;
 
   final ScrollController scrollController = ScrollController();
+
+  GlobalLoaderController globalLoader = Get.find<GlobalLoaderController>();
   Timer? _debounce;
 
   @override
@@ -48,80 +51,89 @@ class BroadcastFormController extends GetxController {
   }
 
   // ================= Wasm-Safe File Picker =================
-  void pickFile() {
-    // 1. Create a hidden HTML input element
-    final web.HTMLInputElement input =
-        web.document.createElement('input') as web.HTMLInputElement;
-    input.type = 'file';
-    input.accept = 'image/*,application/pdf,.doc,.docx';
+  void pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty) return;
+      pendingFile.value = result.files.first;
+    } on PlatformException catch (e) {
+      AppSnackbar.error('Unsupported operation: $e');
+    } catch (e) {
+      AppSnackbar.error(e.toString());
+    }
+    // // 1. Create a hidden HTML input element
+    // final web.HTMLInputElement input =
+    //     web.document.createElement('input') as web.HTMLInputElement;
+    // input.type = 'file';
+    // input.accept = 'image/*,application/pdf,.doc,.docx';
 
-    input.onChange.listen((event) {
-      final files = input.files;
-      if (files != null && files.length > 0) {
-        final file = files.item(0)!;
-        final reader = web.FileReader();
+    // input.onChange.listen((event) {
+    //   final files = input.files;
+    //   if (files != null && files.length > 0) {
+    //     final file = files.item(0)!;
+    //     final reader = web.FileReader();
 
-        pickedFileName.value = file.name;
+    //     pickedFileName.value = file.name;
 
-        // 2. Read the file into memory
-        reader.readAsArrayBuffer(file);
-        reader.onLoadEnd.listen((e) {
-          final JSAny? result = reader.result;
-          if (result != null) {
-            try {
-              // 3. Cast to JS Interop type
-              final JSArrayBuffer buffer = result as JSArrayBuffer;
+    //     // 2. Read the file into memory
+    //     reader.readAsArrayBuffer(file);
+    //     reader.onLoadEnd.listen((e) {
+    //       final JSAny? result = reader.result;
+    //       if (result != null) {
+    //         try {
+    //           // 3. Cast to JS Interop type
+    //           final JSArrayBuffer buffer = result as JSArrayBuffer;
 
-              // 4. Convert using the .toDart GETTER (No parentheses)
-              final ByteBuffer dartBuffer = buffer.toDart;
+    //           // 4. Convert using the .toDart GETTER (No parentheses)
+    //           final ByteBuffer dartBuffer = buffer.toDart;
 
-              // 5. Assign as Uint8List
-              pickedBytes.value = dartBuffer.asUint8List();
+    //           // 5. Assign as Uint8List
+    //           pickedBytes.value = dartBuffer.asUint8List();
 
-              print("File loaded: ${pickedFileName.value}");
-            } catch (err) {
-              print("Conversion error: $err");
-            }
-          }
-        });
-      }
-    });
+    //           print("File loaded: ${pickedFileName.value}");
+    //         } catch (err) {
+    //           print("Conversion error: $err");
+    //         }
+    //       }
+    //     });
+    //   }
+    // });
 
-    // 6. Trigger the system dialog
-    input.click();
+    // // 6. Trigger the system dialog
+    // input.click();
   }
 
   // ================= SEND MESSAGE =================
   Future<void> sendMessage() async {
     try {
-      if (message.value.trim().isEmpty && pickedBytes.value == null) return;
-
+      if (messageController.text.trim().isEmpty) return;
+      print(isAllSelected.value);
       if (!isAllSelected.value && selectedUsers.isEmpty) {
         AppSnackbar.error("Select at least one user");
         return;
       }
 
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
+      globalLoader.show();
 
       final userIds = isAllSelected.value
-          ? []
+          ? users.map((u) => u.userProfile?.id).toList()
           : selectedUsers.map((u) => u.userProfile?.id).toList();
-
+      print(userIds);
       // ================= FILE UPLOAD LOGIC =================
-      if (pickedBytes.value != null) {
+      if (pendingFile.value != null) {
         FormData formData = FormData.fromMap({
           "file": MultipartFile.fromBytes(
-            pickedBytes.value!,
-            filename: pickedFileName.value,
+            pendingFile.value!.bytes!,
+            filename: pendingFile.value!.name,
           ),
           "isMultiple": "true",
           "userId": jsonEncode(userIds),
           "source": "message",
           // Check extension from filename
-          "type": _isImage(pickedFileName.value) ? "media" : "doc",
+          "type": _isImage(pendingFile.value!.name) ? "media" : "doc",
         });
 
         final res = await DioClient().dio.post(
@@ -131,7 +143,7 @@ class BroadcastFormController extends GetxController {
         final data = res.data;
 
         SocketService().emit("broadcast_to_user", {
-          "body": message.value,
+          "body": messageController.text.trim(),
           "userId": jsonEncode(userIds),
           "direction": "S",
           "url": data["data"]["key"],
@@ -141,7 +153,7 @@ class BroadcastFormController extends GetxController {
       } else {
         // Text-only broadcast
         SocketService().emit("broadcast_to_user", {
-          "body": message.value,
+          "body": messageController.text.trim(),
           "userId": jsonEncode(userIds),
           "direction": "S",
           if (url.value.isNotEmpty) "url": url.value,
@@ -150,22 +162,23 @@ class BroadcastFormController extends GetxController {
       }
 
       _finishAndReset();
+
       AppSnackbar.success("Message sent successfully");
     } catch (e) {
-      if (Get.isDialogOpen ?? false) Get.back();
+      globalLoader.show();
       AppSnackbar.error("Failed to send message: $e");
     }
   }
 
   void _finishAndReset() {
-    if (Get.isDialogOpen ?? false) Get.back();
+    globalLoader.hide();
     messageController.clear();
-    message.value = "";
+
     pickedBytes.value = null;
     pickedFileName.value = "";
     selectedUsers.clear();
     isAllSelected.value = false;
-
+    pendingFile.value = null;
     try {
       Get.find<BroadcastController>().init();
     } catch (e) {
@@ -249,6 +262,7 @@ class BroadcastFormController extends GetxController {
 
   @override
   void onClose() {
+    pendingFile.value = null;
     scrollController.dispose();
     _debounce?.cancel();
     super.onClose();

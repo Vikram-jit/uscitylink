@@ -69,7 +69,7 @@ class GroupMessageController extends GetxController {
     super.onInit();
     listenIncomingMessages();
     listenDriverTypling();
-    scrollController.addListener(() => _onScroll());
+    scrollController.addListener(() => onScroll());
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
     });
@@ -95,7 +95,7 @@ class GroupMessageController extends GetxController {
     });
   }
 
-  void _onScroll() {
+  void onScroll() {
     if (scrollController.position.pixels >=
             scrollController.position.maxScrollExtent - 50 &&
         !isLoading.value &&
@@ -518,6 +518,7 @@ class GroupMessageController extends GetxController {
   @override
   void onClose() {
     _typingTimer?.cancel();
+    scrollController.removeListener(onScroll);
     scrollController.dispose();
     msgInputController.dispose();
     super.onClose();

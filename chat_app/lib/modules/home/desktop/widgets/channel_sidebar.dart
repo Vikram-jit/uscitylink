@@ -18,11 +18,19 @@ class ChannelSidebar extends StatefulWidget {
 }
 
 class _ChannelSidebarState extends State<ChannelSidebar> {
+  // ✅ Plain bools — always toggled via setState, never inside Obx
   bool channelsOpen = true;
   bool dmOpen = true;
   bool tOpen = true;
-  OverviewController _overviewController = Get.find<OverviewController>();
-  HomeController _homeController = Get.find<HomeController>();
+
+  // ✅ Lazy getters — never captured at field level to avoid stale refs
+  OverviewController get _overview => Get.find<OverviewController>();
+  HomeController get _home => Get.find<HomeController>();
+
+  void _toggle(bool current, void Function(bool) setter) {
+    setState(() => setter(!current));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -36,6 +44,7 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
       ),
       child: Column(
         children: [
+          // ── Header ──
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: Space.lg,
@@ -47,30 +56,13 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
                     child: GestureDetector(
-                      child: Text("US CITY LINK", style: TStyle.channelTitle),
                       onTap: () {
-                        _homeController.currentView.value =
-                            SidebarViewType.home;
-                        _homeController.selectedName.value = "";
+                        _home.currentView.value = SidebarViewType.home;
+                        _home.selectedName.value = '';
                       },
+                      child: Text('US CITY LINK', style: TStyle.channelTitle),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.settings,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.add,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  onPressed: () {},
                 ),
               ],
             ),
@@ -78,110 +70,99 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
 
           const Divider(color: Colors.white12, height: 1),
 
-          // 🔹 Body Content Scroll
+          // ── Scrollable body ──
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
               children: [
-                // ==================== CHANNELS ====================
-                _sectionHeader(
-                  "Channels",
-                  channelsOpen,
-                  () => setState(() => channelsOpen = !channelsOpen),
+                // ── Channels section ──
+                _SectionHeader(
+                  title: 'Channels',
+                  open: channelsOpen,
+                  onTap: () => _toggle(channelsOpen, (v) => channelsOpen = v),
                 ),
 
                 if (channelsOpen) ...[
                   ChannelTile(
-                    "Channels",
+                    'Channels',
                     icon: Icons.ac_unit,
                     sidebarViewType: SidebarViewType.channel,
                   ),
                   ChannelTile(
-                    "Channel Memmbers",
+                    'Channel Members',
                     icon: Icons.groups,
                     sidebarViewType: SidebarViewType.channelMembers,
                   ),
                   ChannelTile(
-                    "Templates",
+                    'Templates',
                     icon: Icons.brush,
                     sidebarViewType: SidebarViewType.template,
                   ),
-                  //ChannelTile("Users", icon: Icons.person_off),
                   ChannelTile(
-                    "Drivers",
+                    'Drivers',
                     icon: Icons.drive_eta,
                     sidebarViewType: SidebarViewType.driver,
                   ),
                   ChannelTile(
-                    "Users",
+                    'Users',
                     icon: Icons.person,
                     sidebarViewType: SidebarViewType.users,
                   ),
-                  // ChannelTile("Announcements", icon: Icons.campaign),
                 ],
 
                 const SizedBox(height: 10),
 
-                // ==================== DIRECT MESSAGES ====================
-                Obx(
-                  () => Column(
-                    children: [
-                      _sectionHeader(
-                        "Direct Messages",
-                        dmOpen,
-                        () => dmOpen = !dmOpen,
-                      ),
-
-                      if (dmOpen) ...[
-                        for (var driver
-                            in _overviewController
-                                    .overview
-                                    .value
-                                    .onlineDrivers ??
-                                [])
-                          UserStatusTile(
-                            name: driver.profiles?[0].username ?? "-",
-                            id: driver.profiles?[0].id ?? "-",
-                            isOnline: driver.profiles?[0].isOnline ?? false,
-                            isTyping: _overviewController.isUserTyping(
-                              driver.profiles?[0].id,
-                            ),
-                            unreadCount: driver?.unreadCount ?? 0,
-                          ),
-                      ],
-                    ],
-                  ),
+                // ── Direct Messages section ──
+                // ✅ Only the list data is inside Obx — toggle state stays outside
+                _SectionHeader(
+                  title: 'Direct Messages',
+                  open: dmOpen,
+                  onTap: () => _toggle(dmOpen, (v) => dmOpen = v),
                 ),
+
+                if (dmOpen)
+                  Obx(() {
+                    final drivers =
+                        _overview.overview.value.onlineDrivers ?? [];
+                    return Column(
+                      children: drivers.map((driver) {
+                        final profile = driver.profiles?.isNotEmpty == true
+                            ? driver.profiles![0]
+                            : null;
+                        return UserStatusTile(
+                          name: profile?.username ?? '—',
+                          id: profile?.id ?? '—',
+                          isOnline: profile?.isOnline ?? false,
+                          isTyping: _overview.isUserTyping(profile?.id ?? ''),
+                          unreadCount: driver.unreadCount ?? 0,
+                        );
+                      }).toList(),
+                    );
+                  }),
 
                 const SizedBox(height: 10),
 
-                // ==================== TRUCK MESSAGES ====================
-                Obx(
-                  () => Column(
-                    children: [
-                      _sectionHeader(
-                        "Truck Groups",
-                        tOpen,
-                        () => tOpen = !tOpen,
-                      ),
-
-                      if (tOpen) ...[
-                        for (var truck
-                            in _overviewController
-                                    .overview
-                                    .value
-                                    .trucksgroups ??
-                                [])
-                          UserStatusTile(
-                            name: truck.name ?? "-",
-                            id: truck.id ?? "-",
-                            isOnline: false,
-                            type: TYPE.truck,
-                          ),
-                      ],
-                    ],
-                  ),
+                // ── Truck Groups section ──
+                _SectionHeader(
+                  title: 'Truck Groups',
+                  open: tOpen,
+                  onTap: () => _toggle(tOpen, (v) => tOpen = v),
                 ),
+
+                if (tOpen)
+                  Obx(() {
+                    final trucks = _overview.overview.value.trucksgroups ?? [];
+                    return Column(
+                      children: trucks.map((truck) {
+                        return UserStatusTile(
+                          name: truck.name ?? '—',
+                          id: truck.id ?? '—',
+                          isOnline: false,
+                          type: TYPE.truck,
+                        );
+                      }).toList(),
+                    );
+                  }),
               ],
             ),
           ),
@@ -189,12 +170,29 @@ class _ChannelSidebarState extends State<ChannelSidebar> {
       ),
     );
   }
+}
 
-  // 🔹 Collapsible Section Header
-  Widget _sectionHeader(String title, bool open, VoidCallback onTap) {
+// ─────────────────────────────────────────────────────────────
+// Section header — extracted as const-friendly widget
+// ─────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final bool open;
+  final VoidCallback onTap;
+
+  const _SectionHeader({
+    required this.title,
+    required this.open,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: Row(
           children: [

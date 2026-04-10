@@ -26,7 +26,7 @@ class _MessageListState extends State<MessageList> {
   void dispose() {
     // Detach cleanly when this widget leaves the tree
     // so the controller's scrollController has no stale attachment
-    _c.resetScrollController();
+
     super.dispose();
   }
 

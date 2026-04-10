@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:chat_app/core/controller/global_loader_controller.dart';
 import 'package:chat_app/core/services/socket_service.dart';
+import 'package:chat_app/core/widgets/app_snackbar.dart';
+import 'package:chat_app/core/widgets/global_loader.dart';
 import 'package:chat_app/models/message_response_model.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/desktop/widgets/media_gallery.dart';
@@ -9,7 +12,9 @@ import 'package:chat_app/modules/home/models/media_model.dart';
 import 'package:chat_app/modules/home/models/message_model.dart';
 import 'package:chat_app/modules/home/models/template_model.dart';
 import 'package:chat_app/modules/home/models/user_profile_model.dart';
+import 'package:chat_app/modules/home/services/file_upload_service.dart';
 import 'package:chat_app/modules/home/services/message_service.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -23,11 +28,12 @@ class MessageController extends GetxController {
   final userProfile = UserProfileModel().obs;
   final selectMessageReply = Rxn<Messages>();
   final selectTemplateUrl = Rxn<Template>();
-
+  GlobalLoaderController globalLoader = Get.find<GlobalLoaderController>();
   RxString truckNumber = "".obs;
   RxInt currentPage = 1.obs;
   int itemsPerPage = 10;
   int totalItems = 0;
+  PlatformFile? pendingFile;
 
   final isAtBottom = true.obs;
   final showScrollToBottomButton = false.obs;
@@ -50,13 +56,13 @@ class MessageController extends GetxController {
     if (_scrollController == null || !_scrollController!.hasClients) {
       _scrollController?.dispose();
       _scrollController = ScrollController();
-      _scrollController!.addListener(_onScroll);
+      _scrollController!.addListener(onScroll);
     }
     return _scrollController!;
   }
 
   void resetScrollController() {
-    _scrollController?.removeListener(_onScroll);
+    _scrollController?.removeListener(onScroll);
     _scrollController?.dispose();
     _scrollController = null;
   }
@@ -80,7 +86,6 @@ class MessageController extends GetxController {
     super.onInit();
     listenIncomingMessages();
     listenDriverTypling();
-    // scrollController.addListener(_onScroll);
     msgInputController.addListener(() {
       msgText.value = msgInputController.text.trim();
     });
@@ -106,7 +111,7 @@ class MessageController extends GetxController {
     });
   }
 
-  void _onScroll() {
+  void onScroll() {
     // reverse list → top reached
     if (scrollController.position.pixels >=
             scrollController.position.maxScrollExtent - 40 &&
@@ -423,6 +428,40 @@ class MessageController extends GetxController {
     }
   }
 
+  Future<bool> sendFile() async {
+    globalLoader.show();
+    String url = "";
+    final userIds = _homeController.driverId.value;
+
+    if (pendingFile != null) {
+      final resFile = await FileUploadService().uploadForUserMessage(
+        file: pendingFile!,
+        userId: userIds,
+        groupId: '',
+      );
+      if (!resFile.status || resFile.key == null) {
+        AppSnackbar.error('File upload failed, please try again.');
+        globalLoader.hide();
+        return false;
+      }
+      url = resFile.key!;
+    }
+    globalLoader.hide();
+    final payload = {
+      "body": msgInputController.text.trim(),
+      "userId": userIds,
+      "direction": "S",
+      "url": url.isNotEmpty ? url : null,
+      "thumbnail": '',
+    };
+
+    SocketService().emit("send_message_to_user", payload);
+    pendingFile = null;
+    msgInputController.clear();
+
+    return true;
+  }
+
   void updateLastMessage({
     required String userProfileId,
     required Messages message,
@@ -448,7 +487,7 @@ class MessageController extends GetxController {
   @override
   void onClose() {
     _typingTimer?.cancel();
-    _scrollController?.removeListener(_onScroll);
+    _scrollController?.removeListener(onScroll);
     _scrollController?.dispose();
     _scrollController = null;
     msgInputController.dispose();

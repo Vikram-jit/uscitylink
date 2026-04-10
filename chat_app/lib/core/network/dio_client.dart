@@ -25,6 +25,6 @@ class DioClient {
 
     // Attach interceptors
     dio.interceptors.add(AuthInterceptor());
-    dio.interceptors.add(LoggerInterceptor()); // remove on production if needed
+    // dio.interceptors.add(LoggerInterceptor()); // remove on production if needed
   }
 }

@@ -40,7 +40,6 @@ class OverviewScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Text(
               "Overview",
               style: GoogleFonts.poppins(
@@ -51,7 +50,6 @@ class OverviewScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // HORIZONTAL CHIPS
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(

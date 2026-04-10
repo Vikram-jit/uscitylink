@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:chat_app/widgets/chat_conversation_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,7 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 class GlobalSearchController extends GetxController {
   RxList<dynamic> results = <dynamic>[].obs;
   RxBool isLoading = false.obs;
-
+  final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
   OverlayEntry? _overlayEntry;
 
@@ -144,7 +145,7 @@ class GlobalSearchController extends GetxController {
     );
   }
 
-  void openChatInDialog() {
+  void openChatInDialog(String type) {
     Get.dialog(
       Dialog(
         insetPadding: const EdgeInsets.all(16),
@@ -153,24 +154,77 @@ class GlobalSearchController extends GetxController {
           width: Get.width * 0.8,
           height: Get.height * 0.8,
           child: ChatConversationView(
+            type: type,
             controller: Get.find<HomeController>(),
             msgController: Get.find<MessageController>(),
+            groupMsgController: Get.find<GroupMessageController>(),
           ),
         ),
       ),
       barrierDismissible: true,
+    ).then((_) {
+      searchController.clear();
+      // ── Called when dialog is closed (any method) ──
+      _cleanUpAfterDialogClose(
+        Get.find<HomeController>(),
+        Get.find<MessageController>(),
+        Get.isRegistered<GroupMessageController>()
+            ? Get.find<GroupMessageController>()
+            : null,
+      );
+    });
+    ;
+  }
+
+  void _cleanUpAfterDialogClose(
+    HomeController homeController,
+    MessageController msgController,
+    GroupMessageController? groupMsgController,
+  ) {
+    // 1. Clear selected driver
+    homeController.closeDirectMessage(
+      userId: homeController.driverId.value,
+      userName: homeController.selectedName.value,
     );
+    homeController.closeDirectGroupMessage(
+      id: homeController.groupId.value,
+      name: homeController.selectedName.value,
+    );
+
+    // 2. Detach scroll listener to prevent memory leaks / disposed view errors
+    // msgController.scrollController?.removeListener(msgController.onScroll);
+
+    groupMsgController?.scrollController?.removeListener(
+      groupMsgController.onScroll,
+    );
+
+    // 3. Optionally reset tab back to messages
+    msgController.currentTab.value = 0;
+    groupMsgController?.currentTab.value = 0;
+    msgController.media.clear();
+    msgController.messages.clear();
+    msgController.pinMessages.clear();
   }
 
   Widget _resultTile(dynamic item) {
     return InkWell(
       onTap: () {
+        if (item["type"] == "truck") {
+          Get.find<HomeController>().openDirectGroupMessage(
+            id: item["id"] ?? "",
+            name: item["label"],
+            type: item["type"],
+          );
+          hideOverlay();
+          openChatInDialog(item["type"]);
+          return;
+        }
         Get.find<HomeController>().openDirectMessageDialog(
           userId: item["id"] ?? "",
           userName: item["label"],
         );
         hideOverlay();
-        openChatInDialog();
+        openChatInDialog("driver");
       },
       hoverColor: const Color(0xFFF4F6F8),
       child: Padding(

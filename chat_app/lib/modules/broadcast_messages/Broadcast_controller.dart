@@ -87,6 +87,7 @@ class BroadcastController extends GetxController {
 
   @override
   void onClose() {
+    scrollController.removeListener(_onScroll); // 🔥 ADD THIS
     scrollController.dispose();
     super.onClose();
   }

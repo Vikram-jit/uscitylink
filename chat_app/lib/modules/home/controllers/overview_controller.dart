@@ -109,7 +109,6 @@ class OverviewController extends GetxController {
   void handleDriverOnlineEvent(dynamic data) {
     final bool isOnline = data['isOnline'] ?? false;
     final Map<String, dynamic> driverJson = data['driver'];
-
     final driver = LastFiveDriver.fromJson(driverJson);
 
     final currentOverview = overview.value;

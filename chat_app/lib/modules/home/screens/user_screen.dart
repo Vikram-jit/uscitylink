@@ -201,38 +201,38 @@ class UserScreen extends StatelessWidget {
                                 ),
                               ),
 
-                              DataCell(
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Tooltip(
-                                      message: "DEACTIVATE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.edit),
-                                      ),
-                                    ),
-                                    Tooltip(
-                                      message: "REMOVE",
-                                      textStyle: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.white,
-                                        letterSpacing: 0.3,
-                                      ),
-                                      child: IconButton(
-                                        onPressed: () {},
-                                        icon: Icon(Icons.delete),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              // DataCell(
+                              //   Row(
+                              //     crossAxisAlignment: CrossAxisAlignment.start,
+                              //     mainAxisAlignment: MainAxisAlignment.start,
+                              //     children: [
+                              //       Tooltip(
+                              //         message: "DEACTIVATE",
+                              //         textStyle: GoogleFonts.poppins(
+                              //           fontSize: 10,
+                              //           color: Colors.white,
+                              //           letterSpacing: 0.3,
+                              //         ),
+                              //         child: IconButton(
+                              //           onPressed: () {},
+                              //           icon: Icon(Icons.edit),
+                              //         ),
+                              //       ),
+                              //       Tooltip(
+                              //         message: "REMOVE",
+                              //         textStyle: GoogleFonts.poppins(
+                              //           fontSize: 10,
+                              //           color: Colors.white,
+                              //           letterSpacing: 0.3,
+                              //         ),
+                              //         child: IconButton(
+                              //           onPressed: () {},
+                              //           icon: Icon(Icons.delete),
+                              //         ),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
                             ],
                           );
                         }).toList(),

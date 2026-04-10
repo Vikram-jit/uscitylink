@@ -1,3 +1,8 @@
+import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
+
 class MediaFileHelper {
   String getFileExtension(String url) {
     try {
@@ -15,5 +20,11 @@ class MediaFileHelper {
       return "http://52.9.12.189:4300/$url";
     }
     return "https://ciity-sms.s3.us-west-1.amazonaws.com/$url";
+  }
+
+  String createPreviewUrl(Uint8List bytes) {
+    final blobParts = <JSAny>[bytes.toJS];
+    final blob = web.Blob(blobParts.toJS);
+    return web.URL.createObjectURL(blob);
   }
 }

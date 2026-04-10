@@ -74,8 +74,17 @@ class HomeController extends GetxController {
 
     socket.emit('staff_active_channel_user_update', userId);
     socket.emit('staff_open_chat', userId);
+
+    // ✅ SAFE CHECK
+    if (_channelController.channels.isEmpty) {
+      print("⚠️ Channel list is empty");
+      return;
+    }
+
+    final channelId = _channelController.channels.first.id ?? "-";
+
     socket.emit('update_channel_sent_message_count', {
-      "channelId": _channelController.channels.first.id ?? "-",
+      "channelId": channelId,
       "userId": userId,
     });
   }
@@ -123,5 +132,25 @@ class HomeController extends GetxController {
     final socket = SocketService();
 
     socket.emit('staff_open_chat', "");
+  }
+
+  void closeDirectGroupMessage({required String id, required String name}) {
+    final socket = SocketService();
+    // 1) Check socket connection (like React alert)
+    if (!socket.isConnected) {
+      AppSnackbar.error(
+        "Socket connection is not established. Please try again later or refresh.",
+      );
+      return;
+    }
+    // 2) Update selected chat state
+    selectedName.value = "";
+    groupId.value = "";
+    currentView.value = SidebarViewType.home;
+
+    final gm = Get.find<GroupMessageController>();
+    gm.clearChat();
+
+    socket.emit('staff_open_truck_chat', "");
   }
 }

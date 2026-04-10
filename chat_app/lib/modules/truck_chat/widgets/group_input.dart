@@ -1,5 +1,6 @@
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/core/widgets/app_snackbar.dart';
+import 'package:chat_app/core/widgets/local_media_preview.dart';
 import 'package:chat_app/modules/truck_chat/controller/group_message_controller.dart';
 import 'package:chat_app/widgets/file_viewer_gallery.dart';
 import 'package:chat_app/widgets/media_component.dart';
@@ -416,7 +417,12 @@ class _GroupInputState extends State<GroupInput> {
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(6),
-                            onTap: isSending ? null : () => Navigator.pop(ctx),
+                            onTap: isSending
+                                ? null
+                                : () {
+                                    _c.pendingFile = null;
+                                    Navigator.pop(ctx);
+                                  },
                             child: Container(
                               width: 28,
                               height: 28,
@@ -453,59 +459,13 @@ class _GroupInputState extends State<GroupInput> {
                         children: [
                           // File info card
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8F8F8),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: const Color(0xFFE8E8E8),
+                            width: double.infinity,
+                            child: Expanded(
+                              child: LocalMediaPreview(
+                                platformFile: file,
+                                width: 120,
+                                height: 120,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8EDFA),
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                  child: const Icon(
-                                    Icons.insert_drive_file_outlined,
-                                    color: Color(0xFF4A7BE0),
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        file.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.primaryText,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${(file.size / 1024).toStringAsFixed(1)} KB',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11,
-                                          color: AppColors.secondaryText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                           const SizedBox(height: 14),
