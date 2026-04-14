@@ -1,4 +1,3 @@
-import 'package:chat_app/core/helpers/media_file_helper.dart';
 import 'package:chat_app/core/theme/colors.dart';
 import 'package:chat_app/core/widgets/app_snackbar.dart';
 import 'package:chat_app/core/widgets/local_media_preview.dart';
@@ -649,6 +648,7 @@ class _MessageInputState extends State<MessageInput> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // File info card
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -661,18 +661,15 @@ class _MessageInputState extends State<MessageInput> {
                                 color: const Color(0xFFE8E8E8),
                               ),
                             ),
-                            child: Container(
-                              width: double.infinity,
-                              child: Expanded(
-                                child: LocalMediaPreview(
-                                  platformFile: file,
-                                  width: 120,
-                                  height: 120,
-                                ),
-                              ),
+                            child: LocalMediaPreview(
+                              platformFile: file,
+                              width: 120,
+                              height: 120,
                             ),
                           ),
                           const SizedBox(height: 14),
+
+                          // Caption label
                           Text(
                             'ADD A MESSAGE',
                             style: GoogleFonts.poppins(
@@ -770,6 +767,7 @@ class _MessageInputState extends State<MessageInput> {
                         ElevatedButton.icon(
                           onPressed: () async {
                             final bool result = await _msgCtrl.sendFile();
+
                             if (result) {
                               Navigator.pop(ctx);
                             }

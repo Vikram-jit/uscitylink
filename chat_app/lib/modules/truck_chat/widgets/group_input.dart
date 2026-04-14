@@ -363,7 +363,7 @@ class _GroupInputState extends State<GroupInput> {
     if (text.isEmpty && _c.pendingFile == null) return;
 
     if (_c.pendingFile != null) {
-      _openFileSendDialog();
+      _openFilePreviewDialog();
     } else {
       _c.sendMessage(
         body: text,
@@ -378,7 +378,7 @@ class _GroupInputState extends State<GroupInput> {
 
   // ── File send dialog ─────────────────────────────────────────
 
-  void _openFileSendDialog() {
+  void _openFilePreviewDialog() {
     final file = _c.pendingFile;
     if (file == null) return;
 
@@ -386,7 +386,6 @@ class _GroupInputState extends State<GroupInput> {
       context: context,
       barrierColor: Colors.black.withOpacity(0.45),
       builder: (ctx) {
-        final captionCtrl = TextEditingController();
         bool isSending = false;
 
         return StatefulBuilder(
@@ -477,12 +476,25 @@ class _GroupInputState extends State<GroupInput> {
                         children: [
                           // File info card
                           Container(
-                            width: double.infinity,
-                            child: Expanded(
-                              child: LocalMediaPreview(
-                                platformFile: file,
-                                width: 120,
-                                height: 120,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F8F8),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFFE8E8E8),
+                              ),
+                            ),
+                            child: Container(
+                              width: double.infinity,
+                              child: Expanded(
+                                child: LocalMediaPreview(
+                                  platformFile: file,
+                                  width: 120,
+                                  height: 120,
+                                ),
                               ),
                             ),
                           ),
@@ -500,6 +512,9 @@ class _GroupInputState extends State<GroupInput> {
                           ),
                           const SizedBox(height: 6),
                           TextField(
+                            onChanged: (v) {
+                              _c.onKeyPressed();
+                            },
                             controller: _c.msgInputController,
                             maxLines: 3,
                             style: GoogleFonts.poppins(
@@ -628,7 +643,7 @@ class _GroupInputState extends State<GroupInput> {
     try {
       final result = await FilePicker.pickFiles(
         allowMultiple: false,
-        withData: kIsWeb,
+        withData: true,
       );
       if (result == null || result.files.isEmpty) return;
       setState(() => _c.pendingFile = result.files.single);

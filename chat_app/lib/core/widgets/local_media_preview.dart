@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path/path.dart' as p;
@@ -22,53 +24,76 @@ class LocalMediaPreview extends StatelessWidget {
   String get _name => platformFile.name;
   String get _ext => p.extension(_name).replaceFirst('.', '').toLowerCase();
   Uint8List? get _bytes => platformFile.bytes;
-  ImageProvider? get _imageProvider =>
-      _bytes != null ? MemoryImage(_bytes!) : null;
+  String? get _path => platformFile.path;
 
   bool get _isImage => ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(_ext);
   bool get _isVideo => ['mp4', 'mov', 'mkv', 'webm', 'avi'].contains(_ext);
   bool get _isAudio => ['mp3', 'wav', 'm4a', 'aac', 'ogg'].contains(_ext);
   bool get _isPdf => _ext == 'pdf';
 
+  ImageProvider? get _imageProvider {
+    if (kIsWeb) return _bytes != null ? MemoryImage(_bytes!) : null;
+    if (_path != null) return FileImage(File(_path!));
+    if (_bytes != null) return MemoryImage(_bytes!);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget content;
+    // LayoutBuilder resolves double.infinity into a real pixel width.
+    // In release mode Flutter is strict — passing infinity directly to
+    // Image/Container width causes a hard crash. This fixes it.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolvedWidth =
+            (width == double.infinity || width.isInfinite || width.isNaN)
+            ? constraints.maxWidth.isInfinite
+                  ? 300.0 // absolute fallback if parent is also unbounded
+                  : constraints.maxWidth
+            : width;
 
-    if (_isImage && _imageProvider != null) {
-      content = _ImagePreview(
-        provider: _imageProvider!,
-        width: width,
-        height: height,
-      );
-    } else if (_isVideo) {
-      content = _VideoPreview(
-        provider: _imageProvider,
-        width: width,
-        height: height,
-      );
-    } else if (_isAudio) {
-      content = _AudioPreview(name: _name, width: width);
-    } else if (_isPdf) {
-      content = _PdfPreview(name: _name, width: width);
-    } else {
-      content = _GenericFilePreview(name: _name, ext: _ext, width: width);
+        Widget content = _buildContent(resolvedWidth);
+
+        if (onRemove != null) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              content,
+              Positioned(
+                top: -6,
+                right: -6,
+                child: _DismissButton(onTap: onRemove!),
+              ),
+            ],
+          );
+        }
+
+        return content;
+      },
+    );
+  }
+
+  Widget _buildContent(double resolvedWidth) {
+    if (_isImage) {
+      final provider = _imageProvider;
+      return provider != null
+          ? _ImagePreview(
+              provider: provider,
+              width: resolvedWidth,
+              height: height,
+            )
+          : _MediaBox(
+              width: resolvedWidth,
+              height: height,
+              icon: Icons.image_outlined,
+            );
     }
 
-    if (onRemove != null) {
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          content,
-          Positioned(
-            top: -6,
-            right: -6,
-            child: _DismissButton(onTap: onRemove!),
-          ),
-        ],
-      );
-    }
+    if (_isVideo) return _VideoPreview(width: resolvedWidth, height: height);
+    if (_isAudio) return _AudioPreview(name: _name, width: resolvedWidth);
+    if (_isPdf) return _PdfPreview(name: _name, width: resolvedWidth);
 
-    return content;
+    return _GenericFilePreview(name: _name, ext: _ext, width: resolvedWidth);
   }
 }
 
@@ -96,6 +121,7 @@ class _ImagePreview extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.contain,
+        gaplessPlayback: true,
         errorBuilder: (_, __, ___) => _MediaBox(
           width: width,
           height: height,
@@ -111,46 +137,22 @@ class _ImagePreview extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 
 class _VideoPreview extends StatelessWidget {
-  final ImageProvider? provider;
   final double width;
   final double height;
 
-  const _VideoPreview({
-    required this.provider,
-    required this.width,
-    required this.height,
-  });
+  const _VideoPreview({required this.width, required this.height});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: provider != null
-              ? Image(
-                  image: provider!,
-                  width: width,
-                  height: height,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _MediaBox(
-                    width: width,
-                    height: height,
-                    icon: Icons.videocam_outlined,
-                  ),
-                )
-              : _MediaBox(
-                  width: width,
-                  height: height,
-                  icon: Icons.videocam_outlined,
-                ),
-        ),
+        _MediaBox(width: width, height: height, icon: Icons.videocam_outlined),
         Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: Colors.black.withOpacity(0.45),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -350,7 +352,7 @@ class _GenericFilePreview extends StatelessWidget {
       decoration: BoxDecoration(
         color: _accentBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _iconBg.withValues(alpha: 0.25)),
+        border: Border.all(color: _iconBg.withOpacity(0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -383,7 +385,7 @@ class _GenericFilePreview extends StatelessWidget {
                   ext.toUpperCase(),
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
-                    color: _textColor.withValues(alpha: 0.65),
+                    color: _textColor.withOpacity(0.65),
                   ),
                 ),
               ],
