@@ -27,6 +27,7 @@ class _GroupInputState extends State<GroupInput> {
   bool _isFocused = false;
 
   final _focusNode = FocusNode();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _GroupInputState extends State<GroupInput> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -273,43 +275,59 @@ class _GroupInputState extends State<GroupInput> {
   Widget _buildTextField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-      child: KeyboardListener(
-        focusNode: FocusNode(),
-        onKeyEvent: (event) {
-          if (event is! KeyDownEvent) return;
-          final keys = HardwareKeyboard.instance.logicalKeysPressed;
-          final isCtrl =
-              keys.contains(LogicalKeyboardKey.controlLeft) ||
-              keys.contains(LogicalKeyboardKey.controlRight) ||
-              keys.contains(LogicalKeyboardKey.metaLeft) ||
-              keys.contains(LogicalKeyboardKey.metaRight);
-          if (event.logicalKey == LogicalKeyboardKey.enter && isCtrl) {
-            _send();
-          }
-          // Typing indicator
-          if (event.logicalKey != LogicalKeyboardKey.shift &&
-              event.logicalKey != LogicalKeyboardKey.controlLeft &&
-              event.logicalKey != LogicalKeyboardKey.controlRight &&
-              event.logicalKey != LogicalKeyboardKey.metaLeft &&
-              event.logicalKey != LogicalKeyboardKey.metaRight) {
-            _c.onKeyPressed();
-          }
-        },
-        child: TextFormField(
-          focusNode: _focusNode,
-          controller: _c.msgInputController,
-          style: _textStyle,
-          cursorColor: AppColors.primary,
-          decoration: InputDecoration(
-            fillColor: Colors.white,
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
-            hintText: 'Message group…',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40, maxHeight: 120),
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.vertical,
+            reverse: true,
+            child: KeyboardListener(
+              focusNode: FocusNode(),
+              onKeyEvent: (event) {
+                if (event is! KeyDownEvent) return;
+                final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                final isCtrl =
+                    keys.contains(LogicalKeyboardKey.controlLeft) ||
+                    keys.contains(LogicalKeyboardKey.controlRight) ||
+                    keys.contains(LogicalKeyboardKey.metaLeft) ||
+                    keys.contains(LogicalKeyboardKey.metaRight);
+                if (event.logicalKey == LogicalKeyboardKey.enter && isCtrl) {
+                  _send();
+                }
+                // Typing indicator
+                if (event.logicalKey != LogicalKeyboardKey.shift &&
+                    event.logicalKey != LogicalKeyboardKey.controlLeft &&
+                    event.logicalKey != LogicalKeyboardKey.controlRight &&
+                    event.logicalKey != LogicalKeyboardKey.metaLeft &&
+                    event.logicalKey != LogicalKeyboardKey.metaRight) {
+                  _c.onKeyPressed();
+                }
+              },
+              child: TextFormField(
+                focusNode: _focusNode,
+                controller: _c.msgInputController,
+                style: _textStyle,
+                cursorColor: AppColors.primary,
+                decoration: InputDecoration(
+                  fillColor: Colors.white,
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Message group…',
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
+                ),
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+              ),
+            ),
           ),
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
         ),
       ),
     );
@@ -608,7 +626,7 @@ class _GroupInputState extends State<GroupInput> {
 
   Future<void> _pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: false,
         withData: kIsWeb,
       );

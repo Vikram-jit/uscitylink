@@ -65,7 +65,7 @@ class _TemplateFormDialogState extends State<TemplateFormDialog> {
 
   Future<void> _pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: false,
         withData: kIsWeb,
       );

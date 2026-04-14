@@ -53,7 +53,7 @@ class BroadcastFormController extends GetxController {
   // ================= Wasm-Safe File Picker =================
   void pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: false,
         withData: kIsWeb,
       );

@@ -33,6 +33,9 @@ class _MessageInputState extends State<MessageInput> {
 
   final _focusNode = FocusNode();
 
+  // ScrollController to keep caret visible as content grows
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +56,7 @@ class _MessageInputState extends State<MessageInput> {
   @override
   void dispose() {
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -67,11 +71,9 @@ class _MessageInputState extends State<MessageInput> {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      ignoring: widget.isPinMessage == 2, // 👉 disables all touch events
-
+      ignoring: widget.isPinMessage == 2,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-
         children: [
           Obx(() {
             return _msgCtrl.selectTemplateUrl.value != null
@@ -151,7 +153,7 @@ class _MessageInputState extends State<MessageInput> {
                 children: [
                   _buildToolbar(),
                   if (_msgCtrl.pendingFile != null) _buildFilePreview(),
-                  _buildTextField(),
+                  _buildTextField(), // ✅ now height-constrained + scrollable
                   _buildFooter(),
                 ],
               ),
@@ -182,7 +184,6 @@ class _MessageInputState extends State<MessageInput> {
       ),
       child: Row(
         children: [
-          // Left accent bar
           Container(
             width: 3,
             height: 36,
@@ -192,8 +193,6 @@ class _MessageInputState extends State<MessageInput> {
             ),
           ),
           const SizedBox(width: 10),
-
-          // Reply content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,8 +225,6 @@ class _MessageInputState extends State<MessageInput> {
               ],
             ),
           ),
-
-          // Dismiss button
           GestureDetector(
             onTap: () => _msgCtrl.selectMessageReply.value = null,
             child: Container(
@@ -364,39 +361,58 @@ class _MessageInputState extends State<MessageInput> {
     );
   }
 
+  // ✅ FIXED: Height-constrained text field with internal scrolling
   Widget _buildTextField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-      child: KeyboardListener(
-        focusNode: FocusNode(),
-        onKeyEvent: (event) {
-          if (event is! KeyDownEvent) return;
-          final keys = HardwareKeyboard.instance.logicalKeysPressed;
-          final isCtrl =
-              keys.contains(LogicalKeyboardKey.controlLeft) ||
-              keys.contains(LogicalKeyboardKey.controlRight) ||
-              keys.contains(LogicalKeyboardKey.metaLeft) ||
-              keys.contains(LogicalKeyboardKey.metaRight);
-          if (event.logicalKey == LogicalKeyboardKey.enter && isCtrl) {
-            _send();
-          }
-        },
-        child: TextFormField(
-          focusNode: _focusNode,
-          controller: _msgCtrl.msgInputController,
-          style: _textStyle,
-          cursorColor: AppColors.primary,
-          decoration: InputDecoration(
-            fillColor: Colors.white,
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
-            hintText: 'Message #general',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: 36, // single-line height
+          maxHeight: 120, // ~5 lines — clamps growth, enables scroll
+        ),
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.vertical,
+            reverse: true, // keeps the latest line (caret) in view
+            child: KeyboardListener(
+              focusNode: FocusNode(),
+              onKeyEvent: (event) {
+                if (event is! KeyDownEvent) return;
+                final keys = HardwareKeyboard.instance.logicalKeysPressed;
+                final isCtrl =
+                    keys.contains(LogicalKeyboardKey.controlLeft) ||
+                    keys.contains(LogicalKeyboardKey.controlRight) ||
+                    keys.contains(LogicalKeyboardKey.metaLeft) ||
+                    keys.contains(LogicalKeyboardKey.metaRight);
+                if (event.logicalKey == LogicalKeyboardKey.enter && isCtrl) {
+                  _send();
+                }
+              },
+              child: TextFormField(
+                focusNode: _focusNode,
+                controller: _msgCtrl.msgInputController,
+                style: _textStyle,
+                cursorColor: AppColors.primary,
+                decoration: InputDecoration(
+                  fillColor: Colors.white,
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Message #general',
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
+                ),
+                maxLines: null, // unlimited lines inside the scroll area
+                keyboardType: TextInputType.multiline,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
           ),
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-          onChanged: (_) => setState(() {}),
         ),
       ),
     );
@@ -523,7 +539,7 @@ class _MessageInputState extends State<MessageInput> {
 
   Future<void> _pickFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: false,
         withData: kIsWeb,
       );
@@ -633,7 +649,6 @@ class _MessageInputState extends State<MessageInput> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // File info card
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -658,8 +673,6 @@ class _MessageInputState extends State<MessageInput> {
                             ),
                           ),
                           const SizedBox(height: 14),
-
-                          // Caption label
                           Text(
                             'ADD A MESSAGE',
                             style: GoogleFonts.poppins(
@@ -757,7 +770,6 @@ class _MessageInputState extends State<MessageInput> {
                         ElevatedButton.icon(
                           onPressed: () async {
                             final bool result = await _msgCtrl.sendFile();
-
                             if (result) {
                               Navigator.pop(ctx);
                             }
@@ -831,15 +843,6 @@ class _SendButtonState extends State<_SendButton> {
                   size: 14,
                   color: widget.enabled ? Colors.white : Colors.grey.shade500,
                 ),
-
-                // Text(
-                //   'Send',
-                //   style: TextStyle(
-                //     fontSize: 13,
-                //     fontWeight: FontWeight.w600,
-                //     color: widget.enabled ? Colors.white : Colors.grey.shade500,
-                //   ),
-                // ),
               ],
             ),
           ),
