@@ -21,8 +21,7 @@ class LoginWithTokenController extends GetxController {
     super.onInit();
     // Token is passed as a route argument: Get.toNamed('/login-with-token', arguments: 'YOUR_TOKEN')
     final token = Get.parameters['token'] ?? '';
-    _handleToken(token);
-    print(token);
+    _handleToken(Uri.encodeComponent(token));
   }
 
   Future<void> _handleToken(String token) async {
