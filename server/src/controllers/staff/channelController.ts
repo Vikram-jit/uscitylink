@@ -261,61 +261,58 @@ export async function getDrivers(req: Request, res: Response): Promise<any> {
   }
 }
 
+
 export async function markAllUnReadMessage(
   req: Request,
   res: Response
 ): Promise<any> {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      status: false,
+      message: "Unauthorized user",
+    });
+  }
+
   try {
-
     await primarySequelize.transaction(async (t) => {
-      const unreadMessages = await MessageStaff.findAll({
-        where: {
-          staffId: req.user?.id,
-          status: "un-read",
-        },
-        transaction: t,
-        lock: t.LOCK.UPDATE,
-      });
-
-      for (const message of unreadMessages) {
-        await message.update({ status: "read" }, { transaction: t });
-      }
-    });
-
-     await primarySequelize.transaction(async (t) => {
-      const groupCount = await Group.findAll({
-        where: {
-          message_count: {
-            [Op.gt]: 0,
+      // ✅ 1. Mark all unread messages as read (FAST - bulk update)
+      await MessageStaff.update(
+        { status: "read" },
+        {
+          where: {
+            staffId: userId,
+            status: "un-read",
           },
-         
-        },
-        transaction: t,
-        lock: t.LOCK.UPDATE,
-      });
+          transaction: t,
+        }
+      );
 
-      for (const group of groupCount) {
-        await group.update({ message_count: 0 }, { transaction: t });
-      }
+      // ✅ 2. Reset group unread count (FAST - bulk update)
+      await Group.update(
+        { message_count: 0 },
+        {
+          where: {
+            message_count: {
+              [Op.gt]: 0,
+            },
+          },
+          transaction: t,
+        }
+      );
     });
 
-    // await MessageStaff.update(
-    //   {
-    //     status: "read",
-    //   },
-    //   {
-    //     where: {
-    //       staffId: req.user?.id,
-    //     },
-    //   }
-    // );
     return res.status(200).json({
       status: true,
-      message: `Marked read chat successfully.`,
+      message: "All messages marked as read successfully.",
     });
   } catch (err: any) {
-    return res
-      .status(400)
-      .json({ status: false, message: err.message || "Internal Server Error" });
+    console.error("Mark read error:", err);
+
+    return res.status(500).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 }

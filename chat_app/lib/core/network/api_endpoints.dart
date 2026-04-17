@@ -17,4 +17,5 @@ class ApiEndpoints {
   static const addUser = "/channel/addToChannel";
   static const media = "/media";
   static const loginWithToken = "/auth/loginWithToken";
+  static const markAllMessagesRead = "/channel/markAllUnreadMessage";
 }

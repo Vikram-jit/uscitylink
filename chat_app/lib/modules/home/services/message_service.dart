@@ -55,6 +55,18 @@ class MessageService {
     );
   }
 
+  Future<BaseResponse<void>> markAllMessageUnread() async {
+    String url = ApiEndpoints.markAllMessagesRead;
+
+    final response = await api.dio.post(url);
+
+    return BaseResponse<void>(
+      status: response.data["status"] ?? false,
+      message: response.data["message"] ?? "",
+      data: null,
+    );
+  }
+
   Future<BaseResponse<GroupMessageResponseModel>> getGroupMessages(
     String groupId,
     int page,
