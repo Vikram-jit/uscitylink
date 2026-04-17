@@ -1,5 +1,6 @@
 import 'package:chat_app/core/controller/global_search_controller.dart';
 import 'package:chat_app/core/theme/colors.dart';
+import 'package:chat_app/core/widgets/reload_button.dart';
 import 'package:chat_app/modules/broadcast_messages/widgets/broadcast_form.dart';
 import 'package:chat_app/modules/broadcast_messages/widgets/broadcast_list.dart';
 
@@ -81,6 +82,9 @@ class DesktopView extends StatelessWidget {
                       ),
                     ],
                   ),
+                  Spacer(),
+
+                  ReloadButton(),
                   Spacer(),
                   SizedBox(
                     width: 20,
