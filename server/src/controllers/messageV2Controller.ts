@@ -161,7 +161,7 @@ export const quickMessage = async (
 
     if (
       findDriverSocket &&
-      findDriverSocket?.channelId == findStaffActiveChannel?.channelId
+      findDriverSocket?.channelId == channelId
     ) {
       if (isDriverSocket) {
         await messageSave.update(
@@ -194,7 +194,7 @@ export const quickMessage = async (
         if (isUser) {
           if (isUser.device_token) {
             const isChannel = await Channel.findByPk(
-              findStaffActiveChannel?.channelId,
+              channelId,
             );
             const messageCount = await UserChannel.sum(
               "recieve_message_count",
@@ -230,7 +230,7 @@ export const quickMessage = async (
         if (isUser) {
           if (isUser.device_token) {
             const isChannel = await Channel.findByPk(
-              findStaffActiveChannel?.channelId,
+              channelId,
             );
             const messageCount = await UserChannel.sum(
               "recieve_message_count",
@@ -266,7 +266,7 @@ export const quickMessage = async (
         {
           where: {
             userProfileId: userProfileId, // The user you want to update
-            channelId: findStaffActiveChannel?.channelId, // The channel to target
+            channelId: channelId, // The channel to target
           },
         },
       );
@@ -281,13 +281,13 @@ export const quickMessage = async (
       {
         where: {
           userProfileId: userProfileId,
-          channelId: findStaffActiveChannel?.channelId,
+          channelId: channelId,
         },
       },
     );
     //Return Message To Staff After Store
     Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
-      if (e.channelId === findStaffActiveChannel?.channelId) {
+      if (e.channelId === channelId) {
         const isSocket = global.userSockets[staffId]; // Use staffId as the identifier
 
         if (isSocket) {
