@@ -515,8 +515,10 @@ class _GroupDetailViewState extends State<GroupDetailView> {
                                             ),
                                           ),
                                         ),
-                                        title: Text(profile?.username ?? "-"),
-                                        subtitle: Text(
+                                        title: SelectableText(
+                                          profile?.username ?? "-",
+                                        ),
+                                        subtitle: SelectableText(
                                           [
                                                 profile?.user?.email ?? "",
                                                 profile?.user?.phoneNumber ??

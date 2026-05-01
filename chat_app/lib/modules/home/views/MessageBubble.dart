@@ -171,6 +171,14 @@ class _MessageBubbleState extends State<MessageBubble> {
                               color: Colors.blue,
                               decoration: TextDecoration.underline,
                             ),
+                            enableInteractiveSelection: true,
+                            showCursor: true,
+                            cursorWidth: 1,
+                            contextMenuBuilder: (context, editableTextState) {
+                              return AdaptiveTextSelectionToolbar.editableText(
+                                editableTextState: editableTextState,
+                              );
+                            },
                             onOpen: (link) async {
                               final uri = Uri.parse(link.url);
                               if (await canLaunchUrl(uri)) {
