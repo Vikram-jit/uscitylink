@@ -83,6 +83,8 @@ class _UserStatusTileState extends State<UserStatusTile> {
                   ? AppColors.primary
                   : _isHovered
                   ? AppColors.primary.withValues(alpha: 0.10)
+                  : widget.unreadCount > 0
+                  ? AppColors.primary.withValues(alpha: 0.2)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
             ),
