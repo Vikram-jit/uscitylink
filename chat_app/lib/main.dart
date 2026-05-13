@@ -39,16 +39,26 @@ class MyApp extends StatelessWidget {
       navigatorObservers: [AppRouteObserver()],
       initialBinding: AppBindings(),
       builder: (context, child) {
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => Get.find<UserInteractionService>().markInteracted(),
-          onPanDown: (_) => Get.find<UserInteractionService>().markInteracted(),
-          child: Stack(
-            children: [
-              child!,
-              const GlobalLoader(), // ✅ global overlay
-              socketStatusBanner(), // ✅ socket connection status
-            ],
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: mq.textScaler.clamp(
+              minScaleFactor: 1.20,
+              maxScaleFactor: 1.20,
+            ),
+          ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => Get.find<UserInteractionService>().markInteracted(),
+            onPanDown: (_) =>
+                Get.find<UserInteractionService>().markInteracted(),
+            child: Stack(
+              children: [
+                child!,
+                const GlobalLoader(), // ✅ global overlay
+                socketStatusBanner(), // ✅ socket connection status
+              ],
+            ),
           ),
         );
       },

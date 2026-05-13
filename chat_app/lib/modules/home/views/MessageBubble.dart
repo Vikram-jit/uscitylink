@@ -63,18 +63,48 @@ class _MessageBubbleState extends State<MessageBubble> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 2),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: _isHovered
-              ? Colors.grey.withOpacity(0.08)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.14 : 0.10),
+              blurRadius: _isHovered ? 14 : 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
+            // Left accent stripe — green for "me", orange for staff
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: widget.isMe
+                      ? AppColors.avatarGreen
+                      : AppColors.avatarOrange,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                  ),
+                ),
+              ),
+            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -259,7 +289,7 @@ class _ActionBar extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
