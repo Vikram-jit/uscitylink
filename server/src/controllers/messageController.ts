@@ -997,7 +997,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
             : []),
         ],
 
-        file_type: req.query.type || "media",
+        // file_type: req.query.type || "media",
         ...dateFilter,
       },
       limit: limit,
