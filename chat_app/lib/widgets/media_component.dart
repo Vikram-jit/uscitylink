@@ -218,7 +218,7 @@ class MediaComponent extends StatelessWidget {
   String _formatCreatedAt() {
     if (createdAt.isEmpty) return '';
     try {
-      final dt = DateTime.parse(createdAt);
+      final dt = DateTime.parse(createdAt).toLocal();
       return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)}';
     } catch (_) {
       return '';
