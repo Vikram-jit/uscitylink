@@ -93,15 +93,17 @@ class _MediaGalleryState extends State<MediaGallery> {
   }
 
   Future<void> _pickDateRange() async {
-    final s = _controller.filterStartDate.value;
-    final e = _controller.filterEndDate.value;
-    final range = await showDateRangePicker(
+    final range = await showDialog<DateTimeRange>(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange:
-          (s != null && e != null) ? DateTimeRange(start: s, end: e) : null,
-      builder: _darkDateTheme,
+      barrierColor: Colors.black54,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: _DualMonthRangePicker(
+          initialStart: _controller.filterStartDate.value,
+          initialEnd: _controller.filterEndDate.value,
+        ),
+      ),
     );
     if (range == null) return;
     await _controller.applyMediaFilter(
@@ -474,6 +476,615 @@ class _FilterBtn extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Enterprise dual-month date range picker
+// ─────────────────────────────────────────────────────────────
+
+// Each day cell is a fixed square; the month panel is exactly 7 × _kCell wide.
+// This removes all `Expanded` usage from the grid so both calendars always
+// render side-by-side at the correct size regardless of dialog constraints.
+const double _kCell = 36.0;
+const Color _kRangeBg = Color(0xFF1E3358); // range band colour
+
+class _DualMonthRangePicker extends StatefulWidget {
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+
+  const _DualMonthRangePicker({this.initialStart, this.initialEnd});
+
+  @override
+  State<_DualMonthRangePicker> createState() => _DualMonthRangePickerState();
+}
+
+class _DualMonthRangePickerState extends State<_DualMonthRangePicker> {
+  late DateTime _leftMonth;
+  DateTime? _start;
+  DateTime? _end;
+  DateTime? _hovered;
+
+  // panel width = 7 fixed cells; dialog = 2 panels + gap + padding
+  static const _panelW = _kCell * 7; // 252
+  static const _dialogW = _panelW * 2 + 80 + 1; // ~585
+
+  @override
+  void initState() {
+    super.initState();
+    _start = widget.initialStart;
+    _end = widget.initialEnd;
+    final now = DateTime.now();
+    _leftMonth = DateTime(now.year, now.month - 1);
+  }
+
+  DateTime get _rightMonth =>
+      DateTime(_leftMonth.year, _leftMonth.month + 1);
+
+  // ── Navigation ──
+
+  void _prevMonth() =>
+      setState(() => _leftMonth = DateTime(_leftMonth.year, _leftMonth.month - 1));
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    final right = _rightMonth;
+    if (right.year < now.year ||
+        (right.year == now.year && right.month < now.month)) {
+      setState(() =>
+          _leftMonth = DateTime(_leftMonth.year, _leftMonth.month + 1));
+    }
+  }
+
+  // ── Selection ──
+
+  void _onDayTap(DateTime day) {
+    setState(() {
+      if (_start == null || _end != null) {
+        _start = day;
+        _end = null;
+      } else {
+        if (day.isBefore(_start!)) {
+          _end = _start;
+          _start = day;
+        } else if (_sameDay(day, _start!)) {
+          // tapping same day = single-day range
+          _end = day;
+        } else {
+          _end = day;
+        }
+      }
+      _hovered = null;
+    });
+  }
+
+  void _applyPreset(DateTime start, DateTime end) {
+    setState(() {
+      _start = start;
+      _end = end;
+      _hovered = null;
+      // Navigate so end date's month is the right panel
+      _leftMonth = DateTime(end.year, end.month - 1);
+    });
+  }
+
+  // ── Range helpers ──
+
+  DateTime? get _effectiveEnd => _end ?? (_start != null ? _hovered : null);
+
+  bool _inRange(DateTime day) {
+    if (_start == null || _effectiveEnd == null) return false;
+    final lo = _start!.isBefore(_effectiveEnd!) ? _start! : _effectiveEnd!;
+    final hi = _start!.isBefore(_effectiveEnd!) ? _effectiveEnd! : _start!;
+    return day.isAfter(lo) && day.isBefore(hi);
+  }
+
+  bool _isStart(DateTime d) => _start != null && _sameDay(d, _start!);
+
+  bool _isEnd(DateTime d) {
+    final eff = _effectiveEnd;
+    return eff != null && _sameDay(d, eff) && !_sameDay(d, _start ?? d);
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  bool _isFuture(DateTime d) {
+    final today = DateTime.now();
+    return d.isAfter(DateTime(today.year, today.month, today.day));
+  }
+
+  // ── Build ──
+
+  @override
+  Widget build(BuildContext context) {
+    final canApply = _start != null && _end != null;
+    final now = DateTime.now();
+    final canNext = _rightMonth.year < now.year ||
+        (_rightMonth.year == now.year && _rightMonth.month < now.month);
+
+    return Container(
+      width: _dialogW,
+      decoration: BoxDecoration(
+        color: _kBarBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorderIdle),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 32,
+              offset: const Offset(0, 12)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(canNext),
+          const _Divider(),
+          _buildCalendars(),
+          const _Divider(),
+          _buildSelectionBar(),
+          const _Divider(),
+          _buildFooter(canApply),
+        ],
+      ),
+    );
+  }
+
+  // ── Header ──
+
+  Widget _buildHeader(bool canNext) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 14, 14),
+      child: Row(
+        children: [
+          const Icon(Icons.date_range_rounded, size: 16, color: _kAccent),
+          const SizedBox(width: 8),
+          Text('Select Date Range',
+              style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14)),
+          const Spacer(),
+          // Month navigation
+          _NavIcon(Icons.chevron_left_rounded, onTap: _prevMonth),
+          const SizedBox(width: 4),
+          _NavIcon(Icons.chevron_right_rounded,
+              onTap: canNext ? _nextMonth : null),
+          const SizedBox(width: 8),
+          _NavIcon(Icons.close_rounded,
+              size: 14,
+              color: Colors.white54,
+              onTap: () => Navigator.of(context).pop()),
+        ],
+      ),
+    );
+  }
+
+  // ── Two-month grid ──
+
+  Widget _buildCalendars() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _monthPanel(_leftMonth),
+          const SizedBox(width: 19),
+          Container(width: 1, height: 260, color: const Color(0xFF222235)),
+          const SizedBox(width: 20),
+          _monthPanel(_rightMonth),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthPanel(DateTime month) {
+    final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
+    final firstWeekday = DateTime(month.year, month.month, 1).weekday % 7;
+    final totalCells = firstWeekday + daysInMonth;
+    final rows = (totalCells / 7).ceil();
+
+    return SizedBox(
+      width: _panelW,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Month title
+          SizedBox(
+            height: 28,
+            child: Center(
+              child: Text(
+                DateFormat('MMMM  yyyy').format(month),
+                style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    letterSpacing: 0.3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Day-of-week header
+          Row(
+            children: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+                .map((d) => SizedBox(
+                      width: _kCell,
+                      height: 22,
+                      child: Center(
+                        child: Text(d,
+                            style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white30,
+                                letterSpacing: 0.5)),
+                      ),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 2),
+          // Day rows
+          for (int row = 0; row < rows; row++)
+            Row(
+              children: List.generate(7, (col) {
+                final idx = row * 7 + col;
+                if (idx < firstWeekday ||
+                    idx >= firstWeekday + daysInMonth) {
+                  return SizedBox(width: _kCell, height: _kCell);
+                }
+                final day = DateTime(
+                    month.year, month.month, idx - firstWeekday + 1);
+                return _dayCell(day);
+              }),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Day cell with half-bar range highlight ──
+
+  Widget _dayCell(DateTime day) {
+    final isStart = _isStart(day);
+    final isEnd = _isEnd(day);
+    final inRange = _inRange(day);
+    final future = _isFuture(day);
+    final today = _sameDay(day, DateTime.now());
+    final selected = isStart || isEnd;
+    final hasRange = _effectiveEnd != null &&
+        !_sameDay(_start!, _effectiveEnd!);
+
+    return MouseRegion(
+      cursor: future
+          ? SystemMouseCursors.forbidden
+          : SystemMouseCursors.click,
+      onEnter: (_) {
+        if (_start != null && _end == null && !future) {
+          setState(() => _hovered = day);
+        }
+      },
+      onExit: (_) {
+        if (_hovered != null) setState(() => _hovered = null);
+      },
+      child: GestureDetector(
+        onTap: future ? null : () => _onDayTap(day),
+        child: SizedBox(
+          width: _kCell,
+          height: _kCell,
+          child: Stack(
+            children: [
+              // ── Range band fills full height ──
+              if (inRange)
+                Positioned.fill(
+                    child: Container(color: _kRangeBg)),
+              // Start cell: right-half band connects to range
+              if (isStart && hasRange)
+                Positioned(
+                    left: _kCell / 2, right: 0, top: 0, bottom: 0,
+                    child: Container(color: _kRangeBg)),
+              // End cell: left-half band connects from range
+              if (isEnd && hasRange)
+                Positioned(
+                    right: _kCell / 2, left: 0, top: 0, bottom: 0,
+                    child: Container(color: _kRangeBg)),
+
+              // ── Selection pill (start / end) ──
+              if (selected)
+                Positioned(
+                  left: 3, right: 3, top: 3, bottom: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _kAccent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+
+              // ── Today outline ──
+              if (today && !selected)
+                Positioned(
+                  left: 3, right: 3, top: 3, bottom: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: _kAccent.withValues(alpha: 0.55),
+                          width: 1.5),
+                    ),
+                  ),
+                ),
+
+              // ── Day number ──
+              Center(
+                child: Text(
+                  '${day.day}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight:
+                        selected ? FontWeight.w700 : FontWeight.w400,
+                    color: selected
+                        ? Colors.white
+                        : future
+                            ? Colors.white12
+                            : inRange
+                                ? Colors.white70
+                                : Colors.white60,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Selection summary bar ──
+
+  Widget _buildSelectionBar() {
+    final fmt = DateFormat('MMM dd, yyyy');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          // Presets
+          Wrap(
+            spacing: 6,
+            children: [
+              _Preset('Today', () {
+                final d = DateTime.now();
+                _applyPreset(DateTime(d.year, d.month, d.day),
+                    DateTime(d.year, d.month, d.day));
+              }),
+              _Preset('Last 7 Days', () {
+                final end = DateTime.now();
+                _applyPreset(
+                    end.subtract(const Duration(days: 6)), end);
+              }),
+              _Preset('This Month', () {
+                final now = DateTime.now();
+                _applyPreset(DateTime(now.year, now.month, 1), now);
+              }),
+              _Preset('Last Month', () {
+                final now = DateTime.now();
+                final first =
+                    DateTime(now.year, now.month - 1, 1);
+                final last = DateTime(now.year, now.month, 0);
+                _applyPreset(first, last);
+              }),
+            ],
+          ),
+          const Spacer(),
+          // From → To
+          _DateBox(
+            label: 'From',
+            value: _start != null ? fmt.format(_start!) : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Icon(Icons.arrow_forward_rounded,
+                size: 13,
+                color: _start != null && _end != null
+                    ? _kAccent
+                    : Colors.white24),
+          ),
+          _DateBox(
+            label: 'To',
+            value: _end != null ? fmt.format(_end!) : null,
+            hint: _start != null ? 'pick end' : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Footer ──
+
+  Widget _buildFooter(bool canApply) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(foregroundColor: Colors.white38),
+            child:
+                Text('Cancel', style: GoogleFonts.poppins(fontSize: 13)),
+          ),
+          const SizedBox(width: 8),
+          AnimatedOpacity(
+            opacity: canApply ? 1.0 : 0.3,
+            duration: const Duration(milliseconds: 180),
+            child: ElevatedButton.icon(
+              onPressed: canApply
+                  ? () => Navigator.of(context)
+                      .pop(DateTimeRange(start: _start!, end: _end!))
+                  : null,
+              icon: const Icon(Icons.check_rounded, size: 14),
+              label: Text('Apply Range',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kAccent,
+                disabledBackgroundColor: _kAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Small reusable helpers (private to this file)
+// ─────────────────────────────────────────────────────────────
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+  @override
+  Widget build(BuildContext context) =>
+      const Divider(color: Color(0xFF1E1E30), height: 1);
+}
+
+class _NavIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+  final Color color;
+
+  const _NavIcon(this.icon,
+      {this.onTap,
+      this.size = 16,
+      this.color = Colors.white70});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: enabled ? 0.07 : 0.02),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: enabled ? _kBorderIdle : Colors.white12),
+        ),
+        child: Icon(icon,
+            size: size,
+            color: enabled ? color : Colors.white24),
+      ),
+    );
+  }
+}
+
+class _DateBox extends StatelessWidget {
+  final String label;
+  final String? value;
+  final String? hint;
+
+  const _DateBox({required this.label, this.value, this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: value != null
+            ? _kChipBg
+            : Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+            color: value != null
+                ? _kAccent.withValues(alpha: 0.4)
+                : _kBorderIdle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  color: Colors.white38,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8)),
+          const SizedBox(height: 2),
+          Text(
+            value ?? hint ?? '—',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: value != null
+                  ? Colors.white
+                  : hint != null
+                      ? Colors.white38
+                      : Colors.white24,
+              fontWeight:
+                  value != null ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Preset extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _Preset(this.label, this.onTap);
+
+  @override
+  State<_Preset> createState() => _PresetState();
+}
+
+class _PresetState extends State<_Preset> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? _kAccent.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+                color: _hovered
+                    ? _kAccent.withValues(alpha: 0.5)
+                    : _kBorderIdle),
+          ),
+          child: Text(widget.label,
+              style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color:
+                      _hovered ? _kAccent : Colors.white54,
+                  fontWeight: _hovered
+                      ? FontWeight.w600
+                      : FontWeight.w400)),
         ),
       ),
     );
