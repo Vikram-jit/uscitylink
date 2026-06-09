@@ -111,6 +111,7 @@ class _MessageInputState extends State<MessageInput> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: MediaComponent(
+                            createdAt: '',
                             isGalleryBool: false,
                             initialIndex: 0,
                             type: GallertType.MessageFiles,

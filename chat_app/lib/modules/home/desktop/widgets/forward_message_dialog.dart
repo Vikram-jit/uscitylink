@@ -239,6 +239,7 @@ class _ForwardMessageDialogState extends State<ForwardMessageDialog> {
                             const SizedBox(height: 5),
                             if (msg.url != null && msg.url!.isNotEmpty) ...[
                               MediaComponent(
+                                createdAt: msg.createdAt ?? '',
                                 messageId: msg.id ?? '',
                                 url: msg.url!,
                                 fileName: msg.url ?? '',

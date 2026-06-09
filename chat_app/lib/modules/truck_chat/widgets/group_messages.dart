@@ -117,6 +117,7 @@ class _GroupMessagesState extends State<GroupMessages> {
                   uploadType: message.urlUploadType,
                   name: message.sender?.username ?? "",
                   time: _formatTime(_parseDate(message.messageTimestampUtc)),
+                  createdAt: message.messageTimestampUtc,
                   message: message.body ?? "",
                   isMe: message.messageDirection == "R",
                   replyMessage: message.rMessage,

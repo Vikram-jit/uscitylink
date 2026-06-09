@@ -32,8 +32,10 @@ class MessageService {
     String userId,
     int page,
     int pageSize,
-    MediaGallerySource source,
-  ) async {
+    MediaGallerySource source, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     String url = ApiEndpoints.media;
 
     if (source.name == MediaGallerySource.group.name) {
@@ -42,6 +44,13 @@ class MessageService {
     } else {
       url =
           "$url/null?limit=$pageSize&page=$page&type=media&userId=$userId&source=${source.name}&private_chat_id=undefined";
+    }
+
+    if (startDate != null) {
+      url += "&startDate=${startDate.toIso8601String().split('T').first}";
+    }
+    if (endDate != null) {
+      url += "&endDate=${endDate.toIso8601String().split('T').first}";
     }
 
     final response = await api.dio.get("$url");

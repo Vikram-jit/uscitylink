@@ -796,6 +796,19 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
     const offset = (page - 1) * limit;
     const source = req.query.source as string;
     const private_chat_id = req.query.private_chat_id as string;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+
+    const dateFilter = startDate
+      ? {
+          createdAt: {
+            [Op.between]: [
+              moment(startDate).startOf("day").toDate(),
+              moment(endDate || startDate).endOf("day").toDate(),
+            ],
+          },
+        }
+      : {};
     if (source == "staff") {
       const userProfile = await UserProfile.findByPk(req.params.channelId);
       const media = await Media.findAndCountAll({
@@ -831,6 +844,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
           ],
 
           file_type: req.query.type || "media",
+          ...dateFilter,
         },
         limit: limit,
         offset: offset,
@@ -975,6 +989,7 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
         ],
 
         file_type: req.query.type || "media",
+        ...dateFilter,
       },
       limit: limit,
       offset: offset,

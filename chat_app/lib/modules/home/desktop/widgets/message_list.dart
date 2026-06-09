@@ -91,6 +91,7 @@ class _MessageListState extends State<MessageList> {
                   uploadType: message.urlUploadType,
                   name: message.sender?.username ?? '',
                   time: _formatTime(_parseDate(message.messageTimestampUtc)),
+                  createdAt: message.messageTimestampUtc,
                   message: message.body ?? '',
                   isMe: message.messageDirection == 'R',
                   onReply: () => _c.selectMessageReply.value = message,

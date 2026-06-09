@@ -333,6 +333,7 @@ class _TemplateTileState extends State<_TemplateTile> {
                   width: 68,
                   height: 68,
                   child: MediaComponent(
+                    createdAt: t.createdAt ?? '',
                     type: GallertType.MessageFiles,
                     messageId: t.id?.toString() ?? '',
                     url: t.url!,

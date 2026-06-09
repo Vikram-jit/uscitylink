@@ -96,6 +96,8 @@ class _GroupInputState extends State<GroupInput> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: MediaComponent(
+                          createdAt:
+                              _c.selectTemplateUrl.value?.createdAt ?? '',
                           isGalleryBool: false,
                           initialIndex: 0,
                           type: GallertType.MessageFiles,

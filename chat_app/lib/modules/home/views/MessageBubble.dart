@@ -23,6 +23,7 @@ class MessageBubble extends StatefulWidget {
   final String id;
   final Messages? replyMessage;
   final String staffPin;
+  final String? createdAt;
 
   // Action callbacks
   final VoidCallback? onReply;
@@ -48,6 +49,7 @@ class MessageBubble extends StatefulWidget {
     this.onPin,
     this.onDelete,
     this.replyMessage,
+    this.createdAt,
   });
 
   @override
@@ -224,6 +226,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                         if (widget.mediaUrl != null) ...[
                           const SizedBox(height: 6),
                           MediaComponent(
+                            createdAt: widget.createdAt ?? '',
                             initialIndex: 0,
                             type: GallertType.MessageFiles,
                             messageId: widget.id,

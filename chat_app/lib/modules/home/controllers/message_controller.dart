@@ -47,6 +47,9 @@ class MessageController extends GetxController {
 
   int totalPages = 1;
 
+  final filterStartDate = Rxn<DateTime>();
+  final filterEndDate = Rxn<DateTime>();
+
   //final ScrollController scrollController = ScrollController();
 
   // ScrollController? _scrollController;
@@ -128,6 +131,32 @@ class MessageController extends GetxController {
     await fetchMedia(userId, currentMediaPage, source);
   }
 
+  Future<void> applyMediaFilter(
+    String userId,
+    MediaGallerySource source, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    filterStartDate.value = startDate;
+    filterEndDate.value = endDate;
+    media.clear();
+    currentMediaPage = 1;
+    hasMoreMedia.value = true;
+    await fetchMedia(userId, 1, source);
+  }
+
+  Future<void> clearMediaFilter(
+    String userId,
+    MediaGallerySource source,
+  ) async {
+    filterStartDate.value = null;
+    filterEndDate.value = null;
+    media.clear();
+    currentMediaPage = 1;
+    hasMoreMedia.value = true;
+    await fetchMedia(userId, 1, source);
+  }
+
   void pinMessage(String messageId, String staffPin) {
     final newValue = staffPin == '0' ? '1' : '0';
 
@@ -182,6 +211,10 @@ class MessageController extends GetxController {
         break;
       case 1:
         media.clear();
+        currentMediaPage = 1;
+        hasMoreMedia.value = true;
+        filterStartDate.value = null;
+        filterEndDate.value = null;
         fetchMedia(
           source == MediaGallerySource.channel
               ? _homeController.driverId.value
@@ -212,7 +245,10 @@ class MessageController extends GetxController {
     totalPages = 1;
     hasMore.value = true;
     media.clear();
+    currentMediaPage = 1;
     hasMoreMedia.value = true;
+    filterStartDate.value = null;
+    filterEndDate.value = null;
     //  resetScrollController();
   }
 
@@ -322,12 +358,12 @@ class MessageController extends GetxController {
         page,
         itemsPerPage,
         source,
+        startDate: filterStartDate.value,
+        endDate: filterEndDate.value,
       );
 
       if (res.status) {
         final newMessages = res.data?.media ?? [];
-
-        // media.addAll(newMessages);
 
         final mediaMessages = newMessages
             .where((m) => m.key != null && m.key!.isNotEmpty)
@@ -335,7 +371,9 @@ class MessageController extends GetxController {
 
         media.addAll(mediaMessages);
 
-        hasMoreMedia.value =
+        // Stop if the page returned nothing (covers filtered pagination where
+        // the server's totalPages reflects unfiltered count).
+        hasMoreMedia.value = mediaMessages.isNotEmpty &&
             (res.data?.page ?? 1) < (res.data?.totalPages ?? 1);
 
         totalPages = res.data?.totalPages ?? 1;

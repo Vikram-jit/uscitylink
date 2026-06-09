@@ -1057,7 +1057,7 @@ export async function getProfile(req: Request, res: Response): Promise<any> {
       }
     );
     const driverDocuments = await secondarySequelize.query<any>(
-      `SELECT * FROM documents  WHERE  type = 'driver' AND item_id = :id`,
+      `SELECT * FROM documents WHERE type = 'driver' AND item_id = :id AND title NOT LIKE '%MVR%' AND title NOT LIKE '%PSP%' AND title NOT LIKE '%PULL NOTICE%'`,
       {
         replacements: {
           id: user?.yard_id,

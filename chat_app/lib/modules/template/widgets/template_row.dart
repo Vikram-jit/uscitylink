@@ -86,6 +86,7 @@ class _TemplateRowState extends State<TemplateRow> {
                         width: 56,
                         height: 56,
                         child: MediaComponent(
+                          createdAt: t.createdAt ?? '',
                           messageId: t.id?.toString() ?? '',
                           url: t.url!,
                           fileName: t.url!,
