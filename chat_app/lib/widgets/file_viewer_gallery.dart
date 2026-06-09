@@ -98,8 +98,8 @@ class _FileViewerGalleryState extends State<FileViewerGallery> {
         : (_current?.createdAt ?? '');
     if (raw.isEmpty) return '';
     try {
-      final dt = DateTime.parse(raw).toUtc();
-      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)} UTC';
+      final dt = DateTime.parse(raw);
+      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)}';
     } catch (_) {
       return '';
     }

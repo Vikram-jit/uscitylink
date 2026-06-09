@@ -67,10 +67,7 @@ class MediaComponent extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: Stack(
                 fit: StackFit.expand,
-                children: [
-                  content,
-                  _timestampOverlay(),
-                ],
+                children: [content, _timestampOverlay()],
               ),
             ),
           );
@@ -221,8 +218,8 @@ class MediaComponent extends StatelessWidget {
   String _formatCreatedAt() {
     if (createdAt.isEmpty) return '';
     try {
-      final dt = DateTime.parse(createdAt).toUtc();
-      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)} UTC';
+      final dt = DateTime.parse(createdAt);
+      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)}';
     } catch (_) {
       return '';
     }

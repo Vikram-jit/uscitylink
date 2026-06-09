@@ -116,12 +116,22 @@ class _MediaGalleryState extends State<MediaGallery> {
         data: Theme.of(context).copyWith(
           colorScheme: ColorScheme.dark(
             primary: _kAccent,
+            onPrimary: Colors.white,
             surface: const Color(0xFF1C1C2E),
             onSurface: Colors.white,
-            onPrimary: Colors.white,
+            // M3 uses onSurfaceVariant for nav arrows and secondary text
+            onSurfaceVariant: Colors.white70,
+            surfaceContainerHighest: const Color(0xFF2A2A3E),
+            outline: Colors.white24,
+          ),
+          // make < > arrows white
+          iconTheme: const IconThemeData(color: Colors.white),
+          iconButtonTheme: IconButtonThemeData(
+            style: IconButton.styleFrom(foregroundColor: Colors.white),
           ),
           dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1C1C2E)),
+            backgroundColor: Color(0xFF1C1C2E),
+          ),
         ),
         child: child!,
       );
