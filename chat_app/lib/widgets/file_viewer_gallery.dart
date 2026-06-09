@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -89,6 +90,19 @@ class _FileViewerGalleryState extends State<FileViewerGallery> {
     final url = _currentUrl;
     if (url.isEmpty) return 'File';
     return url.split('/').last.split('?').first;
+  }
+
+  String get _currentCreatedAt {
+    final raw = widget.type == GallertType.MessageFiles
+        ? (_current?.messageTimestampUtc ?? '')
+        : (_current?.createdAt ?? '');
+    if (raw.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(raw).toUtc();
+      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)} UTC';
+    } catch (_) {
+      return '';
+    }
   }
 
   String get _currentFileType {
@@ -179,6 +193,7 @@ class _FileViewerGalleryState extends State<FileViewerGallery> {
                 child: _TopBar(
                   fileName: _currentFileName,
                   fileType: _currentFileType,
+                  createdAt: _currentCreatedAt,
                   index: _currentIndex,
                   total: _files.length,
                   isSharing: _isSharing,
@@ -461,6 +476,7 @@ class _FileViewerGalleryState extends State<FileViewerGallery> {
 class _TopBar extends StatelessWidget {
   final String fileName;
   final String fileType;
+  final String createdAt;
   final int index;
   final int total;
   final bool isSharing;
@@ -472,6 +488,7 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.fileName,
     required this.fileType,
+    required this.createdAt,
     required this.index,
     required this.total,
     required this.isSharing,
@@ -531,7 +548,10 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${index + 1} of $total · $fileType',
+                  [
+                    '${index + 1} of $total · $fileType',
+                    if (createdAt.isNotEmpty) createdAt,
+                  ].join('  ·  '),
                   style: GoogleFonts.dmSans(fontSize: 11, color: _kTextMuted),
                 ),
               ],

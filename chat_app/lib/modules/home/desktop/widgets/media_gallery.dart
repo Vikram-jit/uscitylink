@@ -68,7 +68,7 @@ class _MediaGalleryState extends State<MediaGallery> {
       ? _homeController.driverId.value
       : _homeController.groupId.value;
 
-  String _fmt(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
+  String _fmt(DateTime d) => DateFormat('MMM dd, yyyy').format(d.toUtc());
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

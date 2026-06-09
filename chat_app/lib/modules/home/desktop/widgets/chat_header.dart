@@ -18,19 +18,31 @@ class _ChatHeaderState extends State<ChatHeader>
   late TabController _tabController;
   final _mc = Get.find<MessageController>();
 
+  Worker? _tabWorker;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+
+    // User taps a tab → update controller
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         _mc.switchTab(_tabController.index, MediaGallerySource.channel);
+      }
+    });
+
+    // Controller changes (e.g. driver switch) → move visual tab
+    _tabWorker = ever(_mc.currentTab, (int index) {
+      if (_tabController.index != index) {
+        _tabController.animateTo(index);
       }
     });
   }
 
   @override
   void dispose() {
+    _tabWorker?.dispose();
     _tabController.dispose();
     super.dispose();
   }

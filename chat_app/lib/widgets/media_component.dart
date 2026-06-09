@@ -221,8 +221,8 @@ class MediaComponent extends StatelessWidget {
   String _formatCreatedAt() {
     if (createdAt.isEmpty) return '';
     try {
-      final dt = DateTime.parse(createdAt).toLocal();
-      return DateFormat('MM/dd/yyyy h:mm a').format(dt);
+      final dt = DateTime.parse(createdAt).toUtc();
+      return '${DateFormat('MM/dd/yyyy h:mm a').format(dt)} UTC';
     } catch (_) {
       return '';
     }

@@ -68,7 +68,10 @@ class HomeController extends GetxController {
     driverId.value = userId;
     currentView.value = SidebarViewType.directMessage;
 
-    Get.find<MessageController>().loadMessages(userId, 1);
+    final mc = Get.find<MessageController>();
+    mc.clearChat();
+    mc.currentTab.value = 0;
+    mc.loadMessages(userId, 1);
 
     final socket = SocketService();
 
@@ -96,7 +99,10 @@ class HomeController extends GetxController {
     selectedName.value = userName;
     driverId.value = userId;
 
-    Get.find<MessageController>().loadMessages(userId, 1);
+    final mc = Get.find<MessageController>();
+    mc.clearChat();
+    mc.currentTab.value = 0;
+    mc.loadMessages(userId, 1);
 
     final socket = SocketService();
 

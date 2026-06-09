@@ -803,8 +803,8 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
       ? {
           createdAt: {
             [Op.between]: [
-              moment(startDate).startOf("day").toDate(),
-              moment(endDate || startDate).endOf("day").toDate(),
+              moment.utc(startDate).startOf("day").toDate(),
+              moment.utc(endDate || startDate).endOf("day").toDate(),
             ],
           },
         }
@@ -943,22 +943,22 @@ export const getMedia = async (req: Request, res: Response): Promise<any> => {
                 },
               ]
             : []),
-          ...(source === "channel"
-            ? [
-                {
-                  channelId: channelId,
-                  upload_source: "truck",
-                },
-              ]
-            : []),
-   ...(source === "channel"
-            ? [
-                {
-                  channelId: channelId,
-                  upload_source: "media",
-                },
-              ]
-            : []),
+          // ...(source === "channel"
+          //   ? [
+          //       {
+          //         channelId: channelId,
+          //         upload_source: "truck",
+          //       },
+          //     ]
+          //   : []),
+  //  ...(source === "channel"
+  //           ? [
+  //               {
+  //                 channelId: channelId,
+  //                 upload_source: "media",
+  //               },
+  //             ]
+  //           : []),
           ...(source !== "channel"
             ? [
                 {
