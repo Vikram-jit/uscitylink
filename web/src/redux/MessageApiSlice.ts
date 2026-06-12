@@ -94,12 +94,14 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         message: string;
         data: MediaModel;
       },
-      { channelId?: string; type: string; userId?: string; source?: string; private_chat_id?: string; page: number }
+      { channelId?: string; type: string; userId?: string; source?: string; private_chat_id?: string; page: number; startDate?: string; endDate?: string }
     >({
-      query: (payload) => ({
-        url: `media/${payload.channelId}?limit=12&page=${payload.page}&type=${payload.type}&userId=${payload.userId}&source=${payload.source}&private_chat_id=${payload.private_chat_id}`,
-        method: 'GET',
-      }),
+      query: (payload) => {
+        let url = `media/${payload.channelId}?limit=12&page=${payload.page}&type=${payload.type}&userId=${payload.userId}&source=${payload.source}&private_chat_id=${payload.private_chat_id}`;
+        if (payload.startDate) url += `&startDate=${payload.startDate}`;
+        if (payload.endDate) url += `&endDate=${payload.endDate}`;
+        return { url, method: 'GET' };
+      },
       keepUnusedDataFor: 0,
       providesTags: ['messages', 'media'],
     }),

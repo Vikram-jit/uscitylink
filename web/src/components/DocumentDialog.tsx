@@ -3,6 +3,7 @@
 import { on } from 'events';
 
 import * as React from 'react';
+import moment from 'moment';
 import { ArrowBackIos, ArrowForwardIos } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Box, CircularProgress, DialogActions, DialogContent } from '@mui/material';
@@ -39,6 +40,7 @@ interface DocumentDialog {
   movePrev?: () => void;
   currentIndex?: number;
   uploadType?:string
+  datetime:string | Date
 }
 export default function DocumentDialog({
   open,
@@ -48,10 +50,12 @@ export default function DocumentDialog({
   moveNext,
   movePrev,
   currentIndex,
-  uploadType
+  uploadType,
+  datetime
+
 }: DocumentDialog) {
 
-
+  
     const [isLoading, setIsLoading] = React.useState(true); 
     const [oldCurrebIndex,setOldCurrentIndex] = React.useState<number | null>(null)// Track loading state
     React.useEffect (() => {
@@ -79,8 +83,9 @@ export default function DocumentDialog({
               <CloseIcon />
             </IconButton>
             <Typography sx={{ ml: 2, flex: 1 }} variant="h6" component="div">
-              Document View
+              Document View{datetime ? `  ·  ${moment(datetime).format('MM/DD/YYYY h:mm A')}` : 'dd'}
             </Typography>
+           
           </Toolbar>
         </AppBar>
         <DialogContent>

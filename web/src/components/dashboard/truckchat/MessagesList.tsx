@@ -161,6 +161,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({ messages, isLoading,
       </List>
        {currentIndex != null && messages[currentIndex]?.url && (
               <DocumentDialog
+                datetime={messages[currentIndex].messageTimestampUtc}
                 uploadType={messages[currentIndex].url_upload_type}
                 open={currentIndex != null ? true : false}
                 onClose={() => {

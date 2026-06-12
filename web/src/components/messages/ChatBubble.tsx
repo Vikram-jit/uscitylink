@@ -83,6 +83,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
         >
           {props.url_upload_type == 'not-upload' || props.url_upload_type == 'local' ? (
             <MediaComponent
+               createAt={props.messageTimestampUtc}
               onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={'server'}
@@ -92,6 +93,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             />
           ) : (
             <MediaComponent
+              createAt={props.messageTimestampUtc}
               onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={props.url_upload_type}
@@ -158,6 +160,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                   >
                     {r_message.url_upload_type == 'not-upload' || r_message.url_upload_type == 'local' ? (
                       <MediaComponent
+                        createAt={r_message.messageTimestampUtc}
                         messageDirection={props.messageDirection}
                         type={'server'}
                         thumbnail={`http://52.9.12.189:4300/${props.url}`}
@@ -166,6 +169,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
                       />
                     ) : (
                       <MediaComponent
+                      createAt={r_message.messageTimestampUtc}
                         thumbnail={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.thumbnail}`}
                         url={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
                         name={r_message.url ? r_message.url : ' '}

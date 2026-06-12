@@ -372,7 +372,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
     >
       {data && userId && (
         <MessagesPaneHeader
-        handleReset={handleReset}
+          handleReset={handleReset}
           onHandlePin={onHandlePin}
           mediaPanel={mediaPanel}
           truckNumbers={data?.truckNumbers}
@@ -591,7 +591,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
           )}
         </>
       )}
-      {currentIndex != null && messages[currentIndex]?.url && <DocumentDialog open={currentIndex  != null? true :false} onClose={
+      {currentIndex != null && messages[currentIndex]?.url && <DocumentDialog datetime={messages[currentIndex]?.messageTimestampUtc} open={currentIndex  != null? true :false} onClose={
        ()=>{
         setCurrentIndex(null)
        }

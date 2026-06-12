@@ -19,30 +19,63 @@ interface MediaComponent {
   name: string;
   type?: string;
   messageDirection?: string;
-  dateTime?:Date
-  onClick?:()=>void
+  dateTime?: Date;
+  onClick?: () => void;
+  createAt?: string | Date
 }
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
+// ── UTC timestamp pill overlay ──────────────────────────────
+function TimestampBadge({ dateTime }: { dateTime?: string | Date }) {
+
+  return (
+    <Box
+      sx={{
+       position: "absolute",
+    bottom: "8px",
+    right: "25px",
+    width: "75%",
+        bgcolor: 'rgba(0,0,0,0.55)',
+        // borderRadius: '12px',
+        px: '7px',
+        py: '3px',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: 10,
+          color: '#fff',
+          lineHeight: 1.3,
+          whiteSpace: 'nowrap',
+          fontWeight: 400,
+          letterSpacing: 0.2,
+        }}
+      >
+        {moment(dateTime).format('MM/DD/YYYY h:mm A')}
+      </Typography>
+    </Box>
+  );
+}
 
 export default function MediaComponent({
   url,
-  width,
   height,
   file_name,
   name,
   thumbnail,
   type,
   messageDirection,
-  dateTime,onClick
+  dateTime,
+  onClick,
+  createAt
 }: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
 
   const file = name?.split('/');
 
-  const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm', '.mpeg', '.mpg', '.wmv'];
-
   switch (getFileExtension(url)) {
+    // ── Video ────────────────────────────────────────────────
     case '.mp4':
     case '.mkv':
     case '.avi':
@@ -54,21 +87,28 @@ export default function MediaComponent({
     case '.wmv':
       return (
         <>
-          <IconButton onClick={()=>setOpenDocument(true)}  style={{ position: 'relative' }}>
-            <Image
-            unoptimized={true}
-              height={height || 60}
-              src={thumbnail || ''}
-              alt=""
-              width={181}
-              style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
-              objectFit="contain"
-            />
-            <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
-          </IconButton>
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />}
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <IconButton onClick={() => setOpenDocument(true)} style={{ position: 'relative' }}>
+              <Image
+                unoptimized={true}
+                height={height || 60}
+                src={thumbnail || ''}
+                alt=""
+                width={181}
+                style={{ height: height || 200, width: 181, objectFit: 'contain' }}
+                objectFit="contain"
+              />
+              <PlayCircle size={50} style={{ position: 'absolute', color: 'white' }} />
+            </IconButton>
+            <TimestampBadge dateTime={createAt} />
+          </Box>
+          {openDocument && (
+            <DocumentDialog datetime={createAt ?? ''} open={openDocument} setOpen={setOpenDocument} documentKey={file?.[2]} />
+          )}
         </>
       );
+
+    // ── Audio ────────────────────────────────────────────────
     case '.mp3':
     case '.aac':
     case '.m4a':
@@ -79,263 +119,232 @@ export default function MediaComponent({
     case '.amr':
     case '.ape':
       return (
-        <>
-          <audio controls>
-            <source src={url}></source>
-          </audio>
-        </>
+        <audio controls>
+          <source src={url} />
+        </audio>
       );
+
     case '.3gpp':
       return (
         <>
-          <IconButton >
+          <IconButton>
             <DocumentScanner />
           </IconButton>
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          {openDocument && (
+            <DocumentDialog datetime={createAt ?? ''} open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />
+          )}
         </>
       );
 
+    // ── JPEG (trailing-space variant) ────────────────────────
     case '.jpeg ':
       return (
         <>
-          {type == 'not-upload' ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Download /> <Typography>receiving</Typography>
+          {type === 'not-upload' ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <Download />
+              <Typography>receiving</Typography>
             </Box>
           ) : (
-            <IconButton onClick={onClick}>
-              <img src={url} alt="" />
-            </IconButton>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+              <IconButton onClick={onClick}>
+                <img src={url} alt="" />
+              </IconButton>
+              <TimestampBadge dateTime={createAt} />
+            </Box>
           )}
-
-          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
+
+    // ── JPG ─────────────────────────────────────────────────
     case '.jpg':
       return (
         <>
-          {' '}
-          {type == 'not-upload' ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {messageDirection == 'S' ? (
+          {type === 'not-upload' ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              {messageDirection === 'S' ? (
                 <>
-                  {' '}
-                  <Upload /> <Typography>sending...</Typography>
+                  <Upload />
+                  <Typography>sending...</Typography>
                 </>
               ) : (
                 <>
-                  {' '}
-                  <Download /> <Typography>receiving...</Typography>
+                  <Download />
+                  <Typography>receiving...</Typography>
                 </>
               )}
             </Box>
           ) : (
-            <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
-              <Image
-                height={height || 60}
-                src={url}
-                alt=""
-                width={181}
-                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
-                objectFit="contain"
-              />
-               {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
-            </IconButton>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+              <IconButton onClick={onClick}>
+                <Image
+                  height={height || 60}
+                  src={url}
+                  alt=""
+                  width={181}
+                  style={{ height: height || 200, width: 181, objectFit: 'contain' }}
+                  objectFit="contain"
+                />
+              </IconButton>
+              <TimestampBadge dateTime={createAt} />
+            </Box>
           )}
-          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
+
+    // ── PNG ─────────────────────────────────────────────────
     case '.png':
       return (
         <>
-          {type == 'not-upload' ? (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              {messageDirection == 'S' ? (
+          {type === 'not-upload' ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              {messageDirection === 'S' ? (
                 <>
-                  {' '}
-                  <Upload /> <Typography>sending...</Typography>
+                  <Upload />
+                  <Typography>sending...</Typography>
                 </>
               ) : (
                 <>
-                  {' '}
-                  <Download /> <Typography>receiving...</Typography>
+                  <Download />
+                  <Typography>receiving...</Typography>
                 </>
               )}
             </Box>
           ) : (
-            <IconButton onClick={onClick} sx={{
-              display:"flex",flexDirection:"column"
-            }}>
-             <Image
-               unoptimized={true}
-                height={height || 60}
-                src={url}
-                alt=""
-                width={181}
-                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
-                objectFit="contain"
-              />
-              {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
-            </IconButton>
+            <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+              <IconButton onClick={onClick}>
+                <Image
+                  unoptimized={true}
+                  height={height || 60}
+                  src={url}
+                  alt=""
+                  width={181}
+                  style={{ height: height || 200, width: 181, objectFit: 'contain' }}
+                  objectFit="contain"
+                />
+              </IconButton>
+              <TimestampBadge dateTime={createAt} />
+            </Box>
           )}
-
-          {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
         </>
       );
+
+    // ── PDF ─────────────────────────────────────────────────
     case '.pdf':
       return (
         <>
-          <IconButton
-            // LinkComponent={'a'}
-            // href={`/dashboard/document-viewer/${file?.[1]}`}
-            // target='_blank'
-            onClick={onClick}
-          >
-            <Box display={'flex'} flexDirection={'column'} alignItems={'center'}>
-              <FilePdf style={{ color: 'red' }} size={45} />
-              <Typography variant="subtitle2">{file_name}</Typography>
-            </Box>
-          </IconButton>
-          {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+          <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+            <IconButton onClick={onClick}>
+              <Box display="flex" flexDirection="column" alignItems="center">
+                <FilePdf style={{ color: 'red' }} size={45} />
+                <Typography variant="subtitle2">{file_name}</Typography>
+              </Box>
+            </IconButton>
+            <TimestampBadge dateTime={createAt} />
+          </Box>
+          {openDocument && (
+            <DocumentDialog datetime={createAt ?? ''} open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />
+          )}
         </>
       );
 
+    // ── application/octet-stream ─────────────────────────────
     case 'application/octet-stream':
       switch (getFileExtension(url)) {
         case '.jpeg':
           return (
             <>
-              {type == 'not-upload' ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  {messageDirection == 'S' ? (
-                <>
-                  {' '}
-                  <Upload /> <Typography>sending...</Typography>
-                </>
-              ) : (
-                <>
-                  {' '}
-                  <Download /> <Typography>receiving...</Typography>
-                </>
-              )}
+              {type === 'not-upload' ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                  {messageDirection === 'S' ? (
+                    <>
+                      <Upload />
+                      <Typography>sending...</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <Download />
+                      <Typography>receiving...</Typography>
+                    </>
+                  )}
                 </Box>
               ) : (
-                <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
-                   <Image
-                   unoptimized={true}
-                height={height || 60}
-                src={url}
-                alt=""
-                width={181}
-                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
-                objectFit="contain"
-              />
-                {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
-                </IconButton>
+                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                  <IconButton onClick={onClick}>
+                    <Image
+                      unoptimized={true}
+                      height={height || 60}
+                      src={url}
+                      alt=""
+                      width={181}
+                      style={{ height: height || 200, width: 181, objectFit: 'contain' }}
+                      objectFit="contain"
+                    />
+                  </IconButton>
+                  <TimestampBadge dateTime={createAt} />
+                </Box>
               )}
-
-              {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
             </>
           );
+
         case '.png':
           return (
             <>
-              {type == 'not-upload' ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  {messageDirection == 'S' ? (
-                <>
-                  {' '}
-                  <Upload /> <Typography>sending...</Typography>
-                </>
-              ) : (
-                <>
-                  {' '}
-                  <Download /> <Typography>receiving...</Typography>
-                </>
-              )}
+              {type === 'not-upload' ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                  {messageDirection === 'S' ? (
+                    <>
+                      <Upload />
+                      <Typography>sending...</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <Download />
+                      <Typography>receiving...</Typography>
+                    </>
+                  )}
                 </Box>
               ) : (
-                <IconButton onClick={onClick} sx={{display:"flex",flexDirection:"column"}}>
-                  <Image
-                  unoptimized={true}
-                height={height || 60}
-                src={url}
-                alt=""
-                width={181}
-                style={{ height: height|| 200, width: 181, objectFit: 'contain' }}
-                objectFit="contain"
-              />
-               {/* <Typography>{moment(dateTime).format("YYYY-DD-MM hh:mm A")}</Typography> */}
-                </IconButton>
+                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                  <IconButton onClick={onClick}>
+                    <Image
+                      unoptimized={true}
+                      height={height || 60}
+                      src={url}
+                      alt=""
+                      width={181}
+                      style={{ height: height || 200, width: 181, objectFit: 'contain' }}
+                      objectFit="contain"
+                    />
+                  </IconButton>
+                  <TimestampBadge dateTime={createAt} />
+                </Box>
               )}
-
-              {/* {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />} */}
             </>
           );
+
         case '.pdf':
           return (
             <>
               <IconButton onClick={() => setOpenDocument(true)}>
                 <FilePdf />
               </IconButton>
-              {openDocument && <DocumentDialog open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />}
+              {openDocument && (
+                <DocumentDialog datetime={createAt ?? ''} open={openDocument} setOpen={setOpenDocument} documentKey={file?.[1]} />
+              )}
             </>
           );
       }
+    // falls through to default if octet-stream sub-extension not matched
 
     default:
       return <>{url}</>;
   }
 }
-function isImageUrl(url: string): boolean {
-  const ext = getFileExtension(url);
-  return IMAGE_EXTS.includes(ext);
-}
+
 function getFileExtension(url: string) {
-  // Create a new URL object
   const parsedUrl = new URL(url);
-
-  // Get the pathname from the URL
   const pathname = parsedUrl.pathname;
-
-  // Extract the file extension
   const extension = pathname.split('.').pop();
-       console.log(extension);
-  // If the last part is not a dot, return it with a dot
   return extension !== pathname ? `.${extension}` : '';
 }
