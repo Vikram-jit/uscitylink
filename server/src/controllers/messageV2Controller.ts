@@ -193,47 +193,47 @@ export const quickMessage = async (
           const isSocket = global.userSockets[staffId];
 
           if (
-            e.channelId === (channelId) &&
-            userProfileId === e.userId
+            e.channelId === (channelId)
           ) {
+            await retry(
+              async () => {
+                await MessageStaff.create({
+                  messageId: messageSave.id,
+                  staffId: staffId,
+                  driverId: userProfileId,
+                  status: "read",
+                  type: "chat",
+                });
+              },
+              {
+                retries: 3,
+                onRetry: (err) => {
+                  if (
+                    err instanceof Error &&
+                    (err as any).original?.code === "ER_LOCK_DEADLOCK"
+                  ) {
+                    console.warn("Deadlock detected, retrying...");
+                  } else {
+                    throw err;
+                  }
+                },
+              },
+            );
+
+            await message?.update(
+              {
+                deliveryStatus: "seen",
+              },
+              {
+                where: {
+                  id: messageSave.id,
+                },
+              },
+            );
+
+            isCheckAnyStaffOpenChat += 1;
+
             if (isSocket) {
-              await retry(
-                async () => {
-                  await MessageStaff.create({
-                    messageId: messageSave.id,
-                    staffId: staffId,
-                    driverId: userProfileId,
-                    status: "read",
-                    type: "chat",
-                  });
-                },
-                {
-                  retries: 3,
-                  onRetry: (err) => {
-                    if (
-                      err instanceof Error &&
-                      (err as any).original?.code === "ER_LOCK_DEADLOCK"
-                    ) {
-                      console.warn("Deadlock detected, retrying...");
-                    } else {
-                      throw err;
-                    }
-                  },
-                },
-              );
-
-              await message?.update(
-                {
-                  deliveryStatus: "seen",
-                },
-                {
-                  where: {
-                    id: messageSave.id,
-                  },
-                },
-              );
-
-              isCheckAnyStaffOpenChat += 1;
               getSocketInstance().to(isSocket.id).emit(
                 SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL,
                 message,
@@ -268,12 +268,7 @@ export const quickMessage = async (
               }
             } else {
               if (isSocket) {
-                // io.to(isSocket.id).emit("new_message_count_update_staff", {
-                //   channelId: message?.channelId,
-                //   userId: message?.userProfileId,
-                //   message,
-                //   sent_message_count: 1,
-                // });
+               
                 await UserChannel.update(
                   {
                     sent_message_count: Sequelize.literal(
