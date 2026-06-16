@@ -4,6 +4,8 @@ import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/core/widgets/global_loader.dart';
 import 'package:chat_app/modules/broadcast_messages/screens/broadcast.dart';
+import 'package:chat_app/modules/system_messages/screens/system_messages_screen.dart';
+import 'package:chat_app/modules/system_messages/system_message_controller.dart';
 import 'package:chat_app/modules/driver_chat/screen/driver_chat.dart';
 import 'package:chat_app/modules/home/screens/channel_screen.dart';
 import 'package:chat_app/modules/home/screens/template_screen.dart';
@@ -93,6 +95,14 @@ class MyApp extends StatelessWidget {
           page: () => Broadcast(),
           middlewares: [AuthMiddleware()],
           // binding: BroadcastBinding(),
+        ),
+        GetPage(
+          name: AppRoutes.systemMessages,
+          page: () => const SystemMessagesScreen(),
+          binding: BindingsBuilder(() {
+            Get.lazyPut(() => SystemMessageController(), fenix: true);
+          }),
+          middlewares: [AuthMiddleware()],
         ),
       ],
 

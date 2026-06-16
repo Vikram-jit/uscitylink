@@ -31,6 +31,8 @@ export class Message extends Model {
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   public isBroadcastMessage?: boolean;
+  public isCompleted!: boolean;
+  public completedBy!: string | null;
 
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
@@ -130,6 +132,19 @@ Message.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    isCompleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    completedBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "user_profiles",
+        key: "id",
+      },
+    },
   },
   {
     sequelize: primarySequelize,
@@ -142,6 +157,7 @@ Message.init(
 Message.belongsTo(UserProfile, { foreignKey: "senderId", as: "sender" });
 Message.belongsTo(Channel, { foreignKey: "channelId", as: "channel" });
 Message.belongsTo(Message, { foreignKey: "reply_message_id", as: "r_message" });
+Message.belongsTo(UserProfile, { foreignKey: "completedBy", as: "completedByUser" });
 
 UserProfile.hasMany(Message, { foreignKey: "senderId", as: "messages" });
 UserChannel.belongsTo(Message, {

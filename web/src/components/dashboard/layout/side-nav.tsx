@@ -105,7 +105,7 @@ export function SideNav(): React.JSX.Element {
   );
 }
 
-function renderNavItems({ items = [], pathname ,data}: { items?: NavItemConfig[]; pathname: string,data?: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number} }): React.JSX.Element {
+function renderNavItems({ items = [], pathname ,data}: { items?: NavItemConfig[]; pathname: string,data?: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number,systemUnRead:number} }): React.JSX.Element {
   // const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
   //   const { key, ...item } = curr;
 
@@ -163,7 +163,7 @@ function reduceChildRoutes({
 interface NavItemProps extends Omit<NavItemConfig, 'items'> {
   pathname: string;
   children?:NavItemConfig[]
-  data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number,truckGroup:number}
+  data: {channel:ChannelModel,messages:number,group:number,staffcountUnRead:number,truckGroup:number,systemUnRead:number}
 }
 
 function NavItem({ disabled, external, href, icon, matcher, pathname, title,badge,data,key}: NavItemProps): React.JSX.Element {
@@ -239,7 +239,11 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title,badg
           {badge && title == "Truck Chat" &&  data?.truckGroup > 0 && <Chip sx={{
             background:"#fff",
             borderRadius:"10px!important"
-          }} label={data?.truckGroup}></Chip> }  
+          }} label={data?.truckGroup}></Chip> }
+          {badge && title == "System Messages" && data?.systemUnRead > 0 && <Chip sx={{
+            background:"#fff",
+            borderRadius:"10px!important"
+          }} label={data?.systemUnRead}></Chip> }
         </Box>
       </Box>
     </li>

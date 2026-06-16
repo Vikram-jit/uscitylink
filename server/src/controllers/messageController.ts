@@ -253,6 +253,68 @@ export const processFileUpload = async (
   }
 };
 
+// export const getSystemMessages = async (
+//   req: Request,
+//   res: Response,
+// ): Promise<any> => {
+//   try {
+//     const page = Number(req.query.page) || 1;
+//     const pageSize = Number(req.query.pageSize) || 10;
+//     const search = (req.query.search as string) || "";
+//     const offset = (page - 1) * pageSize;
+
+//     const systemProfile = await UserProfile.findOne({
+//       include: [
+//         {
+//           model: User,
+//           as: "user",
+//           where: { user_type: "driver", driver_number: "system001" },
+//           required: true,
+//         },
+//       ],
+//     });
+
+//     if (!systemProfile) {
+//       return res.status(200).json({
+//         status: true,
+//         data: {
+//           messages: [],
+//           pagination: { currentPage: page, pageSize, total: 0, totalPages: 0 },
+//         },
+//       });
+//     }
+
+//     const { rows, count } = await Message.findAndCountAll({
+//       where: {
+//         userProfileId: systemProfile.id,
+//         ...(search && { body: { [Op.like]: `%${search}%` } }),
+//       },
+//       include: [
+//         { model: UserProfile, as: "sender" },
+//         { model: Channel },
+//       ],
+//       limit: pageSize,
+//       offset,
+//       order: [["messageTimestampUtc", "DESC"]],
+//     });
+
+//     return res.status(200).json({
+//       status: true,
+//       data: {
+//         messages: rows,
+//         pagination: {
+//           currentPage: page,
+//           pageSize,
+//           total: count,
+//           totalPages: Math.ceil(count / pageSize),
+//         },
+//       },
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ status: false, message: "Server error" });
+//   }
+// };
+
 fileUploadQueue.process(processFileUpload);
 fileUploadQueue.on("error", (err) => {
   console.error("Queue connection error:", err);
@@ -1635,5 +1697,216 @@ export const uploadFromLocal = async (
       const delay = Math.pow(2, attempt) * 100; // Exponential backoff
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
+  }
+};
+
+export const getSystemMessages = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 10;
+    const search = (req.query.search as string) || "";
+    const completedBy = req.query.completedBy as string | undefined;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+    const offset = (page - 1) * pageSize;
+
+    const systemProfile = await UserProfile.findOne({
+      include: [
+        {
+          model: User,
+          as: "user",
+          where: { user_type: "driver", driver_number: "system001" },
+          required: true,
+        },
+      ],
+    });
+
+    if (!systemProfile) {
+      return res.status(200).json({
+        status: true,
+        data: {
+          messages: [],
+          pagination: { currentPage: page, pageSize, total: 0, totalPages: 0 },
+        },
+      });
+    }
+
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.messageTimestampUtc = {
+        [Op.between]: [
+          new Date(`${startDate}T00:00:00.000Z`),
+          new Date(`${endDate}T23:59:59.999Z`),
+        ],
+      };
+    } else if (startDate) {
+      dateFilter.messageTimestampUtc = { [Op.gte]: new Date(`${startDate}T00:00:00.000Z`) };
+    } else if (endDate) {
+      dateFilter.messageTimestampUtc = { [Op.lte]: new Date(`${endDate}T23:59:59.999Z`) };
+    }
+
+    const { rows, count } = await Message.findAndCountAll({
+      where: {
+        userProfileId: systemProfile.id,
+        ...(search && { body: { [Op.like]: `%${search}%` } }),
+        ...(completedBy && { completedBy }),
+        ...dateFilter,
+      },
+      include: [
+        { model: UserProfile, as: "sender" },
+        {
+          model: UserProfile,
+          as: "completedByUser",
+          foreignKey: "completedBy",
+          required: false,
+        },
+      ],
+      limit: pageSize,
+      offset,
+      order: [["messageTimestampUtc", "DESC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        messages: rows,
+        pagination: {
+          currentPage: page,
+          pageSize,
+          total: count,
+          totalPages: Math.ceil(count / pageSize),
+        },
+      },
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ status: false, message: error || "Server error" });
+  }
+};
+
+import { MessageStaff } from "../models/MessageStaff";
+
+export const getSystemUnreadMessages = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
+  try {
+    const staffId = req.user?.id;
+    console.log(staffId ,":stfffff")
+    const systemProfile = await UserProfile.findOne({
+      include: [
+        {
+          model: User,
+          as: "user",
+          where: { user_type: "driver", driver_number: "system001" },
+          required: true,
+        },
+      ],
+    });
+
+    if (!systemProfile) {
+      return res.status(200).json({ status: true, data: { messages: [] } });
+    }
+
+    const staffEntries = await MessageStaff.findAll({
+      where: { staffId, status: "un-read" },
+    });
+
+    const messageIds = staffEntries.map((e: any) => e.messageId);
+
+    if (messageIds.length === 0) {
+      return res.status(200).json({ status: true, data: { messages: [] } });
+    }
+
+    const messages = await Message.findAll({
+      where: {
+        id: { [Op.in]: messageIds },
+        userProfileId: systemProfile.id,
+      },
+      include: [
+        {
+          model: UserProfile,
+          as: "completedByUser",
+          foreignKey: "completedBy",
+          required: false,
+        },
+      ],
+      order: [["messageTimestampUtc", "DESC"]],
+    });
+
+    return res.status(200).json({ status: true, data: { messages } });
+  } catch (error) {
+    return res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+export const markSystemMessageComplete = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const staffId = req.user?.id;
+
+    const existing = await Message.findByPk(id);
+
+    if (existing && !existing.isCompleted) {
+      await Message.update(
+        { isCompleted: true, completedBy: staffId },
+        { where: { id } },
+      );
+    }
+
+    await MessageStaff.update(
+      { status: "read" },
+      { where: { messageId: id, staffId } },
+    );
+
+    return res.status(200).json({ status: true, message: "Message marked as completed." });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+export const markAllSystemMessagesRead = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
+  try {
+    const staffId = req.user?.id;
+
+    const unreadEntries = await MessageStaff.findAll({
+      where: { staffId, status: "un-read", type: "system" },
+    });
+
+    const messageIds = unreadEntries.map((e: any) => e.messageId);
+
+    if (messageIds.length === 0) {
+      return res.status(200).json({ status: true, message: "Nothing to update." });
+    }
+
+    const completedMessages = await Message.findAll({
+      where: { id: { [Op.in]: messageIds }, isCompleted: true },
+      attributes: ["id"],
+    });
+
+    const completedIds = completedMessages.map((m) => m.id);
+
+    if (completedIds.length === 0) {
+      return res.status(200).json({ status: true, message: "No completed messages to mark as read." });
+    }
+
+    await MessageStaff.update(
+      { status: "read" },
+      { where: { messageId: { [Op.in]: completedIds }, staffId } },
+    );
+
+    return res.status(200).json({ status: true, message: "All completed messages marked as read." });
+  } catch (error) {
+    return res.status(500).json({ status: false, message: "Server error" });
   }
 };

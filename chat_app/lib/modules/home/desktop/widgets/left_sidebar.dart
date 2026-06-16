@@ -3,6 +3,7 @@ import 'package:chat_app/core/storage/storage_service.dart';
 import 'package:chat_app/modules/home/controllers/sidebar_controller.dart';
 import 'package:chat_app/modules/home/desktop/components/sidebar_icon.dart';
 import 'package:chat_app/modules/home/home_controller.dart';
+import 'package:chat_app/modules/system_messages/system_message_controller.dart';
 import 'package:chat_app/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -92,6 +93,48 @@ class LeftSidebar extends StatelessWidget {
                     onTap: () => Get.toNamed(AppRoutes.broadcastMessages),
                     active: isRouteActive(AppRoutes.broadcastMessages),
                   ),
+                  Obx(() {
+                    final count =
+                        Get.isRegistered<SystemMessageController>()
+                            ? Get.find<SystemMessageController>().unreadCount.value
+                            : 0;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        SidebarIcon(
+                          Icons.notifications_active_outlined,
+                          tooltip: 'System Messages',
+                          onTap: () => Get.toNamed(AppRoutes.systemMessages),
+                          active: isRouteActive(AppRoutes.systemMessages),
+                        ),
+                        if (count > 0)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                count > 99 ? '99+' : '$count',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),

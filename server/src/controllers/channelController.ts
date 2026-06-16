@@ -283,6 +283,10 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
                 as: "user",
                where:{
                 status:"active",
+                [Op.or]: [
+                  { driver_number: null },
+                  { driver_number: { [Op.ne]: "system001" } },
+                ],
                }
               },
               
@@ -351,6 +355,10 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
                 as: "user",
                where:{
                 status:"active",
+                [Op.or]: [
+                  { driver_number: null },
+                  { driver_number: { [Op.ne]: "system001" } },
+                ],
                }
               },
               
@@ -398,6 +406,10 @@ export async function getMembers(req: Request, res: Response): Promise<any> {
                 as: "user",
                where:{
                 status:"active",
+                [Op.or]: [
+                  { driver_number: null },
+                  { driver_number: { [Op.ne]: "system001" } },
+                ],
                }
               },
               
@@ -536,10 +548,33 @@ const truckGroupCount = await Group.sum('message_count',{where:{
   type:"truck"
 }});
 
+    const systemProfile = await UserProfile.findOne({
+      include: [{
+        model: User,
+        as: "user",
+        where: { user_type: "driver", driver_number: "system001" },
+        required: true,
+      }],
+    });
+
+    let systemUnRead = 0;
+    if (systemProfile) {
+      const systemMessageIds = await Message.findAll({
+        where: { userProfileId: systemProfile.id },
+        attributes: ["id"],
+      });
+      const ids = systemMessageIds.map((m) => m.id);
+      if (ids.length > 0) {
+        systemUnRead = await MessageStaff.count({
+          where: { staffId: req.user?.id, status: "un-read", messageId: { [Op.in]: ids } },
+        });
+      }
+    }
+
     return res.status(200).json({
       status: true,
       message: `Active channel Fetch Successfully.`,
-      data: {channel,messages:userUnMessage,group:groupCount,staffcountUnRead:countUnRead,truckGroup:truckGroupCount},
+      data: {channel,messages:userUnMessage,group:groupCount,staffcountUnRead:countUnRead,truckGroup:truckGroupCount,systemUnRead},
     });
   } catch (err: any) {
     return res

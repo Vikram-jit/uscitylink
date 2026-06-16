@@ -3,6 +3,7 @@ import 'package:chat_app/core/controller/global_search_controller.dart';
 import 'package:chat_app/core/controller/global_socket_controller.dart';
 import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/modules/broadcast_messages/Broadcast_controller.dart';
+import 'package:chat_app/modules/system_messages/system_message_controller.dart';
 import 'package:chat_app/modules/home/controllers/channel_controller.dart';
 import 'package:chat_app/modules/home/controllers/message_controller.dart';
 import 'package:chat_app/modules/home/controllers/overview_controller.dart';
@@ -33,7 +34,11 @@ class AppBindings extends Bindings {
     );
     Get.lazyPut<BroadcastController>(
       () => BroadcastController(),
-      fenix: true, // ✅ important
+      fenix: true,
+    );
+    Get.lazyPut<SystemMessageController>(
+      () => SystemMessageController(),
+      fenix: true,
     );
 
     Get.put(GlobalLoaderController(), permanent: true);

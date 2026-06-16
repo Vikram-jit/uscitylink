@@ -10,6 +10,7 @@ export const navItems = [
     { key: 'groups', title: 'Groups', href: paths.dashboard.groups, icon: 'users',badge:true },
 
    { key: 'boardcast_messages', title: 'Broadcast Messages', href: paths.dashboard.broadcast_messages, icon: 'satellite',badge:true },
+  { key: 'system_messages', title: 'System Messages', href: paths.dashboard.system_messages, icon: 'chat', badge: true },
   { key: 'templates', title: 'Templates', href: paths.dashboard.templates, icon: 'template',badge:false },
 
   { key: 'user', title: 'Users', href: `${paths.dashboard.users}/staff`, icon: 'user' ,badge:false, items:[{ key: 'user', title: 'Users', href: paths.dashboard.users, icon: 'user' ,badge:false}]},

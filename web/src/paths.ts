@@ -18,6 +18,7 @@ export const paths = {
     templates: '/dashboard/templates',
     trainings: '/dashboard/trainings',
     staff_chat: '/dashboard/staff_chat',
+    system_messages: '/dashboard/system-messages',
   },
   user:{
     "add":'/dashboard/users/add'

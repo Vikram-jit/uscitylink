@@ -1,4 +1,4 @@
-import { getMessagesByUserId, uploadMiddleware, fileUpload, getMedia, fileUploadWeb, getGroupMessages, quickMessageAndReply, uploadMultipleMiddleware, fileUploadMultiple, getBroadCastMessages } from './../controllers/messageController';
+import { getMessagesByUserId, uploadMiddleware, fileUpload, getMedia, fileUploadWeb, getGroupMessages, quickMessageAndReply, uploadMultipleMiddleware, fileUploadMultiple, getBroadCastMessages, getSystemMessages, getSystemUnreadMessages, markSystemMessageComplete, markAllSystemMessagesRead } from './../controllers/messageController';
 import { Router } from 'express';
 import { createMessage, getMessages } from '../controllers/messageController';
 import { authMiddleware } from '../middleware/authMiddleware';
@@ -15,6 +15,10 @@ router.post('/multipleFileUpload',authMiddleware, uploadMultipleMiddleware, file
 router.post('/fileAwsUpload',authMiddleware, uploadAwsMiddleware, fileUploadAWS)
 router.post('/fileUploadWeb',authMiddleware, uploadMiddleware, fileUploadWeb)
 router.get('/media/:channelId',authMiddleware,  getMedia)
+router.get('/system', authMiddleware, getSystemMessages);
+router.get('/system/unread', authMiddleware, getSystemUnreadMessages);
+router.put('/system/:id/complete', authMiddleware, markSystemMessageComplete);
+router.put('/system/mark-all-read', authMiddleware, markAllSystemMessagesRead);
 router.get('/byUserId/:id',authMiddleware, getMessagesByUserId);
 router.get('/:channelId',authMiddleware, getMessages);
 router.get('/:channelId/:groupId',authMiddleware, getGroupMessages);

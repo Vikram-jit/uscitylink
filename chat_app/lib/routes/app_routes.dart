@@ -5,4 +5,5 @@ class AppRoutes {
   static const truckChat = '/truck_chat';
   static const broadcastMessages = '/broadcast_messages';
   static const loginWithToken = '/login-with-token/:token';
+  static const systemMessages = '/system_messages';
 }

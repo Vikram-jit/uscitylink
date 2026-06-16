@@ -155,6 +155,70 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
         body: payload,
       }),
     }),
+    getSystemUnreadMessages: builder.query<
+      {
+        status: boolean;
+        data: {
+          messages: {
+            id: string;
+            body: string;
+            url: string | null;
+            messageTimestampUtc: string;
+            isCompleted: boolean;
+          }[];
+        };
+      },
+      void
+    >({
+      query: () => ({ url: 'message/system/unread', method: 'GET' }),
+      keepUnusedDataFor: 0,
+      providesTags: ['messages'],
+    }),
+    markSystemMessageComplete: builder.mutation<
+      { status: boolean; message: string },
+      { id: string }
+    >({
+      query: (payload) => ({
+        url: `message/system/${payload.id}/complete`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['messages', 'channels'],
+    }),
+    markAllSystemMessagesRead: builder.mutation<
+      { status: boolean; message: string },
+      void
+    >({
+      query: () => ({ url: 'message/system/mark-all-read', method: 'PUT' }),
+      invalidatesTags: ['messages', 'channels'],
+    }),
+    getSystemMessages: builder.query<
+      {
+        status: boolean;
+        data: {
+          messages: {
+            id: string;
+            body: string;
+            url: string | null;
+            messageTimestampUtc: string;
+            channel: { name: string } | null;
+          }[];
+          pagination: {
+            currentPage: number;
+            pageSize: number;
+            total: number;
+            totalPages: number;
+          };
+        };
+      },
+      { page: number; pageSize: number; search?: string; completedBy?: string; startDate?: string; endDate?: string }
+    >({
+      query: (payload) => ({
+        url: `message/system?page=${payload.page}&pageSize=${payload.pageSize}&search=${payload.search ?? ''}&completedBy=${payload.completedBy ?? ''}&startDate=${payload.startDate ?? ''}&endDate=${payload.endDate ?? ''}`,
+        method: 'GET',
+      }),
+      keepUnusedDataFor: 0,
+      providesTags: ['messages'],
+    }),
     uploadMultipleFiles: builder.mutation<
       {
         status: boolean;
@@ -198,4 +262,8 @@ export const {
   useVideoUploadMutation,
   useFileUploadMutation,
   useGetMediaQuery,
+  useGetSystemMessagesQuery,
+  useGetSystemUnreadMessagesQuery,
+  useMarkSystemMessageCompleteMutation,
+  useMarkAllSystemMessagesReadMutation,
 } = MessageApiSlice;
