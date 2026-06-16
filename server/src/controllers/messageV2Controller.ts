@@ -313,71 +313,56 @@ export const quickMessage = async (
         );
       }
 
-      if (isCheckAnyStaffOpenChat == 0) {
-        const newPromise = Object.entries(global.staffActiveChannel).map(
-          async ([staffId, el]) => {
-            const isSocket = global.userSockets[staffId];
+      const allActiveStaff = await UserProfile.findAll({
+        include: [
+          {
+            model: User,
+            as: "user",
+            where: {
+              status: "active",
+              user_type: "staff",
+            },
+            required: true,
+          },
+        ],
+      });
 
-            await retry(
-              async () => {
-                await MessageStaff.findOrCreate({
-                  where: {
-                    messageId: messageSave.id,
-                    staffId: staffId,
-                    driverId: userProfileId,
-                  },
-                  defaults: {
-                    messageId: messageSave.id,
-                    staffId: staffId,
-                    driverId:userProfileId,
-                    status: "un-read",
-                  },
-                });
-              },
-              {
-                retries: 3,
-                onRetry: (err) => {
-                  if (
-                    err instanceof Error &&
-                    (err as any).original?.code === "ER_LOCK_DEADLOCK"
-                  ) {
-                    console.warn("Deadlock detected, retrying...");
-                  } else {
-                    throw err;
-                  }
-                },
-              },
-            );
+      const newPromise = allActiveStaff.map(async (staffProfile) => {
+        const staffId = staffProfile.id;
 
-            if (
-              el.role == "staff" &&
-              el.channelId == channelId
-            ) {
-              if (isSocket) {
-                
-              }
-            } else {
+        await retry(
+          async () => {
+            await MessageStaff.findOrCreate({
+              where: {
+                messageId: messageSave.id,
+                staffId: staffId,
+                driverId: userProfileId,
+              },
+              defaults: {
+                messageId: messageSave.id,
+                staffId: staffId,
+                driverId: userProfileId,
+                status: "un-read",
+                type: "chat",
+              },
+            });
+          },
+          {
+            retries: 3,
+            onRetry: (err) => {
               if (
-                el.role == "staff" &&
-                el.channelId != channelId
+                err instanceof Error &&
+                (err as any).original?.code === "ER_LOCK_DEADLOCK"
               ) {
-                // const channel = await Channel.findByPk(message?.channelId);
-                if (isSocket) {
-                  getSocketInstance().to(isSocket?.id).emit(
-                    "notification_new_message",
-                    `New Message received by ${message?.dataValues.sender.username} `,
-                  );
-                  getSocketInstance().to(isSocket.id).emit(
-                    "notification_user_id",
-                    `${message.userProfileId}`,
-                  );
-                }
+                console.warn("Deadlock detected, retrying...");
+              } else {
+                throw err;
               }
-            }
+            },
           },
         );
-        await Promise.all(newPromise);
-      }
+      });
+      await Promise.all(newPromise);
 
       await UserChannel.update(
         {
