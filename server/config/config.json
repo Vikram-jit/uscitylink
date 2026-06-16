@@ -1,9 +1,9 @@
 {
     "development": {
-      "username": "root",
-      "password": "",
+      "username": "admin",
+      "password": "LuI62bislPCsRE6Kvdx7",
       "database": "uscitylink",
-      "host": "localhost",
+      "host": "yard-in.ctq4we2iqoay.us-west-1.rds.amazonaws.com",
       "dialect": "mysql"
     },
     "test": {
