@@ -572,30 +572,34 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       ],
     });
 
-    const getTruck = await secondarySequelize.query<any>(
-      `SELECT * FROM trucks WHERE number = :truckNumber`,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          truckNumber: groupUser?.dataValues.Group?.name,
-        },
-      }
-    );
-    const truckId = getTruck[0]?.id;
+    const truckNumber = groupUser?.dataValues.Group?.name;
+    let truckId: number | undefined;
+
+    if (truckNumber) {
+      const getTruck = await secondarySequelize.query<any>(
+        `SELECT * FROM trucks WHERE number = :truckNumber`,
+        {
+          type: QueryTypes.SELECT,
+          replacements: { truckNumber },
+        }
+      );
+      truckId = getTruck[0]?.id;
+    }
 
     // Get the latest inspection for this truck
-    const latestInspection = await secondarySequelize.query<any>(
-      `SELECT * FROM daily_vehicle_inspections 
-   WHERE truck_id = :id 
-   ORDER BY id DESC 
+    let latestInspection: any[] = [];
+    if (truckId) {
+      latestInspection = await secondarySequelize.query<any>(
+        `SELECT * FROM daily_vehicle_inspections
+   WHERE truck_id = :id
+   ORDER BY id DESC
    LIMIT 1`,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          id: truckId,
-        },
-      }
-    );
+        {
+          type: QueryTypes.SELECT,
+          replacements: { id: truckId },
+        }
+      );
+    }
     // Check if inspection was done and if 24 hours have passed
     let inspectionDoneToday = false;
 
