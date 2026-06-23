@@ -15,6 +15,8 @@ import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
 import { AppVersions } from "../models/AppVersions";
+import Channel from "../models/Channel";
+import UserChannel from "../models/UserChannel";
 
 function isValidEmail(email: string) {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,12 +25,12 @@ function isValidEmail(email: string) {
 
 export const verifyDriver = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const { email, phone_number, driver_number } = req.body;
 
-    if (!email || !phone_number  || !driver_number) {
+    if (!email || !phone_number || !driver_number) {
       return res.status(400).json({
         status: false,
         message: "All fields are required.",
@@ -70,8 +72,6 @@ export const verifyDriver = async (
         data: existingDriverNumber,
       });
     }
-
-  
 
     return res.status(201).json({
       status: true,
@@ -119,7 +119,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       driver_number: driver_number || null,
     });
 
-    await UserProfile.create({
+    const userProfileId = await UserProfile.create({
       username,
       password: hashedPassword,
       userId: newUser.id,
@@ -128,6 +128,17 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       status: "active",
     });
 
+    const isFirstChannel = await Channel.findOne({
+      order: [["createdAt", "ASC"]],
+    });
+
+    if (isFirstChannel) {
+      await UserChannel.create({
+        channelId: req.activeChannel,
+        userProfileId: userProfileId.id,
+        status: "active",
+      });
+    }
     return res.status(201).json({
       status: true,
       message: "Registered successfully",
@@ -176,58 +187,58 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     }
 
     // Fetch dispatchers based on email or phone
-    const dispatchers = await secondarySequelize.query<any>(
-      `SELECT * FROM dispatches WHERE ${
-        isEmailValid ? "email" : "phone"
-      } = :value`,
-      {
-        replacements: { value: queryValue },
-        type: QueryTypes.SELECT,
-      }
-    );
+    // const dispatchers = await secondarySequelize.query<any>(
+    //   `SELECT * FROM dispatches WHERE ${
+    //     isEmailValid ? "email" : "phone"
+    //   } = :value`,
+    //   {
+    //     replacements: { value: queryValue },
+    //     type: QueryTypes.SELECT,
+    //   },
+    // );
 
     // Fetch drivers based on email or phone_number
-    const drivers = await secondarySequelize.query<any>(
-      `SELECT * FROM drivers WHERE ${
-        isEmailValid ? "email" : "phone_number"
-      } = :value`,
-      {
-        replacements: { value: queryValue },
-        type: QueryTypes.SELECT,
-      }
-    );
+    // const drivers = await secondarySequelize.query<any>(
+    //   `SELECT * FROM drivers WHERE ${
+    //     isEmailValid ? "email" : "phone_number"
+    //   } = :value`,
+    //   {
+    //     replacements: { value: queryValue },
+    //     type: QueryTypes.SELECT,
+    //   },
+    // );
 
-    if (dispatchers?.length === 0 && drivers?.length === 0) {
-      throw new Error("Invalid credentials");
-    }
+    // if (dispatchers?.length === 0 && drivers?.length === 0) {
+    //   throw new Error("Invalid credentials");
+    // }
 
-    const userDetails: any =
-      dispatchers.length > 0 ? dispatchers?.[0] : drivers?.[0];
+    // const userDetails: any =
+    //   dispatchers.length > 0 ? dispatchers?.[0] : drivers?.[0];
 
-    const newUser = await User.create({
-      email: userDetails.email,
-      phone_number:
-        dispatchers.length > 0
-          ? dispatchers?.[0]?.phone
-          : drivers?.[0]?.phone_number,
-    });
+    // const newUser = await User.create({
+    //   email: userDetails.email,
+    //   phone_number:
+    //     dispatchers.length > 0
+    //       ? dispatchers?.[0]?.phone
+    //       : drivers?.[0]?.phone_number,
+    // });
 
-    const roleId = dispatchers.length > 0 ? "staff" : "driver"; // 2 for Dispatcher, 3 for Driver
+   // const roleId = dispatchers.length > 0 ? "staff" : "driver"; // 2 for Dispatcher, 3 for Driver
 
-    const role = await Role.findOne({
-      where: {
-        name: roleId,
-      },
-    });
+    // const role = await Role.findOne({
+    //   where: {
+    //     name: roleId,
+    //   },
+    // });
 
-    await UserProfile.create({
-      username: userDetails.name,
-      password: userDetails.password,
-      userId: newUser.id,
-      isOnline: false,
-      role_id: role?.id!,
-      status: "active",
-    });
+    // await UserProfile.create({
+    //   username: userDetails.name,
+    //   password: userDetails.password,
+    //   userId: newUser.id,
+    //   isOnline: false,
+    //   role_id: role?.id!,
+    //   status: "active",
+    // });
 
     const newUserProfile = await User.findOne({
       where: {
@@ -261,7 +272,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
 export async function updateAppVersion(
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> {
   try {
     const { version, buildNumber, platform } = req.body;
@@ -284,7 +295,7 @@ export async function updateAppVersion(
           where: {
             id: req.user?.id,
           },
-        }
+        },
       );
       return res.status(200).json({
         status: true,
@@ -304,7 +315,7 @@ export async function updateAppVersion(
           where: {
             id: req.user?.id,
           },
-        }
+        },
       );
       return res.status(200).json({
         status: true,
@@ -328,7 +339,7 @@ export async function updateAppVersion(
             where: {
               id: req.user?.id,
             },
-          }
+          },
         );
       }
       return res.status(200).json({
@@ -372,7 +383,7 @@ export async function updateAppVersion(
 //login With Password
 export async function loginWithPassword(
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> {
   try {
     const { email, password, role } = req.body;
@@ -613,7 +624,7 @@ export async function logout(req: Request, res: Response): Promise<any> {
           id: req.user?.id,
         },
         returning: true,
-      }
+      },
     );
 
     return res.status(200).json({
@@ -629,7 +640,7 @@ export async function logout(req: Request, res: Response): Promise<any> {
 
 export async function loginWithToken(
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> {
   try {
     const key = "base64:ZZ5rmCRJD8S9awqHtgwN1z3WRa+UlXAoITHSrFUBZIU";
@@ -702,7 +713,7 @@ function xorDecrypt(input: string, key: string) {
   let decrypted = "";
   for (let i = 0; i < input.length; i++) {
     decrypted += String.fromCharCode(
-      input.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+      input.charCodeAt(i) ^ key.charCodeAt(i % key.length),
     );
   }
   return decrypted;
