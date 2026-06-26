@@ -134,7 +134,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
     if (isFirstChannel) {
       await UserChannel.create({
-        channelId: req.activeChannel,
+        channelId: isFirstChannel.id,
         userProfileId: userProfileId.id,
         status: "active",
       });

@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
@@ -480,11 +479,11 @@ class LoginController extends GetxController {
         print('⚠️ Socket logout error: $e');
       }
 
-      // 2. FORCE CLEAR ALL HIVE DATA - COMPREHENSIVE APPROACH
-      await _forceClearAllHiveData();
-
-      // 3. Dispose all controllers
+      // 2. Dispose controllers FIRST so no async callbacks access Hive after close
       await _disposeAllControllers();
+
+      // 3. Clear all Hive data now that no controllers hold box references
+      await _forceClearAllHiveData();
 
       // 5. Auth service logout
       try {
@@ -568,65 +567,6 @@ class LoginController extends GetxController {
           print('❌ Failed to clear box $boxName even with fallback: $e2');
         }
       }
-    }
-
-    // Method 2: Clear specific typed boxes using your constants
-    try {
-      // Get fresh instances of each box and clear them
-      final boxes = await Future.wait([
-        Constant.getUserChannelBox().catchError((e) => null),
-        Constant.getChannelMessagesBox().catchError((e) => null),
-        Constant.getDriverDashboardBox().catchError((e) => null),
-        Constant.getTruckLocationBox().catchError((e) => null),
-        Constant.getStationsBox().catchError((e) => null),
-        Constant.getlastUpdatedBox().catchError((e) => null),
-        Constant.getQueueMessageBox().catchError((e) => null),
-        Constant.getMediaQueueBox().catchError((e) => null),
-      ]);
-
-      for (var box in boxes) {
-        if (box != null) {
-          try {
-            await box.clear();
-            await box.close();
-            print('✅ Cleared typed box: ${box.name}');
-          } catch (e) {
-            print('⚠️ Error clearing typed box: $e');
-          }
-        }
-      }
-    } catch (e) {
-      print('❌ Error with typed boxes: $e');
-    }
-
-    // Method 3: Clear preferences box separately
-    try {
-      final prefsBox = await Hive.openBox<dynamic>('prefs_box');
-      await prefsBox.clear();
-      await prefsBox.close();
-      print('✅ Cleared prefs box');
-    } catch (e) {
-      print('⚠️ Error clearing prefs box: $e');
-    }
-
-    // Method 4: Clear routes box
-    try {
-      final routesBox = await Hive.openBox<List>('routes_box');
-      await routesBox.clear();
-      await routesBox.close();
-      print('✅ Cleared routes box');
-    } catch (e) {
-      print('⚠️ Error clearing routes box: $e');
-    }
-
-    // Method 5: Clear metadata box
-    try {
-      final metadataBox = await Hive.openBox<int>('metadata_box');
-      await metadataBox.clear();
-      await metadataBox.close();
-      print('✅ Cleared metadata box');
-    } catch (e) {
-      print('⚠️ Error clearing metadata box: $e');
     }
 
     print('✅ ALL HIVE DATA FORCE CLEARED');
