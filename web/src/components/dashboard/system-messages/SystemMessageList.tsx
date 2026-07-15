@@ -211,7 +211,7 @@ export default function SystemMessageList() {
       </Box>
 
       {/* Unread system messages dialog — no close button, force user to complete each */}
-      <Dialog open={dialogOpen} maxWidth="sm" fullWidth disableEscapeKeyDown>
+      <Dialog open={dialogOpen} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box>
