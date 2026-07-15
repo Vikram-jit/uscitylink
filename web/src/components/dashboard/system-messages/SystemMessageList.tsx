@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   MenuItem,
   Pagination,
   Paper,
@@ -23,6 +24,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import moment from 'moment';
 import { useGetSystemMessagesQuery, useGetSystemUnreadMessagesQuery, useMarkSystemMessageCompleteMutation, useMarkAllSystemMessagesReadMutation } from '@/redux/MessageApiSlice';
 import { useGetUsersQuery } from '@/redux/UserApiSlice';
@@ -210,8 +212,7 @@ export default function SystemMessageList() {
         />
       </Box>
 
-      {/* Unread system messages dialog — no close button, force user to complete each */}
-      <Dialog open={dialogOpen} maxWidth="sm" fullWidth>
+      <Dialog open={dialogOpen} maxWidth="sm" fullWidth onClose={() => setDialogOpen(false)}>
         <DialogTitle>
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box>
@@ -222,18 +223,23 @@ export default function SystemMessageList() {
                 Uncompleted messages must be marked one by one.
               </Typography>
             </Box>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={async () => {
-                await markAllRead();
-                await refetchUnread();
-                await refetch();
-              }}
-              sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              Mark All Read
-            </Button>
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={async () => {
+                  await markAllRead();
+                  await refetchUnread();
+                  await refetch();
+                }}
+                sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                Mark All Read
+              </Button>
+              <IconButton size="small" onClick={() => setDialogOpen(false)} aria-label="Close">
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
           </Stack>
         </DialogTitle>
         <DialogContent dividers>
