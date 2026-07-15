@@ -164,7 +164,7 @@ export default function SystemMessageList() {
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ maxWidth: 400 }}>
-                        <Typography variant="body2" noWrap sx={{ maxWidth: 400 }}>
+                        <Typography variant="body2"  sx={{ maxWidth: 400 }}>
                           {msg.body || '-'}
                         </Typography>
                       </TableCell>
