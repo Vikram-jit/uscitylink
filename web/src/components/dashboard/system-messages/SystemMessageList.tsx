@@ -197,7 +197,9 @@ export default function SystemMessageList() {
                       </TableCell>
                       <TableCell>
                         {msg.isCompleted ? (
-                          '-'
+                          <Typography variant="body2" color="text.secondary">
+                            Completed by {msg.completedByUser?.username || 'someone'}
+                          </Typography>
                         ) : (
                           <Button
                             variant="contained"
