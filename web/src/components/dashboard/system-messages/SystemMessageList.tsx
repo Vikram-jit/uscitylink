@@ -148,12 +148,13 @@ export default function SystemMessageList() {
                   <TableCell><b>Media</b></TableCell>
                   <TableCell><b>Completed By</b></TableCell>
                   <TableCell><b>Timestamp</b></TableCell>
+                  <TableCell><b>Action</b></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {messages.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">
+                    <TableCell colSpan={6} align="center">
                       No system messages found.
                     </TableCell>
                   </TableRow>
@@ -193,6 +194,21 @@ export default function SystemMessageList() {
                         <Typography variant="caption">
                           {moment(msg.messageTimestampUtc).format('DD MMM YYYY, hh:mm A')}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {msg.isCompleted ? (
+                          '-'
+                        ) : (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            color="success"
+                            onClick={() => handleMarkComplete(msg.id)}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Mark Completed
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
