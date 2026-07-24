@@ -25,10 +25,12 @@ import {
   Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import moment from 'moment';
+import { toast } from 'react-toastify';
+// import moment from 'moment';
 import { useGetSystemMessagesQuery, useGetSystemUnreadMessagesQuery, useMarkSystemMessageCompleteMutation, useMarkAllSystemMessagesReadMutation } from '@/redux/MessageApiSlice';
 import { useGetUsersQuery } from '@/redux/UserApiSlice';
 import MediaComponent from '@/components/messages/MediaComment';
+import moment from 'moment-timezone';
 
 export default function SystemMessageList() {
   const [page, setPage] = useState(1);
@@ -64,7 +66,13 @@ export default function SystemMessageList() {
   }, [unreadMessages.length]);
 
   const handleMarkComplete = async (id: string) => {
-    await markComplete({ id });
+    const res: any = await markComplete({ id });
+
+    if (res?.error) {
+      toast.error(res.error?.data?.message || 'Failed to mark message as completed.');
+      return;
+    }
+
     await refetchUnread();
     await refetch();
     if (unreadMessages.length <= 1) {
@@ -191,9 +199,12 @@ export default function SystemMessageList() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="caption">
-                          {moment(msg.messageTimestampUtc).format('DD MMM YYYY, hh:mm A')}
-                        </Typography>
+                       <Typography variant="caption">
+  {moment
+    .utc(msg.messageTimestampUtc)
+    .tz('America/Los_Angeles')
+    .format('DD MMM YYYY, hh:mm A')}
+</Typography>
                       </TableCell>
                       <TableCell>
                         {msg.isCompleted ? (

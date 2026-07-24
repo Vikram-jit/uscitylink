@@ -22,7 +22,12 @@ const secondarySequelize = new Sequelize(
     {
         host: process.env.DB_SECONDARY_HOST || 'localhost', // Host
         dialect: 'mysql',
-    }
+        // daily_vehicle_entries.created_at is a TIMESTAMP column, which MySQL
+        // converts based on the session time_zone. Sequelize defaults to
+        // '+00:00' and would otherwise shift every read away from the
+        // server's own SYSTEM timezone that the yard system writes in.
+        keepDefaultTimezone: true,
+    } as any
 );
 
 export { primarySequelize, secondarySequelize };

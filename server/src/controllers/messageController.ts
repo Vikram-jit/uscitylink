@@ -8,10 +8,11 @@ import { S3Client } from "@aws-sdk/client-s3"; // AWS SDK v3 imports
 import dotenv from "dotenv";
 import { Media } from "../models/Media";
 import Channel from "../models/Channel";
-import { Op, Sequelize } from "sequelize";
+import { Op, QueryTypes, Sequelize } from "sequelize";
+import { secondarySequelize } from "../sequelize";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
-import moment from "moment";
+import moment from "moment-timezone";
 import { getSocketInstance } from "../sockets/socket";
 import SocketEvents from "../sockets/socketEvents";
 import UserChannel from "../models/UserChannel";
@@ -1843,6 +1844,24 @@ export const getSystemUnreadMessages = async (
   }
 };
 
+export const parseSystemMessageBody = (
+  body?: string | null,
+): {
+  truckNumber: string | null;
+  status: "arrived" | "departed" | null;
+  dateTime: string | null;
+} => {
+  const match = body?.match(
+    /Truck #(\S+) has (arrived|departed).*?\((\d{2}\/\d{2}\/\d{4} \d{1,2}:\d{2} [AP]M)\)/i,
+  );
+
+  return {
+    truckNumber: match ? match[1] : null,
+    status: match ? (match[2].toLowerCase() as "arrived" | "departed") : null,
+    dateTime: match ? match[3] : null,
+  };
+};
+
 export const markSystemMessageComplete = async (
   req: Request,
   res: Response,
@@ -1853,17 +1872,78 @@ export const markSystemMessageComplete = async (
 
     const existing = await Message.findByPk(id);
 
-    if (existing && !existing.isCompleted) {
-      await Message.update(
-        { isCompleted: true, completedBy: staffId },
-        { where: { id } },
+    if (existing) {
+      const { truckNumber, status, dateTime } = parseSystemMessageBody(
+        existing.body,
+      );
+
+      if (truckNumber && status && dateTime) {
+        const dbStatus = status === "arrived" ? "entry" : "depart";
+
+        const truckRows = await secondarySequelize.query<any>(
+          `SELECT id FROM trucks WHERE number = :truckNumber LIMIT 1`,
+          { type: QueryTypes.SELECT, replacements: { truckNumber } },
+        );
+
+        if (truckRows.length === 0) {
+          return res.status(400).json({
+            status: false,
+            message: `Truck #${truckNumber} was not found in the yard management system.`,
+          });
+        }
+
+        const truckId = truckRows[0].id;
+
+        const eventTime = moment.tz(
+          dateTime,
+          "MM/DD/YYYY hh:mm A",
+          "America/Los_Angeles",
+        );
+        // daily_vehicle_entries.created_at is a TIMESTAMP column, so MySQL
+        // reinterprets it based on the session time_zone. secondarySequelize
+        // is configured with keepDefaultTimezone so its session stays on the
+        // server's own SYSTEM timezone (matching how the yard system writes
+        // these rows) instead of Sequelize's default +00:00 override, which
+        // would shift the comparison window off from the stored values.
+        const windowStart = eventTime
+          .clone()
+          .subtract(30, "minutes")
+          .format("YYYY-MM-DD HH:mm:ss");
+        const windowEnd = moment
+          .tz("America/Los_Angeles")
+          .format("YYYY-MM-DD HH:mm:ss");
+
+        const entryRows = await secondarySequelize.query<any>(
+          `SELECT id, created_at FROM daily_vehicle_entries
+           WHERE truck_id = :truckId AND status = :status
+             AND created_at BETWEEN :windowStart AND :windowEnd
+           LIMIT 1`,
+          {
+            type: QueryTypes.SELECT,
+            replacements: { truckId, status: dbStatus, windowStart, windowEnd },
+          },
+        );
+
+        if (entryRows.length === 0) {
+          return res.status(400).json({
+            status: false,
+            message: `No matching security gate ${dbStatus} log found for Truck #${truckNumber}. Please create the entry in the security/yard system before completing this message.`,
+          });
+        }
+      }
+
+      if (!existing.isCompleted) {
+        await Message.update(
+          { isCompleted: true, completedBy: staffId },
+          { where: { id } },
+        );
+      }
+
+      await MessageStaff.update(
+        { status: "read" },
+        { where: { messageId: id, staffId } },
       );
     }
-
-    await MessageStaff.update(
-      { status: "read" },
-      { where: { messageId: id, staffId } },
-    );
 
     return res.status(200).json({ status: true, message: "Message marked as completed." });
   } catch (error) {
