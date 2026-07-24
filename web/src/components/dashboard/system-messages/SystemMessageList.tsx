@@ -39,6 +39,8 @@ export default function SystemMessageList() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: staffData } = useGetUsersQuery({ role: 'staff', page: -1, search: '' });
@@ -66,17 +68,33 @@ export default function SystemMessageList() {
   }, [unreadMessages.length]);
 
   const handleMarkComplete = async (id: string) => {
-    const res: any = await markComplete({ id });
+    setMarkingId(id);
+    try {
+      const res: any = await markComplete({ id });
 
-    if (res?.error) {
-      toast.error(res.error?.data?.message || 'Failed to mark message as completed.');
-      return;
+      if (res?.error) {
+        toast.error(res.error?.data?.message || 'Failed to mark message as completed.');
+        return;
+      }
+
+      await refetchUnread();
+      await refetch();
+      if (unreadMessages.length <= 1) {
+        setDialogOpen(false);
+      }
+    } finally {
+      setMarkingId(null);
     }
+  };
 
-    await refetchUnread();
-    await refetch();
-    if (unreadMessages.length <= 1) {
-      setDialogOpen(false);
+  const handleMarkAllRead = async () => {
+    setMarkingAll(true);
+    try {
+      await markAllRead();
+      await refetchUnread();
+      await refetch();
+    } finally {
+      setMarkingAll(false);
     }
   };
 
@@ -217,6 +235,8 @@ export default function SystemMessageList() {
                             size="small"
                             color="success"
                             onClick={() => handleMarkComplete(msg.id)}
+                            disabled={markingId === msg.id}
+                            startIcon={markingId === msg.id ? <CircularProgress size={14} color="inherit" /> : undefined}
                             sx={{ whiteSpace: 'nowrap' }}
                           >
                             Mark Completed
@@ -253,18 +273,16 @@ export default function SystemMessageList() {
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} alignItems="flex-start">
-              <Button
+              {/* <Button
                 variant="outlined"
                 size="small"
-                onClick={async () => {
-                  await markAllRead();
-                  await refetchUnread();
-                  await refetch();
-                }}
+                onClick={handleMarkAllRead}
+                disabled={markingAll}
+                startIcon={markingAll ? <CircularProgress size={14} color="inherit" /> : undefined}
                 sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Mark All Read
-              </Button>
+              </Button> */}
               <IconButton size="small" onClick={() => setDialogOpen(false)} aria-label="Close">
                 <CloseIcon fontSize="small" />
               </IconButton>
@@ -304,6 +322,8 @@ export default function SystemMessageList() {
                       size="small"
                       color={msg.isCompleted ? 'primary' : 'success'}
                       onClick={() => handleMarkComplete(msg.id)}
+                      disabled={markingId === msg.id}
+                      startIcon={markingId === msg.id ? <CircularProgress size={14} color="inherit" /> : undefined}
                       sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {msg.isCompleted ? 'Mark Read' : 'Mark Completed'}
