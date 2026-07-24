@@ -1869,6 +1869,8 @@ export const markSystemMessageComplete = async (
   try {
     const { id } = req.params;
     const staffId = req.user?.id;
+    const note: string | undefined = req.body?.note;
+    const trimmedNote = note?.trim();
 
     const existing = await Message.findByPk(id);
 
@@ -1925,16 +1927,23 @@ export const markSystemMessageComplete = async (
         );
 
         if (entryRows.length === 0) {
-          return res.status(400).json({
-            status: false,
-            message: `No matching security gate ${dbStatus} log found for Truck #${truckNumber}. Please create the entry in the security/yard system before completing this message.`,
-          });
+          if (!trimmedNote || trimmedNote.length < 10) {
+            return res.status(400).json({
+              status: false,
+              requiresNote: true,
+              message: `No matching security gate ${dbStatus} log found for Truck #${truckNumber}. Enter a note (minimum 10 characters) to complete this message anyway.`,
+            });
+          }
         }
       }
 
       if (!existing.isCompleted) {
         await Message.update(
-          { isCompleted: true, completedBy: staffId },
+          {
+            isCompleted: true,
+            completedBy: staffId,
+            ...(trimmedNote ? { note: trimmedNote } : {}),
+          },
           { where: { id } },
         );
       }

@@ -33,6 +33,7 @@ export class Message extends Model {
   public isBroadcastMessage?: boolean;
   public isCompleted!: boolean;
   public completedBy!: string | null;
+  public note?: string | null;
 
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
@@ -144,6 +145,10 @@ Message.init(
         model: "user_profiles",
         key: "id",
       },
+    },
+    note: {
+      type: DataTypes.TEXT("long"),
+      allowNull: true,
     },
   },
   {

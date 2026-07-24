@@ -176,11 +176,12 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
     }),
     markSystemMessageComplete: builder.mutation<
       { status: boolean; message: string },
-      { id: string }
+      { id: string; note?: string }
     >({
-      query: (payload) => ({
-        url: `message/system/${payload.id}/complete`,
+      query: ({ id, note }) => ({
+        url: `message/system/${id}/complete`,
         method: 'PUT',
+        body: { note },
       }),
       invalidatesTags: ['messages', 'channels'],
     }),
@@ -201,6 +202,7 @@ export const MessageApiSlice = apiSlice.injectEndpoints({
             url: string | null;
             messageTimestampUtc: string;
             channel: { name: string } | null;
+            note?: string | null;
           }[];
           pagination: {
             currentPage: number;

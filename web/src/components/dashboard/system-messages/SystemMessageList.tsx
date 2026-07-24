@@ -41,7 +41,15 @@ export default function SystemMessageList() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [noteDialog, setNoteDialog] = useState<{ open: boolean; messageId: string | null; message: string }>({
+    open: false,
+    messageId: null,
+    message: '',
+  });
+  const [noteValue, setNoteValue] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const MIN_NOTE_LENGTH = 10;
 
   const { data: staffData } = useGetUsersQuery({ role: 'staff', page: -1, search: '' });
   const staffUsers = staffData?.data?.users || [];
@@ -67,16 +75,27 @@ export default function SystemMessageList() {
     };
   }, [unreadMessages.length]);
 
-  const handleMarkComplete = async (id: string) => {
+  const handleMarkComplete = async (id: string, note?: string) => {
     setMarkingId(id);
     try {
-      const res: any = await markComplete({ id });
+      const res: any = await markComplete({ id, note });
 
       if (res?.error) {
+        if (res.error?.data?.requiresNote) {
+          setNoteDialog({
+            open: true,
+            messageId: id,
+            message: res.error?.data?.message || `Enter a note (minimum ${MIN_NOTE_LENGTH} characters) to complete this message anyway.`,
+          });
+          setNoteValue('');
+          return;
+        }
         toast.error(res.error?.data?.message || 'Failed to mark message as completed.');
         return;
       }
 
+      setNoteDialog({ open: false, messageId: null, message: '' });
+      setNoteValue('');
       await refetchUnread();
       await refetch();
       if (unreadMessages.length <= 1) {
@@ -85,6 +104,15 @@ export default function SystemMessageList() {
     } finally {
       setMarkingId(null);
     }
+  };
+
+  const handleSubmitNote = async () => {
+    if (!noteDialog.messageId) return;
+    if (noteValue.trim().length < MIN_NOTE_LENGTH) {
+      toast.error(`Note must be at least ${MIN_NOTE_LENGTH} characters.`);
+      return;
+    }
+    await handleMarkComplete(noteDialog.messageId, noteValue.trim());
   };
 
   const handleMarkAllRead = async () => {
@@ -173,6 +201,7 @@ export default function SystemMessageList() {
                   <TableCell><b>Message</b></TableCell>
                   <TableCell><b>Media</b></TableCell>
                   <TableCell><b>Completed By</b></TableCell>
+                  <TableCell><b>Note</b></TableCell>
                   <TableCell><b>Timestamp</b></TableCell>
                   <TableCell><b>Action</b></TableCell>
                 </TableRow>
@@ -180,7 +209,7 @@ export default function SystemMessageList() {
               <TableBody>
                 {messages.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={7} align="center">
                       No system messages found.
                     </TableCell>
                   </TableRow>
@@ -214,6 +243,15 @@ export default function SystemMessageList() {
                           <Typography variant="body2">{msg.completedByUser.username || '-'}</Typography>
                         ) : (
                           <Chip label="Pending" size="small" color="warning" />
+                        )}
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 250 }}>
+                        {msg.note ? (
+                          <Typography variant="body2" sx={{ maxWidth: 250, whiteSpace: 'pre-wrap' }}>
+                            {msg.note}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">-</Typography>
                         )}
                       </TableCell>
                       <TableCell>
@@ -316,6 +354,11 @@ export default function SystemMessageList() {
                       <Typography variant="body2">
                         {msg.body}
                       </Typography>
+                      {msg.note && (
+                        <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                          Note: {msg.note}
+                        </Typography>
+                      )}
                     </Box>
                     <Button
                       variant="contained"
@@ -335,6 +378,50 @@ export default function SystemMessageList() {
             </Stack>
           )}
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={noteDialog.open}
+        maxWidth="sm"
+        fullWidth
+        onClose={() => setNoteDialog({ open: false, messageId: null, message: '' })}
+      >
+        <DialogTitle>No Matching Gate Log Found</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            {noteDialog.message}
+          </Typography>
+          <TextField
+            label="Note"
+            placeholder="Explain why this message is being completed without a matching gate log..."
+            multiline
+            minRows={3}
+            fullWidth
+            value={noteValue}
+            onChange={(e) => setNoteValue(e.target.value)}
+            helperText={`${noteValue.trim().length}/${MIN_NOTE_LENGTH} characters minimum`}
+            error={noteValue.length > 0 && noteValue.trim().length < MIN_NOTE_LENGTH}
+          />
+        </DialogContent>
+        <Box display="flex" justifyContent="flex-end" gap={1} p={2}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={() => setNoteDialog({ open: false, messageId: null, message: '' })}
+            disabled={markingId === noteDialog.messageId}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSubmitNote}
+            disabled={markingId === noteDialog.messageId || noteValue.trim().length < MIN_NOTE_LENGTH}
+            startIcon={markingId === noteDialog.messageId ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            Complete With Note
+          </Button>
+        </Box>
       </Dialog>
     </Box>
   );
