@@ -12,17 +12,12 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
-import 'package:path_provider/path_provider.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
-  Pdfrx.getCacheDirectory ??= () async {
-    final directory = await getTemporaryDirectory();
-    return directory.path;
-  };
+  await pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
   await Hive.initFlutter();
 
   Hive
