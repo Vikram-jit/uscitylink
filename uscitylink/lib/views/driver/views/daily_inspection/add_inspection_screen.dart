@@ -1,6 +1,5 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/inspection_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
@@ -12,19 +11,36 @@ class AddInspectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final InspectionController controller = Get.put(InspectionController());
 
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        backgroundColor: TColors.white,
-        centerTitle: false,
+        backgroundColor: TColors.navyHeader,
+        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
         title: const Text(
           "Truck Inspection",
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
         ),
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.black,
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: Colors.white,
           ),
           onPressed: () {
             Navigator.pop(context);
@@ -68,6 +84,7 @@ class AddInspectionScreen extends StatelessWidget {
                 ],
               ),
             )),
+      ),
     );
   }
 
@@ -76,7 +93,7 @@ class AddInspectionScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(TColors.primary),
+              valueColor: AlwaysStoppedAnimation(TColors.navyHeader),
             ),
             const SizedBox(height: 20),
           ],
@@ -85,64 +102,76 @@ class AddInspectionScreen extends StatelessWidget {
 
   Widget _buildHeaderCard(
       InspectionController controller, BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Obx(() {
               return Text(
                 'Truck #${controller.inspection?.value.groupUser?.group?.name}',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: TColors.primary,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: TColors.navyHeader,
+                  letterSpacing: -0.3,
                 ),
               );
             }),
             const SizedBox(height: 8),
             Text(
               'Carrier: ${controller.carrierName}',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               'Odometer Reading: ${controller.inspection?.value?.odometerMiles} miles',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Date Row
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
+                Icon(Icons.calendar_today_rounded,
+                    size: 17, color: Colors.grey.shade500),
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       controller.inspectionDate.value,
-                      style: TextStyle(
-                        color: TColors.primary,
+                      style: const TextStyle(
+                        color: TColors.navyHeader,
                         fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
                       ),
                     ),
                     Text(
                       'Inspection Date',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 11.5),
                     ),
                   ],
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () => _selectDate(context, controller),
-                  icon: const Icon(Icons.edit_calendar, size: 18),
+                  icon: const Icon(Icons.edit_calendar_rounded, size: 17),
                   label: const Text("Change"),
                   style: TextButton.styleFrom(
-                    foregroundColor: TColors.primary,
+                    foregroundColor: TColors.navyHeader,
                   ),
                 )
               ],
@@ -266,39 +295,41 @@ class AddInspectionScreen extends StatelessWidget {
 
   Widget _buildInspectionItem(
       String item, bool? status, InspectionController controller, type) {
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shadowColor: status == null
-          ? Colors.grey[300]!
-          : status == true
-              ? Colors.green[300]!
-              : Colors.red[300]!,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    final Color statusColor = status == null
+        ? Colors.grey.shade300
+        : status == true
+            ? const Color(0xFF16A34A)
+            : const Color(0xFFEF4444);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(status == null ? 0.15 : 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: InkWell(
         onTap: () => _showStatusDialog(item, status, controller, type),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Container(
-                width: 22,
-                height: 22,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: status == null
-                      ? Colors.grey[300]
-                      : status == true
-                          ? Colors.green
-                          : Colors.red,
+                  color: status == null ? Colors.grey.shade200 : statusColor,
                   shape: BoxShape.circle,
                 ),
                 child: status == null
                     ? Icon(Icons.circle_outlined,
-                        size: 16, color: Colors.grey[600])
-                    : Icon(status ? Icons.check : Icons.close,
+                        size: 16, color: Colors.grey.shade500)
+                    : Icon(status ? Icons.check_rounded : Icons.close_rounded,
                         size: 16, color: Colors.white),
               ),
               const SizedBox(width: 12),
@@ -306,8 +337,10 @@ class AddInspectionScreen extends StatelessWidget {
                 child: Text(item,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                        color: Colors.grey.shade800)),
               ),
             ],
           ),
@@ -320,9 +353,10 @@ class AddInspectionScreen extends StatelessWidget {
       InspectionController controller, String type) {
     Get.dialog(AlertDialog(
       backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(item,
-          style:
-              TextStyle(fontWeight: FontWeight.w600, color: TColors.primary)),
+          style: const TextStyle(
+              fontWeight: FontWeight.w700, color: TColors.navyHeader)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -396,11 +430,12 @@ class AddInspectionScreen extends StatelessWidget {
       child: ElevatedButton(
         onPressed: controller.submitInspection,
         style: ElevatedButton.styleFrom(
-          backgroundColor: TColors.primary,
+          backgroundColor: TColors.navyHeader,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: const Text("Submit Inspection",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),

@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/widegts/chat_list_tile.dart';
 
 class ChannelTab extends StatelessWidget {
   // Pass the controller as a parameter to this widget
@@ -25,20 +25,28 @@ class ChannelTab extends StatelessWidget {
         },
         child: Obx(() {
           if (channelController.loading.value) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF171233)));
           }
           // If no channels are available, show loading indicator
           if (channelController.channels.isEmpty) {
-            return const Center(child: Text("No Channel Found Yet."));
+            return const ChatEmptyState(
+              icon: Icons.forum_outlined,
+              message: "No channels found yet.",
+            );
           } else {
             return ListView.builder(
               itemCount: channelController.channels.length,
               itemBuilder: (context, index) {
                 var channel = channelController.channels[index];
 
-                return Dismissible(
-                  key: Key('${channel.id}'), // Use the unique channel ID
-                  direction: DismissDirection.endToStart, // Swipe to delete
+                return ChatListTile(
+                  dismissKey: Key('${channel.id}'),
+                  name: channel.channel?.name ?? 'Unnamed Channel',
+                  subtitle: channel.last_message?.body,
+                  timeLabel: Utils.formatUtcTime(
+                      channel.last_message?.messageTimestampUtc),
+                  unreadCount: channel.recieve_message_count ?? 0,
                   onDismissed: (direction) {
                     // Handle item removal and show a snackbar
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -48,84 +56,18 @@ class ChannelTab extends StatelessWidget {
                       ),
                     );
                   },
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(0),
-                    leading: CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.grey.shade400,
-                      child: Text(
-                        channel.channel?.name?.substring(0, 1) ?? '',
-                        style:
-                            const TextStyle(color: Colors.black, fontSize: 18),
-                      ),
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Channel name
-                        Expanded(
-                          child: Text(
-                            channel.channel?.name ?? 'Unnamed Channel',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Time and Badge column
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Formatted time (UTC converted to local time)
-                            Text(
-                              Utils.formatUtcTime(channel
-                                      .last_message?.messageTimestampUtc) ??
-                                  '',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.black45),
-                            ),
+                  onTap: () {
+                    socketServive.updateActiveChannel(channel.channel!.id!);
 
-                            // Badge showing unread message count
-                            channel.recieve_message_count != 0
-                                ? Badge(
-                                    label: Text(
-                                      channel.recieve_message_count == 0
-                                          ? ""
-                                          : '${channel.recieve_message_count}', // Example unread count, replace with actual count
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                    backgroundColor: TColors.primary,
-                                  )
-                                : const SizedBox(),
-                          ],
-                        ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      channel.last_message?.body ??
-                          "Not message yet", // Message body or description
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    onTap: () {
-                      socketServive.updateActiveChannel(channel.channel!.id!);
-
-                      Get.toNamed(
-                        AppRoutes.driverMessage,
-                        arguments: {
-                          'channelId': channel.channel?.id,
-                          'name': channel.channel?.name
-                        },
-                      );
-                      // Handle navigation to the message screen (pass channel as an argument)
-                    },
-                  ),
+                    Get.toNamed(
+                      AppRoutes.driverMessage,
+                      arguments: {
+                        'channelId': channel.channel?.id,
+                        'name': channel.channel?.name
+                      },
+                    );
+                    // Handle navigation to the message screen (pass channel as an argument)
+                  },
                 );
               },
             );

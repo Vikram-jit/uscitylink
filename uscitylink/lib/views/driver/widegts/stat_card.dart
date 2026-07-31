@@ -1,336 +1,112 @@
 import 'package:flutter/material.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/utils/constant/image_strings.dart';
-import 'package:uscitylink/utils/device/device_utility.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
   final dynamic value;
   final IconData icon;
+  final Color accentColor;
+  final bool highlightValue;
   final bool isDocumentExpired;
-  final List<Color> gradientColors; // List of colors for gradient
+  final VoidCallback? onTap;
 
   const StatCard({
     super.key,
     required this.title,
     required this.value,
     required this.icon,
-    required this.gradientColors,
+    this.accentColor = TColors.primary,
+    this.highlightValue = false,
     this.isDocumentExpired = false,
+    this.onTap,
   });
-
-  List<Color> getGradientColors(String title) {
-    if (title == "PAY SUMMARY" || title == "TOTAL DRIVERS") {
-      return [
-        Color(0xFFeb3349), // Reddish
-        Color(0xFFf45c43), // Light Orange
-      ];
-    } else if (title == "TRUCKS" || title == "TOTAL TEMPLATES") {
-      return [
-        Color(0xFF56ab2f), // Reddish
-        Color(0xFFa8e063), // Light Orange
-      ];
-    } else if (title == "U S CITYLINK INC") {
-      return [
-        Color(0xFFffffff),
-        Color(0xFFffffff),
-      ];
-    } else if (title == "UNREAD MESSAGE" || title == "UNREAD MESSAGES") {
-      return [
-        Color(0xFF00c6ff), // Reddish
-        Color(0xFF0072ff), // Light Orange
-      ];
-    } else if (title == "MY INFORMATION" || title == "TOTAL TRUCK GROUPS") {
-      return [
-        Color(0xFF50C9C3), // Reddish
-        Color(0xFF96DEDA), // Light Orange
-      ];
-    } else if (title == "TRAINING SECTION") {
-      return [
-        Color(0xFF614385),
-        Color(0xFF516395),
-      ];
-    } else if (title == "FUEL STATIONS") {
-      return [
-        // Reddish
-        Color(0xFFEABC6A),
-        Color(0xFFF0A13A),
-      ];
-    } else if (title == "STAFF GROUP") {
-      return [
-        // Reddish
-        Color(0xFFEABC6A),
-        Color(0xFFF0A13A),
-      ];
-    }
-    return [
-      // Reddish
-      Color(0xFF000428),
-      Color(0xFF004e92),
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (title == "U S CITYLINK INC") {
-      return SizedBox(
-        width: TDeviceUtils.getScreenWidth(context) * 0.9,
-        child: Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          child: Container(
-            // Apply the gradient to the container
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5.0),
-              gradient: LinearGradient(
-                colors: getGradientColors(title),
-                begin: Alignment.topLeft,
-                end: Alignment.topRight, // Direction of the gradient
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  if (title != "U S CITYLINK INC")
-                    Container(
-                      decoration: BoxDecoration(
-                        // gradient: LinearGradient(
-                        //   colors: getGradientColors(title),
-                        //   begin: Alignment.centerLeft,
-                        //   end: Alignment.centerRight,
-                        // ),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      width: 45,
-                      height: 45,
-                      child: ShaderMask(
-                        shaderCallback: (Rect bounds) {
-                          return LinearGradient(
-                            colors: [
-                              Colors.white, Colors.white
-                              // if (title == "Pay Summary")
-                              //   Color(0xFFEB3349), // Hex: #ff7eb3 (Pinkish)
-                              // Color(0xFFF45C43),
-                              // if (title == "Truck")
-                              //   Color(0xFFDD5E89), // Hex: #ff7eb3 (Pinkish)
-                              // Color(0xFFF7BB97),
-                            ], // Gradient colors
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ).createShader(bounds);
-                        },
-                        child: Icon(
-                          icon,
-                          size: 30, // Adjust size if needed
-                          color: Colors
-                              .white, // Keep it white to apply the gradient
-                        ),
-                      ),
-                    ),
-                  if (title == "U S CITYLINK INC")
-                    Container(
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: getGradientColors(title),
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(5)),
-                      width: 100,
-                      height: 65,
-                      child: Image.asset(
-                        TImages.logo,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  const SizedBox(width: 10),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                            fontSize: title != "U S CITYLINK INC"
-                                ? (title == "TRAILERS" ||
-                                        title == "MY INFORMATION")
-                                    ? 12
-                                    : title == "PAY SUMMARY" || title == "TRUCK"
-                                        ? 14
-                                        : 10
-                                : 22,
-                            fontWeight: FontWeight.bold,
-                            color: title == "U S CITYLINK INC"
-                                ? Colors.black
-                                : Colors.white),
-                      ),
-                      if (title == "TRUCK")
-                        SizedBox(
-                          height: 6,
-                        ),
-                      if (value != 0)
-                        Expanded(
-                          child: Text(
-                            '${value ?? 0} ',
-                            style: TextStyle(
-                                fontSize: title == "TRUCK" ? 12 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      if (value == 0 && title == "TOTAL TEMPLATES")
-                        Expanded(
-                          child: Text(
-                            '$value',
-                            style: TextStyle(
-                                fontSize: title == "TRUCK" ? 12 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      if (value == 0 && title == "TOTAL TRUCK GROUPS")
-                        Expanded(
-                          child: Text(
-                            '$value',
-                            style: TextStyle(
-                                fontSize: title == "TRUCK" ? 12 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      if (value == 0 && title == "MY INFORMATION")
-                        Expanded(
-                          child: Text(
-                            '$value',
-                            style: TextStyle(
-                                fontSize: title == "TRUCK" ? 12 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(5.0),
-      ),
+    final Color valueColor = isDocumentExpired
+        ? TColors.error
+        : highlightValue
+            ? accentColor
+            : Colors.grey.shade900;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: TDeviceUtils.getScreenWidth(context) * 0.4,
-        height: TDeviceUtils.getScreenHeight() * 0.15,
-        // Apply the gradient to the container
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(5.0),
-          gradient: LinearGradient(
-            colors: gradientColors,
-            begin: Alignment.topLeft,
-            end: Alignment.topRight, // Direction of the gradient
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: accentColor, size: 22),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: getGradientColors(title),
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  width: 45,
-                  height: 45,
-                  child: ShaderMask(
-                    shaderCallback: (Rect bounds) {
-                      return LinearGradient(
-                        colors: [
-                          Colors.white, Colors.white
-                          // if (title == "Pay Summary")
-                          //   Color(0xFFEB3349), // Hex: #ff7eb3 (Pinkish)
-                          // Color(0xFFF45C43),
-                          // if (title == "Truck")
-                          //   Color(0xFFDD5E89), // Hex: #ff7eb3 (Pinkish)
-                          // Color(0xFFF7BB97),
-                        ], // Gradient colors
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds);
-                    },
-                    child: Icon(
-                      icon,
-                      size: 30, // Adjust size if needed
-                      color:
-                          Colors.white, // Keep it white to apply the gradient
+                Flexible(
+                  child: Text(
+                    '$value',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: valueColor,
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: title == "U S CITYLINK INC"
-                          ? Colors.black
-                          : (value is int &&
-                                  value > 0 &&
-                                  (title == "UNREAD MESSAGE" ||
-                                      title == "STAFF GROUP"))
-                              ? Colors.red
-                              : Colors.black),
-                ),
-                if (value != 0 && (title != "UNREAD MESSAGE"))
-                  Text(
-                    '$value',
-                    style: TextStyle(
-                        fontSize: title == "TRUCKS"
-                            ? 12
-                            : value is int &&
-                                    value > 0 &&
-                                    (title == "UNREAD MESSAGES")
-                                ? 28
-                                : 18,
-                        fontWeight: FontWeight.bold,
-                        color: value is int &&
-                                value > 0 &&
-                                (title == "UNREAD MESSAGES" ||
-                                    title == "STAFF GROUP")
-                            ? Colors.red
-                            : Colors.black),
-                  ),
-                if (value is int && value > 0 && (title == "UNREAD MESSAGE"))
-                  Text(
-                    '$value',
-                    style: TextStyle(
-                        fontSize: title == "TRUCKS" ? 12 : 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red),
-                  ),
                 if (isDocumentExpired)
-                  Text(
-                    'Document Expired',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red),
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: TColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Expired',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: TColors.error,
+                      ),
+                    ),
                   ),
               ],
-            )),
+            ),
+          ],
+        ),
       ),
     );
   }

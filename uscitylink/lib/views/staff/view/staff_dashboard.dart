@@ -135,11 +135,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               title: "U S CITYLINK INC",
                               value: 0,
                               icon: Icons.wifi_channel,
-                              gradientColors: const [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                         ],
@@ -162,11 +157,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.userUnMessage ??
                                   0,
-                              gradientColors: [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                           InkWell(
@@ -179,10 +169,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.driverCount ??
                                   0,
-                              gradientColors: [
-                                Color(0xFFe5e5e5),
-                                Color(0xFFe5e5e5),
-                              ],
                             ),
                           ),
                         ],
@@ -205,11 +191,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.templateCount ??
                                   0,
-                              gradientColors: [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                           InkWell(
@@ -222,10 +203,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.trainingCount ??
                                   0,
-                              gradientColors: [
-                                Color(0xFFe5e5e5),
-                                Color(0xFFe5e5e5),
-                              ],
                             ),
                           ),
                         ],
@@ -248,11 +225,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.truckGroupCount ??
                                   0,
-                              gradientColors: [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                           InkWell(
@@ -274,11 +246,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.staffGroupCount ??
                                   0,
-                              gradientColors: [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                         ],
@@ -310,11 +277,6 @@ class _StaffDashboardState extends State<StaffDashboard>
                               value: _dashboardController
                                       .dashboardStaff.value.alertGroupCount ??
                                   0,
-                              gradientColors: [
-                                Color(
-                                    0xFFe5e5e5), // Hex color for a shade of green (Active User)
-                                Color(0xFFe5e5e5),
-                              ], // Gradient colors
                             ),
                           ),
                         ],

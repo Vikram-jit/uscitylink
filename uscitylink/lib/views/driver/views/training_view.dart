@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
-import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/trainings/training_detail_view.dart';
 
 class TrainingView extends StatefulWidget {
@@ -18,6 +18,7 @@ class _TrainingViewState extends State<TrainingView> {
   TrainingController _trainingController = Get.find<TrainingController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   DashboardController _dashboardController = Get.find<DashboardController>();
+
   @override
   void initState() {
     super.initState();
@@ -26,58 +27,83 @@ class _TrainingViewState extends State<TrainingView> {
 
   @override
   Widget build(BuildContext context) {
-    _trainingController.fetchTrainingVideos(page: 1);
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.grey[50],
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Column(
-          children: [
-            AppBar(
-              leading: IconButton(
-                icon: Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.black,
-                ),
-                onPressed: () {
-                  // Open the drawer using the scaffold key
-                  _dashboardController.getDashboard();
-                  Get.back();
-                },
-              ),
-              backgroundColor: TColors.white,
-              title: Text(
-                "Training Section",
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: Colors.black),
-              ),
-            ),
-            Container(
-              height: 1.0,
-              color: Colors.grey.shade300,
-            ),
-          ],
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
-      body: Obx(
-        () {
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: const Color(0xFFF5F6FA),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                size: 18, color: Colors.white),
+            onPressed: () {
+              _dashboardController.getDashboard();
+              Get.back();
+            },
+          ),
+          backgroundColor: TColors.navyHeader,
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
+          centerTitle: true,
+          title: const Text(
+            'Training',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+          ),
+        ),
+        body: Obx(() {
           if (_trainingController.isLoading.value) {
-            return Center(
-              child: CircularProgressIndicator(),
+            return const Center(
+                child: CircularProgressIndicator(color: TColors.navyHeader));
+          }
+          if (_trainingController.trainings.isEmpty) {
+            return RefreshIndicator(
+              color: TColors.navyHeader,
+              onRefresh: () =>
+                  _trainingController.fetchTrainingVideos(page: 1),
+              child: ListView(
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.school_outlined,
+                              size: 44, color: Colors.grey.shade300),
+                          const SizedBox(height: 14),
+                          Text(
+                            'No training videos yet',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           }
           return RefreshIndicator(
+            color: TColors.navyHeader,
             onRefresh: () => _trainingController.fetchTrainingVideos(page: 1),
             child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
               controller: ScrollController()
                 ..addListener(() {
-                  // Don't load more if data is already loading
                   if (_trainingController.isLoading.value) return;
-
-                  // Check if there are more pages and trigger data fetch if necessary
                   if (_trainingController.currentPage.value <
                       _trainingController.totalPages.value) {
                     if (_trainingController.trainings.isNotEmpty &&
@@ -91,69 +117,137 @@ class _TrainingViewState extends State<TrainingView> {
                 }),
               itemCount: _trainingController.trainings.length,
               itemBuilder: (context, index) {
-                var training = _trainingController.trainings[index];
-
-                return InkWell(
-                  onTap: () {
-                    Get.to(() => TrainingDetailView(
-                          tiitle: training.trainings!.title!,
-                          id: training.trainings!.id!,
-                          trainings: training.trainings!,
-                          training: training,
-                        ));
-                  },
-                  child: Card(
-                    color: Colors.white,
-                    elevation: 2.0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(0),
-                    ),
-                    margin: EdgeInsets.symmetric(vertical: 5.0),
-                    child: ListTile(
-                      leading: training.trainings?.thumbnail != null
-                          ? Image.network(
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.contain,
-                              "${Constant.aws}/${training.trainings?.thumbnail}")
-                          : null,
-                      title: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('${training.trainings?.title}'),
-                          if (training.quiz_status != null)
-                            Chip(
-                              backgroundColor: training.quiz_status == "passed"
-                                  ? Colors.green
-                                  : training.quiz_status == "failed"
-                                      ? Colors.red
-                                      : Colors.transparent,
-                              label: Text(
-                                "${training.quiz_status == "passed" ? "Certified".toUpperCase() : training.quiz_status?.toUpperCase()}",
-                                style: TextStyle(
-                                  color: training.quiz_status == "passed"
-                                      ? Colors.white
-                                      : training.quiz_status == "failed"
-                                          ? Colors.white
-                                          : Colors.black,
-                                ),
-                              ),
-                              padding: EdgeInsets.zero,
-                            )
-                        ],
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
-                      trailing: Icon(Icons.arrow_right),
-                    ),
+                final training = _trainingController.trainings[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _TrainingCard(
+                    thumbnail: training.trainings?.thumbnail,
+                    title: training.trainings?.title ?? 'Untitled',
+                    quizStatus: training.quiz_status,
+                    onTap: () {
+                      Get.to(() => TrainingDetailView(
+                            tiitle: training.trainings!.title!,
+                            id: training.trainings!.id!,
+                            trainings: training.trainings!,
+                            training: training,
+                          ));
+                    },
                   ),
                 );
               },
             ),
           );
-        },
+        }),
       ),
-      // drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
+    );
+  }
+}
+
+class _TrainingCard extends StatelessWidget {
+  final String? thumbnail;
+  final String title;
+  final String? quizStatus;
+  final VoidCallback onTap;
+
+  const _TrainingCard({
+    required this.thumbnail,
+    required this.title,
+    required this.quizStatus,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color? chipColor;
+    String? chipText;
+    if (quizStatus == 'passed') {
+      chipColor = const Color(0xFF16A34A);
+      chipText = 'CERTIFIED';
+    } else if (quizStatus == 'failed') {
+      chipColor = const Color(0xFFEF4444);
+      chipText = 'FAILED';
+    } else if (quizStatus != null) {
+      chipColor = Colors.grey.shade400;
+      chipText = quizStatus!.toUpperCase();
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: thumbnail != null
+                  ? Image.network(
+                      "${Constant.aws}/$thumbnail",
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 64,
+                      height: 64,
+                      color: const Color(0xFF9333EA).withOpacity(0.08),
+                      child: const Icon(Icons.play_circle_fill_rounded,
+                          color: Color(0xFF9333EA), size: 28),
+                    ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade900,
+                    ),
+                  ),
+                  if (chipText != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: chipColor!.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        chipText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: chipColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: Colors.grey.shade400, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

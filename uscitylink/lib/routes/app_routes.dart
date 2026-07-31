@@ -14,6 +14,7 @@ import 'package:uscitylink/views/driver/views/group/member_search.dart';
 import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
 import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
+import 'package:uscitylink/views/security/security_welcome_view.dart';
 import 'package:uscitylink/views/splash_view.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_chat_ui.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_detail.dart';

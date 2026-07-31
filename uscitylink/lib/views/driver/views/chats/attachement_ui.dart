@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 import 'package:pdfrx/pdfrx.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/widgets/audio_player_widget.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 import 'package:path/path.dart' as p;
@@ -96,50 +97,54 @@ class _AttachementUiState extends State<AttachementUi> {
               file: imageUrl,
             ));
       },
-      child: SizedBox(
-        width: double.infinity,
-        height: 200.0,
-        child: Stack(
-          children: [
-            Image.network(
-              thumbnail,
-              width: double.infinity,
-              height: 200.0,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) {
-                  return child; // Image loaded
-                } else {
-                  return SizedBox(
-                    width: double.infinity,
-                    height: 200.0,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                (loadingProgress.expectedTotalBytes ?? 1)
-                            : null,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: double.infinity,
+          height: 200.0,
+          child: Stack(
+            children: [
+              Image.network(
+                thumbnail,
+                width: double.infinity,
+                height: 200.0,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    return child; // Image loaded
+                  } else {
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 200.0,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: TColors.navyHeader,
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  (loadingProgress.expectedTotalBytes ?? 1)
+                              : null,
+                        ),
                       ),
-                    ),
+                    );
+                  }
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  // Handle error when loading the image
+                  return const Icon(
+                    Icons.error,
+                    size: 40,
+                    color: Colors.red,
                   );
-                }
-              },
-              errorBuilder: (context, error, stackTrace) {
-                // Handle error when loading the image
-                return const Icon(
-                  Icons.error,
-                  size: 40,
-                  color: Colors.red,
-                );
-              },
-            ),
-            Center(
-                child: Icon(
-              Icons.play_circle,
-              color: Colors.white,
-              size: 42,
-            ))
-          ],
+                },
+              ),
+              Center(
+                  child: Icon(
+                Icons.play_circle_fill_rounded,
+                color: Colors.white.withOpacity(0.9),
+                size: 46,
+              ))
+            ],
+          ),
         ),
       ),
     );
@@ -199,6 +204,10 @@ class _AttachementUiState extends State<AttachementUi> {
           ? Container(
               height: 200,
               width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -207,28 +216,31 @@ class _AttachementUiState extends State<AttachementUi> {
                     alignment: Alignment.center,
                     children: [
                       // Circular progress indicator
-                      SizedBox(
+                      const SizedBox(
                         height: 60.0,
                         width: 60.0,
-                        child: CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                            color: TColors.navyHeader),
                       ),
                       // Centered icon
                       Icon(
                         widget.location == "driver" &&
                                 widget.directionType == "R"
-                            ? Icons.cloud_upload
-                            : Icons.download,
-                        size: 32.0,
-                        color: Colors.grey,
+                            ? Icons.cloud_upload_rounded
+                            : Icons.download_rounded,
+                        size: 28.0,
+                        color: TColors.navyHeader,
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 5,
+                  const SizedBox(
+                    height: 8,
                   ),
                   Text(
                     "${widget.location == "driver" && widget.directionType == "R" ? "sending..." : "receiving..."}",
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600),
                   )
                 ],
               ),
@@ -236,6 +248,10 @@ class _AttachementUiState extends State<AttachementUi> {
           : Container(
               height: 200,
               width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -244,55 +260,62 @@ class _AttachementUiState extends State<AttachementUi> {
                     alignment: Alignment.center,
                     children: [
                       // Circular progress indicator
-                      SizedBox(
+                      const SizedBox(
                         height: 60.0,
                         width: 60.0,
-                        child: CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                            color: TColors.navyHeader),
                       ),
                       // Centered icon
                       Icon(
                         widget.location == "staff" &&
                                 widget.directionType == "S"
-                            ? Icons.cloud_upload
-                            : Icons.download,
-                        size: 32.0,
-                        color: Colors.grey,
+                            ? Icons.cloud_upload_rounded
+                            : Icons.download_rounded,
+                        size: 28.0,
+                        color: TColors.navyHeader,
                       ),
                     ],
                   ),
-                  SizedBox(
-                    height: 5,
+                  const SizedBox(
+                    height: 8,
                   ),
                   Text(
                     "${widget.location == "staff" && widget.directionType == "S" ? "sending..." : "receiving..."}",
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600),
                   )
                 ],
               ),
             );
     }
     return InkWell(
+      borderRadius: BorderRadius.circular(12),
       onTap: () {
         // Navigate to full-screen image view (if necessary)
         Get.to(() => DocumentDownload(
               file: imageUrl,
             ));
       },
-      child: CachedNetworkImage(
-        imageUrl: imageUrl,
-        width: double.infinity,
-        height: 200.0,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => const SizedBox(
-          height: 200,
-          child: Center(
-            child: CircularProgressIndicator(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: double.infinity,
+          height: 200.0,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => const SizedBox(
+            height: 200,
+            child: Center(
+              child: CircularProgressIndicator(color: TColors.navyHeader),
+            ),
           ),
-        ),
-        errorWidget: (context, url, error) => const Icon(
-          Icons.error,
-          size: 40,
-          color: Colors.red,
+          errorWidget: (context, url, error) => const Icon(
+            Icons.error,
+            size: 40,
+            color: Colors.red,
+          ),
         ),
       ),
     );
@@ -303,17 +326,20 @@ class _AttachementUiState extends State<AttachementUi> {
       onTap: () async {
         Get.to(() => DocumentDownload(file: pdfUrl));
       },
-      child: Container(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
         ),
         child: FutureBuilder<File?>(
           future: DefaultCacheManager().getSingleFile(pdfUrl),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                  child: CircularProgressIndicator(color: TColors.navyHeader));
             } else if (snapshot.hasError) {
               return const Center(
                 child: Icon(Icons.error, size: 40, color: Colors.red),
@@ -324,7 +350,9 @@ class _AttachementUiState extends State<AttachementUi> {
                 future: PdfDocument.openFile(file.path),
                 builder: (context, pdfSnapshot) {
                   if (pdfSnapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                        child: CircularProgressIndicator(
+                            color: TColors.navyHeader));
                   } else if (pdfSnapshot.hasError) {
                     return const Center(
                       child: Icon(Icons.error, size: 40, color: Colors.red),
@@ -354,16 +382,32 @@ class _AttachementUiState extends State<AttachementUi> {
             }
           },
         ),
+        ),
       ),
     );
   }
 
   // Widget for unsupported file types
   Widget _buildUnsupportedFile() {
-    return const Center(
-      child: Text(
-        "Unsupported File Type",
-        style: TextStyle(fontSize: 18, color: Colors.red),
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.insert_drive_file_outlined,
+                size: 32, color: Colors.grey.shade400),
+            const SizedBox(height: 8),
+            Text(
+              "Unsupported file type",
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
       ),
     );
   }

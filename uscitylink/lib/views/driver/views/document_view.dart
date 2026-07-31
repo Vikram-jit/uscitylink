@@ -1,12 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
+
+// This card is taller than the single-row search cards on other screens
+// (it stacks a search field AND a tab bar), so it needs its own fixed
+// height and a bigger overflow value — otherwise it rides up far enough
+// to cover the header's back button and title.
+const double _kSearchCardHeight = 132;
+const double _kSearchCardOverlap = 24;
+const double _kSearchCardOverflow = _kSearchCardHeight - _kSearchCardOverlap;
 
 class DocumentView extends StatefulWidget {
   int tabIndexDefault;
@@ -18,7 +27,6 @@ class DocumentView extends StatefulWidget {
 
 class _DocumentViewState extends State<DocumentView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  // late TabController _tabController;
   final TruckController _controller = Get.put(TruckController());
   DashboardController _dashboardController = Get.find<DashboardController>();
   late Timer _debounce;
@@ -30,9 +38,6 @@ class _DocumentViewState extends State<DocumentView>
     _debounce = Timer(Duration(seconds: 0), () {});
     super.initState();
 
-    // _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
-
-    // Listen for tab changes to refetch channels when the Channels tab is selected
     _controller.tabController.addListener(() {
       if (_controller.tabController.index == 0 &&
           !_controller.tabController.indexIsChanging) {
@@ -40,9 +45,7 @@ class _DocumentViewState extends State<DocumentView>
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trucks");
-        // setState(() {
         _controller.initialIndex.value = 0;
-        // });
       }
       if (_controller.tabController.index == 1 &&
           !_controller.tabController.indexIsChanging) {
@@ -50,24 +53,24 @@ class _DocumentViewState extends State<DocumentView>
         _controller.totalPages.value = 1;
         _controller.trucks.value = [];
         _controller.fetchTrucks(page: 1, type: "trailers");
-        // setState(() {
         _controller.initialIndex.value = 1;
-        // });
       }
     });
 
+    // Don't rely on the caller having already primed the tab/fetch before
+    // navigating here — make sure this screen always loads its own data
+    // for the tab it was opened on.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // This will run after the widget tree is built, avoiding the error
+      _controller.changeTab(widget.tabIndexDefault);
     });
   }
 
   void _onSearchChanged(String query) {
     if (_debounce.isActive) {
-      _debounce.cancel(); // Cancel previous debounce timer
+      _debounce.cancel();
     }
     _debounce = Timer(const Duration(milliseconds: 500), () {
       _controller.trucks.value = [];
-      // Call API with the new search query
       _controller.fetchTrucks(
           page: 1,
           type: _controller.tabController.index == 0 ? "trucks" : "trailers",
@@ -77,198 +80,352 @@ class _DocumentViewState extends State<DocumentView>
 
   @override
   void dispose() {
-    //_controller.dispose();
-    _debounce.cancel(); // Cancel debounce timer when widget is disposed
+    _debounce.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.grey[50],
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(
-            180), // Increased height for AppBar and search
-        child: Column(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: const Color(0xFFF5F6FA),
+        body: Column(
           children: [
-            AppBar(
-              leading: IconButton(
-                icon: Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.black,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Column(
+                  children: [
+                    _Header(
+                      onBack: () {
+                        _dashboardController.getDashboard();
+                        Get.back();
+                      },
+                    ),
+                    const SizedBox(height: _kSearchCardOverflow),
+                  ],
                 ),
-                onPressed: () {
-                  _dashboardController.getDashboard();
-                  Get.back();
-                  // Open the drawer using the scaffold key
-                  // _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-              backgroundColor: TColors.white,
-              title: Text(
-                "Vehicles",
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: Colors.black),
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.search),
-                  onPressed: () {
-                    // Logic for triggering the search field can go here
-                    print("Search button pressed");
-                  },
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 0,
+                  child: SizedBox(
+                    height: _kSearchCardHeight,
+                    child: _SearchTabsCard(
+                      controller: _controller,
+                      onSearchChanged: _onSearchChanged,
+                    ),
+                  ),
                 ),
               ],
             ),
-            Container(
-              height: 50.0, // Height for the search bar
-              color: TColors.white,
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Column(
+            const SizedBox(height: _kSearchCardOverflow - 60),
+            Expanded(
+              child: TabBarView(
+                controller: _controller.tabController,
                 children: [
-                  Container(
-                    height: 40,
-                    child: TextField(
-                      onChanged: _onSearchChanged,
-                      decoration: InputDecoration(
-                        hintText:
-                            "Search ${_controller.initialIndex.value == 0 ? "trucks" : "trailers"}...",
-                        hintStyle: TextStyle(color: Colors.grey),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        isDense: true,
-                        contentPadding: EdgeInsets.all(0),
-                      ),
-                    ),
-                  ),
+                  VehicleList(controller: _controller, type: "truck"),
+                  VehicleList(controller: _controller, type: "trailer"),
                 ],
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                  color: Color(0xFFf0f0f2),
-                  borderRadius: BorderRadius.circular(10)),
-              margin: EdgeInsets.all(10),
-              height: 50,
-              child: TabBar(
-                dividerColor: Colors.transparent,
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: TColors.white,
-                unselectedLabelColor: Colors.grey,
-                indicator: BoxDecoration(
-                    color: TColors.primary,
-                    borderRadius: BorderRadius.circular(10)),
-                indicatorWeight: 4.0,
-                controller: _controller.tabController,
-                tabs: const [
-                  Tab(text: "Trucks"),
-                  Tab(text: "Trailers"),
-                ],
-              ),
-            )
+          ],
+        ),
+        drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _Header({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(12, topInset + 12, 20, 46),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [TColors.navyHeader, TColors.navyHeaderDeep],
+          ),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(top: -50, right: -30, child: _orb(140, 0.06)),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: onBack,
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 18, color: Colors.white),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Vehicles',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(width: 40),
+              ],
+            ),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _controller.tabController,
-        children: [
-          VehicleList(controller: _controller, type: "truck"),
-          VehicleList(
-            controller: _controller,
-            type: "trailer",
+    );
+  }
+
+  Widget _orb(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(opacity),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _SearchTabsCard extends StatelessWidget {
+  final TruckController controller;
+  final ValueChanged<String> onSearchChanged;
+
+  const _SearchTabsCard(
+      {required this.controller, required this.onSearchChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      drawer: DriverCustomDrawer(globalKey: _scaffoldKey),
+      child: Column(
+        children: [
+          Obx(() => TextField(
+                onChanged: onSearchChanged,
+                decoration: InputDecoration(
+                  hintText:
+                      "Search ${controller.initialIndex.value == 0 ? "trucks" : "trailers"}...",
+                  hintStyle:
+                      TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: Colors.grey.shade500, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF5F6FA),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              )),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F6FA),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            height: 44,
+            child: TabBar(
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey.shade600,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              indicator: BoxDecoration(
+                color: TColors.navyHeader,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              controller: controller.tabController,
+              tabs: const [
+                Tab(text: "Trucks"),
+                Tab(text: "Trailers"),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class VehicleList extends StatelessWidget {
   final TruckController _controller;
-  final String type; // New parameter to control the type
+  final String type;
 
   const VehicleList({
     super.key,
     required TruckController controller,
-    required this.type, // Initialize the type here
+    required this.type,
   }) : _controller = controller;
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // Show loading indicator if data is being fetched and trucks list is empty
       if (_controller.isLoading.value && _controller.trucks.isEmpty) {
-        return Center(child: CircularProgressIndicator());
+        return const Center(
+            child: CircularProgressIndicator(color: TColors.navyHeader));
       }
       if (_controller.trucks.isEmpty) {
-        return Center(
-            child: type == "trucks"
-                ? Text("No any record found.")
-                : Text("Search with Trailer number"));
+        return _EmptyState(
+          message: type == "truck" ? "No trucks found." : "No trailers found.",
+        );
       }
       return ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
         controller: ScrollController()
           ..addListener(() {
-            // Don't load more if data is already loading
             if (_controller.isLoading.value) return;
-
-            // Check if there are more pages and trigger data fetch if necessary
-            if (_controller.currentPage.value < _controller.totalPages.value) {
-              if (_controller.trucks.isNotEmpty &&
-                  _controller.trucks.last ==
-                      _controller.trucks[_controller.trucks.length - 1]) {
-                _controller.fetchTrucks(
-                    page: _controller.currentPage.value + 1);
-              }
-            }
           }),
-        itemCount:
-            _controller.trucks.length + 1, // +1 for the loading indicator
+        itemCount: _controller.trucks.length + 1,
         itemBuilder: (context, index) {
-          // If the index is the last item, show the loading indicator (pagination)
           if (index == _controller.trucks.length) {
             if (_controller.currentPage.value < _controller.totalPages.value) {
-              return Center(child: CircularProgressIndicator());
-            } else {
-              return SizedBox(); // No more data to load
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                    child:
+                        CircularProgressIndicator(color: TColors.navyHeader)),
+              );
             }
+            return const SizedBox();
           }
 
           final truck = _controller.trucks[index];
-          return InkWell(
-            onTap: () {
-              Get.toNamed(
-                AppRoutes.vehicleDetails,
-                arguments: {'id': truck.id, 'type': type},
-              );
-            },
-            child: Card(
-              color: Colors.white,
-              elevation: 2.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(0),
-              ),
-              margin: EdgeInsets.symmetric(vertical: 5.0),
-              child: ListTile(
-                leading: Icon(
-                    type == "truck" ? Icons.local_shipping : Icons.rv_hookup),
-                title: Text('${truck.number}'),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
-                trailing: Icon(Icons.arrow_right),
+          final color = type == "truck"
+              ? const Color(0xFF2E5BFF)
+              : const Color(0xFF0D9488);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Get.toNamed(
+                  AppRoutes.vehicleDetails,
+                  arguments: {'id': truck.id, 'type': type},
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        type == "truck"
+                            ? Icons.local_shipping_rounded
+                            : Icons.rv_hookup_rounded,
+                        color: color,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${truck.number}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Tap to view details',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: Colors.grey.shade400, size: 20),
+                  ],
+                ),
               ),
             ),
           );
         },
       );
     });
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String message;
+
+  const _EmptyState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded,
+                size: 44, color: Colors.grey.shade300),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

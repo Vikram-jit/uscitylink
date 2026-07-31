@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/route_controller.dart';
 import 'package:uscitylink/controller/station_controller.dart'; // Add this import
@@ -74,14 +75,34 @@ class _FuelStationsViewState extends State<FuelStationsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Route Information'),
-        backgroundColor: TColors.white,
-        elevation: 0,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
-      body: _buildBody(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F6FA),
+        appBar: AppBar(
+          title: const Text(
+            'Route Information',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          centerTitle: true,
+          backgroundColor: TColors.navyHeader,
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+          ),
+        ),
+        body: _buildBody(),
+      ),
     );
   }
 
@@ -91,7 +112,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
         // Show loading indicator only when actually loading and no data
         if (routeController.isLoading.value && routeController.routes.isEmpty) {
           return const Center(
-            child: CircularProgressIndicator(),
+            child: CircularProgressIndicator(color: TColors.navyHeader),
           );
         }
 
@@ -186,9 +207,12 @@ class _FuelStationsViewState extends State<FuelStationsView> {
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: TColors.navyHeader,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -200,13 +224,18 @@ class _FuelStationsViewState extends State<FuelStationsView> {
     final RouteController routeController = Get.find<RouteController>();
 
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: TColors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,11 +728,17 @@ class _FuelStationsViewState extends State<FuelStationsView> {
   Widget _buildMapPreview(RouteModel route) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        color: Colors.white,
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,7 +747,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(Icons.map, color: Colors.blue[700]),
+                  const Icon(Icons.map_rounded, color: TColors.navyHeader),
                   const SizedBox(width: 8),
                   const Text(
                     'Route Map',
@@ -768,7 +803,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue[700],
+                                    color: TColors.navyHeader,
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                   child: Row(
