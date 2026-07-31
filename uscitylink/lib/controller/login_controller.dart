@@ -270,6 +270,8 @@ class LoginController extends GetxController {
                 .storeRole(value.data.profiles!.role!.name!);
             if (value.data.profiles?.role?.name == "staff") {
               Get.offAllNamed(AppRoutes.staff_dashboard);
+            } else if (value.data.profiles?.role?.name == "security") {
+              Get.offAllNamed(AppRoutes.securityDashboard);
             } else {
               Get.offAllNamed(AppRoutes.driverDashboard);
             }
@@ -384,6 +386,15 @@ class LoginController extends GetxController {
 
               Timer(const Duration(seconds: 1),
                   () => Get.offAllNamed(AppRoutes.staff_dashboard));
+            } else if (value?.data?.role?.name == "security") {
+              final fcmService = Get.put(FCMService());
+              String? token = fcmService.fcmToken.value;
+              if (token.isNotEmpty) {
+                await fcmService.updateDeviceToken(token);
+              }
+
+              Timer(const Duration(seconds: 1),
+                  () => Get.offAllNamed(AppRoutes.securityDashboard));
             } else {
               final fcmService = Get.put(FCMService());
               String? token = fcmService.fcmToken.value;
@@ -405,6 +416,15 @@ class LoginController extends GetxController {
 
             Timer(const Duration(seconds: 1),
                 () => Get.offAllNamed(AppRoutes.staff_dashboard));
+          } else if (value?.data?.role?.name == "security") {
+            final fcmService = Get.put(FCMService());
+            String? token = fcmService.fcmToken.value;
+            if (token.isNotEmpty) {
+              await fcmService.updateDeviceToken(token);
+            }
+
+            Timer(const Duration(seconds: 1),
+                () => Get.offAllNamed(AppRoutes.securityDashboard));
           } else {
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
@@ -429,6 +449,10 @@ class LoginController extends GetxController {
         if (role == "Staff") {
           Timer(const Duration(seconds: 1),
               () => Get.offAllNamed(AppRoutes.staff_dashboard));
+        }
+        if (role == "security") {
+          Timer(const Duration(seconds: 1),
+              () => Get.offAllNamed(AppRoutes.securityDashboard));
         }
       }
       // Utils.snackBar('Error', error.toString());

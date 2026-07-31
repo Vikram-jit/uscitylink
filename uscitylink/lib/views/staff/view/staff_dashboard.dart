@@ -147,62 +147,32 @@ class _StaffDashboardState extends State<StaffDashboard>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          InkWell(
-                            onTap: () {
-                              _staffviewController.currentIndex.value = 1;
-                            },
-                            child: StatCard(
-                              icon: Icons.message,
-                              title: "UNREAD MESSAGES",
-                              value: _dashboardController
-                                      .dashboardStaff.value.userUnMessage ??
-                                  0,
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                _staffviewController.currentIndex.value = 1;
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "UNREAD MESSAGES",
+                                value: _dashboardController
+                                        .dashboardStaff.value.userUnMessage ??
+                                    0,
+                              ),
                             ),
                           ),
-                          InkWell(
-                            onTap: () {
-                              Get.to(() => StaffChannelMembersView());
-                            },
-                            child: StatCard(
-                              icon: Icons.group,
-                              title: "TOTAL DRIVERS",
-                              value: _dashboardController
-                                      .dashboardStaff.value.driverCount ??
-                                  0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: TDeviceUtils.getAppBarHeight() * 0.2,
-                    ),
-                    SizedBox(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              Get.to(() => StaffTemplatesView());
-                            },
-                            child: StatCard(
-                              icon: Icons.message,
-                              title: "TOTAL TEMPLATES",
-                              value: _dashboardController
-                                      .dashboardStaff.value.templateCount ??
-                                  0,
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () {
-                              Get.to(() => StaffTrainingsView());
-                            },
-                            child: StatCard(
-                              icon: Icons.group,
-                              title: "TRAINING VIDEOS",
-                              value: _dashboardController
-                                      .dashboardStaff.value.trainingCount ??
-                                  0,
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffChannelMembersView());
+                              },
+                              child: StatCard(
+                                icon: Icons.group,
+                                title: "TOTAL DRIVERS",
+                                value: _dashboardController
+                                        .dashboardStaff.value.driverCount ??
+                                    0,
+                              ),
                             ),
                           ),
                         ],
@@ -215,37 +185,32 @@ class _StaffDashboardState extends State<StaffDashboard>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          InkWell(
-                            onTap: () {
-                              _staffviewController.currentIndex.value = 2;
-                            },
-                            child: StatCard(
-                              icon: Icons.message,
-                              title: "TOTAL TRUCK GROUPS",
-                              value: _dashboardController
-                                      .dashboardStaff.value.truckGroupCount ??
-                                  0,
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffTemplatesView());
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "TOTAL TEMPLATES",
+                                value: _dashboardController
+                                        .dashboardStaff.value.templateCount ??
+                                    0,
+                              ),
                             ),
                           ),
-                          InkWell(
-                            onTap: () {
-                              Get.toNamed(
-                                AppRoutes.staffGroupMessage,
-                                arguments: {
-                                  'channelId':
-                                      "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
-                                  'name': "Staff",
-                                  'groupId':
-                                      "b212c6df-1d52-4efd-a012-27d9e2b6a29d"
-                                },
-                              );
-                            },
-                            child: StatCard(
-                              icon: Icons.message,
-                              title: "STAFF GROUP",
-                              value: _dashboardController
-                                      .dashboardStaff.value.staffGroupCount ??
-                                  0,
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.to(() => StaffTrainingsView());
+                              },
+                              child: StatCard(
+                                icon: Icons.group,
+                                title: "TRAINING VIDEOS",
+                                value: _dashboardController
+                                        .dashboardStaff.value.trainingCount ??
+                                    0,
+                              ),
                             ),
                           ),
                         ],
@@ -258,25 +223,74 @@ class _StaffDashboardState extends State<StaffDashboard>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          InkWell(
-                            onTap: () {
-                              Get.toNamed(
-                                AppRoutes.staffGroupMessage,
-                                arguments: {
-                                  'channelId':
-                                      "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
-                                  'name': "Alert",
-                                  'groupId':
-                                      "1fe8cc7c-482f-4cdc-8d22-8ba0bb3b3578"
-                                },
-                              );
-                            },
-                            child: StatCard(
-                              icon: Icons.message,
-                              title: "ALERT GROUP",
-                              value: _dashboardController
-                                      .dashboardStaff.value.alertGroupCount ??
-                                  0,
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                _staffviewController.currentIndex.value = 2;
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "TOTAL TRUCK GROUPS",
+                                value: _dashboardController.dashboardStaff
+                                        .value.truckGroupCount ??
+                                    0,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.staffGroupMessage,
+                                  arguments: {
+                                    'channelId':
+                                        "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
+                                    'name': "Staff",
+                                    'groupId':
+                                        "b212c6df-1d52-4efd-a012-27d9e2b6a29d"
+                                  },
+                                );
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "STAFF GROUP",
+                                value: _dashboardController.dashboardStaff
+                                        .value.staffGroupCount ??
+                                    0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: TDeviceUtils.getAppBarHeight() * 0.2,
+                    ),
+                    SizedBox(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.staffGroupMessage,
+                                  arguments: {
+                                    'channelId':
+                                        "1cb8a91e-921f-40fc-873f-af30d2ee3da0",
+                                    'name': "Alert",
+                                    'groupId':
+                                        "1fe8cc7c-482f-4cdc-8d22-8ba0bb3b3578"
+                                  },
+                                );
+                              },
+                              child: StatCard(
+                                icon: Icons.message,
+                                title: "ALERT GROUP",
+                                value: _dashboardController.dashboardStaff
+                                        .value.alertGroupCount ??
+                                    0,
+                              ),
                             ),
                           ),
                         ],

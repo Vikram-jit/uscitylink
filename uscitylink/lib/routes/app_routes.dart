@@ -14,7 +14,7 @@ import 'package:uscitylink/views/driver/views/group/member_search.dart';
 import 'package:uscitylink/views/driver/views/settings/account_view.dart';
 import 'package:uscitylink/views/driver/views/settings/change_password_view.dart';
 import 'package:uscitylink/views/driver/views/vehicle/vehicle_details.dart';
-import 'package:uscitylink/views/security/security_welcome_view.dart';
+import 'package:uscitylink/views/security/security_dashboard_view.dart';
 import 'package:uscitylink/views/splash_view.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_chat_ui.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_detail.dart';
@@ -35,6 +35,8 @@ class AppRoutes {
 
   static const String driverDashboard = '/driver/settings/driver_dashboard';
   static const String driverChatView = '/driver/settings/chat_view';
+
+  static const String securityDashboard = '/security/dashboard';
 
   // Driver routes with 'driver/' prefix
   static const String driverAccount = '/driver/settings/account';
@@ -123,6 +125,11 @@ class AppRoutes {
     GetPage(
       name: AppRoutes.driverAccount,
       page: () => const AccountView(),
+    ),
+
+    GetPage(
+      name: AppRoutes.securityDashboard,
+      page: () => const SecurityDashboardView(),
     ),
 
     GetPage(
