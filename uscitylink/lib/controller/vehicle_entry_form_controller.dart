@@ -57,13 +57,15 @@ class VehicleEntryFormController extends GetxController {
   var emptyLoaded = Rxn<String>(); // 'empty' | 'loaded'
   var loadType = Rxn<String>(); // 'refer' | 'dry'
 
+  // Truck-level inspection checklist — required once a truck is selected,
+  // regardless of whether a trailer is attached.
   var truckKeyAttached = Rxn<String>();
   var truckMatt = Rxn<String>();
   var logBookStand = Rxn<String>();
   var securityGuardInspect = Rxn<String>();
+
   var spareTyre = Rxn<String>();
-  var anualInspection = Rxn<String>();
-  var registration = Rxn<String>();
+  var paperWork = Rxn<String>();
   var damage = Rxn<String>();
   var fireExt = Rxn<String>();
   var warningTriangles = Rxn<String>();
@@ -265,6 +267,16 @@ class VehicleEntryFormController extends GetxController {
       return 'Truck license plate is required.';
     }
 
+    final truckChecklist = <String, String?>{
+      'Truck Key Attached': truckKeyAttached.value,
+      'Truck Matt': truckMatt.value,
+      'Log Book Stand': logBookStand.value,
+      'Did Security Guard Inspect': securityGuardInspect.value,
+    };
+    for (final entry in truckChecklist.entries) {
+      if (entry.value == null) return '${entry.key} is required.';
+    }
+
     if (hasTrailer) {
       if (trailerFuel.value == null) return 'Please select trailer fuel.';
       if (trailerLicensePlateController.text.trim().isEmpty) {
@@ -273,16 +285,11 @@ class VehicleEntryFormController extends GetxController {
       if (emptyLoaded.value == null) return 'Please choose Empty or Loaded.';
 
       final requiredToggles = <String, String?>{
-        'Truck Key Attached': truckKeyAttached.value,
-        'Truck Matt': truckMatt.value,
-        'Log Book Stand': logBookStand.value,
-        'Security Guard Inspect': securityGuardInspect.value,
         'Spare Tyre': spareTyre.value,
-        'Annual Inspection': anualInspection.value,
-        'Registration': registration.value,
-        'Damage': damage.value,
-        'Fire Extinguisher': fireExt.value,
+        'Fire Ext.': fireExt.value,
         'Warning Triangles': warningTriangles.value,
+        'Paper Work': paperWork.value,
+        'Damage': damage.value,
       };
       for (final entry in requiredToggles.entries) {
         if (entry.value == null) return '${entry.key} is required.';
@@ -336,13 +343,12 @@ class VehicleEntryFormController extends GetxController {
           hasTrailer ? trailerLicensePlateController.text.trim() : null,
       emptyLoaded: hasTrailer ? emptyLoaded.value : null,
       loadType: isLoaded ? loadType.value : null,
-      truckKeyAttached: hasTrailer ? truckKeyAttached.value : null,
-      truckMatt: hasTrailer ? truckMatt.value : null,
-      logBookStand: hasTrailer ? logBookStand.value : null,
-      securityGuardInspect: hasTrailer ? securityGuardInspect.value : null,
+      truckKeyAttached: truckKeyAttached.value,
+      truckMatt: truckMatt.value,
+      logBookStand: logBookStand.value,
+      securityGuardInspect: securityGuardInspect.value,
       spareTyre: hasTrailer ? spareTyre.value : null,
-      anualInspection: hasTrailer ? anualInspection.value : null,
-      registration: hasTrailer ? registration.value : null,
+      paperWork: hasTrailer ? paperWork.value : null,
       damage: hasTrailer ? damage.value : null,
       damageDescription:
           damage.value == 'yes' ? damageDescriptionController.text.trim() : null,

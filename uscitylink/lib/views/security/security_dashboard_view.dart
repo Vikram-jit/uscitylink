@@ -7,6 +7,7 @@ import 'package:uscitylink/controller/vehicle_entry_form_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'vehicle_entry_form_view.dart';
 import 'vehicle_entry_list_view.dart';
+import 'vehicle_inspection_vehicles_view.dart';
 
 const double _kKpiCardHeight = 132;
 const double _kKpiOverlap = 40;
@@ -155,6 +156,14 @@ class _SecurityDashboardViewState extends State<SecurityDashboardView> {
                               subtitle: 'View past truck & trailer departures',
                               onTap: () => Get.to(() => const VehicleEntryListView(
                                   status: VehicleEntryStatus.depart)),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.fact_check_rounded,
+                              iconColor: const Color(0xFF1B3B8C),
+                              title: 'Vehicle Inspections',
+                              subtitle: 'Truck & trailer inspection checklists',
+                              onTap: () =>
+                                  Get.to(() => const VehicleInspectionVehiclesView()),
                             ),
                           ],
                         ),

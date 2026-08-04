@@ -186,6 +186,10 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _truckSection(),
+                if (_controller.selectedTruck.value != null) ...[
+                  const SizedBox(height: 16),
+                  _inspectionChecklistSection(),
+                ],
                 const SizedBox(height: 16),
                 _trailerSection(),
                 if (_controller.hasTrailer && _controller.isLoaded) ...[
@@ -258,6 +262,40 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
     );
   }
 
+  Widget _inspectionChecklistSection() {
+    final c = _controller;
+    return SectionCard(
+      title: 'Inspection Checklist',
+      icon: Icons.fact_check_rounded,
+      accentColor: _accentColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CompactYesNoToggle(
+              label: 'Truck Key Attached',
+              required: true,
+              value: c.truckKeyAttached.value,
+              onChanged: (v) => c.truckKeyAttached.value = v),
+          CompactYesNoToggle(
+              label: 'Truck Matt',
+              required: true,
+              value: c.truckMatt.value,
+              onChanged: (v) => c.truckMatt.value = v),
+          CompactYesNoToggle(
+              label: 'Log Book Stand',
+              required: true,
+              value: c.logBookStand.value,
+              onChanged: (v) => c.logBookStand.value = v),
+          CompactYesNoToggle(
+              label: 'Did Security Guard Inspect',
+              required: true,
+              value: c.securityGuardInspect.value,
+              onChanged: (v) => c.securityGuardInspect.value = v),
+        ],
+      ),
+    );
+  }
+
   Widget _trailerSection() {
     final c = _controller;
     return SectionCard(
@@ -325,24 +363,14 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
               },
             ),
             const SizedBox(height: 18),
-            _groupHeader('Truck & Trailer Condition'),
-            CompactYesNoToggle(
-                label: 'Truck Key Attached',
-                required: true,
-                value: c.truckKeyAttached.value,
-                onChanged: (v) => c.truckKeyAttached.value = v),
-            CompactYesNoToggle(
-                label: 'Truck Matt',
-                required: true,
-                value: c.truckMatt.value,
-                onChanged: (v) => c.truckMatt.value = v),
+            _groupHeader('Trailer Condition'),
             CompactYesNoToggle(
                 label: 'Spare Tyre',
                 required: true,
                 value: c.spareTyre.value,
                 onChanged: (v) => c.spareTyre.value = v),
             CompactYesNoToggle(
-                label: 'Fire Extinguisher',
+                label: 'Fire Ext.',
                 required: true,
                 value: c.fireExt.value,
                 onChanged: (v) => c.fireExt.value = v),
@@ -351,6 +379,11 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
                 required: true,
                 value: c.warningTriangles.value,
                 onChanged: (v) => c.warningTriangles.value = v),
+            CompactYesNoToggle(
+                label: 'Paper Work',
+                required: true,
+                value: c.paperWork.value,
+                onChanged: (v) => c.paperWork.value = v),
             CompactYesNoToggle(
                 label: 'Damage',
                 required: true,
@@ -365,28 +398,6 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
                 hint: 'Describe the damage...',
               ),
             ],
-            const SizedBox(height: 14),
-            _groupHeader('Documentation & Inspection'),
-            CompactYesNoToggle(
-                label: 'Log Book Stand',
-                required: true,
-                value: c.logBookStand.value,
-                onChanged: (v) => c.logBookStand.value = v),
-            CompactYesNoToggle(
-                label: 'Security Guard Inspected',
-                required: true,
-                value: c.securityGuardInspect.value,
-                onChanged: (v) => c.securityGuardInspect.value = v),
-            CompactYesNoToggle(
-                label: 'Annual Inspection',
-                required: true,
-                value: c.anualInspection.value,
-                onChanged: (v) => c.anualInspection.value = v),
-            CompactYesNoToggle(
-                label: 'Registration',
-                required: true,
-                value: c.registration.value,
-                onChanged: (v) => c.registration.value = v),
             if (c.isLoaded) ...[
               const SizedBox(height: 14),
               _groupHeader('Load Details'),

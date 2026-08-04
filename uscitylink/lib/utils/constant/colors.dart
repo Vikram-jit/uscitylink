@@ -5,11 +5,21 @@ class TColors {
   static const Color primary = Color(0xFF1e1650);
   static const Color primaryStaff = Color(0xFF034078);
 
-  // Premium gradient header (driver dashboard, profile, etc.)
-  static const Color navyHeader = Color(0xFF171233);
-  static const Color navyHeaderDeep = Color(0xFF2C1F5E);
+  // Premium gradient header (driver dashboard, profile, etc.) — recalibrated to
+  // the actual U.S. CityLink brand navy (from the logo's globe mark) instead of
+  // the previous violet-tinted navy, so the app's chrome reads as "this company"
+  // rather than a generic purple dashboard theme.
+  static const Color navyHeader = Color(0xFF0A1330);
+  static const Color navyHeaderDeep = Color(0xFF1B3B8C);
   static const Color secondary = Color(0xFFdde7ee);
   static const Color accent = Color(0xFFb0c7ff);
+
+  // Brand accents pulled directly from the U.S. CityLink logo (flag red,
+  // swoosh green) — used purposefully (not decoratively) so each color still
+  // carries meaning: red for alerts/urgency, green for positive/active status.
+  static const Color brandRed = Color(0xFFD32330);
+  static const Color brandGreen = Color(0xFF1DA64A);
+  static const Color brandGold = Color(0xFFC98A11);
 
   // Text colors
   static const Color textPrimary = Color(0xFF333333);

@@ -54,17 +54,21 @@ export async function getEntryFormData(
   }
 }
 
-const YES_NO_FIELDS_WITH_TRAILER = [
+// Truck-level checklist — shown/required once a truck is selected, regardless
+// of whether a trailer is attached (moved out of the trailer-gated group).
+const TRUCK_CHECKLIST_FIELDS = [
   "truckKeyAttached",
   "truckMatt",
   "logBookStand",
   "securityGuardInspect",
+];
+
+const YES_NO_FIELDS_WITH_TRAILER = [
   "spareTyre",
-  "anualInspection",
-  "registration",
-  "damage",
   "fireExt",
   "warningTriangles",
+  "paperWork",
+  "damage",
 ];
 
 function isBlank(v: any): boolean {
@@ -82,6 +86,10 @@ export async function createEntry(req: Request, res: Response): Promise<any> {
     if (isBlank(b.truckLicensePlate))
       errors.push("The truck license plate field is required.");
     if (isBlank(b.security)) errors.push("The security field is required.");
+
+    for (const field of TRUCK_CHECKLIST_FIELDS) {
+      if (isBlank(b[field])) errors.push(`The ${field} field is required.`);
+    }
 
     const hasTrailer = !isBlank(b.trailerId);
     if (hasTrailer) {
@@ -139,14 +147,14 @@ export async function createEntry(req: Request, res: Response): Promise<any> {
     const insertResult: any = await secondarySequelize.query(
       `INSERT INTO daily_vehicle_entries
         (date, truck_id, truck_license_plate, driver_id, trailer_id, empty_loaded, load_type,
-         truck_fuel, trailer_fuel, alartm, spare_tyre, anual_inspection, registration,
+         truck_fuel, trailer_fuel, alartm, spare_tyre, paper_work,
          truck_key_attached, truck_matt, log_book_stand, security_guard_inspect, log_book_remark,
          load_locak, seal, fire_ext, warning_triangles, fuel_card, fuel_card_remark,
          damage, damage_description, trailer_license_plate, set_temp, running_temp,
          status, description, security, created_at, updated_at)
        VALUES
         (:date, :truckId, :truckLicensePlate, :driverId, :trailerId, :emptyLoaded, :loadType,
-         :truckFuel, :trailerFuel, :alartm, :spareTyre, :anualInspection, :registration,
+         :truckFuel, :trailerFuel, :alartm, :spareTyre, :paperWork,
          :truckKeyAttached, :truckMatt, :logBookStand, :securityGuardInspect, :logBookRemark,
          :loadLocks, :seal, :fireExt, :warningTriangles, :fuelCard, :fuelCardRemark,
          :damage, :damageDescription, :trailerLicensePlate, :setTemp, :runningTemp,
@@ -164,12 +172,11 @@ export async function createEntry(req: Request, res: Response): Promise<any> {
           trailerFuel: hasTrailer ? b.trailerFuel ?? null : null,
           alartm: keepSeal ? b.alartm ?? null : null,
           spareTyre: hasTrailer ? b.spareTyre ?? null : null,
-          anualInspection: hasTrailer ? b.anualInspection ?? null : null,
-          registration: hasTrailer ? b.registration ?? null : null,
-          truckKeyAttached: hasTrailer ? b.truckKeyAttached ?? null : null,
-          truckMatt: hasTrailer ? b.truckMatt ?? null : null,
-          logBookStand: hasTrailer ? b.logBookStand ?? null : null,
-          securityGuardInspect: hasTrailer ? b.securityGuardInspect ?? null : null,
+          paperWork: hasTrailer ? b.paperWork ?? null : null,
+          truckKeyAttached: b.truckKeyAttached ?? null,
+          truckMatt: b.truckMatt ?? null,
+          logBookStand: b.logBookStand ?? null,
+          securityGuardInspect: b.securityGuardInspect ?? null,
           logBookRemark: b.logBookRemark ?? null,
           loadLocks: keepLoadLocks ? b.loadLocks ?? null : null,
           seal: keepSeal ? b.seal ?? null : null,
@@ -431,7 +438,7 @@ async function applyGateSideEffects(
 /// Batch-resolves the comma-joined driver_id column into "Name, Name" strings
 /// for a page of rows in ONE extra query (not N+1), mirroring the same
 /// grouped-query approach used for latestEntryStatus/latestReadyStatus above.
-async function resolveDriverNames(
+export async function resolveDriverNames(
   rows: any[],
   driverIdKey: string
 ): Promise<Map<number, string>> {
@@ -455,7 +462,7 @@ async function resolveDriverNames(
   return nameById;
 }
 
-function driverNamesFor(rawDriverId: string | null, nameById: Map<number, string>): string | null {
+export function driverNamesFor(rawDriverId: string | null, nameById: Map<number, string>): string | null {
   if (!rawDriverId) return null;
   const names = String(rawDriverId)
     .split(",")
@@ -544,7 +551,7 @@ export async function getEntryById(req: Request, res: Response): Promise<any> {
               e.truck_key_attached AS truckKeyAttached, e.truck_matt AS truckMatt,
               e.log_book_stand AS logBookStand, e.security_guard_inspect AS securityGuardInspect,
               e.spare_tyre AS spareTyre, e.anual_inspection AS anualInspection,
-              e.registration, e.damage, e.damage_description AS damageDescription,
+              e.registration, e.paper_work AS paperWork, e.damage, e.damage_description AS damageDescription,
               e.fire_ext AS fireExt, e.warning_triangles AS warningTriangles,
               e.seal, e.alartm, e.load_locak AS loadLocks,
               e.set_temp AS setTemp, e.running_temp AS runningTemp,

@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 
-/// Compact single-row Yes/No toggle — label and two small pills share one
+/// Compact single-row 2-choice toggle — label and two small pills share one
 /// line, instead of YesNoToggle's label-above-full-width-pills layout. Used
-/// for grouped inspection checklists where ~10 fields need to fit compactly.
+/// for grouped checklists where many fields need to fit compactly. Defaults
+/// to Yes/No (green/red) but the pill text/values/colors can be overridden
+/// (e.g. OK/Problem for vehicle inspection checklists) without duplicating
+/// this widget.
 class CompactYesNoToggle extends StatelessWidget {
   final String label;
   final String? value;
   final ValueChanged<String> onChanged;
   final bool required;
+  final String positiveLabel;
+  final String positiveValue;
+  final Color positiveColor;
+  final String negativeLabel;
+  final String negativeValue;
+  final Color negativeColor;
 
   const CompactYesNoToggle({
     super.key,
@@ -15,6 +24,12 @@ class CompactYesNoToggle extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.required = false,
+    this.positiveLabel = 'Yes',
+    this.positiveValue = 'yes',
+    this.positiveColor = const Color(0xFF16A34A),
+    this.negativeLabel = 'No',
+    this.negativeValue = 'no',
+    this.negativeColor = const Color(0xFFDC2626),
   });
 
   @override
@@ -44,9 +59,9 @@ class CompactYesNoToggle extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          _pill('Yes', 'yes', const Color(0xFF16A34A)),
+          _pill(positiveLabel, positiveValue, positiveColor),
           const SizedBox(width: 6),
-          _pill('No', 'no', const Color(0xFFDC2626)),
+          _pill(negativeLabel, negativeValue, negativeColor),
         ],
       ),
     );

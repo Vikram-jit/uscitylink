@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// A single Yes/No inspection answer to render inside a ChecklistGrid.
+/// A single 2-choice inspection answer to render inside a ChecklistGrid.
+/// `positiveValue` defaults to 'yes' (Entry/Exit toggles); pass 'ok' for
+/// OK/Problem-style checklists (Vehicle Inspection) without duplicating this
+/// widget.
 class ChecklistItem {
   final String label;
-  final String? answer; // 'yes' | 'no' | null (unanswered)
+  final String? answer; // matches positiveValue, negativeValue, or null (unanswered)
+  final String positiveValue;
+  final String negativeValue;
 
-  const ChecklistItem(this.label, this.answer);
+  const ChecklistItem(
+    this.label,
+    this.answer, {
+    this.positiveValue = 'yes',
+    this.negativeValue = 'no',
+  });
 }
 
 /// Compact 2-column grid of Yes/No inspection answers — replaces a long
@@ -33,20 +43,23 @@ class ChecklistGrid extends StatelessWidget {
   }
 
   Widget _chip(ChecklistItem item) {
-    final isYes = item.answer == 'yes';
-    final isNo = item.answer == 'no';
-    final color = isYes
+    final isPositive = item.answer == item.positiveValue;
+    final isNegative = item.answer == item.negativeValue;
+    final color = isPositive
         ? const Color(0xFF16A34A)
-        : (isNo ? const Color(0xFFDC2626) : Colors.grey.shade400);
-    final icon = isYes
+        : (isNegative ? const Color(0xFFDC2626) : Colors.grey.shade400);
+    final icon = isPositive
         ? Icons.check_circle_rounded
-        : (isNo ? Icons.cancel_rounded : Icons.remove_circle_outline_rounded);
+        : (isNegative ? Icons.cancel_rounded : Icons.remove_circle_outline_rounded);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
+        border: isNegative
+            ? Border(left: BorderSide(color: color, width: 3))
+            : null,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

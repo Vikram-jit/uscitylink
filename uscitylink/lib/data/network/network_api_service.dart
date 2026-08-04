@@ -46,10 +46,10 @@ class NetworkApiService extends BaseApiServices {
   }
 
   @override
-  Future postApi(dynamic data, String url) async {
+  Future postApi(dynamic data, String url, {bool showLoader = true}) async {
     if (_isLoggingOut) return;
     try {
-      Utils.showLoader();
+      if (showLoader) Utils.showLoader();
       dynamic responseJson;
       final headers = {
         'Content-Type': 'application/json',

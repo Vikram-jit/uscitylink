@@ -193,16 +193,26 @@ class _VehicleEntryDetailViewState extends State<VehicleEntryDetailView> {
   }
 
   Widget _truckSection(SecurityEntryDetail e) {
+    final checklist = <ChecklistItem>[
+      ChecklistItem('Truck Key Attached', e.truckKeyAttached),
+      ChecklistItem('Truck Matt', e.truckMatt),
+      ChecklistItem('Log Book Stand', e.logBookStand),
+      ChecklistItem('Did Security Guard Inspect', e.securityGuardInspect),
+    ];
+
     return SectionCard(
       title: 'Truck Details',
       icon: Icons.local_shipping_rounded,
       accentColor: _accentColor,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DetailRow(label: 'Truck Number', value: e.truckNumber),
           DetailRow(label: 'Truck Fuel', value: e.truckFuel),
           DetailRow(label: 'Truck License Plate', value: e.truckLicensePlate),
           DetailRow(label: 'Security Guard', value: e.security),
+          const SizedBox(height: 10),
+          ChecklistGrid(items: checklist),
         ],
       ),
     );
@@ -210,16 +220,15 @@ class _VehicleEntryDetailViewState extends State<VehicleEntryDetailView> {
 
   Widget _trailerSection(SecurityEntryDetail e) {
     final checklist = <ChecklistItem>[
-      ChecklistItem('Truck Key Attached', e.truckKeyAttached),
-      ChecklistItem('Truck Matt', e.truckMatt),
-      ChecklistItem('Log Book Stand', e.logBookStand),
-      ChecklistItem('Security Guard Inspected', e.securityGuardInspect),
       ChecklistItem('Spare Tyre', e.spareTyre),
-      ChecklistItem('Annual Inspection', e.anualInspection),
-      ChecklistItem('Registration', e.registration),
-      ChecklistItem('Fire Extinguisher', e.fireExt),
+      ChecklistItem('Fire Ext.', e.fireExt),
       ChecklistItem('Warning Triangles', e.warningTriangles),
+      ChecklistItem('Paper Work', e.paperWork),
       ChecklistItem('Damage', e.damage),
+      // Kept for older entries that still have these set — no longer
+      // collected on new submissions (replaced by Paper Work).
+      if (!_blank(e.anualInspection)) ChecklistItem('Annual Inspection', e.anualInspection),
+      if (!_blank(e.registration)) ChecklistItem('Registration', e.registration),
       if (e.isLoaded) ...[
         ChecklistItem('Seal', e.seal),
         ChecklistItem('Any Alarm', e.alartm),

@@ -159,8 +159,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 label: 'Unread Messages',
                                 value: '$messageCount',
                                 gradient: const [
-                                  Color(0xFF2E5BFF),
-                                  Color(0xFF7C3AED)
+                                  Color(0xFF1B3B8C),
+                                  Color(0xFF2F63D6),
                                 ],
                                 onTap: () => Get.to(() => ChatView()),
                               ),
@@ -172,8 +172,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 label: 'Pay This Period',
                                 value: '\$${dashboard.totalAmount ?? 0}',
                                 gradient: const [
-                                  Color(0xFFB45309),
-                                  Color(0xFFF59E0B)
+                                  Color(0xFFC98A11),
+                                  Color(0xFFF2B705),
                                 ],
                                 onTap: () => Get.to(() => DriverPayView()),
                               ),
@@ -225,14 +225,14 @@ class _DriverDashboardState extends State<DriverDashboard>
                         items: [
                           _QuickAccessItem(
                             icon: Icons.ev_station_rounded,
-                            iconColor: const Color(0xFFF59E0B),
+                            iconColor: TColors.brandGold,
                             title: 'Fuel Stations',
                             subtitle: 'Find nearby fuel stops',
                             onTap: () => Get.to(() => FuelStationsView()),
                           ),
                           _QuickAccessItem(
                             icon: Icons.badge_rounded,
-                            iconColor: const Color(0xFF4F46E5),
+                            iconColor: TColors.navyHeaderDeep,
                             title: 'My Information',
                             subtitle: 'Profile & documents',
                             badge: (dashboard.isDocumentExpired ?? false)
@@ -242,7 +242,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                           ),
                           _QuickAccessItem(
                             icon: Icons.school_rounded,
-                            iconColor: const Color(0xFF9333EA),
+                            iconColor: TColors.brandGreen,
                             title: 'Training',
                             subtitle: 'Required safety videos',
                             onTap: () => Get.to(() => TrainingView()),
@@ -527,13 +527,13 @@ class _AlertBanner extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: const LinearGradient(
-            colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
+            colors: [Color(0xFFA81B24), TColors.brandRed],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFEF4444).withOpacity(0.3),
+              color: TColors.brandRed.withOpacity(0.3),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -616,7 +616,7 @@ class _FleetCard extends StatelessWidget {
           Expanded(
             child: _fleetHalf(
               icon: Icons.local_shipping_rounded,
-              color: const Color(0xFF16A34A),
+              color: TColors.brandGreen,
               value: trucks,
               label: 'Trucks',
               onTap: onTapTrucks,
@@ -626,7 +626,7 @@ class _FleetCard extends StatelessWidget {
           Expanded(
             child: _fleetHalf(
               icon: Icons.rv_hookup_rounded,
-              color: const Color(0xFF0D9488),
+              color: TColors.navyHeaderDeep,
               value: trailers,
               label: 'Trailers',
               onTap: onTapTrailers,
@@ -789,7 +789,7 @@ class _QuickAccessGroup extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD32F2F).withOpacity(0.1),
+                  color: TColors.brandRed.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
@@ -797,7 +797,7 @@ class _QuickAccessGroup extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFD32F2F),
+                    color: TColors.brandRed,
                   ),
                 ),
               ),

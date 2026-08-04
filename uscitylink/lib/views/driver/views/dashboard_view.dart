@@ -4,6 +4,7 @@ import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
+import 'package:uscitylink/utils/constant/colors.dart';
 
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
@@ -73,23 +74,51 @@ class _DashboardViewState extends State<DashboardView>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Obx(() {
-      return IndexedStack(
-        index: channelController.currentIndex.value,
-        children: _screens,
-      );
-    }), bottomNavigationBar: Obx(() {
-      return SalomonBottomBar(
-        backgroundColor: Colors.white,
-        currentIndex: channelController.currentIndex.value,
-        onTap: _onItemTapped,
-        items: [
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.home), title: const Text("Home")),
-          SalomonBottomBarItem(
-              icon: const Icon(Icons.settings), title: const Text("Settings")),
-        ],
-      );
-    }));
+    return Scaffold(
+      body: Obx(() {
+        return IndexedStack(
+          index: channelController.currentIndex.value,
+          children: _screens,
+        );
+      }),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: Obx(() {
+            return SalomonBottomBar(
+              currentIndex: channelController.currentIndex.value,
+              onTap: _onItemTapped,
+              selectedItemColor: TColors.navyHeaderDeep,
+              unselectedItemColor: Colors.grey.shade400,
+              itemPadding:
+                  const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+              items: [
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.home_outlined),
+                  activeIcon: const Icon(Icons.home_rounded),
+                  title: const Text("Home"),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.settings_outlined),
+                  activeIcon: const Icon(Icons.settings_rounded),
+                  title: const Text("Settings"),
+                ),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
   }
 }

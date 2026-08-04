@@ -18,8 +18,7 @@ class VehicleEntryPayload {
   String? logBookStand;
   String? securityGuardInspect;
   String? spareTyre;
-  String? anualInspection;
-  String? registration;
+  String? paperWork;
   String? damage;
   String? damageDescription;
   String? fireExt;
@@ -64,8 +63,7 @@ class VehicleEntryPayload {
     this.logBookStand,
     this.securityGuardInspect,
     this.spareTyre,
-    this.anualInspection,
-    this.registration,
+    this.paperWork,
     this.damage,
     this.damageDescription,
     this.fireExt,
@@ -110,8 +108,7 @@ class VehicleEntryPayload {
       'logBookStand': logBookStand,
       'securityGuardInspect': securityGuardInspect,
       'spareTyre': spareTyre,
-      'anualInspection': anualInspection,
-      'registration': registration,
+      'paperWork': paperWork,
       'damage': damage,
       'damageDescription': damageDescription,
       'fireExt': fireExt,
