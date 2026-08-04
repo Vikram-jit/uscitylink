@@ -64,10 +64,9 @@ class SecurityEntryDetail {
   String? securityGuardInspect;
   String? spareTyre;
   // Kept for viewing older entries only — no longer collected on new
-  // submissions (replaced by paperWork).
+  // submissions.
   String? anualInspection;
   String? registration;
-  String? paperWork;
   String? damage;
   String? damageDescription;
   String? fireExt;
@@ -114,7 +113,6 @@ class SecurityEntryDetail {
     spareTyre = json['spareTyre'];
     anualInspection = json['anualInspection'];
     registration = json['registration'];
-    paperWork = json['paperWork'];
     damage = json['damage'];
     damageDescription = json['damageDescription'];
     fireExt = json['fireExt'];

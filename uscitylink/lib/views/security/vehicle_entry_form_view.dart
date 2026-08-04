@@ -380,11 +380,6 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
                 value: c.warningTriangles.value,
                 onChanged: (v) => c.warningTriangles.value = v),
             CompactYesNoToggle(
-                label: 'Paper Work',
-                required: true,
-                value: c.paperWork.value,
-                onChanged: (v) => c.paperWork.value = v),
-            CompactYesNoToggle(
                 label: 'Damage',
                 required: true,
                 value: c.damage.value,
@@ -535,12 +530,12 @@ class _VehicleEntryFormViewState extends State<VehicleEntryFormView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DriverMultiSelectField(
-            label: 'Driver(s)',
-            drivers: c.drivers,
-            selectedIds: c.selectedDriverIds,
-            onChanged: (ids) => c.selectedDriverIds.value = ids,
-          ),
+          Obx(() => DriverMultiSelectField(
+                label: 'Driver(s)',
+                drivers: c.drivers,
+                selectedIds: c.selectedDriverIds.toList(),
+                onChanged: (ids) => c.selectedDriverIds.value = ids,
+              )),
           const SizedBox(height: 14),
           YesNoToggle(
               label: 'Log Book OK?',
