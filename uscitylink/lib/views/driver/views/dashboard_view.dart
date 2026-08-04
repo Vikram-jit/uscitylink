@@ -3,10 +3,12 @@ import 'package:get/get.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/login_controller.dart';
-import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
+import 'package:uscitylink/views/driver/views/chat_view.dart';
+import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
+import 'package:uscitylink/views/driver/views/loads_view.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
 
 class DashboardView extends StatefulWidget {
@@ -25,22 +27,20 @@ class _DashboardViewState extends State<DashboardView>
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
 
-  TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
       channelController.currentIndex.value = index;
     });
 
-    if (index == 3) {
-      _trainingController.fetchTrainingVideos(page: 1);
-    }
     channelController.setTabIndex(index);
     loginController.setTabIndex(index);
   }
 
   final List<Widget> _screens = [
     const DriverDashboard(),
-    // const ChatView(),
+    ChatView(),
+    const LoadsView(),
+    DocumentView(),
     SettingView(),
   ];
 
@@ -102,7 +102,7 @@ class _DashboardViewState extends State<DashboardView>
               selectedItemColor: TColors.navyHeaderDeep,
               unselectedItemColor: Colors.grey.shade400,
               itemPadding:
-                  const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                  const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
               items: [
                 SalomonBottomBarItem(
                   icon: const Icon(Icons.home_outlined),
@@ -110,9 +110,24 @@ class _DashboardViewState extends State<DashboardView>
                   title: const Text("Home"),
                 ),
                 SalomonBottomBarItem(
-                  icon: const Icon(Icons.settings_outlined),
-                  activeIcon: const Icon(Icons.settings_rounded),
-                  title: const Text("Settings"),
+                  icon: _messagesIcon(false),
+                  activeIcon: _messagesIcon(true),
+                  title: const Text("Messages"),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  activeIcon: const Icon(Icons.local_shipping_rounded),
+                  title: const Text("Loads"),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.folder_outlined),
+                  activeIcon: const Icon(Icons.folder_rounded),
+                  title: const Text("Documents"),
+                ),
+                SalomonBottomBarItem(
+                  icon: const Icon(Icons.more_horiz_rounded),
+                  activeIcon: const Icon(Icons.more_horiz_rounded),
+                  title: const Text("More"),
                 ),
               ],
             );
@@ -120,5 +135,40 @@ class _DashboardViewState extends State<DashboardView>
         ),
       ),
     );
+  }
+
+  Widget _messagesIcon(bool active) {
+    return Obx(() {
+      final unread = channelController.totalUnReadMessage.value;
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(active ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded),
+          if (unread > 0)
+            Positioned(
+              top: -4,
+              right: -8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                constraints: const BoxConstraints(minWidth: 15),
+                decoration: BoxDecoration(
+                  color: TColors.brandRed,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Text(
+                  unread > 99 ? '99+' : '$unread',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    });
   }
 }

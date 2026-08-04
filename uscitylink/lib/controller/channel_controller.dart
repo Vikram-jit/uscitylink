@@ -5,8 +5,6 @@ import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/group_controller.dart';
-import 'package:uscitylink/controller/training_controller.dart';
-import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/message_model.dart';
 import 'package:uscitylink/model/user_channel_model.dart';
@@ -21,8 +19,6 @@ class ChannelController extends GetxController {
   var doucumentInnerTabIndex = 0.obs;
   var loading = false.obs;
   final __channelService = ChannelService();
-  final _truckController = TruckController();
-  final _trainingController = TrainingController();
   var currentIndex = 0.obs;
   var totalUnReadMessage = 0.obs;
   var channelCount = 0.obs;
@@ -36,23 +32,18 @@ class ChannelController extends GetxController {
   void onInit() {
     super.onInit();
     currentIndex.listen((index) {
-      print(index);
+      getCount();
       if (index == 0) {
         dashboardController.getDashboard();
-        getCount();
       }
       if (index == 1) {
         getUserChannels();
-        getCount();
       }
-      if (index == 2) {
-        _truckController.fetchTrucks();
-        getCount();
-      }
-      if (index == 3) {
-        _trainingController.fetchTrainingVideos(page: 1);
-        getCount();
-      }
+      // index 2 (Loads): static placeholder screen, nothing to fetch.
+      // index 3 (Documents): DocumentView/TruckController.changeTab()
+      //   already manages its own fetching.
+      // index 4 (More): SettingView.initState() already calls
+      //   loginController.getProfile() itself.
     });
     innerTabIndex.listen((index) {
       if (index == 0) {

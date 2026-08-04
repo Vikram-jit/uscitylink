@@ -111,6 +111,13 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+# path_provider_foundation >=2.5.0 switched to the dart:ffi + package:objective_c
+# interop, whose native framework isn't embedding correctly on iOS simulator
+# builds (dlopen failure for objective_c.framework at startup). Pinned to the
+# last pre-FFI release until that's resolved upstream.
+dependency_overrides:
+  path_provider_foundation: 2.4.4
+
 flutter_native_splash:
   color: "#ffffff"
   image: assets/images/logo.png

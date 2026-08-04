@@ -54,8 +54,7 @@ class LoginController extends GetxController {
   void onInit() {
     super.onInit();
     currentIndex.listen((index) {
-      print(index);
-      if (index == 1) {
+      if (index == 4) {
         getProfile();
       }
     });
