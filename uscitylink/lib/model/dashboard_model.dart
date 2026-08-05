@@ -13,6 +13,12 @@ class DashboardModel {
   List<LatestMessage>? latestMessage;
   List<LatestGroupMessage>? latestGroupMessage;
   bool? isInspectionDone;
+  // From Samsara (via the driver's yard_management.drivers.samsara_id),
+  // rolling 7-day window. Null — not 0 — when the driver has no Samsara id
+  // or the Samsara call fails, so the UI can tell "no data" from "actually
+  // zero".
+  int? weeklyDrivingMinutes;
+  int? safetyScore;
 
   DashboardModel(
       {this.trucks,
@@ -26,7 +32,9 @@ class DashboardModel {
       this.channel,
       this.totalAmount,
       this.isDocumentExpired,
-      this.isInspectionDone});
+      this.isInspectionDone,
+      this.weeklyDrivingMinutes,
+      this.safetyScore});
 
   DashboardModel.fromJson(Map<String, dynamic> json) {
     channelCount = json['channelCount'];
@@ -40,6 +48,8 @@ class DashboardModel {
     channel =
         json['channel'] != null ? new Channel.fromJson(json['channel']) : null;
     trailerCount = json['trailerCount'];
+    weeklyDrivingMinutes = json['weeklyDrivingMinutes'];
+    safetyScore = json['safetyScore'];
     if (json['latestMessage'] != null) {
       latestMessage = <LatestMessage>[];
       json['latestMessage'].forEach((v) {
@@ -69,6 +79,8 @@ class DashboardModel {
     data['truckCount'] = this.truckCount;
     data['isDocumentExpired'] = this.isDocumentExpired;
     data['trailerCount'] = this.trailerCount;
+    data['weeklyDrivingMinutes'] = this.weeklyDrivingMinutes;
+    data['safetyScore'] = this.safetyScore;
     if (this.latestMessage != null) {
       data['latestMessage'] = latestMessage?.map((v) => v.toJson()).toList();
     }

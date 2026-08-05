@@ -5,7 +5,7 @@ nextTypeId: 20
 types:
   DashboardModel:
     typeId: 0
-    nextIndex: 12
+    nextIndex: 14
     fields:
       channel:
         index: 0
@@ -31,6 +31,10 @@ types:
         index: 10
       isInspectionDone:
         index: 11
+      weeklyDrivingMinutes:
+        index: 12
+      safetyScore:
+        index: 13
   Channel:
     typeId: 1
     nextIndex: 5

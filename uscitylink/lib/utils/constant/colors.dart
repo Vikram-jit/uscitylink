@@ -21,6 +21,27 @@ class TColors {
   static const Color brandGreen = Color(0xFF1DA64A);
   static const Color brandGold = Color(0xFFC98A11);
 
+  // Surfaces — the neutral ramp new screens are built on.
+  static const Color surfaceCanvas = Color(0xFFF4F6FB); // page background
+  static const Color surfaceCard = Color(0xFFFFFFFF);
+  static const Color hairline = Color(0xFFEDF0F5); // dividers, card borders
+
+  // Text ramp. These replace `Colors.grey.shade500` / `shade900`, which were
+  // reached for inline all over the app. shade500 (#9E9E9E) is only 2.8:1 on
+  // white — under the WCAG AA 4.5:1 floor for body text, and this app gets read
+  // in direct sunlight through a windshield. textMuted below is 4.9:1.
+  static const Color textStrong = Color(0xFF0F172A);
+  static const Color textBody = Color(0xFF475569);
+  static const Color textMuted = Color(0xFF64748B);
+
+  // Dashboard accent pairs (gradient stops). Each pair is deep -> bright.
+  static const Color violetDeep = Color(0xFF2E1B6B);
+  static const Color violet = Color(0xFF5B34C4);
+  static const Color tealDeep = Color(0xFF0B5D53);
+  static const Color teal = Color(0xFF14A88F);
+  static const Color alertInk = Color(0xFF0E1834); // inspection banner ground
+  static const Color alertOrange = Color(0xFFF97316);
+
   // Text colors
   static const Color textPrimary = Color(0xFF333333);
   static const Color textSecondary = Color(0xFF6C757D);

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import axios from "axios";
 import { UserProfile } from "../models/UserProfile";
 import User from "../models/User";
 import Role from "../models/Role";
@@ -774,9 +775,9 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     const channel = await Channel.findOne();
 
     const driverDocuments = await secondarySequelize.query<any>(
-      `SELECT * FROM documents 
-       WHERE type = 'driver' 
-       AND item_id = :id 
+      `SELECT * FROM documents
+       WHERE type = 'driver'
+       AND item_id = :id
        AND expire_date < NOW()`,
       {
         replacements: {
@@ -785,6 +786,54 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         type: QueryTypes.SELECT,
       }
     );
+
+    // Weekly driving time + safety score from Samsara. `drivers.samsara_id`
+    // (yard_management DB) maps this driver to their Samsara driver id;
+    // `user.yard_id` is that same `drivers.id`, per the pattern already used
+    // above for driver_pays/documents. A rolling 7-day window is used rather
+    // than a calendar week, so it doesn't reset to near-zero every Sunday
+    // night. Both values default to null (not 0) so the client can tell
+    // "no Samsara data" apart from "actually zero" — same reasoning as
+    // trailerCount degrading to null instead of a fake 0.
+    let weeklyDrivingMinutes: number | null = null;
+    let safetyScore: number | null = null;
+    try {
+      const driverRows = await secondarySequelize.query<{ samsara_id: string | null }>(
+        `SELECT samsara_id FROM drivers WHERE id = :driverId LIMIT 1`,
+        {
+          replacements: { driverId: user?.yard_id },
+          type: QueryTypes.SELECT,
+        }
+      );
+      const samsaraId = driverRows[0]?.samsara_id;
+
+      if (samsaraId) {
+        const endTime = new Date();
+        const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const apiKey = process.env.SAMSARA_API_KEY;
+        const response = await axios.get(
+          "https://api.samsara.com/safety-scores/drivers",
+          {
+            headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+            params: {
+              driverIds: samsaraId,
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+            },
+          }
+        );
+        const driverStats = response.data?.data?.[0];
+        if (driverStats?.driveTimeMilliseconds != null) {
+          weeklyDrivingMinutes = Math.round(driverStats.driveTimeMilliseconds / 60000);
+        }
+        if (driverStats?.driverScore != null) {
+          safetyScore = driverStats.driverScore;
+        }
+      }
+    } catch (samsaraError: any) {
+      console.error("Samsara safety score error:", samsaraError.message);
+    }
+
     console.log(inspectionDoneToday);
     return res.status(200).json({
       status: true,
@@ -806,6 +855,8 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         latestGroupMessage: messagesWithGroup,
         distinctChannelIds,
         isDocumentExpired: driverDocuments.length > 0 ? true : false,
+        weeklyDrivingMinutes,
+        safetyScore,
       },
     });
   } catch (err: any) {

@@ -20,4 +20,8 @@ class TImages {
 
   static const String logo = "assets/images/logo.png";
   static const String logoWhite = "assets/images/white-logo.png";
+
+  // Dashboard header art
+  static const String truck = "assets/truck.png";
+  static const String truckNew = "assets/images/truck.png";
 }

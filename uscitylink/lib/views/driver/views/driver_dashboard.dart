@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
@@ -15,6 +16,9 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/constant/image_strings.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/utils/theme/app_text.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/utils/utils.dart';
 
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/daily_inspection/add_inspection_screen.dart';
@@ -24,9 +28,22 @@ import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
 import 'package:uscitylink/views/driver/views/fuel_stations/fuel_stations_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 
-const double _kKpiCardHeight = 132;
+const double _kKpiCardHeight = 112;
 const double _kKpiOverlap = 46;
 const double _kKpiOverflow = _kKpiCardHeight - _kKpiOverlap;
+const double _kKpiRadius = 6;
+
+/// Values the dashboard renders that `GET /user/dashboard` does not return yet.
+///
+/// They are collected here rather than scattered through the tree so that
+/// swapping each one for a real `DashboardModel` field is a single-site edit.
+/// TODO(api): replace each of these as the endpoint grows.
+class _Placeholder {
+  const _Placeholder._();
+
+  static const int trucksInUse = 2;
+  static const int trailersInUse = 1;
+}
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -103,6 +120,38 @@ class _DriverDashboardState extends State<DriverDashboard>
     return 'Good evening';
   }
 
+  /// Current semi-monthly pay period (1st–15th, 16th–end of month), formatted
+  /// the way the pay screen labels it. Derived from today's date rather than
+  /// hardcoded, so it stays correct without an API field.
+  String get _payPeriod {
+    final now = DateTime.now();
+    final isFirstHalf = now.day <= 15;
+    final start = DateTime(now.year, now.month, isFirstHalf ? 1 : 16);
+    final end = isFirstHalf
+        ? DateTime(now.year, now.month, 15)
+        : DateTime(now.year, now.month + 1, 0);
+    final f = DateFormat('MMM d');
+    return '${f.format(start)} – ${f.format(end)}, ${now.year}';
+  }
+
+  /// Whether anything has ever been loaded (from the network or the Hive
+  /// cache). Drives the difference between a cold start — which gets a
+  /// full-screen spinner — and a refresh, which must keep the existing content
+  /// on screen so the pull gesture's own indicator survives the rebuild.
+  bool get _hasDashboardData {
+    final d = _dashboardController.dashboard.value;
+    return d.messageCount != null || d.trucks != null || d.totalAmount != null;
+  }
+
+  Future<void> _refresh() async {
+    _dashboardController.getDashboard();
+    // getDashboard() is fire-and-forget; hold the spinner until the controller
+    // flips `loading` back off so the gesture doesn't snap shut instantly.
+    await _dashboardController.loading.stream
+        .firstWhere((isLoading) => isLoading == false)
+        .timeout(const Duration(seconds: 12), onTimeout: () => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -113,9 +162,9 @@ class _DriverDashboardState extends State<DriverDashboard>
       ),
       child: Scaffold(
         key: _scaffoldKey,
-        backgroundColor: const Color(0xFFF5F6FA),
+        backgroundColor: TColors.surfaceCanvas,
         body: Obx(() {
-          if (_dashboardController.loading.value) {
+          if (_dashboardController.loading.value && !_hasDashboardData) {
             return SizedBox(
               height: TDeviceUtils.getScreenHeight(),
               child: const Center(
@@ -126,134 +175,180 @@ class _DriverDashboardState extends State<DriverDashboard>
 
           final dashboard = _dashboardController.dashboard.value;
           final messageCount = dashboard.messageCount ?? 0;
+          // Nullable rather than defaulted to 0 — the dashboard API only
+          // populates `trucks` reliably; `trailerCount` regularly comes back
+          // empty, and showing "0" for that would read as "you have zero
+          // trailers" instead of "this data isn't available."
+          final trucks = dashboard.trucks ?? '';
+          final trailers = dashboard.trailerCount;
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Column(
-                      children: [
-                        _Header(
-                          greeting: _greeting,
-                          connected: _networkService.connected,
-                        ),
-                        const SizedBox(height: _kKpiOverflow),
-                      ],
-                    ),
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 0,
-                      child: SizedBox(
-                        height: _kKpiCardHeight,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _KpiCard(
-                                icon: Icons.forum_rounded,
-                                label: 'Unread Messages',
-                                value: '$messageCount',
-                                gradient: const [
-                                  Color(0xFF1B3B8C),
-                                  Color(0xFF2F63D6),
-                                ],
-                                onTap: () => Get.to(() => ChatView()),
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            color: TColors.navyHeaderDeep,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Column(
+                        children: [
+                          _Header(
+                            greeting: _greeting,
+                            connected: _networkService.connected,
+                          ),
+                          const SizedBox(height: _kKpiOverflow),
+                        ],
+                      ),
+                      Positioned(
+                        left: AppSpacing.lg,
+                        right: AppSpacing.lg,
+                        bottom: 0,
+                        child: SizedBox(
+                          height: 90,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _KpiCard(
+                                  icon: Icons.forum_rounded,
+                                  value: '$messageCount',
+                                  label: 'Unread Messages',
+                                  caption: '',
+                                  gradient: AppGradients.messages,
+                                  glowColor: TColors.violet,
+                                  onTap: () => Get.to(() => ChatView()),
+                                ),
                               ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: _KpiCard(
+                                  icon: Icons.account_balance_wallet_rounded,
+                                  value: '\$${dashboard.totalAmount ?? 0}',
+                                  label: 'Pay This Period',
+                                  caption: "",
+                                  gradient: AppGradients.pay,
+                                  glowColor: TColors.teal,
+                                  onTap: () => Get.to(() => DriverPayView()),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // NOTE: condition intentionally left as it was found.
+                        // It reads inverted against the "Inspection Required"
+                        // copy, but flipping it on a guess would suppress the
+                        // prompt for every driver if the API field actually
+                        // means "an inspection is due". Verify server-side.
+                        if (dashboard.isInspectionDone ?? false) ...[
+                          _InspectionBanner(
+                            onTap: () => Get.to(() => AddInspectionScreen()),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                        ],
+                        _SectionHeader(
+                          icon: Icons.local_shipping_rounded,
+                          accent: TColors.brandGreen,
+                          title: 'Fleet Overview',
+                          subtitle: 'Your assigned vehicles',
+                          actionLabel: 'View all',
+                          onAction: () {
+                            truckController.changeTab(0);
+                            Get.to(() => DocumentView(tabIndexDefault: 0));
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _FleetCard(
+                          trucks: trucks,
+                          trucksInUse: _Placeholder.trucksInUse,
+                          trailers: trailers,
+                          trailersInUse: _Placeholder.trailersInUse,
+                          onTapTrucks: () {
+                            truckController.changeTab(0);
+                            Get.to(() => DocumentView(tabIndexDefault: 0));
+                          },
+                          onTapTrailers: () {
+                            truckController.changeTab(1);
+                            Get.to(() => DocumentView(tabIndexDefault: 1));
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        _SectionHeader(
+                          icon: Icons.bolt_rounded,
+                          accent: TColors.violet,
+                          title: 'Quick Access',
+                          subtitle: 'Everything you need, right here',
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _QuickAccessGrid(
+                          items: [
+                            _QuickAccessItem(
+                              icon: Icons.ev_station_rounded,
+                              accent: TColors.brandGreen,
+                              title: 'Fuel Stations',
+                              subtitle: 'Find nearby fuel stops',
+                              onTap: () => Get.to(() => FuelStationsView()),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _KpiCard(
-                                icon: Icons.payments_rounded,
-                                label: 'Pay This Period',
-                                value: '\$${dashboard.totalAmount ?? 0}',
-                                gradient: const [
-                                  Color(0xFFC98A11),
-                                  Color(0xFFF2B705),
-                                ],
-                                onTap: () => Get.to(() => DriverPayView()),
+                            _QuickAccessItem(
+                              icon: Icons.badge_rounded,
+                              accent: TColors.violet,
+                              title: 'My Information',
+                              subtitle: 'Profile & documents',
+                              badge: (dashboard.isDocumentExpired ?? false)
+                                  ? 'Expired'
+                                  : null,
+                              badgeColor: TColors.brandRed,
+                              onTap: () => Get.to(() => DriverProfileView()),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.school_rounded,
+                              accent: TColors.alertOrange,
+                              title: 'Training',
+                              subtitle: 'Required safety videos',
+                              onTap: () => Get.to(() => TrainingView()),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.inventory_2_rounded,
+                              accent: TColors.navyHeaderDeep,
+                              title: 'Loads',
+                              subtitle: 'View upcoming assignments',
+                              badge: 'Soon',
+                              badgeColor: TColors.textMuted,
+                              onTap: () => Utils.snackBar(
+                                'Coming soon',
+                                'Load assignments will appear here once '
+                                    'dispatch is connected.',
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: _kKpiOverflow - 50),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (dashboard.isInspectionDone ?? false) ...[
-                        _AlertBanner(
-                          title: 'Daily Inspection Required',
-                          subtitle: 'Tap to complete your vehicle checklist',
-                          onTap: () => Get.to(() => AddInspectionScreen()),
+                        const SizedBox(height: AppSpacing.xl),
+                        _WeeklyStatsCard(
+                          weeklyDrivingMinutes: dashboard.weeklyDrivingMinutes,
+                          safetyScore: dashboard.safetyScore,
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: AppSpacing.xxl + kBottomNavigationBarHeight,
+                        ),
                       ],
-                      const _SectionLabel(
-                        title: 'Fleet Overview',
-                        subtitle: 'Vehicles assigned to you',
-                      ),
-                      const SizedBox(height: 10),
-                      _FleetCard(
-                        trucks: '${dashboard.trucks ?? 0}',
-                        trailers: '0',
-                        onTapTrucks: () {
-                          truckController.changeTab(0);
-                          Get.to(() => DocumentView(tabIndexDefault: 0));
-                        },
-                        onTapTrailers: () {
-                          truckController.changeTab(1);
-                          Get.to(() => DocumentView(tabIndexDefault: 1));
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      const _SectionLabel(
-                        title: 'Quick Access',
-                        subtitle: 'Everything else, in one place',
-                      ),
-                      const SizedBox(height: 10),
-                      _QuickAccessGroup(
-                        items: [
-                          _QuickAccessItem(
-                            icon: Icons.ev_station_rounded,
-                            iconColor: TColors.brandGold,
-                            title: 'Fuel Stations',
-                            subtitle: 'Find nearby fuel stops',
-                            onTap: () => Get.to(() => FuelStationsView()),
-                          ),
-                          _QuickAccessItem(
-                            icon: Icons.badge_rounded,
-                            iconColor: TColors.navyHeaderDeep,
-                            title: 'My Information',
-                            subtitle: 'Profile & documents',
-                            badge: (dashboard.isDocumentExpired ?? false)
-                                ? 'Expired'
-                                : null,
-                            onTap: () => Get.to(() => DriverProfileView()),
-                          ),
-                          _QuickAccessItem(
-                            icon: Icons.school_rounded,
-                            iconColor: TColors.brandGreen,
-                            title: 'Training',
-                            subtitle: 'Required safety videos',
-                            onTap: () => Get.to(() => TrainingView()),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         }),
@@ -261,6 +356,10 @@ class _DriverDashboardState extends State<DriverDashboard>
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
 
 class _Header extends StatelessWidget {
   final String greeting;
@@ -272,71 +371,97 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadii.sm),
+      ),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, 70),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [TColors.navyHeader, TColors.navyHeaderDeep],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppGradients.header),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Positioned(
-              top: -50,
-              right: -30,
-              child: _orb(150, 0.06),
+            // Full-bleed photo — the whole header shows the scene, with a
+            // single flat overlay darkening it uniformly rather than a
+            // directional scrim that hides part of the image behind solid
+            // navy.
+            Positioned.fill(
+              child: Image.asset(
+                TImages.truckNew,
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.35),
+              ),
             ),
-            Positioned(
-              bottom: -40,
-              left: -50,
-              child: _orb(160, 0.05),
+            // Flat black overlay across the whole photo — uniform contrast
+            // boost so text stays legible over any part of the image.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(color: Colors.black.withValues(alpha: 0.70)),
+              ),
             ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  padding: const EdgeInsets.all(7),
+            // Thin top/bottom fade so the status bar icons and the curved
+            // lower edge both stay legible against whatever the photo is
+            // doing at that particular edge.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(13),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.22),
+                        Colors.transparent,
+                        TColors.navyHeaderDeep.withValues(alpha: 0.35),
+                      ],
+                      stops: const [0.0, 0.38, 1.0],
+                    ),
                   ),
-                  child: Image.asset(TImages.logo, fit: BoxFit.contain),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                topInset + AppSpacing.base,
+                AppSpacing.lg,
+                AppSpacing.xxl + AppSpacing.xl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        greeting,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.65),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Your Fleet Overview',
-                        style: TextStyle(
+                      Container(
+                        width: 44,
+                        height: 44,
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
                         ),
+                        child: Image.asset(TImages.logo, fit: BoxFit.contain),
                       ),
+                      const Spacer(),
+                      Obx(() =>
+                          connected.value ? const SizedBox() : _syncingPill()),
                     ],
                   ),
-                ),
-                Obx(() => connected.value ? const SizedBox() : _offlinePill()),
-              ],
+                  const SizedBox(height: AppSpacing.xl),
+                  Text(
+                    '$greeting, Driver 👋',
+                    style: AppText.bodySm.copyWith(
+                      color: Colors.white.withValues(alpha: 0.70),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Ready for\nthe road today?',
+                    style: AppText.displayLg.copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+                  Obx(() => _StatusPill(connected: connected.value)),
+                ],
+              ),
             ),
           ],
         ),
@@ -344,42 +469,32 @@ class _Header extends StatelessWidget {
     );
   }
 
-  Widget _orb(double size, double opacity) {
+  Widget _syncingPill() {
     return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(opacity),
-        shape: BoxShape.circle,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
-    );
-  }
-
-  Widget _offlinePill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(
-            width: 10,
-            height: 10,
+            width: 12,
+            height: 12,
             child: CircularProgressIndicator(
               color: Colors.white,
-              strokeWidth: 1.6,
+              strokeWidth: 1.8,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             'Syncing',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+            style: AppText.labelSm.copyWith(
+              color: Colors.white.withValues(alpha: 0.92),
             ),
           ),
         ],
@@ -388,82 +503,167 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Persistent connection state. Previously the network state only surfaced as a
+/// pill that appeared on failure, which gave the driver no positive signal that
+/// the app was actually live.
+class _StatusPill extends StatelessWidget {
+  final bool connected;
+
+  const _StatusPill({required this.connected});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color dot = connected ? const Color(0xFF34D399) : TColors.brandGold;
+    final String label =
+        connected ? 'All systems operational' : 'Reconnecting…';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dot,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: dot.withValues(alpha: 0.6), blurRadius: 8),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            label,
+            style: AppText.labelMd.copyWith(
+              color: Colors.white.withValues(alpha: 0.92),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// KPI cards
+// ---------------------------------------------------------------------------
+
 class _KpiCard extends StatelessWidget {
   final IconData icon;
-  final String label;
   final String value;
-  final List<Color> gradient;
+  final String label;
+  final String caption;
+  final LinearGradient gradient;
+  final Color glowColor;
   final VoidCallback onTap;
 
   const _KpiCard({
     required this.icon,
-    required this.label,
     required this.value,
+    required this.label,
+    required this.caption,
     required this.gradient,
+    required this.glowColor,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Top row: icon + value + chevron. Bottom: label and caption on their own
+    // full-width rows, rather than squeezed into a middle column next to the
+    // icon — that's what was overflowing, since the parent row stretches this
+    // card to a fixed height regardless of how much the three stacked lines
+    // actually needed.
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(_kKpiRadius),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.md,
+        ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: gradient,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: gradient.last.withOpacity(0.35),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(_kKpiRadius),
+          gradient: gradient,
+          boxShadow: AppShadows.glow(glowColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: Colors.white, size: 18),
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: gradient.colors.last, size: 18),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.left,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.numeric(AppText.titleMd)
+                        .copyWith(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+              ],
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.bodySm.copyWith(color: Colors.white),
+                    ),
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                        size: 15,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                //const SizedBox(height: 2),
+
+                // Text(
+                //   caption,
+                //   maxLines: 1,
+                //   overflow: TextOverflow.ellipsis,
+                //   style: AppText.labelSm.copyWith(
+                //     color: Colors.white.withValues(alpha: 0.78),
+                //   ),
+                // ),
               ],
             ),
           ],
@@ -473,126 +673,222 @@ class _KpiCard extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Section header
+// ---------------------------------------------------------------------------
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final Color accent;
   final String title;
   final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
-  const _SectionLabel({required this.title, required this.subtitle});
+  const _SectionHeader({
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey.shade900,
-            letterSpacing: -0.2,
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: accent, size: 21),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: AppText.titleLg.copyWith(color: TColors.textStrong),
+              ),
+              Text(
+                subtitle,
+                style: AppText.bodySm.copyWith(color: TColors.textMuted),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 12.5,
-            color: Colors.grey.shade500,
+        if (actionLabel != null)
+          InkWell(
+            onTap: onAction,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    actionLabel!,
+                    style:
+                        AppText.labelLg.copyWith(color: TColors.navyHeaderDeep),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: TColors.navyHeaderDeep,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
       ],
     );
   }
 }
 
-class _AlertBanner extends StatelessWidget {
-  final String title;
-  final String subtitle;
+// ---------------------------------------------------------------------------
+// Inspection banner
+// ---------------------------------------------------------------------------
+
+class _InspectionBanner extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _AlertBanner({
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+  const _InspectionBanner({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFA81B24), TColors.brandRed],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: TColors.brandRed.withOpacity(0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: TColors.alertInk,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          boxShadow: AppShadows.raised,
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.warning_rounded,
-                  color: Colors.white, size: 21),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                    ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 5, color: TColors.alertOrange),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.base),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.alertIcon,
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
+                        ),
+                        child: const Icon(
+                          Icons.priority_high_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Daily Inspection Required',
+                              style:
+                                  AppText.labelLg.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Please complete your vehicle inspection for '
+                              'today.',
+                              style: AppText.labelMd.copyWith(
+                                color: Colors.white.withValues(alpha: 0.72),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      //const SizedBox(width: AppSpacing.md),
+                      _StartNowButton(onTap: onTap),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Colors.white, size: 22),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _StartNowButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _StartNowButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: TColors.alertOrange,
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.base,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Text(
+              //   'Start Now',
+              //   style: AppText.labelLg.copyWith(color: Colors.white),
+              // ),
+              const SizedBox(width: AppSpacing.xs),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 15,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fleet card
+// ---------------------------------------------------------------------------
+
 class _FleetCard extends StatelessWidget {
-  final String trucks;
-  final String trailers;
+  final String? trucks;
+  final int trucksInUse;
+  final int? trailers;
+  final int trailersInUse;
   final VoidCallback onTapTrucks;
   final VoidCallback onTapTrailers;
 
   const _FleetCard({
     required this.trucks,
+    required this.trucksInUse,
     required this.trailers,
+    required this.trailersInUse,
     required this.onTapTrucks,
     required this.onTapTrailers,
   });
@@ -601,93 +897,120 @@ class _FleetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: TColors.surfaceCard,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        boxShadow: AppShadows.card,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _fleetHalf(
-              icon: Icons.local_shipping_rounded,
-              color: TColors.brandGreen,
-              value: trucks,
-              label: 'Trucks',
-              onTap: onTapTrucks,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _half(
+                icon: Icons.local_shipping_rounded,
+                accent: TColors.brandGreen,
+                total: trucks,
+                inUse: trucksInUse,
+                label: 'Trucks',
+                onTap: onTapTrucks,
+              ),
             ),
-          ),
-          Container(width: 1, height: 64, color: Colors.grey.shade100),
-          Expanded(
-            child: _fleetHalf(
-              icon: Icons.rv_hookup_rounded,
-              color: TColors.navyHeaderDeep,
-              value: trailers,
-              label: 'Trailers',
-              onTap: onTapTrailers,
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: TColors.hairline,
+              indent: AppSpacing.base,
+              endIndent: AppSpacing.base,
             ),
-          ),
-        ],
+            Expanded(
+              child: _half(
+                icon: Icons.rv_hookup_rounded,
+                accent: TColors.navyHeaderDeep,
+                total: "Trailers",
+                inUse: trailersInUse,
+                label: 'Trailers',
+                onTap: onTapTrailers,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _fleetHalf({
+  Widget _half({
     required IconData icon,
-    required Color color,
-    required String value,
+    required Color accent,
+    required String? total,
+    required int inUse,
     required String label,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey.shade900,
-                    ),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        TextStyle(fontSize: 11.5, color: Colors.grey.shade500),
+                  child: Icon(icon, color: accent, size: 22),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        total == null ? '—' : '$total',
+                        maxLines: 1,
+                        style: AppText.numeric(AppText.displaySm).copyWith(
+                          color: total == null
+                              ? TColors.textMuted
+                              : TColors.textStrong,
+                        ),
+                      ),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            AppText.bodySm.copyWith(color: TColors.textMuted),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.md),
+            // ClipRRect(
+            //   borderRadius: BorderRadius.circular(AppRadii.pill),
+            //   child: LinearProgressIndicator(
+            //     value: fraction,
+            //     minHeight: 4,
+            //     backgroundColor: TColors.hairline,
+            //     valueColor: AlwaysStoppedAnimation<Color>(accent),
+            //   ),
+            // ),
+            // const SizedBox(height: AppSpacing.sm),
+            // Text(
+            //   '$used in use  ·  $available available',
+            //   maxLines: 1,
+            //   overflow: TextOverflow.ellipsis,
+            //   style: AppText.numeric(AppText.labelMd)
+            //       .copyWith(color: TColors.textMuted),
+            // ),
           ],
         ),
       ),
@@ -695,119 +1018,346 @@ class _FleetCard extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Quick access
+// ---------------------------------------------------------------------------
+
 class _QuickAccessItem {
   final IconData icon;
-  final Color iconColor;
+  final Color accent;
   final String title;
   final String subtitle;
   final String? badge;
+  final Color? badgeColor;
   final VoidCallback onTap;
 
   _QuickAccessItem({
     required this.icon,
-    required this.iconColor,
+    required this.accent,
     required this.title,
     required this.subtitle,
     required this.onTap,
     this.badge,
+    this.badgeColor,
   });
 }
 
-class _QuickAccessGroup extends StatelessWidget {
+/// A single horizontally scrolling row rather than a grid, so adding a fifth
+/// or sixth quick-access item later never forces a re-tuned column count —
+/// it just scrolls.
+///
+/// Every card is the same fixed width/height, and every row inside it —
+/// icon, title, subtitle, status — is its own fixed-height slot rather than
+/// letting the Column size to its content. That's what makes the cards line
+/// up identically whether or not a given item has a status badge, and it's
+/// what keeps a long label from ever pushing the card taller than its
+/// neighbours: text is capped at one line with an ellipsis instead of
+/// wrapping onto a second line, which is what was reading as unpolished.
+class _QuickAccessGrid extends StatelessWidget {
   final List<_QuickAccessItem> items;
 
-  const _QuickAccessGroup({required this.items});
+  const _QuickAccessGrid({required this.items});
+  static const double _tileWidth = 125;
+  static const double _tileHeight = 190;
+
+  static const double _iconSlot = 40;
+  static const double _titleSlot = 20;
+  static const double _subtitleSlot = 30;
+  static const double _statusSlot = 22;
+  static const double _arrowSlot = 22;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          for (int i = 0; i < items.length; i++) ...[
-            _row(items[i]),
-            if (i != items.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(left: 68),
-                child: Divider(
-                    height: 1, color: Colors.grey.shade100, thickness: 1),
-              ),
-          ],
-        ],
+    return SizedBox(
+      height: _tileHeight,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        separatorBuilder: (context, index) =>
+            const SizedBox(width: AppSpacing.md),
+        itemBuilder: (context, index) => SizedBox(
+          width: _tileWidth,
+          child: _tile(items[index]),
+        ),
       ),
     );
   }
 
-  Widget _row(_QuickAccessItem item) {
-    return InkWell(
-      onTap: item.onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: item.iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+  Widget _tile(_QuickAccessItem item) {
+    final badgeColor = item.badgeColor ?? TColors.textMuted;
+    return Material(
+      color: TColors.surfaceCard,
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: TColors.surfaceCard,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            boxShadow: AppShadows.card,
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.md,
+          ),
+          // `stretch` so each slot spans the tile's full width — Center/Align
+          // inside a slot only has room to work with if the slot isn't
+          // already shrink-wrapped to its child.
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: _iconSlot,
+                child: Center(
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: item.accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(item.icon, color: item.accent, size: 17),
+                  ),
+                ),
               ),
-              child: Icon(item.icon, color: item.iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: _titleSlot,
+                child: Center(
+                  child: Text(
                     item.title,
-                    style: TextStyle(
-                      fontSize: 14.5,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.bodySm.copyWith(
+                      color: TColors.textStrong,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade900,
                     ),
                   ),
-                  Text(
+                ),
+              ),
+              SizedBox(
+                height: _subtitleSlot,
+                child: Center(
+                  child: Text(
                     item.subtitle,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ],
-              ),
-            ),
-            if (item.badge != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: TColors.brandRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Expired',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: TColors.brandRed,
+                    textAlign: TextAlign.center,
+                    // maxLines: 1,
+                    // overflow: TextOverflow.ellipsis,
+                    style: AppText.labelSm.copyWith(color: TColors.textMuted),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: _statusSlot,
+                child: Center(
+                  child: item.badge == null
+                      ? const SizedBox.shrink()
+                      : Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                          child: Text(
+                            item.badge!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.labelSm.copyWith(color: badgeColor),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                height: _arrowSlot,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: item.accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: item.accent,
+                      size: 13,
+                    ),
+                  ),
+                ),
+              ),
             ],
-            Icon(Icons.chevron_right_rounded,
-                color: Colors.grey.shade400, size: 20),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Weekly stats
+// ---------------------------------------------------------------------------
+
+class _WeeklyStatsCard extends StatelessWidget {
+  final int? weeklyDrivingMinutes;
+  final int? safetyScore;
+
+  const _WeeklyStatsCard({
+    required this.weeklyDrivingMinutes,
+    required this.safetyScore,
+  });
+
+  static const int _hosLimitHours = 60;
+
+  /// Coarse label buckets for a 0-100 Samsara safety score. Thresholds match
+  /// Samsara's own driver-scorecard bands.
+  String _scoreLabel(int score) {
+    if (score >= 90) return 'Excellent';
+    if (score >= 75) return 'Good';
+    if (score >= 60) return 'Fair';
+    return 'Needs work';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final minutes = weeklyDrivingMinutes;
+    final hours = minutes == null ? null : minutes ~/ 60;
+    final mins = minutes == null ? null : minutes % 60;
+    final fraction = minutes == null
+        ? 0.0
+        : (minutes / (_hosLimitHours * 60)).clamp(0.0, 1.0);
+    final score = safetyScore;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: AppGradients.header,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        boxShadow: AppShadows.raised,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'THIS WEEK',
+            style: AppText.labelSm.copyWith(
+              color: Colors.white.withValues(alpha: 0.55),
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.base),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _statLabel(Icons.schedule_rounded, 'Driving Time'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        hours == null ? '—' : '${hours}h ${mins}m',
+                        style: AppText.numeric(AppText.displaySm)
+                            .copyWith(color: Colors.white),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        child: LinearProgressIndicator(
+                          value: fraction,
+                          minHeight: 4,
+                          backgroundColor: Colors.white.withValues(alpha: 0.16),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF34D399),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'of $_hosLimitHours' 'h limit',
+                        style: AppText.numeric(AppText.labelMd).copyWith(
+                          color: Colors.white.withValues(alpha: 0.62),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                  ),
+                  child: VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _statLabel(Icons.verified_user_rounded, 'Safety Score'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            score == null ? '—' : '$score',
+                            style: AppText.numeric(AppText.displaySm)
+                                .copyWith(color: Colors.white),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            score == null ? 'No data' : _scoreLabel(score),
+                            style: AppText.labelMd.copyWith(
+                              color: score == null
+                                  ? Colors.white.withValues(alpha: 0.55)
+                                  : const Color(0xFF34D399),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statLabel(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.62)),
+        const SizedBox(width: AppSpacing.sm),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.bodySm.copyWith(
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

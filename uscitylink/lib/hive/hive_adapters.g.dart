@@ -29,13 +29,15 @@ class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
       totalAmount: (fields[7] as num?)?.toDouble(),
       isDocumentExpired: fields[8] as bool?,
       isInspectionDone: fields[11] as bool?,
+      weeklyDrivingMinutes: (fields[12] as num?)?.toInt(),
+      safetyScore: (fields[13] as num?)?.toInt(),
     );
   }
 
   @override
   void write(BinaryWriter writer, DashboardModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.channel)
       ..writeByte(1)
@@ -59,7 +61,11 @@ class DashboardModelAdapter extends TypeAdapter<DashboardModel> {
       ..writeByte(10)
       ..write(obj.latestGroupMessage)
       ..writeByte(11)
-      ..write(obj.isInspectionDone);
+      ..write(obj.isInspectionDone)
+      ..writeByte(12)
+      ..write(obj.weeklyDrivingMinutes)
+      ..writeByte(13)
+      ..write(obj.safetyScore);
   }
 
   @override
