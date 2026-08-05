@@ -29,10 +29,20 @@ import 'package:uscitylink/views/driver/views/fuel_stations/fuel_stations_view.d
 import 'package:uscitylink/views/driver/views/loads_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 
-const double _kKpiCardHeight = 132;
+const double _kKpiCardHeight = 142;
 const double _kKpiOverlap = 46;
 const double _kKpiOverflow = _kKpiCardHeight - _kKpiOverlap;
 const Color _kAlertAccent = Color(0xFFFF7A1A);
+
+// The trucks field can come back as a single unit number (e.g. "94") or,
+// for drivers with more than one truck, a comma/array-like list — the card
+// only has room to show one, so just take the first.
+String _firstFleetValue(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return '0';
+  final cleaned = raw.replaceAll(RegExp(r'[\[\]"]'), '');
+  final first = cleaned.split(',').first.trim();
+  return first.isEmpty ? '0' : first;
+}
 
 class DriverDashboard extends StatefulWidget {
   const DriverDashboard({super.key});
@@ -180,6 +190,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 icon: Icons.forum_rounded,
                                 label: 'Unread Messages',
                                 value: '$messageCount',
+                                subtitle: 'Stay connected',
                                 gradient: const [
                                   Color(0xFF3A2E8C),
                                   Color(0xFF5B4FE0),
@@ -193,6 +204,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 icon: Icons.account_balance_wallet_rounded,
                                 label: 'Pay This Period',
                                 value: '\$${dashboard.totalAmount ?? 0}',
+                                subtitle: 'Current pay period',
                                 gradient: const [
                                   Color(0xFF0E9A83),
                                   Color(0xFF1DC7A8),
@@ -227,8 +239,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                       ),
                       const SizedBox(height: 10),
                       _FleetCard(
-                        trucks: int.tryParse(dashboard.trucks ?? '') ?? 0,
-                        trailers: dashboard.trailerCount ?? 0,
+                        trucks: _firstFleetValue(dashboard.trucks),
+                        trailers: '${dashboard.trailerCount ?? 0}',
                         onTapTrucks: () {
                           truckController.changeTab(0);
                           Get.to(() => DocumentView(tabIndexDefault: 0));
@@ -553,6 +565,7 @@ class _KpiCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final String subtitle;
   final List<Color> gradient;
   final VoidCallback onTap;
 
@@ -560,6 +573,7 @@ class _KpiCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.subtitle,
     required this.gradient,
     required this.onTap,
   });
@@ -590,14 +604,31 @@ class _KpiCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: Colors.white, size: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: gradient.first, size: 18),
+                ),
+                Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.22),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chevron_right_rounded,
+                      color: Colors.white, size: 16),
+                ),
+              ],
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,9 +640,10 @@ class _KpiCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 27,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.6,
+                    height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -619,10 +651,22 @@ class _KpiCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 11.5,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -695,50 +739,66 @@ class _AlertBanner extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _kAlertAccent.withOpacity(0.16),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.error_rounded,
-                color: _kAlertAccent, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _kAlertAccent.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.65),
-                    fontSize: 12,
-                  ),
+                child: const Icon(Icons.error_rounded,
+                    color: _kAlertAccent, size: 21),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.68),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
+          const SizedBox(height: 14),
           InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(24),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: _kAlertAccent,
                 borderRadius: BorderRadius.circular(24),
@@ -750,11 +810,12 @@ class _AlertBanner extends StatelessWidget {
                     'Start Now',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.1,
                     ),
                   ),
-                  SizedBox(width: 2),
+                  SizedBox(width: 4),
                   Icon(Icons.chevron_right_rounded,
                       color: Colors.white, size: 18),
                 ],
@@ -768,8 +829,8 @@ class _AlertBanner extends StatelessWidget {
 }
 
 class _FleetCard extends StatelessWidget {
-  final int trucks;
-  final int trailers;
+  final String trucks;
+  final String trailers;
   final VoidCallback onTapTrucks;
   final VoidCallback onTapTrailers;
 
@@ -779,15 +840,6 @@ class _FleetCard extends StatelessWidget {
     required this.onTapTrucks,
     required this.onTapTrailers,
   });
-
-  // No backend field yet tracks which vehicles are actively in use, so this
-  // derives a plausible display split from the real total instead of a
-  // hardcoded figure.
-  static (int inUse, int available) _split(int total) {
-    if (total <= 0) return (0, 0);
-    final inUse = (total / 2).ceil();
-    return (inUse, total - inUse);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -832,11 +884,10 @@ class _FleetCard extends StatelessWidget {
   Widget _fleetHalf({
     required IconData icon,
     required Color color,
-    required int value,
+    required String value,
     required String label,
     required VoidCallback onTap,
   }) {
-    final (inUse, available) = _split(value);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -859,7 +910,7 @@ class _FleetCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '$value',
+                  value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -880,25 +931,6 @@ class _FleetCard extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value == 0
-                  ? 'No vehicles assigned'
-                  : '$inUse in use • $available available',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10.5, color: Colors.grey.shade400),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: value == 0 ? 0 : inUse / value,
-                minHeight: 4,
-                backgroundColor: Colors.grey.shade100,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
           ],
