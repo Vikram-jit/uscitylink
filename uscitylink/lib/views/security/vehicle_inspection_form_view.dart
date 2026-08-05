@@ -370,12 +370,12 @@ class _VehicleInspectionFormViewState extends State<VehicleInspectionFormView> {
             onChanged: (dt) => c.inspectedAt.value = dt,
           ),
           const SizedBox(height: 14),
-          DriverMultiSelectField(
-            label: 'Driver(s)',
-            drivers: c.drivers,
-            selectedIds: c.selectedDriverIds,
-            onChanged: (ids) => c.selectedDriverIds.value = ids,
-          ),
+          Obx(() => DriverMultiSelectField(
+                label: 'Driver(s)',
+                drivers: c.drivers,
+                selectedIds: c.selectedDriverIds.toList(),
+                onChanged: (ids) => c.selectedDriverIds.value = ids,
+              )),
           const SizedBox(height: 14),
           LabeledTextField(
             label: 'Note',

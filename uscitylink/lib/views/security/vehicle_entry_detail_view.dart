@@ -223,10 +223,9 @@ class _VehicleEntryDetailViewState extends State<VehicleEntryDetailView> {
       ChecklistItem('Spare Tyre', e.spareTyre),
       ChecklistItem('Fire Ext.', e.fireExt),
       ChecklistItem('Warning Triangles', e.warningTriangles),
-      ChecklistItem('Paper Work', e.paperWork),
       ChecklistItem('Damage', e.damage),
       // Kept for older entries that still have these set — no longer
-      // collected on new submissions (replaced by Paper Work).
+      // collected on new submissions.
       if (!_blank(e.anualInspection)) ChecklistItem('Annual Inspection', e.anualInspection),
       if (!_blank(e.registration)) ChecklistItem('Registration', e.registration),
       if (e.isLoaded) ...[

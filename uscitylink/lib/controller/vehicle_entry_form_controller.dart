@@ -65,7 +65,6 @@ class VehicleEntryFormController extends GetxController {
   var securityGuardInspect = Rxn<String>();
 
   var spareTyre = Rxn<String>();
-  var paperWork = Rxn<String>();
   var damage = Rxn<String>();
   var fireExt = Rxn<String>();
   var warningTriangles = Rxn<String>();
@@ -288,7 +287,6 @@ class VehicleEntryFormController extends GetxController {
         'Spare Tyre': spareTyre.value,
         'Fire Ext.': fireExt.value,
         'Warning Triangles': warningTriangles.value,
-        'Paper Work': paperWork.value,
         'Damage': damage.value,
       };
       for (final entry in requiredToggles.entries) {
@@ -348,7 +346,6 @@ class VehicleEntryFormController extends GetxController {
       logBookStand: logBookStand.value,
       securityGuardInspect: securityGuardInspect.value,
       spareTyre: hasTrailer ? spareTyre.value : null,
-      paperWork: hasTrailer ? paperWork.value : null,
       damage: hasTrailer ? damage.value : null,
       damageDescription:
           damage.value == 'yes' ? damageDescriptionController.text.trim() : null,
