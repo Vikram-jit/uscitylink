@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:uscitylink/controller/live_location_controller.dart';
 import 'package:uscitylink/controller/truck_controller.dart';
 import 'package:uscitylink/main.dart';
 import 'package:uscitylink/services/network_service.dart';
@@ -26,6 +28,8 @@ import 'package:uscitylink/views/driver/views/document_view.dart';
 import 'package:uscitylink/views/driver/views/driver_pay_view.dart';
 import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
 import 'package:uscitylink/views/driver/views/fuel_stations/fuel_stations_view.dart';
+import 'package:uscitylink/views/driver/views/hos_status_view.dart';
+import 'package:uscitylink/views/driver/views/live_location_webview.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 
 const double _kKpiCardHeight = 112;
@@ -58,6 +62,8 @@ class _DriverDashboardState extends State<DriverDashboard>
   DashboardController _dashboardController = Get.put(DashboardController());
   ChannelController channelController = Get.find<ChannelController>();
   TruckController truckController = Get.put(TruckController());
+  LiveLocationController liveLocationController =
+      Get.put(LiveLocationController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   NetworkService _networkService = Get.find<NetworkService>();
   HiveController _hiveController = Get.find<HiveController>();
@@ -66,6 +72,7 @@ class _DriverDashboardState extends State<DriverDashboard>
   void initState() {
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
+    liveLocationController.getLiveLocation();
     if (socketService.isConnected.value) {
       if (_hiveController.isProcessing.value == false) {
         // socketService.socket.disconnect();
@@ -229,7 +236,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 child: _KpiCard(
                                   icon: Icons.account_balance_wallet_rounded,
                                   value: '\$${dashboard.totalAmount ?? 0}',
-                                  label: 'Pay This Period',
+                                  label: 'Total Pay',
                                   caption: "",
                                   gradient: AppGradients.pay,
                                   glowColor: TColors.teal,
@@ -297,13 +304,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                         _QuickAccessGrid(
                           items: [
                             _QuickAccessItem(
-                              icon: Icons.ev_station_rounded,
-                              accent: TColors.brandGreen,
-                              title: 'Fuel Stations',
-                              subtitle: 'Find nearby fuel stops',
-                              onTap: () => Get.to(() => FuelStationsView()),
-                            ),
-                            _QuickAccessItem(
                               icon: Icons.badge_rounded,
                               accent: TColors.violet,
                               title: 'My Information',
@@ -320,6 +320,13 @@ class _DriverDashboardState extends State<DriverDashboard>
                               title: 'Training',
                               subtitle: 'Required safety videos',
                               onTap: () => Get.to(() => TrainingView()),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.ev_station_rounded,
+                              accent: TColors.brandGreen,
+                              title: 'Fuel Stations',
+                              subtitle: 'Find nearby fuel stops',
+                              onTap: () => Get.to(() => FuelStationsView()),
                             ),
                             _QuickAccessItem(
                               icon: Icons.inventory_2_rounded,
@@ -341,6 +348,8 @@ class _DriverDashboardState extends State<DriverDashboard>
                           weeklyDrivingMinutes: dashboard.weeklyDrivingMinutes,
                           safetyScore: dashboard.safetyScore,
                         ),
+                        const SizedBox(height: AppSpacing.xl),
+                        const _LiveLocationCard(),
                         SizedBox(
                           height: AppSpacing.xxl + kBottomNavigationBarHeight,
                         ),
@@ -948,7 +957,7 @@ class _FleetCard extends StatelessWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
+      borderRadius: BorderRadius.circular(AppRadii.sm),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
@@ -975,7 +984,7 @@ class _FleetCard extends StatelessWidget {
                       Text(
                         total == null ? '—' : '$total',
                         maxLines: 1,
-                        style: AppText.numeric(AppText.displaySm).copyWith(
+                        style: AppText.numeric(AppText.labelLg).copyWith(
                           color: total == null
                               ? TColors.textMuted
                               : TColors.textStrong,
@@ -1227,137 +1236,506 @@ class _WeeklyStatsCard extends StatelessWidget {
     return 'Needs work';
   }
 
+  /// Green while comfortably under a limit, ambering and then reddening as
+  /// the fraction approaches 1.0 — used for both tiles so "close to the
+  /// limit" and "low score" read as the same kind of warning at a glance.
+  Color _statusColor(double fraction) {
+    if (fraction >= 0.9) return const Color(0xFFF87171);
+    if (fraction >= 0.7) return TColors.brandGold;
+    return const Color(0xFF34D399);
+  }
+
   @override
   Widget build(BuildContext context) {
     final minutes = weeklyDrivingMinutes;
     final hours = minutes == null ? null : minutes ~/ 60;
     final mins = minutes == null ? null : minutes % 60;
-    final fraction = minutes == null
+    final drivingFraction = minutes == null
         ? 0.0
         : (minutes / (_hosLimitHours * 60)).clamp(0.0, 1.0);
-    final score = safetyScore;
+    final drivingColor = _statusColor(drivingFraction);
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: AppGradients.header,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        boxShadow: AppShadows.raised,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'THIS WEEK',
-            style: AppText.labelSm.copyWith(
-              color: Colors.white.withValues(alpha: 0.55),
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.base),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _statLabel(Icons.schedule_rounded, 'Driving Time'),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        hours == null ? '—' : '${hours}h ${mins}m',
-                        style: AppText.numeric(AppText.displaySm)
-                            .copyWith(color: Colors.white),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                        child: LinearProgressIndicator(
-                          value: fraction,
-                          minHeight: 4,
-                          backgroundColor: Colors.white.withValues(alpha: 0.16),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF34D399),
+    final score = safetyScore;
+    // Safety score is "higher is better", the inverse of the driving-time
+    // fraction above, so invert it before feeding the same color ramp.
+    final scoreColor = score == null
+        ? Colors.white.withValues(alpha: 0.3)
+        : _statusColor(1 - (score / 100));
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Get.to(() => const HosStatusView()),
+        child: Ink(
+          decoration: BoxDecoration(gradient: AppGradients.header),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -18,
+                bottom: -18,
+                child: Icon(
+                  Icons.insights_rounded,
+                  size: 108,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.calendar_today_rounded,
+                            color: Colors.white,
+                            size: 16,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'of $_hosLimitHours' 'h limit',
-                        style: AppText.numeric(AppText.labelMd).copyWith(
-                          color: Colors.white.withValues(alpha: 0.62),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'This Week',
+                                style: AppText.titleMd
+                                    .copyWith(color: Colors.white),
+                              ),
+                              Text(
+                                'Tap for full HOS breakdown',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.labelMd.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.base,
-                  ),
-                  child: VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _statLabel(Icons.verified_user_rounded, 'Safety Score'),
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            score == null ? '—' : '$score',
-                            style: AppText.numeric(AppText.displaySm)
-                                .copyWith(color: Colors.white),
+                          Expanded(
+                            child: _statTile(
+                              icon: Icons.schedule_rounded,
+                              iconColor: drivingColor,
+                              label: 'Driving Time',
+                              value: hours == null ? '—' : '${hours}h ${mins}m',
+                              caption: 'of $_hosLimitHours' 'h limit',
+                              fraction: drivingFraction,
+                              barColor: drivingColor,
+                            ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            score == null ? 'No data' : _scoreLabel(score),
-                            style: AppText.labelMd.copyWith(
-                              color: score == null
-                                  ? Colors.white.withValues(alpha: 0.55)
-                                  : const Color(0xFF34D399),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: _statTile(
+                              icon: Icons.shield_rounded,
+                              iconColor: scoreColor,
+                              label: 'Safety Score',
+                              value: score == null ? '—' : '$score',
+                              caption: score == null
+                                  ? 'No data'
+                                  : _scoreLabel(score),
+                              fraction: score == null ? 0.0 : score / 100,
+                              barColor: scoreColor,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required String caption,
+    required double fraction,
+    required Color barColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 14, color: iconColor),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.bodySm.copyWith(
+                    color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            value,
+            maxLines: 1,
+            style: AppText.numeric(AppText.displaySm)
+                .copyWith(color: Colors.white, fontSize: 22),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 4,
+              backgroundColor: Colors.white.withValues(alpha: 0.16),
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.numeric(AppText.labelMd).copyWith(
+              color: Colors.white.withValues(alpha: 0.62),
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _statLabel(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: Colors.white.withValues(alpha: 0.62)),
-        const SizedBox(width: AppSpacing.sm),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.bodySm.copyWith(
-              color: Colors.white.withValues(alpha: 0.72),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
+// ---------------------------------------------------------------------------
+// Live location
+// ---------------------------------------------------------------------------
+
+const double _kLiveLocationCardMinHeight = 92;
+const double _kLiveLocationPreviewHeight = 160;
+
+/// The driver's truck's live-share link from Samsara. Always visible — the
+/// info row (icon/title/status/address) keeps a fixed minimum height across
+/// all three states (checking / not found / found) so its spot on the
+/// dashboard doesn't shift once the fetch resolves; when a link is found, an
+/// embedded WebView preview of the actual live-share page grows the card
+/// underneath that row.
+class _LiveLocationCard extends StatefulWidget {
+  const _LiveLocationCard();
+
+  @override
+  State<_LiveLocationCard> createState() => _LiveLocationCardState();
+}
+
+class _LiveLocationCardState extends State<_LiveLocationCard> {
+  WebViewController? _previewController;
+  String? _loadedUrl;
+
+  void _ensurePreview(String url) {
+    if (_loadedUrl == url) return;
+    _loadedUrl = url;
+    _previewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<LiveLocationController>();
+    return Obx(() {
+      final hasFetched = controller.hasFetched.value;
+      final location = controller.liveLocation.value;
+      final hasLink = location?.liveSharingUrl != null;
+
+      if (hasLink) {
+        _ensurePreview(location!.liveSharingUrl!);
+      }
+
+      final Color accent = hasLink ? TColors.teal : TColors.textMuted;
+      final Color accentDeep = hasLink ? TColors.tealDeep : TColors.textMuted;
+
+      void openFull() => Get.to(() => LiveLocationWebView(
+            url: location!.liveSharingUrl!,
+            title: location.name ?? 'Live Location',
+          ));
+
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                TColors.surfaceCard,
+                hasLink ? const Color(0xFFF3FBF9) : TColors.surfaceCard,
+              ],
+            ),
+            border: const Border.fromBorderSide(
+              BorderSide(color: Color(0x0A000000)),
+            ),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: hasLink ? openFull : null,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minHeight: _kLiveLocationCardMinHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.base),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                accent.withValues(alpha: 0.22),
+                                accent.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.withValues(alpha: 0.18),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.location_on_rounded,
+                            color: accentDeep,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Live Location Preview',
+                                    style: AppText.titleMd
+                                        .copyWith(color: TColors.textStrong),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  if (!hasFetched)
+                                    SizedBox(
+                                      width: 10,
+                                      height: 10,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.6,
+                                        color: TColors.textMuted
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                    )
+                                  else ...[
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: hasLink
+                                            ? TColors.brandGreen
+                                            : TColors.textMuted,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      hasLink ? 'Live' : 'Not Found',
+                                      style: AppText.labelSm.copyWith(
+                                        color: hasLink
+                                            ? TColors.brandGreen
+                                            : TColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                !hasFetched
+                                    ? 'Checking Samsara for a live link…'
+                                    : hasLink
+                                        ? (location!.formattedAddress ??
+                                            'Tap to view truck location')
+                                        : 'No live-share link available for this truck',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.bodySm
+                                    .copyWith(color: TColors.textMuted),
+                              ),
+                              if (!hasLink && hasFetched) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Preview link not found',
+                                  maxLines: 1,
+                                  style: AppText.labelSm.copyWith(
+                                    color: TColors.textMuted,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (hasLink) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              color: accentDeep,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (hasLink && _previewController != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.base,
+                    0,
+                    AppSpacing.base,
+                    AppSpacing.base,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: SizedBox(
+                      height: _kLiveLocationPreviewHeight,
+                      width: double.infinity,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // IgnorePointer — this is a thumbnail, not an
+                          // interactive map: without it, panning/zooming the
+                          // embedded page would fight the dashboard's own
+                          // scroll gesture. A single tap anywhere opens the
+                          // real, fully-interactive page full-screen instead.
+                          IgnorePointer(
+                            child: WebViewWidget(
+                              controller: _previewController!,
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(onTap: openFull),
+                            ),
+                          ),
+                          Positioned(
+                            right: AppSpacing.sm,
+                            bottom: AppSpacing.sm,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadii.pill),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.open_in_full_rounded,
+                                    size: 11,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'View Full',
+                                    style: AppText.labelSm
+                                        .copyWith(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}

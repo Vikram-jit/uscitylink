@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { changePassword, dashboard, dashboardNew, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getProfile,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, searchResult, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
+import { changePassword, dashboard, dashboardNew, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getHosStatus,  getLiveLocation,  getProfile,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, searchResult, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -13,6 +13,8 @@ router.put('/update-profile/:id/:role', updateProfile);
 router.put('/update-profile-web/:id',authMiddleware, updateProfileByWeb);
 
 router.get('/dashboard',authMiddleware, dashboard);
+router.get('/hos-status',authMiddleware, getHosStatus);
+router.get('/live-location',authMiddleware, getLiveLocation);
 router.get('/dashboard-web',authMiddleware, dashboardWeb);
 router.get('/profile',authMiddleware, getUserProfile);
 router.put('/updateDeviceToken',authMiddleware, updateDeviceToken);

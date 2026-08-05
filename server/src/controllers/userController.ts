@@ -16,7 +16,7 @@ import { generateNumericPassword } from "../utils/OtpService";
 import { sendNewPasswordEmail } from "../utils/sendEmail";
 import { Template } from "../models/Template";
 import { Training } from "../models/Training";
-import moment from "moment";
+import moment from "moment-timezone";
 import { MessageStaff } from "../models/MessageStaff";
 import PrivateChatMember from "../models/PrivateChatMember";
 
@@ -790,11 +790,18 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     // Weekly driving time + safety score from Samsara. `drivers.samsara_id`
     // (yard_management DB) maps this driver to their Samsara driver id;
     // `user.yard_id` is that same `drivers.id`, per the pattern already used
-    // above for driver_pays/documents. A rolling 7-day window is used rather
-    // than a calendar week, so it doesn't reset to near-zero every Sunday
-    // night. Both values default to null (not 0) so the client can tell
-    // "no Samsara data" apart from "actually zero" — same reasoning as
-    // trailerCount degrading to null instead of a fake 0.
+    // above for driver_pays/documents. Window is the calendar week, Monday
+    // 00:00 through Sunday 23:59:59, in America/Los_Angeles — the business
+    // timezone already used for "today"/"now" everywhere else in this
+    // codebase (securityInspectionController, securityEntryController,
+    // messageController). Computing this in the server process's own local
+    // time (e.g. plain `new Date()`, which is UTC on most hosts) flips the
+    // week boundary up to 7-8 hours early/late relative to the actual
+    // business day — that was producing wrong numbers. Capped at "now"
+    // rather than running into the future when queried mid-week. Both
+    // values default to null (not 0) so the client can tell "no Samsara
+    // data" apart from "actually zero" — same reasoning as trailerCount
+    // degrading to null instead of a fake 0.
     let weeklyDrivingMinutes: number | null = null;
     let safetyScore: number | null = null;
     try {
@@ -808,8 +815,12 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       const samsaraId = driverRows[0]?.samsara_id;
 
       if (samsaraId) {
-        const endTime = new Date();
-        const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const now = moment.tz("America/Los_Angeles");
+        const weekStart = moment.tz("America/Los_Angeles").startOf("isoWeek"); // Monday 00:00:00
+        const weekEnd = moment.tz("America/Los_Angeles").endOf("isoWeek"); // Sunday 23:59:59.999
+        const startTime = weekStart;
+        const endTime = now.isBefore(weekEnd) ? now : weekEnd;
+        console.log(`Fetching Samsara data for driver ${samsaraId} from ${startTime.toISOString()} to ${endTime.toISOString()}`);
         const apiKey = process.env.SAMSARA_API_KEY;
         const response = await axios.get(
           "https://api.samsara.com/safety-scores/drivers",
@@ -858,6 +869,231 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         weeklyDrivingMinutes,
         safetyScore,
       },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+/// GET /user/hos-status — real-time Hours of Service clocks for the
+/// authenticated driver, from Samsara. Same driver -> samsara_id bridge as
+/// `dashboard()` above (user.yard_id -> yard_management.drivers.samsara_id).
+///
+/// Two Samsara calls:
+///  - `/fleet/hos/clocks` gives the regulatory *remaining* durations
+///    (drive/shift/cycle/break) directly — these already account for the
+///    FMCSA break-reset rules, so they are not re-derived from anything else.
+///  - `/fleet/hos/logs` for *today* (America/Los_Angeles, the business
+///    timezone used elsewhere in this codebase) gives the actual duty-status
+///    segments, which is the only honest way to get *elapsed* driving/on-duty
+///    time today and the "on duty since" timestamp — computing elapsed time
+///    as (limit - remaining) would be wrong whenever a break reset has
+///    occurred today.
+///
+/// FMCSA limits used only to size the "Drive Time Left" ring and the cycle
+/// progress bar (not fetched from Samsara, since they're fixed regulatory
+/// constants for a property-carrying driver on a 70-hour/8-day cycle):
+/// 11h driving/day, 14h on-duty/day, 70h/8-day cycle.
+export async function getHosStatus(req: Request, res: Response): Promise<any> {
+  const DRIVE_LIMIT_MS = 11 * 60 * 60 * 1000;
+  const SHIFT_LIMIT_MS = 14 * 60 * 60 * 1000;
+  const CYCLE_LIMIT_MS = 70 * 60 * 60 * 1000;
+
+  try {
+    const userProfile = await UserProfile.findByPk(req.user?.id);
+    const user = await User.findByPk(userProfile?.userId);
+
+    const driverRows = await secondarySequelize.query<{ samsara_id: string | null }>(
+      `SELECT samsara_id FROM drivers WHERE id = :driverId LIMIT 1`,
+      {
+        replacements: { driverId: user?.yard_id },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const samsaraId = driverRows[0]?.samsara_id;
+
+    let dutyStatus: string | null = null;
+    let dutyStatusSince: string | null = null;
+    let driveRemainingMinutes: number | null = null;
+    let driveElapsedMinutes: number | null = null;
+    let onDutyRemainingMinutes: number | null = null;
+    let onDutyElapsedMinutes: number | null = null;
+    let cycleRemainingMinutes: number | null = null;
+    let cycleUsedMinutes: number | null = null;
+    let breakInMinutes: number | null = null;
+
+    if (samsaraId) {
+      const apiKey = process.env.SAMSARA_API_KEY;
+      const authHeaders = { Accept: "application/json", Authorization: `Bearer ${apiKey}` };
+
+      try {
+        const clocksResponse = await axios.get("https://api.samsara.com/fleet/hos/clocks", {
+          headers: authHeaders,
+          params: { driverIds: samsaraId },
+        });
+        const clockData = clocksResponse.data?.data?.[0];
+        dutyStatus = clockData?.currentDutyStatus?.hosStatusType ?? null;
+
+        const driveRemainingMs = clockData?.clocks?.drive?.driveRemainingDurationMs;
+        if (driveRemainingMs != null) {
+          driveRemainingMinutes = Math.round(driveRemainingMs / 60000);
+        }
+
+        const shiftRemainingMs = clockData?.clocks?.shift?.shiftRemainingDurationMs;
+        if (shiftRemainingMs != null) {
+          onDutyRemainingMinutes = Math.round(shiftRemainingMs / 60000);
+        }
+
+        const cycleRemainingMs = clockData?.clocks?.cycle?.cycleRemainingDurationMs;
+        if (cycleRemainingMs != null) {
+          cycleRemainingMinutes = Math.round(cycleRemainingMs / 60000);
+          cycleUsedMinutes = Math.round((CYCLE_LIMIT_MS - cycleRemainingMs) / 60000);
+        }
+
+        const breakMs = clockData?.clocks?.break?.timeUntilBreakDurationMs;
+        if (breakMs != null) {
+          breakInMinutes = Math.round(breakMs / 60000);
+        }
+      } catch (clocksError: any) {
+        console.error("Samsara HOS clocks error:", clocksError.message);
+      }
+
+      try {
+        const todayStart = moment.tz("America/Los_Angeles").startOf("day");
+        const now = moment.tz("America/Los_Angeles");
+        const logsResponse = await axios.get("https://api.samsara.com/fleet/hos/logs", {
+          headers: authHeaders,
+          params: {
+            driverIds: samsaraId,
+            startTime: todayStart.toISOString(),
+            endTime: now.toISOString(),
+          },
+        });
+        const hosLogs = logsResponse.data?.data?.[0]?.hosLogs ?? [];
+
+        let drivingMs = 0;
+        let onDutyMs = 0;
+        for (const log of hosLogs) {
+          const start = new Date(log.logStartTime).getTime();
+          const end = new Date(log.logEndTime ?? now.toISOString()).getTime();
+          const durationMs = Math.max(0, end - start);
+          if (log.hosStatusType === "driving") {
+            drivingMs += durationMs;
+            onDutyMs += durationMs;
+          } else if (log.hosStatusType === "onDuty") {
+            onDutyMs += durationMs;
+          }
+        }
+        driveElapsedMinutes = Math.round(drivingMs / 60000);
+        onDutyElapsedMinutes = Math.round(onDutyMs / 60000);
+
+        const currentLog = hosLogs[hosLogs.length - 1];
+        if (currentLog?.logStartTime) {
+          dutyStatusSince = currentLog.logStartTime;
+        }
+      } catch (logsError: any) {
+        console.error("Samsara HOS logs error:", logsError.message);
+      }
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Get HOS Status Successfully.",
+      data: {
+        dutyStatus,
+        dutyStatusSince,
+        driveRemainingMinutes,
+        driveElapsedMinutes,
+        driveLimitMinutes: DRIVE_LIMIT_MS / 60000,
+        onDutyRemainingMinutes,
+        onDutyElapsedMinutes,
+        onDutyLimitMinutes: SHIFT_LIMIT_MS / 60000,
+        cycleRemainingMinutes,
+        cycleUsedMinutes,
+        cycleLimitMinutes: CYCLE_LIMIT_MS / 60000,
+        cycleLabel: "USA 70/8",
+        breakInMinutes,
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(400)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+/// GET /user/live-location — the driver's truck's Samsara "live share" link,
+/// if one exists. Samsara's `/live-shares` endpoint has no way to filter by
+/// asset/vehicle server-side (only by link ID or link type), so this fetches
+/// the assetsLocation-type links and matches them locally against the
+/// driver's assigned truck number(s) — the `name`/`description` fields
+/// Samsara returns for these links are the truck's yard number (e.g.
+/// "24565"), the same value as `trucks` in dashboard() above. Returns the
+/// first match, or null data if the driver has no truck, no matching link
+/// exists, or the Samsara call fails.
+export async function getLiveLocation(req: Request, res: Response): Promise<any> {
+  try {
+    const driverId = req.user?.id;
+
+    const groupUsers = await GroupUser.findAll({
+      where: { userProfileId: driverId },
+      include: [
+        {
+          model: Group,
+          where: { type: "truck" },
+          attributes: ["name"],
+        },
+      ],
+    });
+    const truckNumbers = groupUsers
+      .map((g: any) => g?.Group?.name)
+      .filter((name: any) => !!name);
+    console.log(`Driver ${driverId} assigned truck numbers:`, truckNumbers);
+
+    let match: any = null;
+
+    if (truckNumbers.length > 0) {
+      try {
+        const apiKey = process.env.SAMSARA_API_KEY;
+        const response = await axios.get("https://api.samsara.com/live-shares", {
+          headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+          params: { type: "assetsLocation", limit: 100 },
+        });
+        console.log(`Fetched ${JSON.stringify(response.data?.data) ?? 0} Samsara live-share links for driver ${driverId}`);
+        const links: any[] = response.data?.data ?? [];
+        match =
+          links.find((link) =>
+            truckNumbers.some(
+              (num: string) => link.name === num || link.description === num
+            )
+          ) ?? null;
+        console.log(
+          `Live-share match for driver ${driverId}:`,
+          match ? { id: match.id, name: match.name, description: match.description } : null
+        );
+      } catch (samsaraError: any) {
+        console.error("Samsara live-shares error:", samsaraError.message);
+      }
+    }
+
+    const location = match?.assetsLocationLinkConfig?.location;
+
+    return res.status(200).json({
+      status: true,
+      message: "Get Live Location Successfully.",
+      data: match
+        ? {
+            id: match.id,
+            name: match.name,
+            description: match.description ?? null,
+            liveSharingUrl: match.liveSharingUrl,
+            formattedAddress: location?.formattedAddress ?? null,
+            latitude: location?.latitude ?? null,
+            longitude: location?.longitude ?? null,
+          }
+        : null,
     });
   } catch (err: any) {
     return res

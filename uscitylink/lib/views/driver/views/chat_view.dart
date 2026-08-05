@@ -163,7 +163,7 @@ class _ChatViewState extends State<ChatView>
                 ),
               ],
             ),
-            const SizedBox(height: _kTabsCardOverflow + 16),
+            // const SizedBox(height: _kTabsCardOverflow - 20),
             Expanded(
               child: TabBarView(
                 controller: _tabController,

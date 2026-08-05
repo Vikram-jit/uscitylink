@@ -1,3 +1,4 @@
+import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
@@ -6,6 +7,7 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
+import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
 
@@ -40,19 +42,21 @@ class _DashboardViewState extends State<DashboardView>
 
   final List<Widget> _screens = [
     const DriverDashboard(),
-    // const ChatView(),
+    const ChatView(),
     SettingView(),
   ];
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     if (widget.currentStep! > 0) {
       setState(() {
         _currentIndex = widget.currentStep!;
       });
     }
+    // Populate the unread-message badge on cold start — otherwise it only
+    // updates after a tab switch or an incoming push notification.
+    channelController.getCount();
   }
 
   @override
@@ -110,6 +114,11 @@ class _DashboardViewState extends State<DashboardView>
                   title: const Text("Home"),
                 ),
                 SalomonBottomBarItem(
+                  icon: _messagesIcon(Icons.chat_bubble_outline_rounded),
+                  activeIcon: _messagesIcon(Icons.chat_bubble_rounded),
+                  title: const Text("Messages"),
+                ),
+                SalomonBottomBarItem(
                   icon: const Icon(Icons.settings_outlined),
                   activeIcon: const Icon(Icons.settings_rounded),
                   title: const Text("Settings"),
@@ -119,6 +128,23 @@ class _DashboardViewState extends State<DashboardView>
           }),
         ),
       ),
+    );
+  }
+
+  Widget _messagesIcon(IconData icon) {
+    final count = channelController.totalUnReadMessage.value;
+    if (count <= 0) return Icon(icon);
+    return badges.Badge(
+      position: badges.BadgePosition.topEnd(top: -8, end: -10),
+      badgeContent: Text(
+        count > 99 ? '99+' : '$count',
+        style: const TextStyle(color: Colors.white, fontSize: 9),
+      ),
+      badgeStyle: const badges.BadgeStyle(
+        badgeColor: Color(0xFFEF4444),
+        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      ),
+      child: Icon(icon),
     );
   }
 }
