@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/route_controller.dart';
-import 'package:uscitylink/controller/station_controller.dart'; // Add this import
-import 'package:uscitylink/model/route_model.dart';
+import 'package:uscitylink/controller/station_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/views/fuel_stations/widgets/station_map.dart';
 import 'package:uscitylink/views/driver/views/fuel_stations/widgets/station_widget.dart';
@@ -20,7 +19,7 @@ class FuelStationsView extends StatefulWidget {
 
 class _FuelStationsViewState extends State<FuelStationsView> {
   late RouteController routeController;
-  late StationController stationController; // Add station controller
+  late StationController stationController;
   bool _isInitialized = false;
   bool _isLoadingData = false;
 
@@ -60,14 +59,14 @@ class _FuelStationsViewState extends State<FuelStationsView> {
 
     try {
       if (!mounted) return;
-      await routeController.fetchRoutes();
+      await routeController.fetchNearbyStations();
       if (mounted) {
         setState(() {
           _isInitialized = true;
         });
       }
     } catch (e) {
-      print('Error loading routes: $e');
+      print('Error loading nearby stations: $e');
     } finally {
       _isLoadingData = false;
     }
@@ -85,7 +84,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
         backgroundColor: const Color(0xFFF5F6FA),
         appBar: AppBar(
           title: const Text(
-            'Route Information',
+            'Fuel Stations',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -110,14 +109,15 @@ class _FuelStationsViewState extends State<FuelStationsView> {
     return Obx(
       () {
         // Show loading indicator only when actually loading and no data
-        if (routeController.isLoading.value && routeController.routes.isEmpty) {
+        if (routeController.isLoading.value &&
+            routeController.nearByStations.isEmpty) {
           return const Center(
             child: CircularProgressIndicator(color: TColors.navyHeader),
           );
         }
 
-        // Show empty state if no routes
-        if (routeController.routes.isEmpty) {
+        // Show empty state if no nearby stations
+        if (routeController.nearByStations.isEmpty) {
           return _buildEmptyState();
         }
 
@@ -133,44 +133,31 @@ class _FuelStationsViewState extends State<FuelStationsView> {
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: routeController.routes.map((route) {
-          return _buildRouteSection(route);
-        }).toList(),
+        children: [
+          const SizedBox(height: 16),
+          _buildMapPreview(),
+          const SizedBox(height: 16),
+          Obx(
+            () => Container(
+              key: ValueKey(
+                  'truck_info_${routeController.truckLocation.value?.vehicleId ?? ''}'),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: const TruckInfoWidget(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Obx(
+            () => Container(
+              key:
+                  ValueKey('stations_${routeController.nearByStations.length}'),
+              child: routeController.isLoading.value
+                  ? const Center(child: CircularProgressIndicator())
+                  : StationWidget(), // This widget uses StationController internally
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
-    );
-  }
-
-  Widget _buildRouteSection(RouteModel route) {
-    return Column(
-      key: ValueKey('route_section_${route.id}'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildRouteHeader(route),
-        const SizedBox(height: 16),
-        _buildMapPreview(route),
-        const SizedBox(height: 16),
-        // Use Obx with unique tag to prevent rebuild conflicts
-        Obx(
-          () => Container(
-            key: ValueKey(
-                'truck_info_${route.id}_${routeController.truckLocation.value?.vehicleId ?? ''}'),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: const TruckInfoWidget(),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Use Obx with unique tag
-        Obx(
-          () => Container(
-            key: ValueKey(
-                'stations_${route.id}_${routeController.nearByStations.length}'),
-            child: routeController.isLoading.value
-                ? const Center(child: CircularProgressIndicator())
-                : StationWidget(), // This widget uses StationController internally
-          ),
-        ),
-        const SizedBox(height: 32),
-      ],
     );
   }
 
@@ -180,13 +167,13 @@ class _FuelStationsViewState extends State<FuelStationsView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.route,
+            Icons.local_gas_station_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            'No Routes Available',
+            'No Stations Found Nearby',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -220,512 +207,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
     );
   }
 
-  Widget _buildRouteHeader(RouteModel route) {
-    final RouteController routeController = Get.find<RouteController>();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: TColors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Swap indicator and button row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Swap status indicator
-              Obx(() {
-                if (routeController.isRouteSwapped.value) {
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_horiz,
-                            size: 14, color: Colors.blue.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Swapped Direction',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              }),
-
-              // Swap button
-              Obx(() {
-                if (routeController.routes.isNotEmpty) {
-                  return Row(
-                    children: [
-                      if (routeController.isRouteSwapped.value)
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: IconButton(
-                            icon: Icon(Icons.restore,
-                                color: Colors.green.shade700, size: 18),
-                            onPressed: () {
-                              routeController.toggleSwap();
-                            },
-                            tooltip: 'Reset to original',
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: routeController.isRouteSwapped.value
-                              ? Colors.blue.shade50
-                              : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.swap_horiz,
-                            color: routeController.isRouteSwapped.value
-                                ? Colors.blue.shade700
-                                : Colors.grey.shade700,
-                            size: 18,
-                          ),
-                          onPressed: () =>
-                              _showSwapOptions(context, route, routeController),
-                          tooltip: 'Swap route direction',
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          padding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                return const SizedBox.shrink();
-              }),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Route info with swapped display
-          Obx(() {
-            final isSwapped = routeController.isRouteSwapped.value;
-
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // From location with swap indicator
-                      Row(
-                        children: [
-                          Text(
-                            isSwapped ? 'FROM (Swapped)' : 'FROM',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSwapped ? Colors.blue : Colors.grey,
-                              fontWeight:
-                                  isSwapped ? FontWeight.bold : FontWeight.w500,
-                            ),
-                          ),
-                          if (isSwapped) ...[
-                            const SizedBox(width: 4),
-                            Icon(Icons.swap_vert, size: 12, color: Colors.blue),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        isSwapped
-                            ? (route.toCity ??
-                                route.toAddress?.split(',')[0] ??
-                                'Destination')
-                            : (route.fromCity ?? 'Origin'),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isSwapped ? Colors.blue[800] : null,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Distance: ${route.distance} miles',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Arrow indicator
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(
-                    isSwapped ? Icons.arrow_back : Icons.arrow_forward,
-                    color:
-                        isSwapped ? Colors.blue.shade600 : Colors.grey.shade600,
-                    size: 20,
-                  ),
-                ),
-
-                // To location
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (isSwapped) ...[
-                            Icon(Icons.swap_vert,
-                                size: 12, color: Colors.green),
-                            const SizedBox(width: 4),
-                          ],
-                          Text(
-                            isSwapped ? 'TO (Swapped)' : 'TO',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSwapped ? Colors.green : Colors.grey,
-                              fontWeight:
-                                  isSwapped ? FontWeight.bold : FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        isSwapped
-                            ? (route.fromCity ?? 'Origin')
-                            : (route.toCity ??
-                                route.toAddress?.split(',')[0] ??
-                                'Destination'),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isSwapped ? Colors.green[800] : null,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Route ID
-                Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'ID: ${route.id}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }),
-
-          const SizedBox(height: 16),
-
-          // From address
-          Obx(() {
-            final isSwapped = routeController.isRouteSwapped.value;
-            return Row(
-              children: [
-                Icon(
-                  Icons.location_on,
-                  color: isSwapped ? Colors.blue[700] : Colors.blue[700],
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isSwapped
-                        ? (route.toAddress ?? "")
-                        : (route.fromAddress ?? ""),
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 13,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            );
-          }),
-
-          const SizedBox(height: 8),
-
-          // To address
-          Obx(() {
-            final isSwapped = routeController.isRouteSwapped.value;
-            return Row(
-              children: [
-                Icon(
-                  Icons.flag,
-                  color: isSwapped ? Colors.green[700] : Colors.green[700],
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isSwapped
-                        ? (route.fromAddress ?? "")
-                        : (route.toAddress ?? ""),
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 13,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-// Helper method to show swap options
-  void _showSwapOptions(
-      BuildContext context, RouteModel route, RouteController controller) {
-    final isSwapped = controller.isRouteSwapped.value;
-
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Route Direction',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Current direction
-            _buildDirectionOption(
-              title: 'Current Direction',
-              from: isSwapped
-                  ? route.toCity ?? 'Destination'
-                  : route.fromCity ?? 'Origin',
-              to: isSwapped
-                  ? route.fromCity ?? 'Origin'
-                  : route.toCity ?? 'Destination',
-              isActive: true,
-              onTap: () {
-                Get.back();
-                controller.toggleSwap();
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            // Swapped direction
-            _buildDirectionOption(
-              title: isSwapped ? 'Original Direction' : 'Swap Direction',
-              from: isSwapped
-                  ? route.fromCity ?? 'Origin'
-                  : route.toCity ?? 'Destination',
-              to: isSwapped
-                  ? route.toCity ?? 'Destination'
-                  : route.fromCity ?? 'Origin',
-              isActive: false,
-              onTap: () {
-                Get.back();
-                controller.toggleSwap();
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Close button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Get.back(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: const BorderSide(color: Colors.grey),
-                ),
-                child: const Text('Cancel'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDirectionOption({
-    required String title,
-    required String from,
-    required String to,
-    required bool isActive,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.blue.shade50 : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? Colors.blue.shade300 : Colors.grey.shade300,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isActive
-                          ? Colors.blue.shade700
-                          : Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 14,
-                              color: isActive
-                                  ? Colors.blue.shade700
-                                  : Colors.grey.shade600,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                from,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: isActive
-                                      ? Colors.blue.shade900
-                                      : Colors.grey.shade800,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward,
-                        color: isActive
-                            ? Colors.blue.shade700
-                            : Colors.grey.shade600,
-                        size: 16,
-                      ),
-                      Expanded(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                to,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: isActive
-                                      ? Colors.blue.shade900
-                                      : Colors.grey.shade800,
-                                ),
-                                textAlign: TextAlign.right,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.flag,
-                              size: 14,
-                              color: isActive
-                                  ? Colors.green.shade700
-                                  : Colors.grey.shade600,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (isActive)
-              const Icon(Icons.check_circle, color: Colors.green, size: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMapPreview(RouteModel route) {
+  Widget _buildMapPreview() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -750,7 +232,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
                   const Icon(Icons.map_rounded, color: TColors.navyHeader),
                   const SizedBox(width: 8),
                   const Text(
-                    'Route Map',
+                    'Live Map',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -788,9 +270,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => StationMapScreen(
-                                routeData: route,
-                              ),
+                              builder: (context) => const StationMapScreen(),
                             ),
                           );
                         },
@@ -813,7 +293,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
                                           color: Colors.white),
                                       const SizedBox(width: 8),
                                       const Text(
-                                        'View Interactive Map',
+                                        'View Live Map',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
@@ -825,7 +305,7 @@ class _FuelStationsViewState extends State<FuelStationsView> {
                                 const SizedBox(height: 8),
                                 Obx(
                                   () => Text(
-                                    '${routeController.nearByStations.length} stations on map',
+                                    '${routeController.nearByStations.length} stations nearby',
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                                 ),

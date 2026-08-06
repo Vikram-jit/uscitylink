@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/google_map_controller.dart';
@@ -17,14 +13,18 @@ import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/model/vehicle_gps_model.dart';
 import 'package:uscitylink/services/document_service.dart';
 
+/// Fuel stations near the driver's truck's current location — the truck's
+/// live GPS is fetched from Samsara client-side (unchanged, pre-existing
+/// pattern), then sent to `GET /yard/stations/nearby` for a radius search.
+/// There is no "route" concept here: no from/to, no swap direction, no
+/// Google Directions polyline — just distance from wherever the truck is
+/// right now.
 class RouteController extends GetxController {
   var isLoading = false.obs;
-  var routes = <RouteModel>[].obs;
   var nearByStations = <Stations>[].obs;
   var groupedStations = <StationGroup>[].obs;
   Rxn<VehicleGpsModel> truckLocation = Rxn<VehicleGpsModel>();
 
-  var isRouteSwapped = false.obs;
   // Offline status
   var isOffline = false.obs;
   var hasCachedData = false.obs;
@@ -38,8 +38,6 @@ class RouteController extends GetxController {
   late Box<VehicleGpsModel> _truckBox;
   late Box<Stations> _stationsBox;
   late Box<DateTime> _lastUpdatedBox;
-  late Box<dynamic> _prefsBox;
-  late Box<List> _routesBox;
 
   // Timers for periodic updates
   Timer? _truckUpdateTimer;
@@ -55,27 +53,6 @@ class RouteController extends GetxController {
     _initControllers();
     _initConnectivity();
     _initializeApp();
-  }
-
-// Add this method to save swapped state
-  Future<void> _saveSwappedState() async {
-    try {
-      await _prefsBox.put('isSwapped', isRouteSwapped.value);
-      print('💾 Saved swapped state: ${isRouteSwapped.value}');
-    } catch (e) {
-      print('❌ Error saving swapped state: $e');
-    }
-  }
-
-  Future<void> _loadSwappedState() async {
-    try {
-      if (_prefsBox.containsKey('isSwapped')) {
-        isRouteSwapped.value = _prefsBox.get('isSwapped') as bool;
-        print('📦 Loaded swapped state: ${isRouteSwapped.value}');
-      }
-    } catch (e) {
-      print('❌ Error loading swapped state: $e');
-    }
   }
 
   void _initConnectivity() async {
@@ -101,7 +78,7 @@ class RouteController extends GetxController {
       print('📶 Internet connected');
       if (wasOffline) {
         print('🔄 Refreshing data after coming online');
-        fetchRoutes();
+        fetchNearbyStations();
       }
     } else {
       print('📴 Internet disconnected');
@@ -118,7 +95,7 @@ class RouteController extends GetxController {
         _truckBox.containsKey('current') || _stationsBox.isNotEmpty;
 
     if (!isOffline.value) {
-      fetchRoutes();
+      fetchNearbyStations();
     } else {
       _showOfflineData();
     }
@@ -134,37 +111,16 @@ class RouteController extends GetxController {
       _truckBox = await Constant.getTruckLocationBox();
       _stationsBox = await Constant.getStationsBox();
       _lastUpdatedBox = await Constant.getlastUpdatedBox();
-      _prefsBox = await Hive.openBox<dynamic>('prefs_box');
-      _routesBox = await Hive.openBox<List>('routes_box');
       _metadataBox = await Hive.openBox<int>('metadata_box');
 
-      await _loadSwappedState();
       print('✅ Hive boxes initialized successfully');
     } catch (e) {
       print('❌ Error initializing Hive boxes: $e');
       _truckBox = await Hive.openBox<VehicleGpsModel>('truck_fallback');
       _stationsBox = await Hive.openBox<Stations>('stations_fallback');
       _lastUpdatedBox = await Hive.openBox<DateTime>('last_updated_fallback');
-      _prefsBox = await Hive.openBox<dynamic>('prefs_fallback');
-      _routesBox = await Hive.openBox<List>('routes_fallback');
       _metadataBox = await Hive.openBox<int>('metadata_fallback');
     }
-  }
-
-  void toggleSwap() async {
-    isRouteSwapped.value = !isRouteSwapped.value;
-    _saveSwappedState();
-    await fetchRoutes();
-    print('🔄 Swap toggled: ${isRouteSwapped.value}');
-
-    update();
-  }
-
-  void resetSwap() {
-    isRouteSwapped.value = false;
-    _saveSwappedState();
-    print('🔄 Swap reset to false');
-    update();
   }
 
   void _showOfflineData() {
@@ -183,11 +139,15 @@ class RouteController extends GetxController {
   }
 
   void _ensureCachedDataLoaded() {
-    if (nearByStations.isEmpty && _stationsBox.isNotEmpty) {
+    if (nearByStations.isEmpty &&
+        _stationsBox.isOpen &&
+        _stationsBox.isNotEmpty) {
       _loadCachedData();
     }
 
-    if (truckLocation.value == null && _truckBox.containsKey('current')) {
+    if (truckLocation.value == null &&
+        _truckBox.isOpen &&
+        _truckBox.containsKey('current')) {
       _loadCachedData();
     }
   }
@@ -230,8 +190,10 @@ class RouteController extends GetxController {
   }
 
   void _loadCachedData() {
-    /// 🔥 Check if box is open before accessing
-    if (Hive.isBoxOpen('truckBoxName')) {
+    // Check if the box is open before accessing it — checking the held box
+    // instance's own `.isOpen` reflects whether *this* reference is still
+    // usable, unlike a name-based `Hive.isBoxOpen()` lookup.
+    if (_truckBox.isOpen) {
       if (_truckBox.containsKey('current')) {
         final cachedTruck = _truckBox.get('current');
         if (cachedTruck != null) {
@@ -242,7 +204,7 @@ class RouteController extends GetxController {
     }
 
     /// Stations
-    if (Hive.isBoxOpen('stationsBoxName')) {
+    if (_stationsBox.isOpen) {
       final loadedStations = _loadStationsList();
       if (loadedStations.isNotEmpty) {
         nearByStations.value = loadedStations;
@@ -250,21 +212,6 @@ class RouteController extends GetxController {
         print('📦 Loaded ${loadedStations.length} cached stations');
       }
     }
-
-    /// Routes
-    if (Hive.isBoxOpen('routesBoxName')) {
-      if (_routesBox.containsKey('routes')) {
-        final cachedRoutes = _routesBox.get('routes');
-        if (cachedRoutes != null) {
-          routes.value = cachedRoutes.cast<RouteModel>();
-          print('📦 Loaded ${routes.length} cached routes');
-        }
-      }
-    }
-  }
-
-  Future<void> _cacheRoutes() async {
-    await _routesBox.put('routes', routes.toList());
   }
 
   void _setupPeriodicUpdates() {
@@ -278,7 +225,7 @@ class RouteController extends GetxController {
     _stationsUpdateTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
       if (Get.isRegistered<RouteController>() && !isOffline.value) {
         print('🔄 Periodic stations update');
-        fetchRoutes(isPeriodic: true);
+        fetchNearbyStations(isPeriodic: true);
       }
     });
   }
@@ -302,7 +249,7 @@ class RouteController extends GetxController {
     }
   }
 
-  Future<void> fetchRoutes({bool isPeriodic = false}) async {
+  Future<void> fetchNearbyStations({bool isPeriodic = false}) async {
     // Check if offline
     if (isOffline.value) {
       print('📴 Offline - using cached data');
@@ -310,97 +257,67 @@ class RouteController extends GetxController {
       return;
     }
 
-    // For periodic updates or any online fetch, ALWAYS get fresh data
     if (isLoading.value) return;
     isLoading.value = true;
 
     try {
-      var response = await DocumentService().getRoutes();
+      final truckResponse = await DocumentService().getMyTruck();
+      final myTruck = truckResponse.data;
 
-      if (response.status == true) {
-        routes.clear();
-        routes.addAll(response.data);
-
-        // Cache the fresh data
-        await _cacheRoutes();
-
-        if (response.data.isNotEmpty) {
-          await dotenv.load();
-          String googleApiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
-          String samasaraKey = dotenv.env['SAMASARA_KEY'] ?? '';
-
-          if (googleApiKey.isEmpty || samasaraKey.isEmpty) {
-            throw Exception('API keys not found');
-          }
-
-          String truckId = response.data[0].truck?.samsara_vehicle_id ?? "";
-
-          // Always fetch fresh truck location when online
-          List<TruckWithNearbyStations> truckWithNearbyStations =
-              await googleMapController.getTrucksWithNearbyStations(
-                  vehicleIds: [truckId],
-                  apiToken: samasaraKey,
-                  googleApiKey: googleApiKey,
-                  stations: response.data[0].stations ?? [],
-                  destinationLat: isRouteSwapped.value
-                      ? response.data[0].fromLat!
-                      : response.data[0].toLat!,
-                  destinationLng: isRouteSwapped.value
-                      ? response.data[0].fromLng!
-                      : response.data[0].toLng!);
-
-          if (truckWithNearbyStations.isNotEmpty) {
-            nearByStations.clear();
-            truckLocation.value = truckWithNearbyStations[0].truck;
-
-            if (truckLocation.value != null) {
-              await _truckBox.put('current', truckLocation.value!);
-              await _updateLastUpdated('truck');
-            }
-
-            nearByStations.addAll(truckWithNearbyStations[0].nearbyStations);
-
-            // Save multiple stations using new method
-            if (nearByStations.isNotEmpty) {
-              await _saveStationsList(nearByStations.toList());
-              await _updateLastUpdated('stations');
-            }
-
-            _groupNearbyStations();
-
-            await findAndMarkRecommendedStations(
-                truckLocation: LatLng(truckLocation.value?.latitude ?? 0,
-                    truckLocation.value?.longitude ?? 0),
-                destination: LatLng(
-                    isRouteSwapped.value
-                        ? response.data[0].fromLat ?? 0
-                        : response.data[0].toLat ?? 0,
-                    isRouteSwapped.value
-                        ? response.data[0].fromLng ?? 0
-                        : response.data[0].toLng ?? 0),
-                stateGroups: groupedStations,
-                googleApi: googleApiKey,
-                radiusMiles: 100,
-                truckFuelPercent: truckLocation.value?.fuelPercent ?? 0);
-
-            print('✅ Found ${nearByStations.length} nearby stations');
-          }
-        }
+      if (myTruck?.samsaraVehicleId == null ||
+          myTruck!.samsaraVehicleId!.isEmpty) {
+        throw Exception('No truck assigned, or truck has no Samsara id');
       }
+
+      await dotenv.load();
+      String samasaraKey = dotenv.env['SAMASARA_KEY'] ?? '';
+
+      if (samasaraKey.isEmpty) {
+        throw Exception('Samasara API key not found');
+      }
+
+      // Always fetch fresh truck location when online — same direct Samsara
+      // call as before, unchanged.
+      List<VehicleGpsModel> truckLocations =
+          await googleMapController.fetchLiveTruckLocations(
+        vehicleIds: [myTruck.samsaraVehicleId!],
+        apiToken: samasaraKey,
+      );
+
+      if (truckLocations.isEmpty) {
+        throw Exception('No live location returned for this truck');
+      }
+
+      truckLocation.value = truckLocations[0];
+      await _truckBox.put('current', truckLocation.value!);
+      await _updateLastUpdated('truck');
+
+      // Stations near the truck's current position — server-side radius
+      // search + distance, no route involved.
+      final stationsResponse = await DocumentService().getNearbyStations(
+        lat: truckLocation.value!.latitude,
+        lng: truckLocation.value!.longitude,
+      );
+
+      nearByStations.clear();
+      nearByStations.addAll(stationsResponse.data);
+
+      if (nearByStations.isNotEmpty) {
+        await _saveStationsList(nearByStations.toList());
+        await _updateLastUpdated('stations');
+      }
+
+      _groupNearbyStations();
+
+      await findAndMarkRecommendedStations(
+        stateGroups: groupedStations,
+        truckFuelPercent: truckLocation.value?.fuelPercent ?? 0,
+      );
+
+      print('✅ Found ${nearByStations.length} nearby stations');
     } catch (e) {
       print(e);
       _ensureCachedDataLoaded();
-
-      // if (!Get.isSnackbarOpen) {
-      //   Get.snackbar(
-      //     'Connection Error',
-      //     'Could not fetch fresh data. Showing cached version.',
-      //     snackPosition: SnackPosition.BOTTOM,
-      //     backgroundColor: Colors.red,
-      //     colorText: Colors.white,
-      //     duration: const Duration(seconds: 3),
-      //   );
-      // }
     } finally {
       isLoading.value = false;
     }
@@ -422,31 +339,27 @@ class RouteController extends GetxController {
 
     try {
       print('🌐 Fetching fresh truck location from API...');
-      var response = await DocumentService().getRoutes();
+      final truckResponse = await DocumentService().getMyTruck();
+      final myTruck = truckResponse.data;
 
-      if (response.status == true && response.data.isNotEmpty) {
-        await dotenv.load();
-        String samasaraKey = dotenv.env['SAMASARA_KEY'] ?? '';
+      await dotenv.load();
+      String samasaraKey = dotenv.env['SAMASARA_KEY'] ?? '';
 
-        if (samasaraKey.isEmpty) {
-          throw Exception('Samasara API key not found');
-        }
+      if (samasaraKey.isEmpty || myTruck?.samsaraVehicleId == null) {
+        throw Exception('Samasara API key or truck id not found');
+      }
 
-        String truckId = response.data[0].truck?.samsara_vehicle_id ?? "";
+      List<VehicleGpsModel> truckLocations = await googleMapController
+          .fetchLiveTruckLocations(
+              vehicleIds: [myTruck!.samsaraVehicleId!], apiToken: samasaraKey);
 
-        List<VehicleGpsModel> truckLocations = await googleMapController
-            .fetchLiveTruckLocations(
-                vehicleIds: [truckId], apiToken: samasaraKey);
+      if (truckLocations.isNotEmpty) {
+        // Cache the fresh data
+        await _truckBox.put('current', truckLocations[0]);
+        await _updateLastUpdated('truck');
 
-        if (truckLocations.isNotEmpty) {
-          // Cache the fresh data
-          await _truckBox.put('current', truckLocations[0]);
-          await _updateLastUpdated('truck');
-
-          print('✅ Fresh truck location fetched');
-          return LatLng(
-              truckLocations[0].latitude, truckLocations[0].longitude);
-        }
+        print('✅ Fresh truck location fetched');
+        return LatLng(truckLocations[0].latitude, truckLocations[0].longitude);
       }
     } catch (e) {
       print("Error fetching truck location: $e");
@@ -467,7 +380,7 @@ class RouteController extends GetxController {
 // Update your periodic refresh method
   Future<void> _refreshTruckLocation() async {
     print('🔄 Periodic truck location update - fetching fresh data');
-    await fetchRoutes(isPeriodic: true);
+    await fetchNearbyStations(isPeriodic: true);
   }
 
   @override
@@ -478,56 +391,27 @@ class RouteController extends GetxController {
     super.onClose();
   }
 
+  /// Ranks stations within each state group by the driver's fuel level —
+  /// ≤30% fuel flags the nearest station per state, 30–50% flags the
+  /// cheapest per state — and sorts accordingly. `distanceFromTruck` is
+  /// already populated by `Stations.fromJson` from the server's
+  /// `distance_miles`, so there's no distance calculation here anymore —
+  /// this used to also rank by proximity to a route polyline
+  /// (`distanceFromRoute`/`isRecommended`), which no longer exists now that
+  /// stations are found by truck location instead of a predefined route.
   Future<void> findAndMarkRecommendedStations({
-    required LatLng truckLocation,
-    required LatLng destination,
     required List<StationGroup> stateGroups,
-    required String googleApi,
-    double radiusMiles = 50.0,
     required int? truckFuelPercent,
   }) async {
     try {
       isLoading.value = true;
 
-      final routePoints =
-          await _getRoutePoints(truckLocation, destination, googleApi);
-
       final allStations = stateGroups.expand((g) => g.stations).toList();
 
       // 🔹 Reset flags
       for (var station in allStations) {
-        station.isRecommended = false;
         station.isCheapestInState = false;
         station.isNearestStation = false;
-        station.distanceFromRoute = null;
-        station.distanceFromTruck = null;
-      }
-
-      // 🔹 Calculate distance from route and truck
-      for (var station in allStations) {
-        final stationPoint = LatLng(
-          station.latitude ?? 0,
-          station.longitude ?? 0,
-        );
-
-        double minRouteDistance = double.infinity;
-
-        for (var routePoint in routePoints) {
-          final distance =
-              _calculateDistance(stationPoint, routePoint) / 1609.34;
-          if (distance < minRouteDistance) {
-            minRouteDistance = distance;
-          }
-        }
-
-        station.distanceFromRoute = minRouteDistance;
-
-        station.distanceFromTruck =
-            _calculateDistance(stationPoint, truckLocation) / 1609.34;
-
-        if (minRouteDistance <= radiusMiles) {
-          station.isRecommended = true;
-        }
       }
 
       // =========================================================
@@ -583,7 +467,7 @@ class RouteController extends GetxController {
       }
 
       // =========================================================
-      // 🔹 Calculate min distance per state
+      // 🔹 Min distance per state (drives state sort order)
       // =========================================================
       for (var group in stateGroups) {
         double minStateDistance = double.infinity;
@@ -608,20 +492,24 @@ class RouteController extends GetxController {
         group.stations.sort((a, b) {
           // 🔴 Fuel ≤ 30 → nearest per state first
           if (truckFuelPercent != null && truckFuelPercent <= 30) {
-            if (a.isNearestStation == true && b.isNearestStation != true)
+            if (a.isNearestStation == true && b.isNearestStation != true) {
               return -1;
-            if (a.isNearestStation != true && b.isNearestStation == true)
+            }
+            if (a.isNearestStation != true && b.isNearestStation == true) {
               return 1;
+            }
           }
 
           // 🟡 Fuel 30–50 → cheapest first
           if (truckFuelPercent != null &&
               truckFuelPercent > 30 &&
               truckFuelPercent < 50) {
-            if (a.isCheapestInState == true && b.isCheapestInState != true)
+            if (a.isCheapestInState == true && b.isCheapestInState != true) {
               return -1;
-            if (a.isCheapestInState != true && b.isCheapestInState == true)
+            }
+            if (a.isCheapestInState != true && b.isCheapestInState == true) {
               return 1;
+            }
           }
 
           // 💰 Default price sorting
@@ -648,45 +536,4 @@ class RouteController extends GetxController {
       isLoading.value = false;
     }
   }
-
-  // Get route polyline points
-  Future<List<LatLng>> _getRoutePoints(
-      LatLng origin, LatLng destination, String googleApiKey) async {
-    final url = "https://maps.googleapis.com/maps/api/directions/json"
-        "?origin=${origin.latitude},${origin.longitude}"
-        "&destination=${destination.latitude},${destination.longitude}"
-        "&mode=driving"
-        "&key=$googleApiKey";
-
-    final response = await http.get(Uri.parse(url));
-    final data = jsonDecode(response.body);
-
-    if (data['status'] != 'OK') {
-      throw Exception('Route not found: ${data['status']}');
-    }
-
-    final points = PolylinePoints.decodePolyline(
-        data['routes'][0]['overview_polyline']['points']);
-
-    return points.map((p) => LatLng(p.latitude, p.longitude)).toList();
-  }
-
-  // Calculate distance between two points in meters
-  double _calculateDistance(LatLng p1, LatLng p2) {
-    const double R = 6371000; // Earth's radius in meters
-
-    final dLat = _toRadians(p2.latitude - p1.latitude);
-    final dLon = _toRadians(p2.longitude - p1.longitude);
-
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_toRadians(p1.latitude)) *
-            cos(_toRadians(p2.latitude)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
-  }
-
-  double _toRadians(double degree) => degree * pi / 180;
 }

@@ -147,6 +147,22 @@ class Trucks {
   }
 }
 
+/// The driver's assigned truck, just enough to call Samsara directly for
+/// live GPS — from `GET /yard/my-truck`.
+class MyTruckModel {
+  int? id;
+  String? number;
+  String? samsaraVehicleId;
+
+  MyTruckModel({this.id, this.number, this.samsaraVehicleId});
+
+  MyTruckModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    number = json['number'];
+    samsaraVehicleId = json['samsara_vehicle_id'];
+  }
+}
+
 class Stations {
   int? id;
   int? storeNumber;
@@ -218,7 +234,12 @@ class Stations {
     isBothNearestAndCheapest = json['isBothNearestAndCheapest'];
     isNearestStation = json['isNearestStation'];
     distanceFromRoute = json['distanceFromRoute'];
-    distanceFromTruck = json['distanceFromTruck'];
+    // `distance_miles` — from GET /yard/stations/nearby, computed server-side
+    // via SQL Haversine against the truck's lat/lng passed to that endpoint.
+    // Falls back to the old client-set `distanceFromTruck` key so nothing
+    // breaks if this object is ever round-tripped through `toJson`/cache.
+    distanceFromTruck = (json['distance_miles'] as num?)?.toDouble() ??
+        (json['distanceFromTruck'] as num?)?.toDouble();
     restaurants = json['restaurants'];
     fuelPrice = json['latest_price'] != null
         ? FuelPrice.fromJson(json['latest_price'])

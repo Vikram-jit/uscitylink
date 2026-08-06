@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { authMiddleware } from '../middleware/authMiddleware';
-import { getById, getRoutes, getTruckList, getTrucks } from '../controllers/truckController';
+import { getById, getMyTruck, getNearbyStations, getRoutes, getTruckList, getTrucks } from '../controllers/truckController';
 import pdfGernate, { getInspectionView, getPays, insertInspection, queueData, sendInvoiceEmail } from '../controllers/yardController';
 
 const router = Router();
@@ -9,6 +9,8 @@ const router = Router();
 
 router.get('/trucks',authMiddleware, getTrucks);
 router.get('/routes',authMiddleware, getRoutes);
+router.get('/my-truck',authMiddleware, getMyTruck);
+router.get('/stations/nearby',authMiddleware, getNearbyStations);
 router.get('/truckList',authMiddleware, getTruckList);
 router.get('/inspection',authMiddleware, getInspectionView);
 router.post('/inspection',authMiddleware, insertInspection);

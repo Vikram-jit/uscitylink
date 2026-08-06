@@ -49,7 +49,7 @@ class _TruckInfoWidgetState extends State<TruckInfoWidget> {
 
     try {
       print('🔄 Auto-refreshing truck data (30s interval)');
-      await routeController.fetchRoutes();
+      await routeController.fetchNearbyStations();
     } catch (e) {
       print('Error fetching truck data: $e');
     } finally {

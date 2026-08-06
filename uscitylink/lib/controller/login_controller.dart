@@ -7,8 +7,7 @@ import 'package:get/get.dart';
 import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:uscitylink/controller/channel_controller.dart';
-import 'package:uscitylink/controller/hive_controller.dart';
+import 'package:uscitylink/controller/google_map_controller.dart';
 import 'package:uscitylink/controller/message_controller.dart';
 import 'package:uscitylink/controller/route_controller.dart';
 import 'package:uscitylink/controller/station_controller.dart';
@@ -596,30 +595,46 @@ class LoginController extends GetxController {
     print('✅ ALL HIVE DATA FORCE CLEARED');
   }
 
+  /// Deletes a controller by its registered *type* — every controller in
+  /// this app is `Get.put()` without a tag, so the previous
+  /// `Get.isRegistered(tag: name)` / `Get.delete(tag: name)` calls here
+  /// never matched anything and silently disposed nothing. That let
+  /// permanent controllers like `RouteController` survive logout holding
+  /// `late Box<...>` fields pointing at boxes `_forceClearAllHiveData()` was
+  /// about to close — the next Hive read on that stale controller then threw
+  /// `HiveError: Box has already been closed.` `force: true` is required for
+  /// `RouteController`, which is registered `permanent: true`.
+  void _disposeByType<T>(String label) {
+    try {
+      if (Get.isRegistered<T>()) {
+        Get.delete<T>(force: true);
+        print('✅ Disposed: $label');
+      }
+    } catch (e) {
+      print('⚠️ Error disposing $label: $e');
+    }
+  }
+
+  /// Only the fuel-stations controllers get disposed here — they're the ones
+  /// that actually hold the stale Hive box references from the bug above
+  /// (`Get.put(RouteController(), permanent: true)` inside
+  /// `FuelStationsView`, which re-creates them cleanly next time that
+  /// feature is opened). `SocketService`, `NetworkService`, `HiveController`,
+  /// `MessageController`, and `ChannelController` were in this list too when
+  /// disposal was still a no-op; once the no-op was fixed, deleting them for
+  /// real crashed the app immediately after logout — `SocketService` is
+  /// `Get.put()` exactly once, in `main.dart` at boot, with no re-creation
+  /// path, and `LoginController` (built the instant logout navigates to
+  /// `/login`) does `Get.find<SocketService>()` unconditionally in its field
+  /// initializer. The others follow the same "app-lifetime singleton with
+  /// eager dependents" shape and were never actually implicated in the
+  /// Hive-box bug, so they're left running across logout too.
   Future<void> _disposeAllControllers() async {
     print('🧹 Disposing all controllers...');
 
-    final controllerNames = [
-      'NetworkService',
-      'HiveController',
-      'MessageController',
-      'ChannelController',
-      'RouteController',
-      'StationController',
-      'GoogleMapController',
-      'SocketService',
-    ];
-
-    for (var name in controllerNames) {
-      try {
-        if (Get.isRegistered(tag: name)) {
-          Get.delete(tag: name);
-          print('✅ Disposed: $name');
-        }
-      } catch (e) {
-        print('⚠️ Error disposing $name: $e');
-      }
-    }
+    _disposeByType<RouteController>('RouteController');
+    _disposeByType<StationController>('StationController');
+    _disposeByType<GoogleMapController>('GoogleMapController');
   }
 
 // Also add this helper method to verify clearing

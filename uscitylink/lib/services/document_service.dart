@@ -1,8 +1,6 @@
-import 'package:hive_ce/hive.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/data/network/network_api_service.dart';
 import 'package:uscitylink/data/response/api_response.dart';
-import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/model/inspection_model.dart';
 import 'package:uscitylink/model/pagination_model.dart';
 import 'package:uscitylink/model/route_model.dart';
@@ -212,135 +210,59 @@ class DocumentService {
     }
   }
 
-  Future<ApiResponse<List<RouteModel>>> getRoutes() async {
+  /// The driver's assigned truck — just enough (`samsara_vehicle_id`) to
+  /// call Samsara directly for live GPS, same as before.
+  Future<ApiResponse<MyTruckModel?>> getMyTruck() async {
     try {
       dynamic response =
-          await _apiService.getApi('${Constant.url}/yard/routes');
+          await _apiService.getApi('${Constant.url}/yard/my-truck');
 
-      if (response != null) {
-        var data = response['data'];
+      if (response != null && response is Map<String, dynamic>) {
+        final data = response['data'];
+        final truck = data != null ? MyTruckModel.fromJson(data) : null;
 
-        if (data != null && data is List && data.isNotEmpty) {
-          List<RouteModel> templates =
-              data.map((item) => RouteModel.fromJson(item)).toList();
-
-          return ApiResponse<List<RouteModel>>(
-            data: templates,
-            message: response['message'] ?? 'Get Route List Successfully.',
-            status: response['status'] ?? true,
-          );
-        } else {
-          await _forceClearAllHiveData();
-          throw Exception('Expected a list in response["data"]');
-        }
+        return ApiResponse<MyTruckModel?>(
+          data: truck,
+          message: response['message'] ?? 'Get Truck Successfully.',
+          status: response['status'] ?? true,
+        );
       } else {
         throw Exception('Unexpected response format');
       }
     } catch (e) {
-      print(e);
-      throw Exception('Error fetching template: $e');
+      throw Exception('Error fetching truck: $e');
     }
   }
 
-  Future<void> _forceClearAllHiveData() async {
-    print('📦 FORCE CLEARING ALL HIVE DATA...');
-
-    // List of all box names used in the app
-    final boxNames = [
-      HiveBoxes.truckLocationBox,
-      HiveBoxes.stationsBox,
-      HiveBoxes.lastUpdatedBox,
-      'prefs_box',
-      'routes_box',
-      'metadata_box',
-
-      // Add any other box names from your app
-    ];
-
-    // Method 1: Delete boxes completely (most thorough)
-    for (final boxName in boxNames) {
-      try {
-        // Check if box is open and close it
-        if (Hive.isBoxOpen(boxName)) {
-          final box = Hive.box(boxName);
-          await box.clear();
-          await box.close();
-          print('✅ Cleared and closed box: $boxName');
-        }
-
-        // Delete the box entirely from disk
-        await Hive.deleteBoxFromDisk(boxName);
-        print('✅ Deleted box from disk: $boxName');
-      } catch (e) {
-        print('⚠️ Error with box $boxName: $e');
-
-        // Fallback: try to open and clear
-        try {
-          final box = await Hive.openBox(boxName);
-          await box.clear();
-          await box.close();
-          print('✅ Fallback cleared box: $boxName');
-        } catch (e2) {
-          print('❌ Failed to clear box $boxName even with fallback: $e2');
-        }
-      }
-    }
-
-    // Method 2: Clear specific typed boxes using your constants
+  /// Fuel stations within [radiusMiles] of the given point (the truck's
+  /// live GPS) — replaces the old route-based station search.
+  Future<ApiResponse<List<Stations>>> getNearbyStations({
+    required double lat,
+    required double lng,
+    double radiusMiles = 30,
+  }) async {
     try {
-      // Get fresh instances of each box and clear them
-      final boxes = await Future.wait([
-        Constant.getTruckLocationBox().catchError((e) => null),
-        Constant.getStationsBox().catchError((e) => null),
-        Constant.getlastUpdatedBox().catchError((e) => null),
-      ]);
+      dynamic response = await _apiService.getApi(
+        '${Constant.url}/yard/stations/nearby?lat=$lat&lng=$lng&radiusMiles=$radiusMiles',
+      );
 
-      for (var box in boxes) {
-        if (box != null) {
-          try {
-            await box.clear();
-            await box.close();
-            print('✅ Cleared typed box: ${box.name}');
-          } catch (e) {
-            print('⚠️ Error clearing typed box: $e');
-          }
-        }
+      if (response != null && response is Map<String, dynamic>) {
+        final data = response['data'];
+        final stationsJson = data?['stations'] as List? ?? [];
+        final stations =
+            stationsJson.map((item) => Stations.fromJson(item)).toList();
+
+        return ApiResponse<List<Stations>>(
+          data: stations,
+          message: response['message'] ?? 'Get Nearby Stations Successfully.',
+          status: response['status'] ?? true,
+        );
+      } else {
+        throw Exception('Unexpected response format');
       }
     } catch (e) {
-      print('❌ Error with typed boxes: $e');
+      throw Exception('Error fetching nearby stations: $e');
     }
-
-    // Method 3: Clear preferences box separately
-    try {
-      final prefsBox = await Hive.openBox<dynamic>('prefs_box');
-      await prefsBox.clear();
-      await prefsBox.close();
-      print('✅ Cleared prefs box');
-    } catch (e) {
-      print('⚠️ Error clearing prefs box: $e');
-    }
-
-    // Method 4: Clear routes box
-    try {
-      final routesBox = await Hive.openBox<List>('routes_box');
-      await routesBox.clear();
-      await routesBox.close();
-      print('✅ Cleared routes box');
-    } catch (e) {
-      print('⚠️ Error clearing routes box: $e');
-    }
-
-    // Method 5: Clear metadata box
-    try {
-      final metadataBox = await Hive.openBox<int>('metadata_box');
-      await metadataBox.clear();
-      await metadataBox.close();
-      print('✅ Cleared metadata box');
-    } catch (e) {
-      print('⚠️ Error clearing metadata box: $e');
-    }
-
-    print('✅ ALL HIVE DATA FORCE CLEARED');
   }
 
   Future<ApiResponse<VehicleModel>> getVechicleById(

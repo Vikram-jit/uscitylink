@@ -1,32 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uscitylink/model/route_model.dart';
 import 'package:uscitylink/controller/route_controller.dart';
-import 'package:uscitylink/controller/google_map_controller.dart'
-    hide GoogleMapController;
 import 'package:uscitylink/model/vehicle_gps_model.dart';
 import 'station_detail.dart';
 
 class StationMapScreen extends StatefulWidget {
-  final RouteModel routeData;
-
-  const StationMapScreen({
-    Key? key,
-    required this.routeData,
-  }) : super(key: key);
+  const StationMapScreen({Key? key}) : super(key: key);
 
   @override
   _StationMapScreenState createState() => _StationMapScreenState();
@@ -37,17 +24,12 @@ class _StationMapScreenState extends State<StationMapScreen> {
   final Completer<GoogleMapController> _controller = Completer();
   final Map<MarkerId, Marker> _markers = {};
   bool _isLoading = true;
-  bool _isRouteLoading = false;
-
-  Set<Polyline> _polylines = {};
 
   // API key
   late String _googleApiKey;
 
   // Icons
   BitmapDescriptor? _stationIcon;
-  BitmapDescriptor? _startIcon;
-  BitmapDescriptor? _endIcon;
   BitmapDescriptor? _truckIcon;
   BitmapDescriptor? _truckMovingIcon;
 
@@ -67,12 +49,13 @@ class _StationMapScreenState extends State<StationMapScreen> {
   void initState() {
     super.initState();
     _loadApiKey();
-    _currentCenter = truckLocation != null
-        ? LatLng(truckLocation!.latitude, truckLocation!.longitude)
-        : LatLng(
-            widget.routeData.fromLat as double,
-            widget.routeData.fromLng as double,
-          );
+    // Fall back to the default center (set above) if the truck's live
+    // location hasn't arrived yet — there's no route endpoint to fall back
+    // to anymore.
+    if (truckLocation != null) {
+      _currentCenter =
+          LatLng(truckLocation!.latitude, truckLocation!.longitude);
+    }
 
     _initializeMap();
     _setupTruckLocationListener();
@@ -91,7 +74,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
     _apiTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         print('🔄 Refreshing truck location data...');
-        routeController.fetchRoutes();
+        routeController.fetchNearbyStations();
       }
     });
   }
@@ -144,33 +127,10 @@ class _StationMapScreenState extends State<StationMapScreen> {
           _isLoading = false;
         });
       }
-
-      // Load route in background
-      _fetchRouteInBackground();
     } catch (e) {
       print('Error initializing map: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _fetchRouteInBackground() async {
-    if (!mounted) return;
-
-    setState(() {
-      _isRouteLoading = true;
-    });
-
-    try {
-      await _fetchRoutePolyline();
-    } catch (e) {
-      print('Error fetching route: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isRouteLoading = false;
-        });
       }
     }
   }
@@ -284,18 +244,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
         );
       }
 
-      // Create start/end markers
-      _startIcon = await _createCustomMarker(
-        icon: Icons.flag,
-        color: Colors.green,
-        size: 70,
-      );
-      _endIcon = await _createCustomMarker(
-        icon: Icons.flag,
-        color: Colors.red,
-        size: 70,
-      );
-
       print('✓ All icons created successfully');
     } catch (e) {
       print('❌ Error loading icons: $e');
@@ -305,9 +253,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       _stationIcon =
           BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-      _startIcon =
-          BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-      _endIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
     }
   }
 
@@ -441,38 +386,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
         );
       }
 
-      // Add start marker
-      markers[const MarkerId('start')] = Marker(
-        markerId: const MarkerId('start'),
-        position: LatLng(
-          widget.routeData.fromLat as double,
-          widget.routeData.fromLng as double,
-        ),
-        icon: _startIcon!,
-        infoWindow: InfoWindow(
-          title: 'Start: ${widget.routeData.fromCity ?? 'Origin'}',
-          snippet: widget.routeData.fromAddress,
-        ),
-        anchor: const Offset(0.5, 0.5),
-        draggable: false,
-      );
-
-      // Add end marker
-      markers[const MarkerId('end')] = Marker(
-        markerId: const MarkerId('end'),
-        position: LatLng(
-          widget.routeData.toLat as double,
-          widget.routeData.toLng as double,
-        ),
-        icon: _endIcon!,
-        infoWindow: InfoWindow(
-          title: 'End: ${widget.routeData.toCity ?? 'Destination'}',
-          snippet: widget.routeData.toAddress,
-        ),
-        anchor: const Offset(0.5, 0.5),
-        draggable: false,
-      );
-
       if (mounted) {
         setState(() {
           _markers.clear();
@@ -485,107 +398,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
     } catch (e) {
       print('❌ Error creating markers: $e');
     }
-  }
-
-  // SIMPLIFIED: Just fetch one proper route
-// SIMPLIFIED: Just fetch one proper route
-  Future<void> _fetchRoutePolyline() async {
-    try {
-      if (_googleApiKey.isEmpty) {
-        await _loadApiKey();
-        if (_googleApiKey.isEmpty) return;
-      }
-
-      final origin = "${widget.routeData.fromLat},${widget.routeData.fromLng}";
-      final destination = "${widget.routeData.toLat},${widget.routeData.toLng}";
-
-      final url = "https://maps.googleapis.com/maps/api/directions/json"
-          "?origin=$origin"
-          "&destination=$destination"
-          "&mode=driving"
-          "&key=$_googleApiKey";
-
-      print('📍 Fetching route...');
-
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode != 200) {
-        _drawSimpleRoute();
-        return;
-      }
-
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      if (data['status'] != 'OK') {
-        _drawSimpleRoute();
-        return;
-      }
-
-      // Get the first route
-      final route = data['routes'][0];
-
-      // FIXED: Specify type parameters for compute
-      final points = await compute<String, List<LatLng>>(
-          _decodePolyline, route['overview_polyline']['points']);
-
-      if (points.isEmpty) {
-        _drawSimpleRoute();
-        return;
-      }
-
-      print('✅ Route fetched with ${points.length} points');
-
-      // Create the polyline
-      final polyline = Polyline(
-        polylineId: const PolylineId('route'),
-        color: Colors.blue,
-        width: 5,
-        points: points,
-        jointType: JointType.round,
-        startCap: Cap.roundCap,
-        endCap: Cap.roundCap,
-      );
-
-      if (mounted) {
-        setState(() {
-          _polylines = {polyline};
-        });
-      }
-    } catch (e) {
-      print('❌ Error: $e');
-      _drawSimpleRoute();
-    }
-  }
-
-// Background task for polyline decoding
-  static List<LatLng> _decodePolyline(String encoded) {
-    try {
-      final points = PolylinePoints.decodePolyline(encoded);
-      return points.map((p) => LatLng(p.latitude, p.longitude)).toList();
-    } catch (e) {
-      print('Error decoding polyline: $e');
-      return [];
-    }
-  }
-
-  // Simple fallback route
-  void _drawSimpleRoute() {
-    if (!mounted) return;
-
-    final simpleLine = Polyline(
-      polylineId: const PolylineId('route'),
-      color: Colors.blue,
-      width: 4,
-      points: [
-        LatLng(widget.routeData.fromLat as double,
-            widget.routeData.fromLng as double),
-        LatLng(
-            widget.routeData.toLat as double, widget.routeData.toLng as double),
-      ],
-    );
-
-    setState(() {
-      _polylines = {simpleLine};
-    });
   }
 
   void _showTruckInfoFromModel(VehicleGpsModel truck) {
@@ -722,7 +534,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
             zoom: _zoomLevel,
           ),
           markers: Set<Marker>.of(_markers.values),
-          polylines: _polylines,
           myLocationEnabled: false,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
@@ -768,14 +579,14 @@ class _StationMapScreenState extends State<StationMapScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Live Route Map',
+                            'Live Stations Map',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            '${nearbyStations.length} stations • ${widget.routeData.distance?.toStringAsFixed(1)} miles',
+                            '${nearbyStations.length} stations nearby',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -831,38 +642,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
             ),
           ),
         ),
-
-        // Loading indicator for route
-        if (_isRouteLoading)
-          Positioned(
-            top: 100,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 8),
-                  Text('Loading route...'),
-                ],
-              ),
-            ),
-          ),
 
         // Zoom Controls
         Positioned(
@@ -935,27 +714,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
                   }
                 },
                 tooltip: 'Track Truck',
-              ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.flag,
-                color: Colors.green,
-                onTap: _goToStart,
-                tooltip: 'Start Point',
-              ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.flag,
-                color: Colors.red,
-                onTap: _goToEnd,
-                tooltip: 'End Point',
-              ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.directions,
-                color: Colors.orange,
-                onTap: openMapSmart,
-                tooltip: 'Directions',
               ),
             ],
           ),
@@ -1170,57 +928,5 @@ class _StationMapScreenState extends State<StationMapScreen> {
       southwest: LatLng(minLat, minLng),
       northeast: LatLng(maxLat, maxLng),
     );
-  }
-
-  Future<void> _goToStart() async {
-    final controller = await _controller.future;
-    await controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: LatLng(
-            widget.routeData.fromLat as double,
-            widget.routeData.fromLng as double,
-          ),
-          zoom: 14,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _goToEnd() async {
-    final controller = await _controller.future;
-    await controller.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: LatLng(
-            widget.routeData.toLat as double,
-            widget.routeData.toLng as double,
-          ),
-          zoom: 14,
-        ),
-      ),
-    );
-  }
-
-  Future<void> openMapSmart() async {
-    final startLat = widget.routeData.fromLat as double;
-    final startLng = widget.routeData.fromLng as double;
-    final endLat = widget.routeData.toLat as double;
-    final endLng = widget.routeData.toLng as double;
-
-    try {
-      final Uri url = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1'
-        '&origin=$startLat,$startLng'
-        '&destination=$endLat,$endLng'
-        '&travelmode=driving',
-      );
-
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      print('Error opening maps: $e');
-    }
   }
 }

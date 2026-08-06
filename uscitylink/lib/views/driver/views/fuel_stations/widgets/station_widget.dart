@@ -131,10 +131,6 @@ class StationWidget extends StatelessWidget {
 
   // Card for each state group with expandable stations
   Widget _buildStateGroupCard(StationGroup group, BuildContext context) {
-    // Count recommended stations in this state
-    final recommendedCount =
-        group.stations.where((s) => s.isRecommended == true).length;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -212,15 +208,6 @@ class StationWidget extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (recommendedCount > 0)
-                      Text(
-                        '$recommendedCount stations near your route',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -429,38 +416,6 @@ class StationWidget extends StatelessWidget {
                                   color: Colors.grey.shade600,
                                 ),
                               ),
-                              // Show "Near Route" badge for recommended stations
-                              if (isRecommended)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.shade100,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.star,
-                                            size: 10,
-                                            color: Colors.amber.shade800),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          'Near Route',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: Colors.amber.shade800,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -562,47 +517,6 @@ class StationWidget extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 12),
-
-                    // Distance from route - ONLY SHOW FOR RECOMMENDED STATIONS
-                    if (isRecommended && station.distanceFromRoute != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: station.distanceFromRoute! < 10
-                              ? Colors.green.shade50
-                              : Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.route,
-                              size: 16,
-                              color: station.distanceFromRoute! < 10
-                                  ? Colors.green.shade600
-                                  : Colors.blue.shade600,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${station.distanceFromRoute!.toStringAsFixed(1)} miles from your route',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: station.distanceFromRoute! < 10
-                                      ? Colors.green.shade700
-                                      : Colors.blue.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
 
                     // Distance from truck - SHOW FOR ALL STATIONS
                     if (station.distanceFromTruck != null) ...[
@@ -833,7 +747,7 @@ class StationWidget extends StatelessWidget {
                               ),
                               elevation: 0,
                             ),
-                            child: const Text('Route'),
+                            child: const Text('Track'),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1040,7 +954,7 @@ Widget _buildEmptyState() {
         ),
         const SizedBox(height: 8),
         Text(
-          'Stations along your route will appear here',
+          'Nearby fuel stations will appear here',
           style: TextStyle(
             fontSize: 14,
             color: Colors.grey.shade600,

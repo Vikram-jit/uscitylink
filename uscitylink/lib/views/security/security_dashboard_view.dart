@@ -5,6 +5,9 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/security_dashboard_controller.dart';
 import 'package:uscitylink/controller/vehicle_entry_form_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/theme/app_text.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/security/vehicle_inspection_form_view.dart';
 import 'vehicle_entry_form_view.dart';
 import 'vehicle_entry_list_view.dart';
 import 'vehicle_inspection_vehicles_view.dart';
@@ -102,8 +105,9 @@ class _SecurityDashboardViewState extends State<SecurityDashboardView> {
                                       Color(0xFF16A34A),
                                       Color(0xFF22C55E),
                                     ],
-                                    onTap: () => Get.to(() => const VehicleEntryFormView(
-                                        status: VehicleEntryStatus.entry)),
+                                    onTap: () => Get.to(() =>
+                                        const VehicleEntryFormView(
+                                            status: VehicleEntryStatus.entry)),
                                   ),
                                 ),
                                 const SizedBox(width: 14),
@@ -116,8 +120,9 @@ class _SecurityDashboardViewState extends State<SecurityDashboardView> {
                                       Color(0xFFDC2626),
                                       Color(0xFFEF4444),
                                     ],
-                                    onTap: () => Get.to(() => const VehicleEntryFormView(
-                                        status: VehicleEntryStatus.depart)),
+                                    onTap: () => Get.to(() =>
+                                        const VehicleEntryFormView(
+                                            status: VehicleEntryStatus.depart)),
                                   ),
                                 ),
                               ],
@@ -127,7 +132,110 @@ class _SecurityDashboardViewState extends State<SecurityDashboardView> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: _kKpiOverflow - 40),
+                  const SizedBox(height: _kKpiOverflow - 60),
+                  _ResponsiveContainer(
+                      isTablet: isTablet,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 32, 59, 133),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                            boxShadow: AppShadows.raised,
+                          ),
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Container(width: 5, color: TColors.alertOrange),
+                                Expanded(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.all(AppSpacing.base),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            gradient: AppGradients.alertIcon,
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadii.sm),
+                                          ),
+                                          child: const Icon(
+                                            Icons.priority_high_rounded,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: AppSpacing.md),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                ' Inspections Form',
+                                                style: AppText.titleMd.copyWith(
+                                                    color: Colors.white),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Truck & trailer inspection form',
+                                                style: AppText.labelMd.copyWith(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.72),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        //const SizedBox(width: AppSpacing.md),
+                                        Material(
+                                          color: TColors.alertOrange,
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadii.pill),
+                                          child: InkWell(
+                                            onTap: () => Get.to(
+                                                VehicleInspectionFormView()),
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadii.pill),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: AppSpacing.base,
+                                                vertical: AppSpacing.md,
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // Text(
+                                                  //   'Start Now',
+                                                  //   style: AppText.labelLg.copyWith(color: Colors.white),
+                                                  // ),
+                                                  const SizedBox(
+                                                      width: AppSpacing.xs),
+                                                  const Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: Colors.white,
+                                                    size: 15,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )),
+                  const SizedBox(height: 10),
                   _ResponsiveContainer(
                     isTablet: isTablet,
                     child: Column(
@@ -146,24 +254,26 @@ class _SecurityDashboardViewState extends State<SecurityDashboardView> {
                               iconColor: const Color(0xFF16A34A),
                               title: 'Vehicle Entry Log',
                               subtitle: 'View past truck & trailer entries',
-                              onTap: () => Get.to(() => const VehicleEntryListView(
-                                  status: VehicleEntryStatus.entry)),
+                              onTap: () => Get.to(() =>
+                                  const VehicleEntryListView(
+                                      status: VehicleEntryStatus.entry)),
                             ),
                             _QuickAccessItem(
                               icon: Icons.assignment_late_rounded,
                               iconColor: const Color(0xFFDC2626),
                               title: 'Vehicle Depart Log',
                               subtitle: 'View past truck & trailer departures',
-                              onTap: () => Get.to(() => const VehicleEntryListView(
-                                  status: VehicleEntryStatus.depart)),
+                              onTap: () => Get.to(() =>
+                                  const VehicleEntryListView(
+                                      status: VehicleEntryStatus.depart)),
                             ),
                             _QuickAccessItem(
                               icon: Icons.fact_check_rounded,
                               iconColor: const Color(0xFF1B3B8C),
                               title: 'Vehicle Inspections',
                               subtitle: 'Truck & trailer inspection checklists',
-                              onTap: () =>
-                                  Get.to(() => const VehicleInspectionVehiclesView()),
+                              onTap: () => Get.to(
+                                  () => const VehicleInspectionVehiclesView()),
                             ),
                           ],
                         ),

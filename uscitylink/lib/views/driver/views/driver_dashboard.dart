@@ -256,17 +256,6 @@ class _DriverDashboardState extends State<DriverDashboard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // NOTE: condition intentionally left as it was found.
-                        // It reads inverted against the "Inspection Required"
-                        // copy, but flipping it on a guess would suppress the
-                        // prompt for every driver if the API field actually
-                        // means "an inspection is due". Verify server-side.
-                        if (dashboard.isInspectionDone ?? false) ...[
-                          _InspectionBanner(
-                            onTap: () => Get.to(() => AddInspectionScreen()),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                        ],
                         _SectionHeader(
                           icon: Icons.local_shipping_rounded,
                           accent: TColors.brandGreen,
@@ -293,7 +282,20 @@ class _DriverDashboardState extends State<DriverDashboard>
                             Get.to(() => DocumentView(tabIndexDefault: 1));
                           },
                         ),
-                        const SizedBox(height: AppSpacing.xl),
+                        // NOTE: condition intentionally left as it was found.
+                        // It reads inverted against the "Inspection Required"
+                        // copy, but flipping it on a guess would suppress the
+                        // prompt for every driver if the API field actually
+                        // means "an inspection is due". Verify server-side.
+                        const SizedBox(height: AppSpacing.md),
+                        if (dashboard.isInspectionDone ?? false) ...[
+                          _InspectionBanner(
+                            onTap: () => Get.to(() => AddInspectionScreen()),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                        ],
+
+                        const SizedBox(height: AppSpacing.sm),
                         _SectionHeader(
                           icon: Icons.bolt_rounded,
                           accent: TColors.violet,
@@ -315,18 +317,18 @@ class _DriverDashboardState extends State<DriverDashboard>
                               onTap: () => Get.to(() => DriverProfileView()),
                             ),
                             _QuickAccessItem(
-                              icon: Icons.school_rounded,
-                              accent: TColors.alertOrange,
-                              title: 'Training',
-                              subtitle: 'Required safety videos',
-                              onTap: () => Get.to(() => TrainingView()),
-                            ),
-                            _QuickAccessItem(
                               icon: Icons.ev_station_rounded,
                               accent: TColors.brandGreen,
                               title: 'Fuel Stations',
                               subtitle: 'Find nearby fuel stops',
                               onTap: () => Get.to(() => FuelStationsView()),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.school_rounded,
+                              accent: TColors.alertOrange,
+                              title: 'Training',
+                              subtitle: 'Required safety videos',
+                              onTap: () => Get.to(() => TrainingView()),
                             ),
                             _QuickAccessItem(
                               icon: Icons.inventory_2_rounded,
@@ -431,7 +433,7 @@ class _Header extends StatelessWidget {
             Padding(
               padding: EdgeInsets.fromLTRB(
                 AppSpacing.lg,
-                topInset + AppSpacing.base,
+                topInset,
                 AppSpacing.lg,
                 AppSpacing.xxl + AppSpacing.xl,
               ),
@@ -439,7 +441,14 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      Text(
+                        '$greeting, Driver 👋',
+                        style: AppText.bodySm.copyWith(
+                          color: Colors.white.withValues(alpha: 0.70),
+                        ),
+                      ),
                       Container(
                         width: 44,
                         height: 44,
@@ -450,18 +459,10 @@ class _Header extends StatelessWidget {
                         ),
                         child: Image.asset(TImages.logo, fit: BoxFit.contain),
                       ),
-                      const Spacer(),
-                      Obx(() =>
-                          connected.value ? const SizedBox() : _syncingPill()),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    '$greeting, Driver 👋',
-                    style: AppText.bodySm.copyWith(
-                      color: Colors.white.withValues(alpha: 0.70),
-                    ),
-                  ),
+                  Obx(() =>
+                      connected.value ? const SizedBox() : _syncingPill()),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Ready for\nthe road today?',

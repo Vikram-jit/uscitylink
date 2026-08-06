@@ -323,7 +323,181 @@ export async function getRoutes(req: Request, res: Response): Promise<any> {
   }
 }
 
+/// GET /yard/my-truck — the driver's assigned truck, just enough to let the
+/// client call Samsara directly for live GPS (`samsara_vehicle_id`). Same
+/// GroupUser -> Group(type: "truck") -> trucks lookup used in getRoutes/
+/// getTrucks/dashboard()/getHosStatus. Replaces the old flow's only actual
+/// use of `/yard/routes`, which existed purely to smuggle this id out
+/// through an unrelated route-shaped payload.
+export async function getMyTruck(req: Request, res: Response): Promise<any> {
+  try {
+    const groupUsers = await GroupUser.findAll({
+      where: { userProfileId: req.user?.id },
+      include: [
+        { model: Group, where: { type: "truck" }, attributes: ["name"] },
+      ],
+    });
+    const truckNumbers = groupUsers
+      .map((g: any) => g?.Group?.name)
+      .filter(Boolean);
 
+    if (truckNumbers.length === 0) {
+      return res.status(200).json({
+        status: true,
+        message: "No truck assigned.",
+        data: null,
+      });
+    }
+
+    const trucks = await secondarySequelize.query<any>(
+      `SELECT id, number, samsara_vehicle_id FROM trucks WHERE number = :truckNumber LIMIT 1`,
+      {
+        type: QueryTypes.SELECT,
+        replacements: { truckNumber: truckNumbers[0] },
+      }
+    );
+
+    return res.status(200).json({
+      status: true,
+      message: "Truck fetched successfully.",
+      data: trucks[0] ?? null,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
+  }
+}
+
+/// GET /yard/stations/nearby?lat=&lng=&radiusMiles= — fuel stations near a
+/// given point (the truck's live GPS, already fetched client-side from
+/// Samsara — no truck lookup needed here). Replaces the old route-based
+/// station search (routes -> route_truck -> route_fuel_stations -> stations)
+/// with a plain radius search around lat/lng, using the Haversine formula
+/// directly in SQL (3959 = Earth's radius in miles) and re-sorting by
+/// distance. The latest-price join is copied verbatim from getRoutes above —
+/// it only ever depended on `s.store_number`, never on routes.
+///
+/// Each returned station uses the exact same JSON key shape getRoutes
+/// already produced per station (id, store_number, name, address, city,
+/// state, zip_code, interstate, latitude, longitude, phone_number,
+/// parking_spaces_count, fuel_lane_count, shower_count, amenities,
+/// restaurants, latest_price{...}), plus a new distance_miles field — so the
+/// Flutter client's existing Stations.fromJson/FuelPrice.fromJson keep
+/// working unchanged.
+export async function getNearbyStations(req: Request, res: Response): Promise<any> {
+  try {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    const radiusMiles = parseFloat(req.query.radiusMiles as string) || 30;
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({
+        status: false,
+        message: "lat and lng query parameters are required.",
+      });
+    }
+
+    const rows = await secondarySequelize.query<any>(
+      `
+      SELECT
+        s.id,
+        s.store_number,
+        s.name AS station_name,
+        s.address,
+        s.city AS station_city,
+        s.state AS station_state,
+        s.zip_code,
+        s.interstate,
+        s.latitude,
+        s.longitude,
+        s.phone_number,
+        s.parking_spaces_count,
+        s.fuel_lane_count,
+        s.shower_count,
+        s.amenities,
+        s.restaurants,
+
+        p.product,
+        p.your_price,
+        p.retail_price,
+        p.savings_total,
+        p.effective_date,
+
+        (3959 * ACOS(
+            COS(RADIANS(:lat)) * COS(RADIANS(s.latitude)) *
+            COS(RADIANS(s.longitude) - RADIANS(:lng)) +
+            SIN(RADIANS(:lat)) * SIN(RADIANS(s.latitude))
+        )) AS distance_miles
+
+      FROM stations s
+
+      /* 🔥 Latest fuel price — identical subquery to getRoutes, depends only
+         on s.store_number, not on any route table */
+      LEFT JOIN (
+        SELECT dfpq.*
+        FROM daily_fuel_price_quotes dfpq
+        INNER JOIN (
+          SELECT site, MAX(effective_date) AS max_date
+          FROM daily_fuel_price_quotes
+          GROUP BY site
+        ) latest
+          ON latest.site = dfpq.site
+         AND latest.max_date = dfpq.effective_date
+      ) p ON p.site = s.store_number
+
+      HAVING distance_miles <= :radiusMiles
+      ORDER BY distance_miles ASC
+      `,
+      {
+        replacements: { lat, lng, radiusMiles },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const stations = rows.map((row: any) => ({
+      id: row.id,
+      store_number: row.store_number,
+      name: row.station_name,
+      address: row.address,
+      city: row.station_city,
+      state: row.station_state,
+      zip_code: row.zip_code,
+      interstate: row.interstate,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      phone_number: row.phone_number,
+      parking_spaces_count: row.parking_spaces_count,
+      fuel_lane_count: row.fuel_lane_count,
+      shower_count: row.shower_count,
+      amenities: row.amenities,
+      restaurants: row.restaurants,
+      distance_miles: row.distance_miles,
+      latest_price: row.product
+        ? {
+            product: row.product,
+            your_price: row.your_price,
+            retail_price: row.retail_price,
+            savings_total: row.savings_total,
+            effective_date: row.effective_date,
+          }
+        : null,
+    }));
+
+    return res.status(200).json({
+      status: true,
+      message: "Nearby stations fetched successfully.",
+      data: { stations },
+    });
+  } catch (err: any) {
+    console.error("getNearbyStations error:", err);
+    return res.status(500).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
+  }
+}
 
 export async function getById(req: Request, res: Response): Promise<any> {
   try {
