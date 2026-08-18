@@ -390,7 +390,7 @@ export async function getNearbyStations(req: Request, res: Response): Promise<an
   try {
     const lat = parseFloat(req.query.lat as string);
     const lng = parseFloat(req.query.lng as string);
-    const radiusMiles = parseFloat(req.query.radiusMiles as string) || 30;
+    const radiusMiles = parseFloat(req.query.radiusMiles as string) || 50;
 
     if (isNaN(lat) || isNaN(lng)) {
       return res.status(400).json({

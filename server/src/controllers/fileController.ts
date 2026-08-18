@@ -244,47 +244,41 @@ export async function convertImageAndDownload(req: Request, res: Response):Promi
   const objectKey = decodeURIComponent(req.params.fileName);
   
   try {
-    // 1. Check if media exists in database
-    const isMedia = await Media.findOne({ where: { key: objectKey } });
-    if (!isMedia) {
-      return res.status(404).json({ error: 'File not found in the database' });
+    let imageBuffer: Buffer | undefined;
+
+    // 1. Try AWS S3 first
+    try {
+      const { Body } = await s3Client.send(
+        new GetObjectCommand({
+          Bucket: bucketName,
+          Key: objectKey
+        })
+      );
+
+      if (Body && Body instanceof Readable) {
+        imageBuffer = await streamToBuffer(Body);
+      }
+    } catch (s3Error) {
+      console.error('S3 retrieval error:', s3Error);
     }
 
-    let imageBuffer: Buffer;
-
-    // 2. Handle different upload types
-    if (isMedia.upload_type !== 'server') {
-      // Handle non-S3 media (local files)
+    // 2. If not found in S3, fall back to local disk
+    if (!imageBuffer) {
       const localPath = path.join(process.cwd(), 'public', objectKey);
-        console.log('Local path:', localPath);
+      console.log('Local path:', localPath);
       try {
         imageBuffer = await fs.promises.readFile(localPath);
       } catch (err) {
         console.error('Error reading local file:', err);
-        return res.status(404).json({ error: 'Local file not found' });
-      }
-    } else {
-      // Handle S3 media
-      try {
-        const { Body } = await s3Client.send(
-          new GetObjectCommand({ 
-            Bucket: bucketName, 
-            Key: objectKey 
-          })
-        );
-
-        if (!Body || !(Body instanceof Readable)) {
-          return res.status(404).json({ error: 'S3 file not found or invalid' });
-        }
-
-        imageBuffer = await streamToBuffer(Body);
-      } catch (s3Error) {
-        console.error('S3 retrieval error:', s3Error);
-        return res.status(500).json({ error: 'Failed to retrieve file from S3' });
       }
     }
 
-    // 3. Process image with error handling
+    // 3. Neither S3 nor local disk had the file
+    if (!imageBuffer) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // 4. Process image with error handling
     try {
       const transformedImage = await sharp(imageBuffer)
         .jpeg({ 
@@ -294,12 +288,12 @@ export async function convertImageAndDownload(req: Request, res: Response):Promi
         .withMetadata() // Preserve EXIF data
         .toBuffer();
 
-      // 4. Set response headers
+      // 5. Set response headers
       res.setHeader('Content-Type', 'image/jpeg');
       res.setHeader('Content-Disposition', `attachment; filename="${path.parse(objectKey).name}.jpg"`);
       res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
 
-      // 5. Send response
+      // 6. Send response
       return res.send(transformedImage);
     } catch (processingError) {
       console.error('Image processing error:', processingError);
@@ -363,47 +357,40 @@ export async function convertImageToPDFAndDownload(req: Request, res: Response):
   const objectKey = fileName;
 
   try {
-    // 1. Check if media exists in database
-    const isMedia = await Media.findOne({ where: { key: objectKey } });
-    if (!isMedia) {
-      return res.status(404).json({ error: 'File not found in the database' });
+    let imageBuffer: Buffer | undefined;
+
+    // 1. Try AWS S3 first
+    try {
+      const { Body } = await s3Client.send(
+        new GetObjectCommand({
+          Bucket: bucketName,
+          Key: objectKey
+        })
+      );
+
+      if (Body && Body instanceof Readable) {
+        imageBuffer = await streamToBuffer(Body);
+      }
+    } catch (s3Error) {
+      console.error('S3 retrieval error:', s3Error);
     }
 
-    let imageBuffer: Buffer;
-
-    // 2. Handle different upload types
-    if (isMedia.upload_type !== 'server') {
-      // Handle non-S3 media (local files)
+    // 2. If not found in S3, fall back to local disk
+    if (!imageBuffer) {
       const localPath = path.join(process.cwd(), 'public', objectKey);
-      
       try {
         imageBuffer = await fs.promises.readFile(localPath);
       } catch (err) {
         console.error('Error reading local file:', err);
-        return res.status(404).json({ error: 'Local file not found' });
-      }
-    } else {
-      // Handle S3 media
-      try {
-        const { Body } = await s3Client.send(
-          new GetObjectCommand({ 
-            Bucket: bucketName, 
-            Key: objectKey 
-          })
-        );
-
-        if (!Body || !(Body instanceof Readable)) {
-          return res.status(404).json({ error: 'S3 file not found or invalid' });
-        }
-
-        imageBuffer = await streamToBuffer(Body);
-      } catch (s3Error) {
-        console.error('S3 retrieval error:', s3Error);
-        return res.status(500).json({ error: 'Failed to retrieve file from S3' });
       }
     }
 
-    // 3. Process image to PDF with error handling
+    // 3. Neither S3 nor local disk had the file
+    if (!imageBuffer) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // 4. Process image to PDF with error handling
     try {
        // Convert the image buffer to PDF
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
