@@ -41,6 +41,8 @@ import {
 import GroupMessage from "../models/GroupMessage";
 import BroadcastMessage from "../models/BroadcastMessage";
 import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
+import { MessageStaff } from "../models/MessageStaff";
+import { redisHost, redisPassword, redisPort } from "../redis";
 
 dotenv.config();
 
@@ -65,7 +67,7 @@ export const uploadLocal = multer({ storage });
 
 export const fileUploadQueue = new Queue("fileUploadQueue", {
   redis: {
-     host: redisHost,
+    host: redisHost,
     port: redisPort,
     password: redisPassword,
     maxRetriesPerRequest: null, // prevents crash on Redis failure
@@ -1787,9 +1789,6 @@ export const getSystemMessages = async (
     return res.status(500).json({ status: false, message: error || "Server error" });
   }
 };
-
-import { MessageStaff } from "../models/MessageStaff";
-import { redisHost, redisPassword, redisPort } from "../redis";
 
 export const getSystemUnreadMessages = async (
   req: Request,
