@@ -14,6 +14,7 @@ import User from "../models/User";
 import axios from "axios";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
+import { redisHost, redisPassword, redisPort } from "../redis";
 const renderTemplate = (templatePath: string, data: any) => {
   return new Promise((resolve, reject) => {
     ejs.renderFile(templatePath, data, (err: any, html: any) => {
@@ -634,7 +635,13 @@ async function getProgressOfAllQueues(): Promise<{
 
   // Loop through all queues
   for (let queueName of queues) {
-    const queue = new Queue(queueName);
+    const queue = new Queue(queueName, {
+      redis: {
+        host: redisHost,
+        port: redisPort,
+        password: redisPassword,
+      },
+    });
     const states: (
       | "waiting"
       | "active"

@@ -26,12 +26,13 @@ import retry from "async-retry";
 import { primarySequelize } from "../sequelize";
 import BroadcastMessage from "../models/BroadcastMessage";
 import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
+import { redisHost, redisPassword, redisPort } from "../redis";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
-    host:
-      process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
-    port: 6379, // Custom Redis port
+    host: redisHost,
+    port: redisPort,
+    password: redisPassword,
     maxRetriesPerRequest: null, // prevents crash on Redis failure
     enableReadyCheck: false, // speeds up startup when Redis is slow
     retryStrategy: (times) => {
@@ -43,9 +44,9 @@ const notificationQueue = new Queue("jobQueue", {
 
 export const groupMessageQueue = new Queue("groupMessageQueue", {
   redis: {
-    host:
-      process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
-    port: 6379,
+    host: redisHost,
+    port: redisPort,
+    password: redisPassword,
     maxRetriesPerRequest: null, // prevents crash on Redis failure
     enableReadyCheck: false, // speeds up startup when Redis is slow
     retryStrategy: (times) => {
@@ -59,9 +60,9 @@ export const groupNotificationStaffQueue = new Queue(
   "groupNotificationStaffQueue",
   {
     redis: {
-      host:
-        process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
-      port: 6379,
+      host: redisHost,
+      port: redisPort,
+      password: redisPassword,
       maxRetriesPerRequest: null, // prevents crash on Redis failure
       enableReadyCheck: false, // speeds up startup when Redis is slow
     },
