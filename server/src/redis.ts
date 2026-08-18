@@ -7,7 +7,7 @@ export const redisPort = Number(process.env.REDIS_PORT) || 6379;
 export const redisPassword = process.env.REDIS_PASSWORD;
 
 const redisUrl = redisPassword
-    ? `redis://:${redisPassword}@${redisHost}:${redisPort}`
+    ? `redis://:${encodeURIComponent(redisPassword)}@${redisHost}:${redisPort}`
     : `redis://${redisHost}:${redisPort}`;
 
 const redisClient = createClient({
