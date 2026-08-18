@@ -1,7 +1,17 @@
 import { createClient } from 'redis';
+import dotenv from 'dotenv';
+dotenv.config();
+export const redisHost =
+  process.env.DB_SERVER === 'local' ? '127.0.0.1' : (process.env.REDIS_HOST || '127.0.0.1');
+export const redisPort = Number(process.env.REDIS_PORT) || 6379;
+export const redisPassword = process.env.REDIS_PASSWORD;
+
+const redisUrl = redisPassword
+    ? `redis://:${redisPassword}@${redisHost}:${redisPort}`
+    : `redis://${redisHost}:${redisPort}`;
 
 const redisClient = createClient({
-    url: 'redis://localhost:6379', // Adjust if your Redis server runs on a different host or port
+    url: redisUrl,
 });
 
 redisClient.on('error', (err) => {

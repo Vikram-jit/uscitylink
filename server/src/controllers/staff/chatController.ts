@@ -14,19 +14,22 @@ import Role from "../../models/Role";
 import Queue from "bull";
 import GroupChannel from "../../models/GroupChannel";
 import { MessageStaff } from "../../models/MessageStaff";
+import { redisHost, redisPassword, redisPort } from "../../redis";
 
 
 export const groupMessageQueueApi = new Queue('groupMessageQueueApi', {
   redis: {
-    host: '127.0.0.1',  
-    port: 6379,          
+   host: redisHost,
+       port: redisPort,
+       password: redisPassword,
   }
 });
 
 export const groupNotificationStaffQueueApi = new Queue('groupNotificationStaffQueueApi', {
   redis: {
-    host: '127.0.0.1',  
-    port: 6379,          
+   host: redisHost,
+       port: redisPort,
+       password: redisPassword, 
   }
 });
 

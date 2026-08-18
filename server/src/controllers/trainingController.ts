@@ -24,6 +24,7 @@ import ejs from "ejs"; // Import EJS
 import { generatePdf } from "../utils/pdf";
 import moment from "moment";
 import { getSocketInstance } from "../sockets/socket";
+import { redisHost, redisPassword, redisPort } from "../redis";
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
@@ -32,8 +33,9 @@ AWS.config.update({
 
 const trainingNotificationQueue = new Queue("trainingNotificationQueue", {
   redis: {
-    host: "127.0.0.1", // Redis host
-    port: 6379, // Custom Redis port
+    host: redisHost,
+        port: redisPort,
+        password: redisPassword,
       maxRetriesPerRequest: null, // prevents crash on Redis failure
       enableReadyCheck: false,    // speeds up startup when Redis is slow
       retryStrategy: (times) => {

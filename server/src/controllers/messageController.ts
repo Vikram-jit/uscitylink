@@ -65,9 +65,9 @@ export const uploadLocal = multer({ storage });
 
 export const fileUploadQueue = new Queue("fileUploadQueue", {
   redis: {
-    host:
-      process.env.DB_SERVER == "local" ? "127.0.0.1" : process.env.REDIS_HOST,
-    port: 6379,
+     host: redisHost,
+    port: redisPort,
+    password: redisPassword,
     maxRetriesPerRequest: null, // prevents crash on Redis failure
     enableReadyCheck: false, // speeds up startup when Redis is slow
     retryStrategy: (times) => {
@@ -1789,6 +1789,7 @@ export const getSystemMessages = async (
 };
 
 import { MessageStaff } from "../models/MessageStaff";
+import { redisHost, redisPassword, redisPort } from "../redis";
 
 export const getSystemUnreadMessages = async (
   req: Request,
