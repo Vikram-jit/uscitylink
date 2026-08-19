@@ -124,6 +124,8 @@ PODS:
     - Flutter
   - flutter_background_service_ios (0.0.3):
     - Flutter
+  - flutter_doc_scanner (0.0.1):
+    - Flutter
   - flutter_image_compress_common (1.0.0):
     - Flutter
     - SDWebImage
@@ -303,6 +305,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_app_badge_control (from `.symlinks/plugins/flutter_app_badge_control/ios`)
   - flutter_background_service_ios (from `.symlinks/plugins/flutter_background_service_ios/ios`)
+  - flutter_doc_scanner (from `.symlinks/plugins/flutter_doc_scanner/ios`)
   - flutter_image_compress_common (from `.symlinks/plugins/flutter_image_compress_common/ios`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
   - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
@@ -380,6 +383,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_app_badge_control/ios"
   flutter_background_service_ios:
     :path: ".symlinks/plugins/flutter_background_service_ios/ios"
+  flutter_doc_scanner:
+    :path: ".symlinks/plugins/flutter_doc_scanner/ios"
   flutter_image_compress_common:
     :path: ".symlinks/plugins/flutter_image_compress_common/ios"
   flutter_local_notifications:
@@ -448,6 +453,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_app_badge_control: 1f0ac37334d1a2da72bde7e4d3c6c8675517a471
   flutter_background_service_ios: 00d31bdff7b4bfe06d32375df358abe0329cf87e
+  flutter_doc_scanner: cde1b626694c036d41bb3d6ccd384b1566f37e04
   flutter_image_compress_common: 11d5dcfb36f4ded92320bfa896261813a073240e
   flutter_local_notifications: a5a732f069baa862e728d839dd2ebb904737effb
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf

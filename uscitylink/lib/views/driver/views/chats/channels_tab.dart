@@ -4,15 +4,23 @@ import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/widegts/chat_list_tile.dart';
 
 class ChannelTab extends StatelessWidget {
   // Pass the controller as a parameter to this widget
   final ChannelController channelController;
+  final bool selectionMode;
+  final ChatTargetSelected? onTargetSelected;
 
   SocketService socketServive = Get.find<SocketService>();
 
-  ChannelTab({super.key, required this.channelController});
+  ChannelTab({
+    super.key,
+    required this.channelController,
+    this.selectionMode = false,
+    this.onTargetSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +65,11 @@ class ChannelTab extends StatelessWidget {
                     );
                   },
                   onTap: () {
+                    if (selectionMode) {
+                      onTargetSelected?.call(channel.channel!.id!, null,
+                          channel.channel?.name ?? 'Unnamed Channel');
+                      return;
+                    }
                     socketServive.updateActiveChannel(channel.channel!.id!);
 
                     Get.toNamed(

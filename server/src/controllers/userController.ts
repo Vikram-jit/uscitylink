@@ -664,12 +664,26 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
     const truckIds = groupUsers.map((e: any, index) => {
       return e?.Group?.name;
     });
+
+    const truckIdsString = truckIds.join(",");
+
+    const truckYardIds = await secondarySequelize.query<any>(
+      `SELECT id FROM trucks WHERE number IN (:truckIds)`,
+      {
+        replacements: { truckIds: truckIdsString },
+        type: QueryTypes.SELECT,
+      }
+    );
+
     const truckCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS truckCount FROM trucks`,
       {
         type: QueryTypes.SELECT,
       }
     );
+
+
+
     const trailerCount = await secondarySequelize.query<any>(
       `SELECT COUNT(*) AS trailerCount FROM trailers`,
       {
@@ -845,7 +859,6 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
       console.error("Samsara safety score error:", samsaraError.message);
     }
 
-    console.log(inspectionDoneToday);
     return res.status(200).json({
       status: true,
       message: `Dashboard fetch successfully.`,
@@ -855,6 +868,7 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         totalAmount: totalAmount?.[0]?.totalAmount
           ? parseFloat(totalAmount?.[0]?.totalAmount.toFixed(2))
           : 0,
+          truckIds:truckYardIds?.map((truck) => truck.id).join(",") || "",
         trucks: truckIds ? truckIds?.join(",") : "",
         channel: channel,
         channelCount: userChannelCount,

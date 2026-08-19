@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:uscitylink/routes/app_routes.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:uscitylink/controller/channel_controller.dart';
 import 'package:uscitylink/controller/dashboard_controller.dart';
@@ -30,6 +31,7 @@ import 'package:uscitylink/views/driver/views/driver_profile_view.dart';
 import 'package:uscitylink/views/driver/views/fuel_stations/fuel_stations_view.dart';
 import 'package:uscitylink/views/driver/views/hos_status_view.dart';
 import 'package:uscitylink/views/driver/views/live_location_webview.dart';
+import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 
 const double _kKpiCardHeight = 112;
@@ -264,6 +266,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                           actionLabel: 'View all',
                           onAction: () {
                             truckController.changeTab(0);
+
                             Get.to(() => DocumentView(tabIndexDefault: 0));
                           },
                         ),
@@ -275,7 +278,14 @@ class _DriverDashboardState extends State<DriverDashboard>
                           trailersInUse: _Placeholder.trailersInUse,
                           onTapTrucks: () {
                             truckController.changeTab(0);
-                            Get.to(() => DocumentView(tabIndexDefault: 0));
+                            Get.toNamed(
+                              AppRoutes.vehicleDetails,
+                              arguments: {
+                                'id': int.parse(dashboard.truckIds ?? '0'),
+                                'type': "truck",
+                              },
+                            );
+                            // Get.to(() => DocumentView(tabIndexDefault: 0));
                           },
                           onTapTrailers: () {
                             truckController.changeTab(1);
@@ -342,6 +352,13 @@ class _DriverDashboardState extends State<DriverDashboard>
                                 'Load assignments will appear here once '
                                     'dispatch is connected.',
                               ),
+                            ),
+                            _QuickAccessItem(
+                              icon: Icons.document_scanner_rounded,
+                              accent: TColors.teal,
+                              title: 'Scan Document',
+                              subtitle: 'Scan & send a document',
+                              onTap: () => Get.to(() => ScanDocumentView()),
                             ),
                           ],
                         ),

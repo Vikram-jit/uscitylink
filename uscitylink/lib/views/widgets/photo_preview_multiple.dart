@@ -44,6 +44,29 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
   UserPreferenceController _userPreferenceController =
       Get.put(UserPreferenceController());
   int _currentIndex = 0;
+
+  void _removeImage(int index) {
+    controller.selectedImages.value.removeAt(index);
+    if (index < controller.selectedXImages.value.length) {
+      controller.selectedXImages.value.removeAt(index);
+    }
+    controller.selectedImages.refresh();
+    controller.selectedXImages.refresh();
+
+    if (controller.selectedImages.value.isEmpty) {
+      controller.clearSelectedImage();
+      Get.back();
+      return;
+    }
+
+    setState(() {
+      if (_currentIndex >= controller.selectedImages.value.length) {
+        _currentIndex = controller.selectedImages.value.length - 1;
+      }
+    });
+    _carouselController.animateToPage(_currentIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,11 +89,14 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
             ),
           );
         }
+        final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
         return Column(
           children: [
             SizedBox(
-              height: TDeviceUtils.getScreenHeight() * 0.7 -
-                  TDeviceUtils.getAppBarHeight(),
+              height: (TDeviceUtils.getScreenHeight() * 0.7 -
+                      TDeviceUtils.getAppBarHeight() -
+                      keyboardHeight)
+                  .clamp(0.0, double.infinity),
               child: Obx(() {
                 if (controller.selectedImages.value.isNotEmpty) {
                   return CarouselSlider(
@@ -108,28 +134,76 @@ class _PhotoPreviewMultipleState extends State<PhotoPreviewMultiple> {
                 child: ListView.builder(
                   controller: _scrollController,
                   scrollDirection: Axis.horizontal,
-                  itemCount: controller.selectedImages.value.length,
+                  itemCount: controller.selectedImages.value.length + 1,
                   itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () {
-                        _carouselController.animateToPage(index);
-                      },
-                      child: Container(
-                        width: 90.0,
-                        height: 50.0,
-                        margin: EdgeInsets.symmetric(
-                            vertical: 10.0, horizontal: 2.0),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _currentIndex == index
-                                ? Colors.blue
-                                : Colors.grey,
+                    if (index == controller.selectedImages.value.length) {
+                      return GestureDetector(
+                        onTap: () async {
+                          await controller.addImageFromCamera();
+                          setState(() {
+                            _currentIndex =
+                                controller.selectedImages.value.length - 1;
+                          });
+                          _carouselController.animateToPage(_currentIndex);
+                        },
+                        child: Container(
+                          width: 50.0,
+                          height: 50.0,
+                          margin: EdgeInsets.symmetric(
+                              vertical: 10.0, horizontal: 6.0),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.add, color: Colors.grey),
+                        ),
+                      );
+                    }
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            _carouselController.animateToPage(index);
+                          },
+                          child: Container(
+                            width: 90.0,
+                            height: 50.0,
+                            margin: EdgeInsets.symmetric(
+                                vertical: 10.0, horizontal: 2.0),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: _currentIndex == index
+                                    ? Colors.blue
+                                    : Colors.grey,
+                              ),
+                            ),
+                            child: Image.file(
+                                controller.selectedImages.value[index],
+                                fit: BoxFit.cover),
                           ),
                         ),
-                        child: Image.file(
-                            controller.selectedImages.value[index],
-                            fit: BoxFit.cover),
-                      ),
+                        Positioned(
+                          top: 4,
+                          right: -2,
+                          child: GestureDetector(
+                            onTap: () => _removeImage(index),
+                            child: Container(
+                              height: 18,
+                              width: 18,
+                              decoration: const BoxDecoration(
+                                color: Colors.black87,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),

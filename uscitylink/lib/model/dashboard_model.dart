@@ -3,6 +3,7 @@ import 'package:uscitylink/model/sender_model.dart';
 class DashboardModel {
   Channel? channel;
   String? trucks;
+  String? truckIds;
   int? channelCount;
   int? messageCount;
   int? groupCount;
@@ -22,6 +23,7 @@ class DashboardModel {
 
   DashboardModel(
       {this.trucks,
+      this.truckIds,
       this.channelCount,
       this.messageCount,
       this.groupCount,
@@ -38,6 +40,7 @@ class DashboardModel {
 
   DashboardModel.fromJson(Map<String, dynamic> json) {
     channelCount = json['channelCount'];
+    truckIds = json['truckIds'];
     isInspectionDone = json['isInspectionDone'];
     messageCount = json['messageCount'];
     groupCount = json['groupCount'];
@@ -69,6 +72,7 @@ class DashboardModel {
     if (this.channel != null) {
       data['channel'] = this.channel!.toJson();
     }
+    data['truckIds'] = this.truckIds;
     data['channelCount'] = this.channelCount;
     data['isInspectionDone'] = this.isInspectionDone;
     data['trucks'] = trucks;

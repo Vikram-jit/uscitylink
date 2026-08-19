@@ -18,8 +18,18 @@ import 'package:badges/badges.dart' as badges;
 
 const double _kTabsCardOverflow = 20;
 
+typedef ChatTargetSelected = void Function(
+    String channelId, String? groupId, String name);
+
 class ChatView extends StatefulWidget {
-  const ChatView({super.key});
+  final bool selectionMode;
+  final ChatTargetSelected? onTargetSelected;
+
+  const ChatView({
+    super.key,
+    this.selectionMode = false,
+    this.onTargetSelected,
+  });
 
   @override
   _ChatViewState createState() => _ChatViewState();
@@ -168,8 +178,16 @@ class _ChatViewState extends State<ChatView>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  ChannelTab(channelController: channelController),
-                  GroupTab(groupController: groupController),
+                  ChannelTab(
+                    channelController: channelController,
+                    selectionMode: widget.selectionMode,
+                    onTargetSelected: widget.onTargetSelected,
+                  ),
+                  GroupTab(
+                    groupController: groupController,
+                    selectionMode: widget.selectionMode,
+                    onTargetSelected: widget.onTargetSelected,
+                  ),
                 ],
               ),
             ),

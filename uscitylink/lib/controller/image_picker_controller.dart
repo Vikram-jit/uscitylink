@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math';
+import 'package:flutter_doc_scanner/flutter_doc_scanner.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uscitylink/constant.dart';
@@ -85,6 +86,75 @@ class ImagePickerController extends GetxController {
       }
     } catch (e) {
       print('Error picking image from camera: $e');
+    }
+  }
+
+  Future<void> pickImageFromCameraMultiple(String channelId, String location,
+      String? groupId, String? source, String? userId, String uploadBy) async {
+    try {
+      isLoading.value = true;
+      selectedSource.value = "camera";
+      final XFile? image =
+          await _picker.pickImage(source: ImageSource.camera, imageQuality: 25);
+      if (image != null) {
+        selectedImages.value.add(File(image.path));
+        selectedXImages.value.add(image);
+        selectedImages.refresh();
+        selectedXImages.refresh();
+      }
+      isLoading.value = false;
+      if (selectedImages.value.isNotEmpty) {
+        Get.to(() => PhotoPreviewMultiple(
+            channelId: channelId,
+            type: "media",
+            location: location,
+            groupId: groupId,
+            source: source,
+            userId: userId,
+            uploadBy: uploadBy));
+      }
+    } catch (e) {
+      isLoading.value = false;
+      print('Error picking image from camera: $e');
+    }
+  }
+
+  // Adds another photo to an already-open multi photo preview screen
+  Future<void> addImageFromCamera() async {
+    try {
+      final XFile? image =
+          await _picker.pickImage(source: ImageSource.camera, imageQuality: 25);
+      if (image != null) {
+        selectedImages.value.add(File(image.path));
+        selectedXImages.value.add(image);
+        selectedImages.refresh();
+        selectedXImages.refresh();
+      }
+    } catch (e) {
+      print('Error picking additional image from camera: $e');
+    }
+  }
+
+  // Launches the native document scanner (auto edge-detection + draggable
+  // corner crop) for one page and appends the result to the shared
+  // selectedImages/selectedXImages collection used by PhotoPreviewMultiple.
+  Future<void> scanDocumentPage() async {
+    try {
+      final result =
+          await FlutterDocScanner().getScannedDocumentAsImages(page: 1);
+      if (result == null || result.images.isEmpty) return;
+
+      for (final rawPath in result.images) {
+        final file = rawPath.startsWith('file://')
+            ? File.fromUri(Uri.parse(rawPath))
+            : File(rawPath);
+        selectedImages.value.add(file);
+        selectedXImages.value.add(XFile(file.path));
+      }
+      selectedImages.refresh();
+      selectedXImages.refresh();
+    } catch (e) {
+      print('Error scanning document: $e');
     }
   }
 

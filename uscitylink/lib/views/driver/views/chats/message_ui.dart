@@ -23,6 +23,7 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
+import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/widgets/audio_record_widget.dart';
 import 'package:uuid/uuid.dart';
 
@@ -250,12 +251,13 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-          child: AppBar(
+        backgroundColor: const Color(0xFFF5F6FA),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(24)),
+            child: AppBar(
               backgroundColor: TColors.navyHeader,
               iconTheme: const IconThemeData(color: Colors.white),
               elevation: 0,
@@ -304,18 +306,20 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     InkWell(
-                        onTap: () {
-                          imagePickerController.pickImageFromCamera(
-                              messageController.channelId.value,
-                              "chat",
-                              "",
-                              "driver_chat",
-                              "");
-                        },
-                        child: const Icon(
-                          Icons.add_a_photo_rounded,
-                          color: Colors.white,
-                        )),
+                      onTap: () {
+                        imagePickerController.pickImageFromCameraMultiple(
+                            messageController.channelId.value,
+                            "chat",
+                            "",
+                            "driver_chat",
+                            "",
+                            "driver");
+                      },
+                      child: const Icon(
+                        Icons.add_a_photo_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(
                       width: 10,
                     ),
@@ -329,9 +333,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       },
                       child: Icon(
                         Icons.push_pin_rounded,
-                        color: pinMessage == "1"
-                            ? Colors.amber
-                            : Colors.white,
+                        color: pinMessage == "1" ? Colors.amber : Colors.white,
                       ),
                     ),
                     const SizedBox(
@@ -354,137 +356,93 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 ),
               ],
             ),
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
-          child: Column(
-            children: [
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    if (socketService.isConnected.value) {
-                      messageController.getChannelMessages(
-                          messageController.channelId.value,
-                          messageController.currentPage.value);
-                    }
-                  },
-                  child: Obx(() {
-                    if (messageController.messages.isEmpty &&
-                        messageController.loading.value) {
-                      return Center(
-                        child: CircularProgressIndicator(),
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
+            child: Column(
+              children: [
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      if (socketService.isConnected.value) {
+                        messageController.getChannelMessages(
+                            messageController.channelId.value,
+                            messageController.currentPage.value);
+                      }
+                    },
+                    child: Obx(() {
+                      if (messageController.messages.isEmpty &&
+                          messageController.loading.value) {
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      if (messageController.messages.isEmpty &&
+                          !messageController.loading.value) {
+                        return Center(
+                            child: SizedBox(
+                          height: 100,
+                          width: 100,
+                          child: InkWell(
+                            onTap: () {
+                              socketService.sendMessage("Hi", null,
+                                  messageController.channelId.value);
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.waving_hand,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(
+                                  height: 10,
+                                ),
+                                Text("Say Hi",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.copyWith(color: Colors.grey.shade700))
+                              ],
+                            ),
+                          ),
+                        ));
+                      }
+                      return ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        itemCount: messageController.messages.length,
+                        itemBuilder: (context, index) {
+                          // if (index == messageController.messages.length - 1) {
+                          //   if (messageController.loading.value) {
+                          //     return Padding(
+                          //       padding: const EdgeInsets.all(8.0),
+                          //       child: Center(child: CircularProgressIndicator()),
+                          //     );
+                          //   } else {
+                          //     return SizedBox.shrink();
+                          //   }
+                          // }
+                          return _buildChatMessage(
+                              messageController.messages[index],
+                              messageController,
+                              _focusNode,
+                              socketService);
+                        },
                       );
-                    }
-                    if (messageController.messages.isEmpty &&
-                        !messageController.loading.value) {
-                      return Center(
-                          child: SizedBox(
-                        height: 100,
-                        width: 100,
-                        child: InkWell(
-                          onTap: () {
-                            socketService.sendMessage(
-                                "Hi", null, messageController.channelId.value);
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.waving_hand,
-                                color: Colors.orange,
-                              ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              Text("Say Hi",
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.copyWith(color: Colors.grey.shade700))
-                            ],
-                          ),
-                        ),
-                      ));
-                    }
-                    return ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      itemCount: messageController.messages.length,
-                      itemBuilder: (context, index) {
-                        // if (index == messageController.messages.length - 1) {
-                        //   if (messageController.loading.value) {
-                        //     return Padding(
-                        //       padding: const EdgeInsets.all(8.0),
-                        //       child: Center(child: CircularProgressIndicator()),
-                        //     );
-                        //   } else {
-                        //     return SizedBox.shrink();
-                        //   }
-                        // }
-                        return _buildChatMessage(
-                            messageController.messages[index],
-                            messageController,
-                            _focusNode,
-                            socketService);
-                      },
-                    );
-                  }),
+                    }),
+                  ),
                 ),
-              ),
-              Obx(() {
-                return messageController.typing.value
-                    ? Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          width: TDeviceUtils.getScreenWidth(context) * 0.5,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            child: Obx(() {
-                              return Text(
-                                messageController.typingMessage.value,
-                                style: TextStyle(
-                                    color: Colors.grey.shade700, fontSize: 13),
-                              );
-                            }),
-                          ),
-                        ),
-                      )
-                    : Container();
-              }),
-              Obx(
-                () {
-                  // ignore: unnecessary_null_comparison
-                  return messageController.selectedRplyMessage.value.id != null
+                Obx(() {
+                  return messageController.typing.value
                       ? Align(
                           alignment: Alignment.centerLeft,
                           child: Container(
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border(
-                                  left: BorderSide(
-                                      color: messageController
-                                                  .selectedRplyMessage
-                                                  .value
-                                                  .messageDirection ==
-                                              "R"
-                                          ? const Color(0xFF2E5BFF)
-                                          : Colors.amber,
-                                      width: 4)),
+                              borderRadius: BorderRadius.circular(14),
                               color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
@@ -494,253 +452,305 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                 ),
                               ],
                             ),
-                            width: TDeviceUtils.getScreenWidth(context) * 1,
+                            width: TDeviceUtils.getScreenWidth(context) * 0.5,
                             child: Padding(
-                              padding: const EdgeInsets.only(
-                                  bottom: 8.0, right: 8.0, left: 8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SizedBox(
-                                    height: 5,
-                                  ),
-                                  Obx(() {
-                                    return Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          textAlign: TextAlign.start,
-                                          messageController.selectedRplyMessage
-                                                      .value.messageDirection ==
-                                                  "R"
-                                              ? "You"
-                                              : "${messageController.selectedRplyMessage.value.sender?.username}(staff)",
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black87,
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                        InkWell(
-                                          onTap: () {
-                                            messageController
-                                                .selectedRplyMessage
-                                                .value = MessageModel();
-                                            FocusScope.of(context).unfocus();
-                                          },
-                                          child: Container(
-                                            height: 20,
-                                            width: 20,
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                  color: messageController
-                                                              .selectedRplyMessage
-                                                              .value
-                                                              .messageDirection ==
-                                                          "R"
-                                                      ? Colors.blue
-                                                      : Colors.amber),
-                                              borderRadius:
-                                                  BorderRadius.circular(50),
-                                            ),
-                                            child: Center(
-                                                child: Icon(
-                                              Icons.close_rounded,
-                                              size: 12,
-                                              color: messageController
-                                                          .selectedRplyMessage
-                                                          .value
-                                                          .messageDirection ==
-                                                      "R"
-                                                  ? Colors.blue
-                                                  : Colors.amber,
-                                            )),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }),
-                                  if (messageController
-                                              .selectedRplyMessage.value.url !=
-                                          null &&
-                                      messageController.selectedRplyMessage
-                                          .value.url!.isNotEmpty)
-                                    AttachementUi(
-                                      directionType: messageController
-                                          .selectedRplyMessage
-                                          .value
-                                          .messageDirection!,
-                                      fileUrl:
-                                          "${Constant.aws}/${messageController.selectedRplyMessage.value.url}",
-                                      thumbnail:
-                                          "${Constant.aws}/${messageController.selectedRplyMessage.value.thumbnail}",
-                                    ),
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    messageController
-                                        .selectedRplyMessage.value.body!,
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              child: Obx(() {
+                                return Text(
+                                  messageController.typingMessage.value,
+                                  style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13),
+                                );
+                              }),
                             ),
                           ),
                         )
-                      : SizedBox();
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    Obx(() {
-                      return Row(
-                        children: [
-                          // Text Field for typing the message
-                          if (!_audioController.isRecording.value)
-                            Expanded(
+                      : Container();
+                }),
+                Obx(
+                  () {
+                    // ignore: unnecessary_null_comparison
+                    return messageController.selectedRplyMessage.value.id !=
+                            null
+                        ? Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border(
+                                    left: BorderSide(
+                                        color: messageController
+                                                    .selectedRplyMessage
+                                                    .value
+                                                    .messageDirection ==
+                                                "R"
+                                            ? const Color(0xFF2E5BFF)
+                                            : Colors.amber,
+                                        width: 4)),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              width: TDeviceUtils.getScreenWidth(context) * 1,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    bottom: 8.0, right: 8.0, left: 8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Obx(() {
+                                      return Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            textAlign: TextAlign.start,
+                                            messageController
+                                                        .selectedRplyMessage
+                                                        .value
+                                                        .messageDirection ==
+                                                    "R"
+                                                ? "You"
+                                                : "${messageController.selectedRplyMessage.value.sender?.username}(staff)",
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                          InkWell(
+                                            onTap: () {
+                                              messageController
+                                                  .selectedRplyMessage
+                                                  .value = MessageModel();
+                                              FocusScope.of(context).unfocus();
+                                            },
+                                            child: Container(
+                                              height: 20,
+                                              width: 20,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                    color: messageController
+                                                                .selectedRplyMessage
+                                                                .value
+                                                                .messageDirection ==
+                                                            "R"
+                                                        ? Colors.blue
+                                                        : Colors.amber),
+                                                borderRadius:
+                                                    BorderRadius.circular(50),
+                                              ),
+                                              child: Center(
+                                                  child: Icon(
+                                                Icons.close_rounded,
+                                                size: 12,
+                                                color: messageController
+                                                            .selectedRplyMessage
+                                                            .value
+                                                            .messageDirection ==
+                                                        "R"
+                                                    ? Colors.blue
+                                                    : Colors.amber,
+                                              )),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }),
+                                    if (messageController.selectedRplyMessage
+                                                .value.url !=
+                                            null &&
+                                        messageController.selectedRplyMessage
+                                            .value.url!.isNotEmpty)
+                                      AttachementUi(
+                                        directionType: messageController
+                                            .selectedRplyMessage
+                                            .value
+                                            .messageDirection!,
+                                        fileUrl:
+                                            "${Constant.aws}/${messageController.selectedRplyMessage.value.url}",
+                                        thumbnail:
+                                            "${Constant.aws}/${messageController.selectedRplyMessage.value.thumbnail}",
+                                      ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      messageController
+                                          .selectedRplyMessage.value.body!,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox();
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      Obx(() {
+                        return Row(
+                          children: [
+                            // Text Field for typing the message
+                            if (!_audioController.isRecording.value)
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(26),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: TextField(
+                                    onChanged: (text) {
+                                      if (text.isNotEmpty) {
+                                        messageController.startTyping(
+                                            widget.channelId); // Start typing
+                                      } else {
+                                        messageController.stopTyping(widget
+                                            .channelId); // Stop typing if text is empty
+                                      }
+                                    },
+                                    controller: _controller,
+                                    focusNode: _focusNode,
+                                    decoration: InputDecoration(
+                                      hintText: "Type your message...",
+                                      hintStyle: TextStyle(
+                                          color: Colors.grey.shade500),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(26),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 12),
+                                      suffixIcon: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.attachment_rounded,
+                                                color: Colors.grey.shade500),
+                                            onPressed: () {
+                                              // Handle the icon press action
+                                              Get.bottomSheet(
+                                                AttachmentBottomSheet(
+                                                  channelId: messageController
+                                                      .channelId.value,
+                                                ),
+                                                isScrollControlled: true,
+                                                backgroundColor: Colors.white,
+                                              );
+                                            },
+                                          ),
+                                          if (!_audioController
+                                              .isRecording.value)
+                                            Obx(
+                                              () => IconButton(
+                                                icon: Icon(
+                                                    _audioController
+                                                            .isRecording.value
+                                                        ? Icons.stop
+                                                        : Icons.mic_rounded,
+                                                    size: 24),
+                                                color: _audioController
+                                                        .isRecording.value
+                                                    ? const Color(0xFFEF4444)
+                                                    : const Color(0xFF2E5BFF),
+                                                onPressed: () {
+                                                  if (socketService
+                                                          .isConnected.value ==
+                                                      false) {
+                                                    Get.snackbar(
+                                                      "Connection",
+                                                      "No Internet Connection",
+                                                      backgroundColor:
+                                                          Colors.grey,
+                                                      colorText: Colors.white,
+                                                    );
+                                                    socketService
+                                                        .connectSocket();
+                                                  } else {
+                                                    _audioController
+                                                            .isRecording.value
+                                                        ? _audioController
+                                                            .stopRecording()
+                                                        : _audioController
+                                                            .startRecording();
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (_audioController.isRecording.value)
+                              AudioRecordWidget(
+                                  audioController: _audioController),
+                            const SizedBox(width: 8),
+                            // Plus button to send the message
+                            GestureDetector(
+                              onTap: () {
+                                if (_audioController.isRecording.value) {
+                                  _audioController.sendAudio(widget.channelId,
+                                      "media", "message", "", "driver", "");
+                                } else {
+                                  _sendMessage();
+                                }
+                              },
                               child: Container(
+                                height: 50,
+                                width: 50,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: TColors.navyHeader,
                                   borderRadius: BorderRadius.circular(26),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color:
+                                          TColors.navyHeader.withOpacity(0.3),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
-                                child: TextField(
-                                onChanged: (text) {
-                                  if (text.isNotEmpty) {
-                                    messageController.startTyping(
-                                        widget.channelId); // Start typing
-                                  } else {
-                                    messageController.stopTyping(widget
-                                        .channelId); // Stop typing if text is empty
-                                  }
-                                },
-                                controller: _controller,
-                                focusNode: _focusNode,
-                                decoration: InputDecoration(
-                                  hintText: "Type your message...",
-                                  hintStyle:
-                                      TextStyle(color: Colors.grey.shade500),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(26),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  suffixIcon: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.attachment_rounded,
-                                            color: Colors.grey.shade500),
-                                        onPressed: () {
-                                          // Handle the icon press action
-                                          Get.bottomSheet(
-                                            AttachmentBottomSheet(
-                                              channelId: messageController
-                                                  .channelId.value,
-                                            ),
-                                            isScrollControlled: true,
-                                            backgroundColor: Colors.white,
-                                          );
-                                        },
-                                      ),
-                                      if (!_audioController.isRecording.value)
-                                        Obx(
-                                          () => IconButton(
-                                            icon: Icon(
-                                                _audioController
-                                                        .isRecording.value
-                                                    ? Icons.stop
-                                                    : Icons.mic_rounded,
-                                                size: 24),
-                                            color: _audioController
-                                                    .isRecording.value
-                                                ? const Color(0xFFEF4444)
-                                                : const Color(0xFF2E5BFF),
-                                            onPressed: () {
-                                              if (socketService
-                                                      .isConnected.value ==
-                                                  false) {
-                                                Get.snackbar(
-                                                  "Connection",
-                                                  "No Internet Connection",
-                                                  backgroundColor: Colors.grey,
-                                                  colorText: Colors.white,
-                                                );
-                                                socketService.connectSocket();
-                                              } else {
-                                                _audioController
-                                                        .isRecording.value
-                                                    ? _audioController
-                                                        .stopRecording()
-                                                    : _audioController
-                                                        .startRecording();
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                                child: const Icon(
+                                  Icons.send_rounded,
+                                  color: Colors.white,
                                 ),
                               ),
-                              ),
                             ),
-                          if (_audioController.isRecording.value)
-                            AudioRecordWidget(
-                                audioController: _audioController),
-                          const SizedBox(width: 8),
-                          // Plus button to send the message
-                          GestureDetector(
-                            onTap: () {
-                              if (_audioController.isRecording.value) {
-                                _audioController.sendAudio(widget.channelId,
-                                    "media", "message", "", "driver", "");
-                              } else {
-                                _sendMessage();
-                              }
-                            },
-                            child: Container(
-                              height: 50,
-                              width: 50,
-                              decoration: BoxDecoration(
-                                color: TColors.navyHeader,
-                                borderRadius: BorderRadius.circular(26),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        TColors.navyHeader.withOpacity(0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.send_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    })
-                  ],
+                          ],
+                        );
+                      })
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1332,16 +1342,27 @@ class AttachmentBottomSheet extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                  imagePickerController.pickImageFromGallery(
-                      channelId, "chat", "", "driver_chat", "", "driver");
+                  if (_socketService.isConnected.value == false) {
+                    Get.snackbar(
+                      "Connection",
+                      "No Internet Connection",
+                      backgroundColor: Colors.grey,
+                      colorText: Colors.white,
+                    );
+                    _socketService.connectSocket();
+                  } else {
+                    Get.back();
+                    Get.to(() => ScanDocumentView(presetChannelId: channelId));
+                  }
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _attachIcon(Icons.photo_rounded, const Color(0xFF2E5BFF)),
+                    _attachIcon(Icons.document_scanner_rounded,
+                        const Color(0xFF2E5BFF)),
                     const SizedBox(height: 8),
-                    Text("Photos",
+                    Text("Scan",
                         style: Theme.of(context).textTheme.titleSmall)
                   ],
                 ),
@@ -1357,8 +1378,8 @@ class AttachmentBottomSheet extends StatelessWidget {
                     );
                     _socketService.connectSocket();
                   } else {
-                    imagePickerController.pickImageFromCamera(
-                        channelId, "chat", "", "driver_chat", "");
+                    imagePickerController.pickImageFromCameraMultiple(
+                        channelId, "chat", "", "driver_chat", "", "driver");
                   }
                 },
                 child: Column(
@@ -1435,7 +1456,8 @@ class AttachmentBottomSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _attachIcon(Icons.videocam_rounded, const Color(0xFF9333EA)),
+                    _attachIcon(
+                        Icons.videocam_rounded, const Color(0xFF9333EA)),
                     const SizedBox(height: 8),
                     Text("Video", style: Theme.of(context).textTheme.titleSmall)
                   ],
@@ -1460,8 +1482,8 @@ class AttachmentBottomSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _attachIcon(
-                        Icons.insert_drive_file_rounded, const Color(0xFFF59E0B)),
+                    _attachIcon(Icons.insert_drive_file_rounded,
+                        const Color(0xFFF59E0B)),
                     const SizedBox(height: 8),
                     Text("Files", style: Theme.of(context).textTheme.titleSmall)
                   ],

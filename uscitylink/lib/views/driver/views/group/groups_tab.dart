@@ -4,14 +4,22 @@ import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/widegts/chat_list_tile.dart';
 
 class GroupTab extends StatelessWidget {
   final GroupController groupController;
+  final bool selectionMode;
+  final ChatTargetSelected? onTargetSelected;
 
   SocketService socketServive = Get.find<SocketService>();
 
-  GroupTab({super.key, required this.groupController});
+  GroupTab({
+    super.key,
+    required this.groupController,
+    this.selectionMode = false,
+    this.onTargetSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +60,13 @@ class GroupTab extends StatelessWidget {
                     );
                   },
                   onTap: () {
+                    if (selectionMode) {
+                      onTargetSelected?.call(
+                          group.group!.groupChannel!.channelId!,
+                          group.groupId,
+                          group.group?.name ?? 'Unnamed Group');
+                      return;
+                    }
                     socketServive.addUserToGroup(
                         group.group!.groupChannel!.channelId!,
                         group.groupId!);
