@@ -603,6 +603,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                     children: [
                       Obx(() {
                         return Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             // Text Field for typing the message
                             if (!_audioController.isRecording.value)
@@ -631,6 +632,10 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                     },
                                     controller: _controller,
                                     focusNode: _focusNode,
+                                    keyboardType: TextInputType.multiline,
+                                    textInputAction: TextInputAction.newline,
+                                    minLines: 1,
+                                    maxLines: 6,
                                     decoration: InputDecoration(
                                       hintText: "Type your message...",
                                       hintStyle: TextStyle(
@@ -644,6 +649,37 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                       contentPadding:
                                           const EdgeInsets.symmetric(
                                               horizontal: 16, vertical: 12),
+                                      prefixIconConstraints: const BoxConstraints(
+                                          minWidth: 44, minHeight: 44),
+                                      suffixIconConstraints: const BoxConstraints(
+                                          minWidth: 44, minHeight: 44),
+                                      prefixIcon: IconButton(
+                                        icon: Icon(Icons.camera_alt_rounded,
+                                            color: Colors.grey.shade500),
+                                        onPressed: () {
+                                          if (socketService
+                                                  .isConnected.value ==
+                                              false) {
+                                            Get.snackbar(
+                                              "Connection",
+                                              "No Internet Connection",
+                                              backgroundColor: Colors.grey,
+                                              colorText: Colors.white,
+                                            );
+                                            socketService.connectSocket();
+                                          } else {
+                                            imagePickerController
+                                                .pickImageFromCameraMultiple(
+                                                    messageController
+                                                        .channelId.value,
+                                                    "chat",
+                                                    "",
+                                                    "driver_chat",
+                                                    "",
+                                                    "driver");
+                                          }
+                                        },
+                                      ),
                                       suffixIcon: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [

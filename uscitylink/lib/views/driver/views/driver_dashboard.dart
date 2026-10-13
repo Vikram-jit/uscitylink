@@ -218,7 +218,7 @@ class _DriverDashboardState extends State<DriverDashboard>
                         right: AppSpacing.lg,
                         bottom: 0,
                         child: SizedBox(
-                          height: 90,
+                          height: 100,
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -230,7 +230,22 @@ class _DriverDashboardState extends State<DriverDashboard>
                                   caption: '',
                                   gradient: AppGradients.messages,
                                   glowColor: TColors.violet,
-                                  onTap: () => Get.to(() => ChatView()),
+                                  onTap: () {
+                                    final channelId = dashboard.channel?.id;
+                                    if (channelId == null) {
+                                      Get.to(() => ChatView());
+                                      return;
+                                    }
+                                    socketService
+                                        .updateActiveChannel(channelId);
+                                    Get.toNamed(
+                                      AppRoutes.driverMessage,
+                                      arguments: {
+                                        'channelId': channelId,
+                                        'name': dashboard.channel?.name,
+                                      },
+                                    );
+                                  },
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
@@ -640,7 +655,7 @@ class _KpiCard extends StatelessWidget {
                   child: Icon(icon, color: gradient.colors.last, size: 18),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                Expanded(
+                Flexible(
                   child: Text(
                     value,
                     textAlign: TextAlign.left,
@@ -660,11 +675,13 @@ class _KpiCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.bodySm.copyWith(color: Colors.white),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.bodySm.copyWith(color: Colors.white),
+                      ),
                     ),
                     Container(
                       width: 22,

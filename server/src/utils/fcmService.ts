@@ -1,6 +1,7 @@
 // /src/services/fcmService.ts
 import * as admin from "firebase-admin";
 import * as path from "path";
+import { UserProfile } from "../models/UserProfile";
 
 // Initialize Firebase Admin SDK with a service account
 const serviceAccount = require(path.resolve(
@@ -57,8 +58,10 @@ export const sendNotificationToDevice = async (
     ) {
       console.warn("⚠️ Invalid FCM token. Removing from DB:", deviceToken);
 
-      // OPTIONAL: remove token from DB here
-      // await deleteDeviceToken(deviceToken);
+      await UserProfile.update(
+        { device_token: null },
+        { where: { device_token: deviceToken } }
+      );
 
       return null; // ⛔ DO NOT throw
     }
