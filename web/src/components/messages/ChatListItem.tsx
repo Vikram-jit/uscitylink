@@ -15,6 +15,7 @@ import { MessageProps } from './types';
 import { formatDate, toggleMessagesPane } from './utils';
 import { useDispatch } from 'react-redux';
 import { apiSlice } from '@/redux/apiSlice';
+import { chat } from '@/styles/theme/chat-tokens';
 
 type ChatListItemProps = ListItemButtonProps & {
   id: string;
@@ -54,14 +55,11 @@ export default function ChatListItem(props: ChatListItemProps) {
             flexDirection: 'column',
             alignItems: 'initial',
             gap: 1,
-            '&.Mui-selected': {
-              backgroundColor: 'primary.main',
-              color: 'white',
-            },
-            '&:hover': {
-              backgroundColor: 'primary.light',
-              color: 'black',
-            },
+            px: 2,
+            py: 1.5,
+            transition: 'background-color 0.15s ease',
+            '&.Mui-selected, &.Mui-selected:hover': chat.rowSelected,
+            '&:hover': chat.rowHover,
           }}
         >
           <Stack direction="row" spacing={1.5}>
@@ -86,7 +84,13 @@ export default function ChatListItem(props: ChatListItemProps) {
             </Box>
             <Box sx={{ lineHeight: 1.5, textAlign: 'right' }}>
               {user?.unreadCount > 0 && (
-                <Chip variant="filled" color="primary" size="small" label={user?.unreadCount} sx={{ ml: 1 }} />
+                <Chip
+                  variant="filled"
+                  color="primary"
+                  size="small"
+                  label={user?.unreadCount}
+                  sx={{ ml: 1, backgroundColor: 'primary.main', color: '#fff', fontWeight: 600, height: 20, borderRadius: '99px' }}
+                />
               )}
               <Typography variant="caption" noWrap sx={{ display: { xs: 'none', md: 'block' } }}>
                 {formatDate(user?.last_message?.messageTimestampUtc)}

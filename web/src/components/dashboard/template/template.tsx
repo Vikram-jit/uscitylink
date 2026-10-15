@@ -105,7 +105,7 @@ export default function Template() {
   }
 
   return (
-    <Card elevation={5} sx={{ background: '#fff' }}>
+    <Card elevation={5} sx={{ background: 'var(--mui-palette-background-paper)' }}>
       <CardContent>
         <Grid container marginTop={2}>
           <Grid xs={12} md={12}>

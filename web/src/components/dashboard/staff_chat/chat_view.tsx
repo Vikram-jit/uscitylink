@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState } from '@/components/core/empty-state';
+import { chat } from '@/styles/theme/chat-tokens';
 
 import React, { useEffect, useState } from 'react';
 import { apiSlice } from '@/redux/apiSlice';
@@ -65,7 +67,7 @@ const MessagesContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column-reverse',
   gap: '10px',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--mui-palette-background-paper)',
 });
 
 const ChatView: React.FC = () => {
@@ -494,8 +496,8 @@ const ChatView: React.FC = () => {
     <Box display="flex" height="90vh">
       {open && <AddMemberDialog open={open} setOpen={setOpen} />}
       {/* Contact List */}
-      <Box width="25%" borderRight="1px solid #ccc">
-        <Box display={'flex'} borderBottom="1px solid #ccc" justifyContent={'space-between'} alignItems={'center'}>
+      <Box width="25%" borderRight="1px solid var(--mui-palette-divider)">
+        <Box display={'flex'} borderBottom="1px solid var(--mui-palette-divider)" justifyContent={'space-between'} alignItems={'center'}>
           <Typography variant="h6" p={2}>
             Staff List
           </Typography>
@@ -524,14 +526,8 @@ const ChatView: React.FC = () => {
                   sx={{
                     alignItems: 'initial',
                     gap: 1,
-                    '&.Mui-selected': {
-                      backgroundColor: 'primary.main',
-                      color: 'white',
-                    },
-                    '&:hover': {
-                      backgroundColor: 'primary.light',
-                      color: 'black',
-                    },
+                    '&.Mui-selected, &.Mui-selected:hover': chat.rowSelected,
+                            '&:hover': chat.rowHover,
                   }}
                   onClick={() => {
                     if (socket) {
@@ -576,13 +572,13 @@ const ChatView: React.FC = () => {
                           <Typography>{contact.username}</Typography>
                           <Typography
                             sx={{
-                              color: 'grey',
+                              color: 'text.secondary',
                               overflow: 'hidden',
                               display: '-webkit-box',
                               WebkitBoxOrient: 'vertical',
                               WebkitLineClamp: 2,
                               '&:hover': {
-                                color: 'grey',
+                                color: 'text.secondary',
                               },
                             }}
                           >
@@ -751,7 +747,7 @@ const ChatView: React.FC = () => {
                 {userTyping && (
                   <div
                     style={{
-                      background: 'gray',
+                      background: 'var(--mui-palette-neutral-500)',
                       borderRadius: '6px',
                       padding: '10px',
                       width: '50%',
@@ -767,7 +763,7 @@ const ChatView: React.FC = () => {
                   </div>
                 )}
                 {selectedMessageToReply && (
-                  <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'white', borderLeft: '6px solid blue' }}>
+                  <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'var(--mui-palette-background-paper)', borderLeft: '6px solid blue' }}>
                     {selectedMessageToReply?.url ? (
                       <Paper
                         variant="outlined"
@@ -820,7 +816,7 @@ const ChatView: React.FC = () => {
                     )}
                   </Box>
                 )}
-                <Box display="flex" p={2} borderTop="1px solid #ccc">
+                <Box display="flex" p={2} borderTop="1px solid var(--mui-palette-divider)">
                   <input
                     id="file-input-vedio"
                     type="file"
@@ -887,9 +883,7 @@ const ChatView: React.FC = () => {
             )}
           </>
         ) : (
-          <Typography variant="h6" p={2}>
-            Select a contact to start chatting
-          </Typography>
+          <EmptyState title="Select a teammate" description="Pick someone from the staff list to start a conversation." />
         )}
       </Box>
       {previewDialogOpen && (

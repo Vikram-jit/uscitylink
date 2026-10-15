@@ -1,4 +1,5 @@
 'use client';
+import { EmptyState } from '@/components/core/empty-state';
 
 import React from 'react';
 import { Box, Paper, Typography, useMediaQuery, useTheme } from '@mui/material';
@@ -143,9 +144,7 @@ currentChatId,
             justifyContent: 'center',
           }}
         >
-          <Typography variant="h6" color="text.secondary">
-            No chats available
-          </Typography>
+          <EmptyState title="Select a truck chat" description="Choose a truck on the left to read and reply to its group conversation." />
         </Box>
       )}
     </Box>

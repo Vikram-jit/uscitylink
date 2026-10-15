@@ -37,9 +37,9 @@ const pickerSx = {
     height: 36,
     fontSize: 13,
     borderRadius: '8px',
-    bgcolor: '#F8F9FB',
+    bgcolor: 'var(--mui-palette-background-level1)',
   },
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E0E4EC' },
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--mui-palette-divider)' },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -127,10 +127,10 @@ export default function MediaPane({
         <Paper
           elevation={0}
           sx={{
-            borderBottom: '1px solid #E8ECF4',
+            borderBottom: '1px solid var(--mui-palette-divider)',
             px: 2,
             py: 1.25,
-            bgcolor: '#FAFBFD',
+            bgcolor: 'var(--mui-palette-background-level1)',
             flexShrink: 0,
           }}
         >
@@ -143,13 +143,13 @@ export default function MediaPane({
               value={mediaType}
               exclusive
               onChange={(_, v) => { if (v) { setMediaType(v); setPage(1); } }}
-              sx={{ '& .MuiToggleButton-root': { px: 2, py: 0.5, fontSize: 12, fontWeight: 600, borderRadius: '8px !important', border: '1px solid #E0E4EC !important' } }}
+              sx={{ '& .MuiToggleButton-root': { px: 2, py: 0.5, fontSize: 12, fontWeight: 600, borderRadius: '8px !important', border: '1px solid var(--mui-palette-divider) !important' } }}
             >
               <ToggleButton value="media">Media</ToggleButton>
               <ToggleButton value="doc">Docs</ToggleButton>
             </ToggleButtonGroup> */}
 
-            {/* <Box sx={{ width: 1, height: 24, bgcolor: '#E8ECF4', mx: 0.5 }} /> */}
+            {/* <Box sx={{ width: 1, height: 24, bgcolor: 'var(--mui-palette-divider)', mx: 0.5 }} /> */}
 
             {/* Filter label */}
             <Stack direction="row" alignItems="center" spacing={0.5}>
@@ -176,7 +176,7 @@ export default function MediaPane({
                   px: 1.5,
                   py: 0.5,
                   textTransform: 'none',
-                  borderColor: '#E0E4EC',
+                  borderColor: 'var(--mui-palette-divider)',
                 }}
               >
                 Single Day
@@ -197,7 +197,7 @@ export default function MediaPane({
                   px: 1.5,
                   py: 0.5,
                   textTransform: 'none',
-                  borderColor: '#E0E4EC',
+                  borderColor: 'var(--mui-palette-divider)',
                 }}
               >
                 Date Range
@@ -215,12 +215,12 @@ export default function MediaPane({
                     onDelete={clearFilter}
                     deleteIcon={<Close sx={{ fontSize: '13px !important' }} />}
                     sx={{
-                      bgcolor: '#EEF3FF',
-                      color: '#3B6BEF',
+                      bgcolor: 'rgba(var(--mui-palette-primary-mainChannel) / 0.08)',
+                      color: 'var(--mui-palette-primary-main)',
                       fontWeight: 600,
                       fontSize: 11,
-                      '& .MuiChip-icon': { color: '#3B6BEF' },
-                      '& .MuiChip-deleteIcon': { color: '#3B6BEF' },
+                      '& .MuiChip-icon': { color: 'var(--mui-palette-primary-main)' },
+                      '& .MuiChip-deleteIcon': { color: 'var(--mui-palette-primary-main)' },
                       border: '1px solid #C5D5FB',
                     }}
                   />
@@ -310,7 +310,7 @@ export default function MediaPane({
                       aspectRatio: '1',
                       borderRadius: '10px',
                       overflow: 'hidden',
-                      border: '1px solid #E8ECF4',
+                      border: '1px solid var(--mui-palette-divider)',
                       cursor: 'pointer',
                       transition: 'box-shadow 0.15s, transform 0.15s',
                       '&:hover': {
@@ -354,7 +354,7 @@ export default function MediaPane({
           ) : (
             /* ── Empty state ── */
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 220, gap: 1.5 }}>
-              <CalendarMonth sx={{ fontSize: 52, color: '#D0D7E8' }} />
+              <CalendarMonth sx={{ fontSize: 52, color: 'var(--mui-palette-text-disabled)' }} />
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
                 {hasFilter ? 'No media for this date range' : `No ${mediaType === 'media' ? 'media' : 'documents'} yet`}
               </Typography>
@@ -369,7 +369,7 @@ export default function MediaPane({
 
         {/* ── Pagination ──────────────────────────────────── */}
         {(data?.data?.totalPages ?? 0) > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 1.5, borderTop: '1px solid #E8ECF4', flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 1.5, borderTop: '1px solid var(--mui-palette-divider)', flexShrink: 0 }}>
             <Pagination
               count={data?.data?.totalPages ?? 1}
               page={page}

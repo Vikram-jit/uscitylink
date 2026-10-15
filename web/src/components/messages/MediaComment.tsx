@@ -22,6 +22,8 @@ interface MediaComponent {
   dateTime?: Date;
   onClick?: () => void;
   createAt?: string | Date
+  // Used if the primary image URL fails (e.g. the file moved from the API server to S3)
+  fallbackUrl?: string
 }
 
 // ── UTC timestamp pill overlay ──────────────────────────────
@@ -68,9 +70,16 @@ export default function MediaComponent({
   messageDirection,
   dateTime,
   onClick,
-  createAt
+  createAt,
+  fallbackUrl
 }: MediaComponent) {
   const [openDocument, setOpenDocument] = useState<boolean>(false);
+  const [imageSrc, setImageSrc] = useState<string>(url);
+  React.useEffect(() => setImageSrc(url), [url]);
+  // Switch to the fallback once, never loop
+  const handleImageError = () => {
+    if (fallbackUrl && imageSrc !== fallbackUrl) setImageSrc(fallbackUrl);
+  };
 
   const file = name?.split('/');
 
@@ -137,7 +146,7 @@ export default function MediaComponent({
       );
 
     // ── JPEG (trailing-space variant) ────────────────────────
-    case '.jpeg ':
+    case '.jpeg':
       return (
         <>
           {type === 'not-upload' ? (
@@ -148,7 +157,7 @@ export default function MediaComponent({
           ) : (
             <Box sx={{ position: 'relative', display: 'inline-flex' }}>
               <IconButton onClick={onClick}>
-                <img src={url} alt="" />
+                <img src={imageSrc} alt="" onError={handleImageError} />
               </IconButton>
               <TimestampBadge dateTime={createAt} />
             </Box>
@@ -178,8 +187,11 @@ export default function MediaComponent({
             <Box sx={{ position: 'relative', display: 'inline-flex' }}>
               <IconButton onClick={onClick}>
                 <Image
+                  unoptimized
                   height={height || 60}
-                  src={url}
+                  src={imageSrc}
+
+                  onError={handleImageError}
                   alt=""
                   width={181}
                   style={{ height: height || 200, width: 181, objectFit: 'contain' }}
@@ -216,7 +228,9 @@ export default function MediaComponent({
                 <Image
                   unoptimized={true}
                   height={height || 60}
-                  src={url}
+                  src={imageSrc}
+
+                  onError={handleImageError}
                   alt=""
                   width={181}
                   style={{ height: height || 200, width: 181, objectFit: 'contain' }}
@@ -236,7 +250,7 @@ export default function MediaComponent({
           <Box sx={{ position: 'relative', display: 'inline-flex' }}>
             <IconButton onClick={onClick}>
               <Box display="flex" flexDirection="column" alignItems="center">
-                <FilePdf style={{ color: 'red' }} size={45} />
+                <FilePdf style={{ color: 'error.main' }} size={45} />
                 <Typography variant="subtitle2">{file_name}</Typography>
               </Box>
             </IconButton>
@@ -274,7 +288,9 @@ export default function MediaComponent({
                     <Image
                       unoptimized={true}
                       height={height || 60}
-                      src={url}
+                      src={imageSrc}
+
+                      onError={handleImageError}
                       alt=""
                       width={181}
                       style={{ height: height || 200, width: 181, objectFit: 'contain' }}
@@ -310,7 +326,9 @@ export default function MediaComponent({
                     <Image
                       unoptimized={true}
                       height={height || 60}
-                      src={url}
+                      src={imageSrc}
+
+                      onError={handleImageError}
                       alt=""
                       width={181}
                       style={{ height: height || 200, width: 181, objectFit: 'contain' }}
@@ -346,5 +364,6 @@ function getFileExtension(url: string) {
   const parsedUrl = new URL(url);
   const pathname = parsedUrl.pathname;
   const extension = pathname.split('.').pop();
-  return extension !== pathname ? `.${extension}` : '';
+  // Phone cameras often produce upper-case names (IMG_1.JPG); the type checks above are lower-case
+  return extension !== pathname ? `.${extension}`.toLowerCase() : '';
 }

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { UserModel } from '@/redux/models/UserModel';
+import Chip from '@mui/material/Chip';
 import { Edit, RemoveRedEye } from '@mui/icons-material';
 import { IconButton, TablePagination, Tooltip } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
@@ -66,9 +67,17 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage,
                   <TableCell>{row.user?.email}</TableCell>
                   <TableCell>{row.user?.phone_number || '-'}</TableCell>
                   <TableCell>{row.role?.name || '-'}</TableCell>
-                  <TableCell>{row.status}</TableCell>
                   <TableCell>
-                    {row.isOnline ? <Circle color="green" weight="fill" /> : <Circle color="red" weight="fill" />}
+                    <Chip color={row.status === 'active' ? 'success' : 'default'} label={row.status === 'active' ? 'Active' : row.status || '—'} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={row.isOnline ? 'success' : 'default'}
+                      icon={<Circle size={8} weight="fill" />}
+                      label={row.isOnline ? 'Online' : 'Offline'}
+                      size="small"
+                      variant="filled"
+                    />
                   </TableCell>
                   <TableCell>
                     <Tooltip title="Edit Information">

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
@@ -53,8 +54,8 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
       direction="row"
       sx={{
         justifyContent: 'space-between',
-        py: 2,
-        px: 2,
+        py: 1.5,
+        px: 2.5,
         borderBottom: '1px solid',
         borderColor: 'divider',
         backgroundColor: 'background.paper',
@@ -62,8 +63,8 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
     >
       <Stack
         direction="row"
-        spacing={2}
-        sx={{ alignItems: 'center' }}
+        spacing={1.5}
+        sx={{ alignItems: 'center', flex: '1 1 auto', minWidth: 0, pr: 2 }}
       >
         <IconButton
           color="default"
@@ -74,30 +75,39 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
           <ArrowBackIosNewRoundedIcon />
         </IconButton>
         <Avatar alt={sender?.username} src={sender?.profile_pic || ""} />
-        <div>
-          <Typography
-            variant="h6"
-            noWrap
-            sx={{ fontWeight: 'fontWeightBold' }}
+        <Box sx={{ minWidth: 0 }}>
+          <Stack alignItems="center" direction="row" spacing={1}>
+            <Typography noWrap sx={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>
+              {sender?.username}
+            </Typography>
+            <Typography color="text.secondary" noWrap sx={{ fontSize: 13 }}>
+              {sender?.user?.driver_number}
+            </Typography>
+            <Chip
+              size="small"
+              color={sender?.isOnline ? 'success' : 'default'}
+              icon={<CircleIcon sx={{ fontSize: 8 }} />}
+              label={sender?.isOnline ? 'Online' : 'Offline'}
+            />
+          </Stack>
+          <Stack
+            alignItems="center"
+            direction="row"
+            divider={<Typography color="text.disabled" component="span">·</Typography>}
+            spacing={1}
+            sx={{ color: 'text.secondary', fontSize: 13, mt: 0.25, flexWrap: 'wrap', rowGap: 0.25, '& > span': { whiteSpace: 'nowrap' } }}
           >
-            {sender?.username}({sender?.user?.driver_number})
-            
-            {sender?.isOnline && (
-              <Chip
-                size="small"
-                color="success"
-                sx={{ ml: 1 }}
-                icon={<CircleIcon sx={{ fontSize: 12 }} />}
-                label="Online"
-              />
-            )}
-          </Typography>
-          <Typography variant="h6">{sender?.user?.phone_number}</Typography>
-          <Typography variant="body1">Truck Groups: <b>{props.truckNumbers}</b></Typography>
-          <Typography marginTop={1} variant="body2">{sender?.isOnline ? "online" : sender?.last_login ? formatUtcTime(sender?.last_login) :'' }</Typography>
-        </div>
+            {sender?.user?.phone_number ? <span>{sender?.user?.phone_number}</span> : null}
+            {props.truckNumbers ? (
+              <span>
+                Truck <b style={{ color: 'var(--mui-palette-text-primary)', fontWeight: 600 }}>{props.truckNumbers}</b>
+              </span>
+            ) : null}
+            {!sender?.isOnline && sender?.last_login ? <span>Last seen {formatUtcTime(sender?.last_login)}</span> : null}
+          </Stack>
+        </Box>
       </Stack>
-      <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
+      <Stack spacing={1} direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>
 
         <Button
           onClick={()=>setMediaPanel((prev) => !prev)}

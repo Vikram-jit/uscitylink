@@ -237,7 +237,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
         height: { xs: 'calc(100vh - 5vh)', md: '92vh' },
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: 'var(--mui-palette-background-level1)',
       }}
     >
       {data?.data && userId && (
@@ -311,7 +311,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
                         <React.Fragment key={message.id}>
                           <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
                             {message.messageDirection !== 'S' && (
-                              <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                              <AvatarWithStatus online={message?.sender?.isOnline} />
                             )}
                             <ChatBubble
                               truckNumbers={data?.data?.truckNumbers}
@@ -353,7 +353,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
                 </Button>
               )}
               {selectedMessageToReply && (
-                <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'white', borderLeft: '6px solid blue' }}>
+                <Box sx={{ mb: 1, mx: 2, px: 2, pb: 1, background: 'var(--mui-palette-background-paper)', borderLeft: '6px solid blue' }}>
                   {selectedMessageToReply?.url ? (
                     <Paper
                       variant="outlined"

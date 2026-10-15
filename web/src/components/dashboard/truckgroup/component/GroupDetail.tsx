@@ -199,13 +199,13 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
         <Button
           variant="outlined"
           sx={{
-            borderColor: 'red',
-            color: 'red',
+            borderColor: 'error.main',
+            color: 'error.main',
             width: '200px',
             marginTop: 5,
             '&:hover': {
-              background: 'red',
-              borderColor: 'red',
+              background: 'error.main',
+              borderColor: 'error.main',
               color: 'white',
             },
           }}
@@ -292,7 +292,7 @@ export default function GroupDetail({ group, setViewDetailGroup, setSelectedGrou
                       >
                         <Delete
                           sx={{
-                            color: 'red',
+                            color: 'error.main',
                           }}
                         />
                       </IconButton>

@@ -16,6 +16,7 @@ import { useSocket } from '@/lib/socketProvider';
 import LinkifyText from '../LinkifyText';
 import ForwardMessageDialog from './ForwardMessageDialog';
 import MediaComponent from './MediaComment';
+import { chat } from '@/styles/theme/chat-tokens';
 import { formatUtcTime } from './utils';
 
 type ChatBubbleProps = MessageModel & {
@@ -44,6 +45,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
     r_message,
   } = props;
   const isSent = variant === 'sent';
+  // Messages sent by the Dispatch Assistant (field exists once the automation module is installed)
+  const automated = Boolean((props as { is_automated?: boolean }).is_automated);
 
   const { socket } = useSocket();
   const [openDialog, setOpenDialog] = React.useState<boolean>(false);
@@ -76,9 +79,12 @@ export default function ChatBubble(props: ChatBubbleProps) {
           sx={{
             px: 1.75,
             py: 1.25,
-            borderRadius: 'lg',
-            borderTopRightRadius: isSent ? 0 : 'lg',
-            borderTopLeftRadius: isSent ? 'lg' : 0,
+            borderRadius: chat.radius,
+            borderTopRightRadius: isSent ? '4px' : chat.radius,
+            borderTopLeftRadius: isSent ? chat.radius : '4px',
+            borderColor: automated ? 'rgba(var(--mui-palette-warning-mainChannel) / 0.35)' : 'var(--mui-palette-divider)',
+            bgcolor: automated ? chat.assistant.bg : chat.driver.bg,
+            boxShadow: 'none',
           }}
         >
           {props.url_upload_type == 'not-upload' || props.url_upload_type == 'local' ? (
@@ -89,6 +95,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
               type={'server'}
               thumbnail={`http://52.9.12.189:4300/${props.url}`}
               url={`http://52.9.12.189:4300/${props.url}`}
+              // the local copy is deleted once the upload reaches S3
+              fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${props.url}`}
               name={url ? url : ' '}
             />
           ) : (
@@ -112,12 +120,17 @@ export default function ChatBubble(props: ChatBubbleProps) {
         >
           <Paper
             sx={{
-              p: 1.25,
-              borderRadius: 'lg',
-              bgcolor: isSent ? '#343344' : 'background.paper',
-              color: isSent ? 'white' : 'text.primary',
-              borderTopRightRadius: isSent ? 0 : 'lg',
-              borderTopLeftRadius: isSent ? 'lg' : 0,
+              px: 1.75,
+              py: 1.25,
+              borderRadius: chat.radius,
+              ...(automated
+                ? { bgcolor: chat.assistant.bg, color: chat.assistant.fg, border: chat.assistant.border }
+                : isSent
+                  ? { bgcolor: chat.staff.bg, color: chat.staff.fg, border: chat.staff.border }
+                  : { bgcolor: chat.driver.bg, color: chat.driver.fg, border: chat.driver.border }),
+              boxShadow: chat.shadow,
+              borderTopRightRadius: isSent ? '4px' : chat.radius,
+              borderTopLeftRadius: isSent ? chat.radius : '4px',
             }}
           >
             {staffPin == '1' && (
@@ -163,8 +176,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
                         createAt={r_message.messageTimestampUtc}
                         messageDirection={props.messageDirection}
                         type={'server'}
-                        thumbnail={`http://52.9.12.189:4300/${props.url}`}
-                        url={`http://52.9.12.189:4300/${props.url}`}
+                        thumbnail={`http://52.9.12.189:4300/${r_message.url}`}
+                        url={`http://52.9.12.189:4300/${r_message.url}`}
+                        fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
                         name={r_message.url ? r_message.url : ' '}
                       />
                     ) : (

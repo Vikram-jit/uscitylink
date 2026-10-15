@@ -10,8 +10,10 @@
 @import '~@fontsource/inter/900.css';
 @import '~@fontsource/roboto-mono/300.css';
 @import '~@fontsource/roboto-mono/400.css';
+@import '~@fontsource/plus-jakarta-sans/500.css';
 @import '~@fontsource/plus-jakarta-sans/600.css';
 @import '~@fontsource/plus-jakarta-sans/700.css';
+@import '~@fontsource/plus-jakarta-sans/800.css';
 
 /* Variables */
 :root {
@@ -30,4 +32,35 @@ html {
 
 body {
   height: 100%;
+}
+/* Polish */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--mui-palette-background-default, #f8fafc);
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #0f172a;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

@@ -21,7 +21,7 @@ const LinkifyText: React.FC<LinkifyTextProps> = ({ text,onClick }) => {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: '#1976d2', wordBreak: 'break-word' }}
+            style={{ color: 'var(--mui-palette-primary-main)', wordBreak: 'break-word' }}
           >
             {part}
           </a>

@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState } from '@/components/core/empty-state';
+import { chat } from '@/styles/theme/chat-tokens';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { apiSlice } from '@/redux/apiSlice';
@@ -71,24 +73,25 @@ const MessagesContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column-reverse',
   gap: '10px',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--mui-palette-background-paper)',
 });
 
 const MessageBubble = styled(Paper)(({ isOwn }: { isOwn: boolean }) => ({
   padding: '10px 15px',
   maxWidth: '65%',
   wordBreak: 'break-word',
-  backgroundColor: isOwn ? '#635bff' : '#e4e4e4',
-  color: isOwn ? '#fff' : '#111b21',
+  backgroundColor: isOwn ? chat.staff.bg : chat.driver.bg,
+  color: isOwn ? chat.staff.fg : chat.driver.fg,
+  border: isOwn ? chat.staff.border : chat.driver.border,
   alignSelf: isOwn ? 'flex-end' : 'flex-start',
-  borderRadius: '7.5px',
+  borderRadius: chat.radius,
   position: 'relative',
-  boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+  boxShadow: chat.shadow,
 }));
 
 const InputContainer = styled(Box)({
   padding: '10px 20px',
-  backgroundColor: '#f0f2f5',
+  backgroundColor: 'var(--mui-palette-background-level1)',
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
@@ -96,8 +99,8 @@ const InputContainer = styled(Box)({
 
 const SidebarContainer = styled(Box)({
   height: '100vh',
-  backgroundColor: '#fff',
-  borderRight: '1px solid #e0e0e0',
+  backgroundColor: 'var(--mui-palette-background-paper)',
+  borderRight: '1px solid var(--mui-palette-divider)',
 
   display: 'flex',
   flexDirection: 'column',
@@ -107,7 +110,7 @@ const SidebarContainer = styled(Box)({
 
 const HeaderContainer = styled(Box)({
   padding: '10px 16px',
-  backgroundColor: '#f0f2f5',
+  backgroundColor: 'var(--mui-palette-background-level1)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -719,7 +722,7 @@ const ChatInterface = ({ type }: { type: string }) => {
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
 
-      <Grid item xs={12} md={3} sx={{ borderRight: '1px solid #e0e0e0' }}>
+      <Grid item xs={12} md={3} sx={{ borderRight: '1px solid var(--mui-palette-divider)' }}>
         <SidebarContainer>
           <HeaderContainer>
             <Typography variant="h5">Group List</Typography>
@@ -765,14 +768,8 @@ const ChatInterface = ({ type }: { type: string }) => {
                           sx={{
                             alignItems: 'initial',
                             gap: 1,
-                            '&.Mui-selected': {
-                              backgroundColor: 'primary.main',
-                              color: 'white',
-                            },
-                            '&:hover': {
-                              backgroundColor: 'primary.light',
-                              color: 'black',
-                            },
+                            '&.Mui-selected, &.Mui-selected:hover': chat.rowSelected,
+                            '&:hover': chat.rowHover,
                           }}
                           onClick={() => handleGroupChange(group, type)}
                         >
@@ -792,13 +789,13 @@ const ChatInterface = ({ type }: { type: string }) => {
                                   <Typography>{group.name}</Typography>
                                   <Typography
                                     sx={{
-                                      color: 'grey',
+                                      color: 'text.secondary',
                                       overflow: 'hidden',
                                       display: '-webkit-box',
                                       WebkitBoxOrient: 'vertical',
                                       WebkitLineClamp: 2, // Limits text to 2 lines
                                       '&:hover': {
-                                        color: 'grey',
+                                        color: 'text.secondary',
                                       },
                                     }}
                                   >
@@ -961,7 +958,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                                   sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}
                                 >
                                   {message.messageDirection !== 'S' && (
-                                    <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                                    <AvatarWithStatus online={message?.sender?.isOnline} />
                                   )}
                                   <ChatBubble
                                     isVisibleThreeDot={false}
@@ -1147,7 +1144,7 @@ const ChatInterface = ({ type }: { type: string }) => {
                 alignItems: 'center',
               }}
             >
-              <Typography>Not Selected Group Yet</Typography>
+              <EmptyState title="Select a truck group" description="Pick a group on the left to see its members and conversation." />
             </Box>
           )}
         </Grid>

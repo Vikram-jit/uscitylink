@@ -367,7 +367,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
         height: { xs: 'calc(100vh - 5vh)', md: '92vh' },
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: 'var(--mui-palette-background-level1)',
       }}
     >
       {data && userId && (
@@ -441,7 +441,7 @@ export default function MessagesPane(props: MessagesPaneProps) {
                         <React.Fragment key={message.id}>
                           <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
                             {message.messageDirection !== 'S' && (
-                              <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                              <AvatarWithStatus online={message?.sender?.isOnline} />
                             )}
                             <ChatBubble onClick={() => {
                            

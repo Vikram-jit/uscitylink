@@ -1,4 +1,5 @@
 'use client';
+import { chat } from '@/styles/theme/chat-tokens';
 
 import React, { useState } from 'react';
 import { Group, GroupModel, SingleGroupModel } from '@/redux/models/GroupModel';
@@ -108,14 +109,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                           sx={{
                             alignItems: 'initial',
                             gap: 1,
-                            '&.Mui-selected': {
-                              backgroundColor: 'primary.main',
-                              color: 'white',
-                            },
-                            '&:hover': {
-                              backgroundColor: 'primary.light',
-                              color: 'black',
-                            },
+                            '&.Mui-selected, &.Mui-selected:hover': chat.rowSelected,
+                            '&:hover': chat.rowHover,
                           }}
                           onClick={() => onSelectChat(group.id)}
                         >
@@ -135,13 +130,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                   <Typography>{group.name}</Typography>
                                   <Typography
                                     sx={{
-                                      color: 'grey',
+                                      color: 'text.secondary',
                                       overflow: 'hidden',
                                       display: '-webkit-box',
                                       WebkitBoxOrient: 'vertical',
                                       WebkitLineClamp: 2, // Limits text to 2 lines
                                       '&:hover': {
-                                        color: 'grey',
+                                        color: 'text.secondary',
                                       },
                                     }}
                                   >

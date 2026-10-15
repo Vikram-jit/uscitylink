@@ -138,7 +138,7 @@ export const MessagesList: React.FC<MessagesListProps> = ({ messages, isLoading,
               <React.Fragment key={message.id}>
                 <Stack direction="row" spacing={2} sx={{ flexDirection: isYou ? 'row-reverse' : 'row' }}>
                   {message.messageDirection !== 'S' && (
-                    <AvatarWithStatus online={message?.sender?.isOnline} src={'a'} />
+                    <AvatarWithStatus online={message?.sender?.isOnline} />
                   )}
                   <ChatBubble
                     isVisibleThreeDot={false}

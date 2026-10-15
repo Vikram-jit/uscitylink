@@ -292,10 +292,10 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
               color="primary"
               onClick={handleDownload}
               sx={{
-                backgroundColor: '#1976d2',
+                backgroundColor: 'var(--mui-palette-primary-main)',
                 color: '#fff',
                 padding: 1.5,
-                '&:hover': { backgroundColor: '#1565c0' },
+                '&:hover': { backgroundColor: 'var(--mui-palette-primary-dark)' },
               }}
             >
               <Download />

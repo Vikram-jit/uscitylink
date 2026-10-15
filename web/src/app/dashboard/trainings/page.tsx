@@ -12,7 +12,7 @@ export const metadata = { title: `Trainings | Dashboard | ${config.site.name}` }
 
 export default function Page(): React.JSX.Element {
   return (
-    <Container maxWidth="xl" sx={{ py: '64px' }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Stack direction="row" spacing={3}>
           <Stack spacing={1} sx={{ flex: '1 1 auto' }}>

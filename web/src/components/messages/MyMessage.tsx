@@ -10,6 +10,7 @@ import { useSocket } from '@/lib/socketProvider';
 import useDebounce from '@/hooks/useDebounce';
 
 import ChatsPane from './ChatsPane';
+import EmptyChat from './EmptyChat';
 import MessagesPane from './MessagesPane';
 
 export default function MyMessage() {
@@ -345,7 +346,7 @@ export default function MyMessage() {
           userList={userList || null}
         />
       )}
-      {/* {selectedUserId && } */}
+      {!selectedUserId && !mLoader && <EmptyChat />}
     </Box>
   );
 }

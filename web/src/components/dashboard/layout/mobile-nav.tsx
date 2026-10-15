@@ -15,10 +15,11 @@ import { CaretUpDown as CaretUpDownIcon } from '@phosphor-icons/react/dist/ssr/C
 import type { NavItemConfig } from '@/types/nav';
 import { paths } from '@/paths';
 import { isNavItemActive } from '@/lib/is-nav-item-active';
-import { Logo } from '@/components/core/logo';
+import { BrandLogo } from '@/components/core/brand-logo';
 
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
+import { navCssVars, navSurface } from './nav-style';
 
 export interface MobileNavProps {
   onClose?: () => void;
@@ -33,17 +34,9 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
     <Drawer
       PaperProps={{
         sx: {
-          '--MobileNav-background': 'var(--mui-palette-neutral-950)',
-          '--MobileNav-color': 'var(--mui-palette-common-white)',
-          '--NavItem-color': 'var(--mui-palette-neutral-300)',
-          '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
-          '--NavItem-active-background': 'var(--mui-palette-primary-main)',
-          '--NavItem-active-color': 'var(--mui-palette-primary-contrastText)',
-          '--NavItem-disabled-color': 'var(--mui-palette-neutral-500)',
-          '--NavItem-icon-color': 'var(--mui-palette-neutral-400)',
-          '--NavItem-icon-active-color': 'var(--mui-palette-primary-contrastText)',
-          '--NavItem-icon-disabled-color': 'var(--mui-palette-neutral-600)',
-          bgcolor: 'var(--MobileNav-background)',
+          ...navCssVars,
+          '--MobileNav-color': 'var(--mui-palette-text-primary)',
+          background: navSurface,
           color: 'var(--MobileNav-color)',
           display: 'flex',
           flexDirection: 'column',
@@ -59,7 +52,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
     >
       <Stack spacing={2} sx={{ p: 3 }}>
         <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
-          <Logo color="light" height={32} width={122} />
+          <BrandLogo height={36} />
         </Box>
         <Box
           sx={{
@@ -158,7 +151,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
           : { role: 'button' })}
         sx={{
           alignItems: 'center',
-          borderRadius: 1,
+          borderRadius: '12px',
           color: 'var(--NavItem-color)',
           cursor: 'pointer',
           display: 'flex',

@@ -171,6 +171,7 @@ const ForwardMessageDialog: React.FC<ForwardMessageDialogProps> = ({ open, onClo
                     type={'server'}
                     thumbnail={`http://52.9.12.189:4300/${message.url}`}
                     url={`http://52.9.12.189:4300/${message.url}`}
+                    fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${message.url}`}
                     name={message.url ? message.url : ' '}
                   />
                 ) : (

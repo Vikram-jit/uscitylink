@@ -20,7 +20,7 @@ import Toolbar from '@mui/material/Toolbar';
 import { TransitionProps } from '@mui/material/transitions';
 import Typography from '@mui/material/Typography';
 
-import Viewer from './dashboard/documentviewer/viewer';
+import Viewer from './dashboard/documentviewer/viewer-client';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & {

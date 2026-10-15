@@ -33,7 +33,7 @@ interface ChatHeaderProps {
 
 const HeaderContainer = styled(Box)({
   padding: '10px 16px',
-  backgroundColor: '#f0f2f5',
+  backgroundColor: 'var(--mui-palette-background-level1)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',

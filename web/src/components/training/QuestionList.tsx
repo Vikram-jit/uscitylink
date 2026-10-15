@@ -30,7 +30,7 @@ export default function QuestionList({ questions, onDelete }: QuestionListProps)
           <ListItem
             key={question.id}
             sx={{
-              border: '1px solid #e0e0e0',
+              border: '1px solid var(--mui-palette-divider)',
               borderRadius: 1,
               mb: 1,
               flexDirection: 'column',

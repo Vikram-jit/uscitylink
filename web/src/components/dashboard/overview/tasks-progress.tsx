@@ -1,12 +1,8 @@
 import * as React from 'react';
-import Avatar from '@mui/material/Avatar';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import LinearProgress from '@mui/material/LinearProgress';
-import Stack from '@mui/material/Stack';
 import type { SxProps } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
-import { Envelope as ListBulletsIcon } from '@phosphor-icons/react/dist/ssr/Envelope';
+import { Envelope as StatIcon } from '@phosphor-icons/react/dist/ssr/Envelope';
+
+import { StatCard } from './stat-card';
 
 export interface TasksProgressProps {
   sx?: SxProps;
@@ -14,26 +10,5 @@ export interface TasksProgressProps {
 }
 
 export function TasksProgress({ value, sx }: TasksProgressProps): React.JSX.Element {
-  return (
-    <Card sx={sx}>
-      <CardContent>
-        <Stack spacing={2}>
-          <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }} spacing={3}>
-            <Stack spacing={1}>
-              <Typography color="text.secondary" gutterBottom variant="overline">
-                Unread Messages
-              </Typography>
-              <Typography variant="h4">{value}</Typography>
-            </Stack>
-            <Avatar sx={{ backgroundColor: 'var(--mui-palette-warning-main)', height: '56px', width: '56px' }}>
-              <ListBulletsIcon fontSize="var(--icon-fontSize-lg)" />
-            </Avatar>
-          </Stack>
-          <div>
-            <LinearProgress value={value} variant="determinate" />
-          </div>
-        </Stack>
-      </CardContent>
-    </Card>
-  );
+  return <StatCard icon={StatIcon} label="Unread messages" sx={sx} tone="light" value={value} caption={value > 0 ? 'Needs reply' : 'All caught up'} captionColor={value > 0 ? 'warning' : 'success'} />;
 }

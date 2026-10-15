@@ -37,7 +37,10 @@ export const SocketProvider = ({
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   // const [audioContext, setAudioContext] = useState<any>(null)
   const [newMessage,setNewMessage] = useState<boolean>(false)
-  const token: any = localStorage.getItem('custom-auth-token');
+  // Read once in the browser; localStorage does not exist during server rendering
+  const [token] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : localStorage.getItem('custom-auth-token')
+  );
   const dispatch = useDispatch();
   useEffect(() => {
     const socketServer = io(process.env.SOCKET_URL, {

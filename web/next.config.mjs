@@ -17,6 +17,9 @@ const config = {
 
 
   images: {
+    // Chat photos come straight from S3 / the API server. Letting the Next server proxy and
+    // re-encode them (without sharp) cost CPU/memory and spammed 404s for files moved to S3.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "http",

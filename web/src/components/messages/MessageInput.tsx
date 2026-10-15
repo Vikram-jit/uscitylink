@@ -358,6 +358,8 @@ export default function MessageInput(props: MessageInputProps) {
                 disabled={isLoading}
                 size="small"
                 color="primary"
+                variant="contained"
+                sx={{ px: 2 }}
                 onClick={handleClick}
                 endIcon={<SendRoundedIcon />}
               >
@@ -375,6 +377,9 @@ export default function MessageInput(props: MessageInputProps) {
         sx={{
           '& .MuiOutlinedInput-root': {
             minHeight: 50,
+            borderRadius: '12px',
+            backgroundColor: 'var(--mui-palette-background-paper)',
+            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
           },
         }}
       />

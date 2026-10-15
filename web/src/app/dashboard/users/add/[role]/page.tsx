@@ -14,7 +14,7 @@ export const metadata = { title: `User Create | Dashboard | ${config.site.name}`
 
 export default function Page({params}:{params:{role:string}}): React.JSX.Element {
   return (
-    <Container maxWidth="xl" sx={{ py: '64px' }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
     <Stack spacing={3}>
       <div>
         <IconButton LinkComponent="a" href={`${paths.dashboard.users}/${params.role}`}>

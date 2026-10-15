@@ -1,4 +1,5 @@
 'use client';
+import { chat } from '@/styles/theme/chat-tokens';
 
 import React from 'react';
 import { MessageModel } from '@/redux/models/MessageModel';
@@ -28,12 +29,13 @@ const MessageBubble = styled(Paper)(({ isOwn }: { isOwn: boolean }) => ({
   padding: '10px 15px',
   maxWidth: '65%',
   wordBreak: 'break-word',
-  backgroundColor: isOwn ? '#635bff' : '#e4e4e4',
-  color: isOwn ? '#fff' : '#111b21',
+  backgroundColor: isOwn ? chat.staff.bg : chat.driver.bg,
+  color: isOwn ? chat.staff.fg : chat.driver.fg,
+  border: isOwn ? chat.staff.border : chat.driver.border,
   alignSelf: isOwn ? 'flex-end' : 'flex-start',
-  borderRadius: '7.5px',
+  borderRadius: chat.radius,
   position: 'relative',
-  boxShadow: '0 1px 0.5px rgba(11,20,26,.13)',
+  boxShadow: chat.shadow,
 }));
 
 interface MessageView {
@@ -88,7 +90,7 @@ export default function MessageView({ selectedContact, msg,setSelectedMessageToR
             <DoneAll
               sx={{
                 fontSize: 14,
-                color: 'blue',
+                color: 'primary.main',
               }}
             />
           )}
@@ -259,7 +261,7 @@ export default function MessageView({ selectedContact, msg,setSelectedMessageToR
                 <ListItemIcon>
                   <Delete color="error" />
                 </ListItemIcon>
-                <ListItemText primary="Delete" sx={{ color: 'red' }} />
+                <ListItemText primary="Delete" sx={{ color: 'error.main' }} />
               </ListItemButton>
             </ListItem>
           )}

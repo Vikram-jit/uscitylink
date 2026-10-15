@@ -15,7 +15,7 @@ export const metadata = { title: `User Edit | Dashboard | ${config.site.name}` }
 
 export default function Page({params}:{params:{role:string,id:string}}): React.JSX.Element {
   return (
-    <Container maxWidth="xl" sx={{ py: '64px' }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
     <Stack spacing={3}>
       <div>
         <IconButton LinkComponent="a" href={`${paths.dashboard.users}/${params.role}`}>

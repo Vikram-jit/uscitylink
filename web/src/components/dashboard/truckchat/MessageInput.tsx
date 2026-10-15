@@ -37,7 +37,7 @@ interface MessageInputProps {
 }
 const InputContainer = styled(Box)({
   padding: '10px 20px',
-  backgroundColor: '#f0f2f5',
+  backgroundColor: 'var(--mui-palette-background-level1)',
   display: 'flex',
   alignItems: 'center',
   gap: '10px',

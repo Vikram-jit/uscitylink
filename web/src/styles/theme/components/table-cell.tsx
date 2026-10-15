@@ -4,7 +4,12 @@ import type { Theme } from '../types';
 
 export const MuiTableCell = {
   styleOverrides: {
-    root: { borderBottom: 'var(--TableCell-borderWidth, 1px) solid var(--mui-palette-TableCell-border)' },
+    root: {
+      borderBottom: '1px solid var(--mui-palette-divider)',
+      fontSize: '0.875rem',
+      paddingTop: '12px',
+      paddingBottom: '12px',
+    },
     paddingCheckbox: { padding: '0 0 0 24px' },
   },
 } satisfies Components<Theme>['MuiTableCell'];

@@ -42,7 +42,7 @@ export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps)
                   background: e.isActive ? 'var(--mui-palette-primary-dark)' : '#fff',
                   color: e.isActive ? '#fff' : 'black',
                   '&:hover': {
-                    background: '#e7e7e7',
+                    background: 'var(--mui-palette-divider)',
                     color: '#000',
                   },
                 }}

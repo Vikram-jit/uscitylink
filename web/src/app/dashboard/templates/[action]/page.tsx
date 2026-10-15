@@ -15,7 +15,7 @@ export const metadata = { title: `Template | Dashboard | ${config.site.name}` } 
 export default function Page({params}:{params:{action:string}}): React.JSX.Element {
 
   return (
-    <Container maxWidth="xl" sx={{ py: '64px' }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
     <Stack spacing={3}>
       <Stack direction="row" spacing={3}>
         <Stack display={"flex"} flexDirection={"row"}>
