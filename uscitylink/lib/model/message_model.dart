@@ -24,6 +24,7 @@ class MessageModel {
   String? staffPin;
   String? url_upload_type;
   String? temp_id;
+  bool? isAutomated;
   MessageModel? r_message;
 
   MessageModel(
@@ -49,7 +50,8 @@ class MessageModel {
       this.driverPin,
       this.staffPin,
       this.url_upload_type,
-      this.temp_id});
+      this.temp_id,
+      this.isAutomated});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -72,6 +74,7 @@ class MessageModel {
     thumbnail = json['thumbnail'];
     staffPin = json['staffPin'];
     driverPin = json['driverPin'];
+    isAutomated = json['is_automated'] == true || json['is_automated'] == 1;
     r_message = json['r_message'] != null
         ? MessageModel.fromJson(json['r_message'])
         : null;
@@ -102,6 +105,7 @@ class MessageModel {
     data['type'] = type;
     data['driverPin'] = driverPin;
     data['staffPin'] = staffPin;
+    data['is_automated'] = isAutomated;
     if (sender != null) {
       data['sender'] = sender?.toJson();
     }

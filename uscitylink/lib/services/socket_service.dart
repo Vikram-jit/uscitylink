@@ -34,7 +34,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'http://52.9.12.189:4300?token=$token';
+    return 'http://localhost:4300?token=$token';
   }
 
   // Method to connect to the socket server
@@ -351,9 +351,9 @@ class SocketService extends GetxController {
 
     socket.on('UPDATE_APP_VERSION_INFO', (message) {
       print("update version $message");
-      if (message == "NewVersion") {
-        Get.offAll(() => UpdateView());
-      }
+      // if (message == "NewVersion") {
+      //   Get.offAll(() => UpdateView());
+      // }
     });
 
     socket.on('disconnect', (_) {

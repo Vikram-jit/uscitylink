@@ -19,6 +19,7 @@ export const paths = {
     trainings: '/dashboard/trainings',
     staff_chat: '/dashboard/staff_chat',
     system_messages: '/dashboard/system-messages',
+    automation: '/dashboard/automation',
   },
   user:{
     "add":'/dashboard/users/add'
@@ -29,6 +30,13 @@ export const paths = {
   },
   channel:{
     "members":'/dashboard/channels/members'
+  },
+  automation: {
+    flows: '/dashboard/automation/flows',
+    docTypes: '/dashboard/automation/doc-types',
+    runs: '/dashboard/automation/runs',
+    review: '/dashboard/automation/review',
+    usage: '/dashboard/automation/usage',
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

@@ -68,7 +68,7 @@ export function SignInForm(): React.JSX.Element {
       if (res?.data?.data) {
         if (res?.data?.data?.user) {
           if (res?.data?.data?.user?.role) {
-            if (res?.data?.data?.user?.role?.name == 'staff') {
+            if (['staff', 'admin'].includes(res?.data?.data?.user?.role?.name)) {
               localStorage.setItem('custom-auth-token', res?.data?.data?.access_token);
 
               await checkSession?.();

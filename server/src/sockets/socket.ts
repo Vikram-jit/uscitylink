@@ -1,3 +1,4 @@
+import { isStaffRole } from "../middleware/requireRole";
 import { Server, Socket } from "socket.io";
 import { verifyToken } from "../utils/jwt";
 import { UserProfile } from "../models/UserProfile";
@@ -168,13 +169,14 @@ export const initSocket = (httpServer: any) => {
 
           if (
             !global.staffActiveChannel[userProfile.id] &&
-            userProfile?.role?.name === "staff"
+            isStaffRole(userProfile?.role?.name)
           ) {
             if (userProfile?.channelId) {
               // Add staff to the global object
               global.staffActiveChannel[userProfile.id] = {
                 channelId: userProfile.channelId,
-                role: userProfile.role?.name,
+                // admin is treated as staff for live chat routing
+                role: "staff",
                 name: userProfile.username ?? "",
               };
 

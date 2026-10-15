@@ -34,6 +34,8 @@ export class Message extends Model {
   public isCompleted!: boolean;
   public completedBy!: string | null;
   public note?: string | null;
+  public is_automated?: boolean;
+  public flow_run_id?: string | null;
 
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
 }
@@ -148,6 +150,15 @@ Message.init(
     },
     note: {
       type: DataTypes.TEXT("long"),
+      allowNull: true,
+    },
+    is_automated: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    flow_run_id: {
+      type: DataTypes.UUID,
       allowNull: true,
     },
   },

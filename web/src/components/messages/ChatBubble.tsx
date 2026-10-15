@@ -17,6 +17,7 @@ import LinkifyText from '../LinkifyText';
 import ForwardMessageDialog from './ForwardMessageDialog';
 import MediaComponent from './MediaComment';
 import { chat } from '@/styles/theme/chat-tokens';
+import { DocumentChip } from '../dashboard/automation/DocumentChip';
 import { formatUtcTime } from './utils';
 
 type ChatBubbleProps = MessageModel & {
@@ -65,7 +66,9 @@ export default function ChatBubble(props: ChatBubbleProps) {
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>
         <Typography variant="body2">
           {messageDirection === 'S'
-            ? sender?.username
+            ? props.is_automated
+              ? '🤖 Dispatch Assistant'
+              : sender?.username
               ? `${sender?.username}(staff)`
               : '(staff)'
             : `${sender?.username}(${sender?.user?.driver_number})`}
@@ -111,6 +114,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
             />
           )}
           {body && <LinkifyText text={body} />}
+          {messageDirection === 'R' && props.id ? <DocumentChip messageId={props.id} /> : null}
         </Paper>
       ) : (
         <Box

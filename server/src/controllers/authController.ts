@@ -1,3 +1,4 @@
+import { isStaffRole } from "../middleware/requireRole";
 import { Request, Response } from "express";
 import { generateToken } from "../utils/jwt";
 import User from "../models/User";
@@ -582,7 +583,10 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
     let isProfile: any = null;
     isUser.forEach(async (item) => {
       item.profiles?.forEach((el) => {
-        if (el.role?.name == "staff") {
+        if (
+          isStaffRole(el.role?.name) &&
+          (!isProfile || el.role?.name === "admin")
+        ) {
           userStaffId = item.id;
           isProfile = el;
         }
@@ -683,7 +687,10 @@ export async function loginWithToken(
     let isProfile: any = null;
     isUser.forEach(async (item) => {
       item.profiles?.forEach((el) => {
-        if (el.role?.name == "staff") {
+        if (
+          isStaffRole(el.role?.name) &&
+          (!isProfile || el.role?.name === "admin")
+        ) {
           userStaffId = item.id;
           isProfile = el;
         }

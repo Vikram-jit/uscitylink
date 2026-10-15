@@ -43,6 +43,7 @@ import BroadcastMessage from "../models/BroadcastMessage";
 import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
 import { MessageStaff } from "../models/MessageStaff";
 import { redisHost, redisPassword, redisPort } from "../redis";
+import { enqueueDocumentAnalysis } from "../queues/documentAnalysisQueue";
 
 dotenv.config();
 
@@ -225,6 +226,7 @@ export const processFileUpload = async (
             userId,
             tempId,
           );
+          enqueueDocumentAnalysis(existingMessage?.id);
         }
       }
       break; // Exit loop if upload is successful

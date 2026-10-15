@@ -373,8 +373,8 @@ class LoginController extends GetxController {
 
           var result = await __authService.updateAppVersion(appData);
 
-          if (result.data == "NewVersion") {
-            Get.offAll(() => UpdateView());
+          if (result.data != "NewVersion") {
+            //Get.offAll(() => UpdateView());
           } else {
             if (value?.data?.role?.name == "staff") {
               final fcmService = Get.put(FCMService());

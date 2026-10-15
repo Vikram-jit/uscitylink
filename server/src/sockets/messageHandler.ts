@@ -27,6 +27,7 @@ import { primarySequelize } from "../sequelize";
 import BroadcastMessage from "../models/BroadcastMessage";
 import { BroadcastMessageLog } from "../models/Broadcastmessagelog";
 import { redisHost, redisPassword, redisPort } from "../redis";
+import { enqueueDocumentAnalysis } from "../queues/documentAnalysisQueue";
 dotenv.config();
 const notificationQueue = new Queue("jobQueue", {
   redis: {
@@ -1003,6 +1004,9 @@ export async function driverMessageQueueProcess(
     url_upload_type: url_upload_type || "with-out-media",
     temp_id: messageId,
   });
+  if (url && url_upload_type !== "not-upload" && url_upload_type !== "local") {
+    enqueueDocumentAnalysis(messageSave.id);
+  }
   const message = await Message.findOne({
     where: {
       id: messageSave.id,
@@ -1441,6 +1445,9 @@ export async function messageToChannelToUser(
       reply_message_id: r_message_id || null,
       url_upload_type: url_upload_type || "with-out-media",
     });
+    if (url && url_upload_type !== "not-upload" && url_upload_type !== "local") {
+      enqueueDocumentAnalysis(messageSave.id);
+    }
     const message = await Message.findOne({
       where: {
         id: messageSave.id,
@@ -3763,4 +3770,113 @@ export async function getMessageByTempId(
       type: type,
     });
   }
+}
+
+// Automated (flow) message from the Dispatch Assistant to a driver.
+// Same delivery path as broadcastMessageToDriver, but the channel comes from the
+// driver's own message instead of a staff member's in-memory active channel.
+export async function sendSystemMessageToDriver(
+  io: Server,
+  senderId: string,
+  userId: string,
+  channelId: string,
+  body: string,
+  options: { replyToId?: string | null; flowRunId?: string | null } = {},
+) {
+  const messageSave = await Message.create({
+    channelId,
+    userProfileId: userId,
+    body,
+    messageDirection: "S",
+    deliveryStatus: "sent",
+    messageTimestampUtc: new Date(),
+    senderId,
+    isRead: false,
+    status: "queue",
+    url: null,
+    thumbnail: null,
+    reply_message_id: options.replyToId || null,
+    url_upload_type: "with-out-media",
+    is_automated: true,
+    flow_run_id: options.flowRunId || null,
+  });
+  const message = await Message.findOne({
+    where: { id: messageSave.id },
+    include: [
+      {
+        model: Message,
+        as: "r_message",
+        include: [
+          {
+            model: UserProfile,
+            as: "sender",
+            attributes: ["id", "username", "isOnline"],
+            include: [{ model: User, as: "user" }],
+          },
+        ],
+      },
+      {
+        model: UserProfile,
+        as: "sender",
+        attributes: ["id", "username", "isOnline"],
+      },
+    ],
+  });
+
+  const findDriverSocket = global.driverOpenChat.find(
+    (driver) => driver?.driverId === userId,
+  );
+  const isDriverSocket = global.userSockets[userId];
+
+  if (isDriverSocket && findDriverSocket?.channelId == channelId) {
+    await message?.update({ deliveryStatus: "seen", status: "sent" });
+    io.to(isDriverSocket.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+  } else {
+    if (isDriverSocket) {
+      io.to(isDriverSocket.id).emit("update_user_channel_list", message);
+      io.to(isDriverSocket.id).emit("new_message_count_update", channelId);
+    }
+
+    await UserChannel.update(
+      { recieve_message_count: Sequelize.literal("recieve_message_count + 1") },
+      { where: { userProfileId: userId, channelId } },
+    );
+
+    const isUser = await UserProfile.findByPk(userId);
+    if (isUser?.device_token) {
+      const isChannel = await Channel.findByPk(channelId);
+      const messageCount = await UserChannel.sum("recieve_message_count", {
+        where: { userProfileId: userId },
+      });
+      const userGroupsCount = await GroupUser.sum("message_count", {
+        where: { userProfileId: userId },
+      });
+      await sendNotificationToDevice(isUser.device_token, {
+        title: isChannel?.name || "",
+        badge: messageCount + userGroupsCount,
+        body,
+        data: {
+          channelId: isChannel?.id,
+          type: "NEW MESSAGE",
+          title: isChannel?.name,
+        },
+      });
+    }
+  }
+
+  await UserChannel.update(
+    { last_message_id: message?.id, last_message_utc: moment.utc().toDate() },
+    { where: { userProfileId: userId, channelId } },
+  );
+
+  Object.entries(global.staffOpenChat).forEach(([staffId, e]) => {
+    if (e.channelId === channelId) {
+      const isSocket = global.userSockets[staffId];
+      if (isSocket) {
+        io.to(isSocket.id).emit(SocketEvents.RECEIVE_MESSAGE_BY_CHANNEL, message);
+      }
+    }
+  });
+
+  return message;
 }

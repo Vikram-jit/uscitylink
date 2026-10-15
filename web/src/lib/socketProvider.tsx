@@ -118,6 +118,19 @@ export const SocketProvider = ({
     };
     socketServer.on('notification_group', onNotificationGroup);
 
+    // Document automation: refresh the chip on the attachment once the AI has read it
+    const onDocumentAnalyzed = (doc: { message_id: string }) => {
+      dispatch(apiSlice.util.invalidateTags([{ type: 'messageDocument', id: doc.message_id }, 'reviewQueue']));
+    };
+    socketServer.on('document_analyzed', onDocumentAnalyzed);
+    const onAutomationAlert = (alert: { title?: string; body?: string; severity?: string; driverName?: string }) => {
+      const text = [alert.title, alert.body].filter(Boolean).join(' — ') || 'Automation alert';
+      if (alert.severity === 'critical') toast.error(text, { autoClose: false });
+      else if (alert.severity === 'info') toast.info(text);
+      else toast.warning(text, { autoClose: 15000 });
+    };
+    socketServer.on('automation_alert', onAutomationAlert);
+
     const onNotificationForward = (message: string) => {
       toast.success(message);
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
@@ -181,6 +194,8 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
       socketServer.off('notification_new_message', onNotificationNewMessage);
       socketServer.off('notification_group', onNotificationGroup);
       socketServer.off('notification_forward_message', onNotificationForward);
+      socketServer.off('document_analyzed', onDocumentAnalyzed);
+      socketServer.off('automation_alert', onAutomationAlert);
       socketServer.off('reconnect_attempt', onReconnectAttempt);
       socketServer.off('reconnect_error', onReconnectError);
       socketServer.off('reconnect_failed', onReconnectFailed);

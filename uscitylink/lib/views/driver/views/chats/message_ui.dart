@@ -1043,7 +1043,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                           decoration: BoxDecoration(
                             color: message.messageDirection == "R"
                                 ? const Color(0xFFDCE9FF)
-                                : Colors.white,
+                                : message.isAutomated == true
+                                    ? const Color(0xFFFFF4DB)
+                                    : Colors.white,
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(16),
                               topRight: const Radius.circular(16),
@@ -1245,7 +1247,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                                   Text(
                                     message.messageDirection == "R"
                                         ? "${Utils.formatUtcDateTime(message.messageTimestampUtc!)} You"
-                                        : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
+                                        : message.isAutomated == true
+                                            ? "🤖 Dispatch Assistant ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  "
+                                            : "${message.sender?.username}(staff) ${Utils.formatUtcDateTime(message.messageTimestampUtc!)}  ",
                                     style: const TextStyle(
                                         fontSize: 10,
                                         color: Colors.black54,

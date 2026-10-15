@@ -21,6 +21,7 @@ import { useGetProfileQuery } from '@/redux/UserApiSlice';
 import { usePopover } from '@/hooks/use-popover';
 import { ChannelPopover } from './channel-popover';
 import { useGetActiveChannelQuery } from '@/redux/ChannelApiSlice';
+import { useGetAutomationMeQuery } from '@/redux/AutomationApiSlice';
 import { Chip, CircularProgress } from '@mui/material';
 import { useSocket } from '@/lib/socketProvider';
 import { ChannelModel } from '@/redux/models/ChannelModel';
@@ -30,7 +31,10 @@ export function SideNav(): React.JSX.Element {
   const userPopover = usePopover<HTMLDivElement>();
   const {data,isLoading,isFetching} = useGetActiveChannelQuery()
   const { data: profile } = useGetProfileQuery();
-  const sections = groupNavItems(navItems);
+  const { data: me } = useGetAutomationMeQuery();
+  // Admin-only items (Automation) are hidden from regular staff
+  const visibleNavItems = navItems.filter((item) => !item.adminOnly || me?.data?.isAdmin);
+  const sections = groupNavItems(visibleNavItems);
   const name = profile?.data?.username || 'Dispatcher';
 
   return (
