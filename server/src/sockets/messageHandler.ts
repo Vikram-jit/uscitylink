@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "../middleware/requireRole";
 //Message to channel
 
 import { Server } from "socket.io";
@@ -76,15 +77,11 @@ groupNotificationStaffQueue.process(async (job) => {
   const senderProfile = await UserProfile.findByPk(senderId);
   const groupProfile = await Group.findByPk(groupId);
 
-  const roleId = await Role.findOne({
-    where: {
-      name: "staff",
-    },
-  });
+  const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
   const users = await UserProfile.findAll({
     where: {
-      role_id: roleId?.id,
+      role_id: roleId.map((r) => r.id),
       device_token: {
         [Op.ne]: null,
       },
@@ -153,11 +150,7 @@ notificationQueue.process(async (job: any) => {
   const { title, body, channel_id, userName, userId, staffId, messageId } =
     job.data;
 
-  const roleId = await Role.findOne({
-    where: {
-      name: "staff",
-    },
-  });
+  const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
   const staffIds = Object.entries(global.staffOpenChat).map(([key, value]) => {
     if (value.channelId == channel_id && value.userId == userId) {
@@ -169,7 +162,7 @@ notificationQueue.process(async (job: any) => {
 
   const users = await UserProfile.findAll({
     where: {
-      role_id: roleId?.id,
+      role_id: roleId.map((r) => r.id),
       // device_token: {
       //   [Op.ne]: null,
       // },
@@ -866,17 +859,13 @@ export async function driverMessageQueueProcessResend(
     });
   }
 
-  const roleId = await Role.findOne({
-    where: {
-      name: "staff",
-    },
-  });
+  const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
   const channel = await Channel.findByPk(channelId);
 
   const users = await UserProfile.findAll({
     where: {
-      role_id: roleId?.id,
+      role_id: roleId.map((r) => r.id),
       // device_token: {
       //   [Op.ne]: null,
       // },
@@ -1307,17 +1296,13 @@ export async function driverMessageQueueProcess(
     messageId: messageSave.id,
   });
 
-  const roleId = await Role.findOne({
-    where: {
-      name: "staff",
-    },
-  });
+  const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
   const channel = await Channel.findByPk(channelId);
 
   const users = await UserProfile.findAll({
     where: {
-      role_id: roleId?.id,
+      role_id: roleId.map((r) => r.id),
       // device_token: {
       //   [Op.ne]: null,
       // },
@@ -1741,17 +1726,13 @@ export async function messageToChannelToUser(
       messageId: messageSave.id,
     });
 
-    const roleId = await Role.findOne({
-      where: {
-        name: "staff",
-      },
-    });
+    const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
     // const channel = await Channel.findByPk(channelId);
 
     const users = await UserProfile.findAll({
       where: {
-        role_id: roleId?.id,
+        role_id: roleId.map((r) => r.id),
         // device_token: {
         //   [Op.ne]: null,
         // },

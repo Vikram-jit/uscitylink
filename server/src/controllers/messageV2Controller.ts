@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "../middleware/requireRole";
 import { Request, Response } from "express";
 import { Message } from "../models/Message";
 import { Op, Sequelize } from "sequelize";
@@ -379,17 +380,13 @@ export const quickMessage = async (
       
     }
  
-    const roleId = await Role.findOne({
-      where: {
-        name: "staff",
-      },
-    });
+    const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
     // const channel = await Channel.findByPk(channelId);
 
     const users = await UserProfile.findAll({
       where: {
-        role_id: roleId?.id,
+        role_id: roleId.map((r) => r.id),
         // device_token: {
         //   [Op.ne]: null,
         // },

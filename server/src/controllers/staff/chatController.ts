@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "../../middleware/requireRole";
 import { Request, Response } from "express";
 import { UserProfile } from "../../models/UserProfile";
 import Channel from "../../models/Channel";
@@ -40,15 +41,11 @@ groupNotificationStaffQueueApi.process(async (job)=>{
   const senderProfile = await UserProfile.findByPk(senderId);
   const groupProfile = await Group.findByPk(groupId);
 
-  const roleId = await Role.findOne({
-    where: {
-      name: "staff",
-    },
-  });
+  const roleId = await Role.findAll({ where: { name: STAFF_ROLES } });
 
   const users = await UserProfile.findAll({
     where: {
-      role_id: roleId?.id,
+      role_id: roleId.map((r) => r.id),
       device_token: {
         [Op.ne]: null,
       },

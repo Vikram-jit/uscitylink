@@ -1038,6 +1038,15 @@ export const initSocket = (httpServer: any) => {
       console.log("disconnect");
       const userId = socket?.user?.id!;
 
+      // A newer connection for this user is already registered (second tab, or a reconnect that
+      // arrived before this old socket timed out). Don't wipe the live connection's state or mark
+      // the user offline because the stale one closed.
+      const currentSocket = global.userSockets[userId];
+      if (currentSocket && currentSocket.id !== socket.id) {
+        console.log(`stale socket disconnect ignored for ${userId}`);
+        return;
+      }
+
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
 

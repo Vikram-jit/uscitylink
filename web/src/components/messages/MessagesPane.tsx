@@ -13,6 +13,7 @@ import { useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import { useSocketEvent } from '@/hooks/use-socket-event';
+import { useOpenChatClaim } from '@/hooks/use-open-chat-claim';
 
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
@@ -198,12 +199,12 @@ export default function MessagesPane(props: MessagesPaneProps) {
     toast.error('Deleted message successfully');
   });
 
-  // Tell the server which driver this staff member is viewing (+ keep-alive)
+  // This pane owns the server's "staff is viewing driver X" state (messages from that driver are marked
+  // seen). The claim is released whenever the pane closes for ANY reason (search, filters, Back, leaving
+  // the page) and is only reported while this tab is the one being looked at.
+  useOpenChatClaim(userId);
   React.useEffect(() => {
-    if (!socket || !userId) return undefined;
-    socket.emit('staff_active_channel_user_update', userId);
-    const intervalId = setInterval(() => socket.emit('staff_open_chat', userId), 15000);
-    return () => clearInterval(intervalId);
+    if (socket && userId) socket.emit('staff_active_channel_user_update', userId);
   }, [socket, userId]);
 
   const handleScroll = () => {

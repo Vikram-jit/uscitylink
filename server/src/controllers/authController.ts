@@ -553,6 +553,23 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
   }
 }
 
+// Staff screens (Messages, Truck Chat, dashboard) are all scoped to the profile's active channel. An admin
+// profile is often created without one, which made every API come back empty after logging in as admin.
+// Give it the channel of the person's other staff profile, or the first channel, and persist it.
+async function ensureStaffChannel(profile: any, users: User[]): Promise<void> {
+  if (profile?.channelId) return;
+  const sibling = users
+    .flatMap((u) => u.profiles || [])
+    .find((p) => p.id !== profile.id && isStaffRole(p.role?.name) && p.channelId);
+  const channelId =
+    sibling?.channelId ||
+    (await Channel.findOne({ order: [["createdAt", "ASC"]], attributes: ["id"] }))?.id;
+  if (!channelId) return;
+  await UserProfile.update({ channelId }, { where: { id: profile.id } });
+  profile.channelId = channelId;
+  if (profile.dataValues) profile.dataValues.channelId = channelId;
+}
+
 //login With Password
 export async function loginWithWeb(req: Request, res: Response): Promise<any> {
   try {
@@ -592,6 +609,7 @@ export async function loginWithWeb(req: Request, res: Response): Promise<any> {
         }
       });
     });
+    if (isProfile) await ensureStaffChannel(isProfile, isUser);
 
     if (!isProfile) throw new Error("Invalid credentials");
 
@@ -696,6 +714,7 @@ export async function loginWithToken(
         }
       });
     });
+    if (isProfile) await ensureStaffChannel(isProfile, isUser);
 
     if (!isProfile) throw new Error("Inavild Login");
 

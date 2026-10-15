@@ -13,6 +13,7 @@ import { useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import { useSocketEvent } from '@/hooks/use-socket-event';
+import { useOpenChatClaim } from '@/hooks/use-open-chat-claim';
 
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
@@ -144,11 +145,10 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
     toast.error('Deleted message successfully');
   });
 
+  // Same ownership as MessagesPane: set "viewing this driver" while open, clear it when closed
+  useOpenChatClaim(userId);
   React.useEffect(() => {
-    if (!socket || !userId) return undefined;
-    socket.emit('staff_active_channel_user_update', userId);
-    const intervalId = setInterval(() => socket.emit('staff_open_chat', userId), 15000);
-    return () => clearInterval(intervalId);
+    if (socket && userId) socket.emit('staff_active_channel_user_update', userId);
   }, [socket, userId]);
 
   const handleScroll = () => {

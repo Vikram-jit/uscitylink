@@ -1,3 +1,4 @@
+import { STAFF_ROLES } from "../../middleware/requireRole";
 import { Request, Response } from "express";
 import PrivateChatMember from "../../models/PrivateChatMember";
 import { UserProfile } from "../../models/UserProfile";
@@ -37,15 +38,11 @@ export async function getStaffMembers(
 
     const uniqueIds = Array.from(uniqueIdsSet);
 
-    const role = await Role.findOne({
-      where: {
-        name: "staff",
-      },
-    });
+    const role = await Role.findAll({ where: { name: STAFF_ROLES } });
 
     const userIds = await UserProfile.findAll({
       where: {
-        role_id: role?.id,
+        role_id: role.map((r) => r.id),
         id: { [Op.notIn]: uniqueIds },
       },
       attributes: ["id", "username"],
@@ -89,13 +86,11 @@ export async function getChatUsers(req: Request, res: Response): Promise<any> {
 
     const uniqueUserIds = Array.from(userIdsSet);
 
-    const staffRole = await Role.findOne({
-      where: { name: "staff" },
-    });
+    const staffRole = await Role.findAll({ where: { name: STAFF_ROLES } });
 
     const userProfiles = await UserProfile.findAll({
       where: {
-        role_id: staffRole!.id,
+        role_id: staffRole.map((r) => r.id),
         id: { [Op.in]: uniqueUserIds },
         username: {[Op.like]: `%${search}%` }
       },
