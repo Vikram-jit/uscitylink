@@ -37,6 +37,7 @@ export const paths = {
     runs: '/dashboard/automation/runs',
     review: '/dashboard/automation/review',
     usage: '/dashboard/automation/usage',
+    settings: '/dashboard/automation/settings',
   },
   errors: { notFound: '/errors/not-found' },
 } as const;

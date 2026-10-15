@@ -15,6 +15,7 @@ const TABS = [
   { label: 'Run log', href: paths.automation.runs },
   { label: 'Review', href: paths.automation.review },
   { label: 'Usage & cost', href: paths.automation.usage },
+  { label: 'Settings', href: paths.automation.settings },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }): React.JSX.Element {

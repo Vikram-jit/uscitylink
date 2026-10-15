@@ -10,6 +10,7 @@ import type {
   Pagination,
   TestFlowResult,
   UsageReport,
+  AutomationSettings,
 } from './models/AutomationModel';
 
 interface Res<T> {
@@ -153,6 +154,14 @@ export const AutomationApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 0,
     }),
 
+    getAutomationSettings: builder.query<Res<AutomationSettings>, void>({
+      query: () => ({ url: 'automation/settings', method: 'GET' }),
+      keepUnusedDataFor: 0,
+    }),
+    updateAutomationSettings: builder.mutation<Res<{ model: string }>, { model: string }>({
+      query: (body) => ({ url: 'automation/settings', method: 'PUT', body }),
+    }),
+
     // Staff: chat attachments
     getMessageDocument: builder.query<Res<MessageDocument | null>, { messageId: string }>({
       query: ({ messageId }) => ({ url: `automation/message-documents/${messageId}`, method: 'GET' }),
@@ -205,6 +214,8 @@ export const {
   useGetReviewQueueQuery,
   useGetAutomationStatsQuery,
   useGetUsageReportQuery,
+  useGetAutomationSettingsQuery,
+  useUpdateAutomationSettingsMutation,
   useGetMessageDocumentQuery,
   useCorrectMessageDocumentMutation,
   useReanalyzeMessageMutation,

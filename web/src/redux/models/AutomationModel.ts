@@ -261,3 +261,8 @@ export interface UsageReport {
   rateCard: Rate[];
   demoRows: number;
 }
+
+export interface AutomationSettings {
+  ai: { model: string; isDefault: boolean; updatedAt: string | null; updatedBy: string | null; envDefault: string };
+  models: (Rate & { estimatedPerDocument: number })[];
+}

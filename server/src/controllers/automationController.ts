@@ -25,7 +25,9 @@ import { OPERATORS, validateConditionTree } from "../services/flowEngine/evaluat
 import { ACTION_TYPES, validateAction } from "../services/flowEngine/actions";
 import { enqueueDocumentAnalysis } from "../queues/documentAnalysisQueue";
 import { cleanKeywords, suggestKeywords } from "../services/documentAi/keywords";
-import { buildUsageReport } from "../services/documentAi/usageReport";
+import { buildUsageReport, estimateByModel, estimateCallTokens } from "../services/documentAi/usageReport";
+import { DEFAULT_AI_MODEL, getAiModelSetting, setAiModel } from "../services/documentAi/settings";
+import { RATE_CARD } from "../services/documentAi/pricing";
 
 export const automationUpload = multer({
   storage: multer.memoryStorage(),
@@ -654,5 +656,39 @@ export const usageReport = async (req: Request, res: Response): Promise<any> => 
     return res.status(200).json({ status: true, data: await buildUsageReport(days) });
   } catch (err) {
     return fail(res, err, 500);
+  }
+};
+
+// ---------- Settings: which AI model reads documents ----------
+
+export const getAutomationSettings = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const estimate = await estimateCallTokens();
+    const perDoc = estimateByModel(estimate);
+    return res.status(200).json({
+      status: true,
+      data: {
+        ai: { ...(await getAiModelSetting()), envDefault: DEFAULT_AI_MODEL },
+        models: RATE_CARD.map((r) => {
+          const e = perDoc.find((m) => m.model === r.model)!;
+          // Realistic per-document cost with the current prompt/examples
+          const perDocument = estimate.cachingLikely ? (e.warm * 7 + e.cold * 3) / 10 : e.uncached;
+          return { ...r, estimatedPerDocument: Math.round(perDocument * 1_000_000) / 1_000_000 };
+        }),
+      },
+    });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+export const updateAutomationSettings = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { model } = req.body || {};
+    if (!model) throw new Error("Choose a model");
+    const saved = await setAiModel(String(model), req.user?.id);
+    return res.status(200).json({ status: true, message: "AI model updated", data: { model: saved } });
+  } catch (err) {
+    return fail(res, err);
   }
 };

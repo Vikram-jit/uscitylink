@@ -3,7 +3,8 @@ import { AiUsageLog } from "../../models/AiUsageLog";
 import { DocType } from "../../models/DocType";
 import { DocTypeExample } from "../../models/DocTypeExample";
 import { MessageDocument } from "../../models/MessageDocument";
-import { AI_MODEL, MAX_EXAMPLES_PER_TYPE, MAX_EXAMPLES_TOTAL } from "./analyzeDocument";
+import { MAX_EXAMPLES_PER_TYPE, MAX_EXAMPLES_TOTAL } from "./analyzeDocument";
+import { getAiModel } from "./settings";
 import { buildExtractionSchema } from "./buildSchema";
 import { buildSystemPrompt } from "./prompt";
 import { computeCost, findRate, RATE_CARD } from "./pricing";
@@ -156,7 +157,8 @@ export const buildUsageReport = async (days: number) => {
 
   const estimate = await estimateCallTokens();
   const demoRows = await AiUsageLog.count({ where: { source: "demo" } });
-  const { rate, known } = findRate(AI_MODEL);
+  const aiModel = await getAiModel();
+  const { rate, known } = findRate(aiModel);
 
   return {
     days,
@@ -183,7 +185,7 @@ export const buildUsageReport = async (days: number) => {
       budgetUsedPct: budget ? round((num(mtd?.cost) / budget) * 100, 1) : null,
     },
     config: {
-      model: AI_MODEL,
+      model: aiModel,
       modelKnown: known,
       rate,
       maxExamplesPerType: MAX_EXAMPLES_PER_TYPE,

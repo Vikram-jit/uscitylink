@@ -31,6 +31,8 @@ import {
   updateExample,
   updateFlow,
   usageReport,
+  getAutomationSettings,
+  updateAutomationSettings,
 } from "../controllers/automationController";
 
 const router = Router();
@@ -71,5 +73,7 @@ router.get("/runs", ...adminOnly, listRuns);
 router.get("/review-queue", ...adminOnly, reviewQueue);
 router.get("/stats", ...adminOnly, automationStats);
 router.get("/usage", ...adminOnly, usageReport);
+router.get("/settings", ...adminOnly, getAutomationSettings);
+router.put("/settings", ...adminOnly, updateAutomationSettings);
 
 export default router;

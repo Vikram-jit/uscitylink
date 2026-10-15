@@ -8,16 +8,17 @@ import { loadFileForAnalysis, PreparedFile } from "./fileSource";
 import { decideDocType, scoreKeywords } from "./keywords";
 import { logUsage, UsageContext } from "./usageLog";
 import { TokenUsage } from "./pricing";
+import { getAiModel, supportsFallback } from "./settings";
 
 dotenv.config();
 
-export const AI_MODEL = process.env.AI_MODEL || "claude-opus-5-5";
+// The model is chosen by an admin in Automation -> Settings (see ./settings); env AI_MODEL is the default
+export { DEFAULT_AI_MODEL as AI_MODEL } from "./settings";
 // Each example photo costs roughly 2,000 input tokens on every analysis (cheap only while cached),
 // so these limits are the main cost lever. Override in .env.
 export const MAX_EXAMPLES_PER_TYPE = Number(process.env.AI_MAX_EXAMPLES_PER_TYPE ?? 2);
 export const MAX_EXAMPLES_TOTAL = Number(process.env.AI_MAX_EXAMPLES_TOTAL ?? 12);
 
-const SUPPORTS_FALLBACK = !/haiku/i.test(AI_MODEL);
 
 const client = new Anthropic();
 
@@ -113,11 +114,12 @@ const   callModel = async (
 ): Promise<RawResult> => {
 
   const started = Date.now();
+  const model = await getAiModel();
   const response = await client.beta.messages.create({
-    model: AI_MODEL,
+    model,
     max_tokens: 8000,
     // Server-side refusal fallback is not offered on Haiku models
-    ...(SUPPORTS_FALLBACK ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+    ...(supportsFallback(model) ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     system: [
       { type: "text", text: buildSystemPrompt(docTypes, options.knownType), cache_control: { type: "ephemeral" } },
     ],
