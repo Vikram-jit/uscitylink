@@ -51,6 +51,8 @@ import ReactPlayer from 'react-player';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import { useSocketEvent } from '@/hooks/use-socket-event';
+import { scheduleBadgeRefresh } from '@/lib/badge-refresh';
 import useDebounce from '@/hooks/useDebounce';
 import DocumentDialog from '@/components/DocumentDialog';
 import AvatarWithStatus from '@/components/messages/AvatarWithStatus';
@@ -242,7 +244,8 @@ const ChatInterface = ({ type }: { type: string }) => {
   const { data: groupMessage, isLoading: mLoading } = useGetGroupMessagesQuery(
     { channel_id: selectedChannel, group_id: selectedGroup, page: pageMessage, resetKey: mResetKey },
     {
-      skip: !selectedGroup,
+      // Only the regular Groups screen reads these; the truck screen uses getGroupById
+      skip: !selectedGroup || type === 'truck',
       refetchOnMountOrArgChange: false,
     }
   );
@@ -296,9 +299,11 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   };
 
+  const selectedGroupRef = React.useRef(selectedGroup);
+  selectedGroupRef.current = selectedGroup;
   const handleReceiveMessage = useCallback(
     (message: any, groupId: string) => {
-      if (message.groupId !== selectedGroup) {
+      if (message.groupId !== selectedGroupRef.current) {
         return; // Ignore the message if the groupId does not match selectedId
       }
       setMessages((prevMessages: any) => {
@@ -380,40 +385,14 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   }, [group, groupMessage, type, selectedGroup]);
 
-  useEffect(() => {
-    if (socket) {
-      if (type == 'group') {
-        socket.on('update_file_upload_status_group', (data: any) => {
-          setMessages((prev: any) =>
-            prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
-          );
-        });
-        socket.on('new_group_message_received', (message: MessageModel) =>
-          handleReceiveMessage(message, selectedGroup)
-        );
-      } else {
-        socket.on('update_url_status_truck_group', (data: any) => {
-          setMessages((prev: any) =>
-            prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
-          );
-        });
-        // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
-        socket.on('receive_message_group_truck', (message: MessageModel) =>
-          handleReceiveMessage(message, selectedGroup)
-        );
-      }
-
-      // Cleanup the event listener when the component unmounts or socket changes
-      return () => {
-        if (type == 'group') {
-          socket.off('new_group_message_received', handleReceiveMessage);
-        } else {
-          //socket.off('receive_message_group', handleReceiveMessage);
-          socket.off('receive_message_group_truck', handleReceiveMessage);
-        }
-      };
-    }
-  }, [socket, selectedGroup]);
+  const applyUploadStatus = (statusData: any) =>
+    setMessages((prev: any) =>
+      prev.map((e: any) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e))
+    );
+  useSocketEvent('update_file_upload_status_group', applyUploadStatus, type == 'group');
+  useSocketEvent('new_group_message_received', (incoming: MessageModel) => handleReceiveMessage(incoming, ''), type == 'group');
+  useSocketEvent('update_url_status_truck_group', applyUploadStatus, type != 'group');
+  useSocketEvent('receive_message_group_truck', (incoming: MessageModel) => handleReceiveMessage(incoming, ''), type != 'group');
 
   useEffect(() => {
     scrollToBottom();
@@ -433,62 +412,24 @@ const ChatInterface = ({ type }: { type: string }) => {
       setPageMessage((prevPage) => prevPage + 1);
     }
   };
-  useEffect(() => {
-    if (socket) {
-      socket.on('update_user_group_list', (message: MessageModel) => {
-        if (groups) {
-          setGroups((prevGroupList) => {
-            if (!prevGroupList) return prevGroupList;
+  useSocketEvent('update_user_group_list', (incoming: MessageModel) => {
+    setGroups((prevGroupList) => {
+      if (!prevGroupList) return prevGroupList;
+      const updated = prevGroupList.map((group) =>
+        group.id === incoming.groupId ? { ...group, message_count: group.message_count + 1, last_message: incoming } : group
+      );
+      return updated.sort((a, b) => (a.id === incoming.groupId ? -1 : b.id === incoming.groupId ? 1 : 0));
+    });
+  });
 
-            const updatedUserChannels = prevGroupList.map((group) => {
-              if (group.id === message.groupId) {
-                return {
-                  ...group,
-                  message_count: group.message_count + 1,
-                  last_message: message,
-                };
-              }
-              return group;
-            });
-
-            const updatedUserList = updatedUserChannels.sort((a, b) => {
-              if (a.id === message.groupId) return -1;
-              if (b.id === message.groupId) return 1;
-              return 0;
-            });
-
-            return updatedUserList;
-          });
-        }
-      });
-
-      socket.on('update_group_staff_message_count', (groupId: string) => {
-        if (groups) {
-          setGroups((prevGroupList) => {
-            if (!prevGroupList) return prevGroupList;
-
-            const updatedUserChannels = prevGroupList.map((group) => {
-              if (group.id === groupId) {
-                return {
-                  ...group,
-                  message_count: 0,
-                };
-              }
-              return group;
-            });
-
-            const updatedUserList = updatedUserChannels.sort((a, b) => {
-              if (a.id === groupId) return -1;
-              if (b.id === groupId) return 1;
-              return 0;
-            });
-
-            return updatedUserList;
-          });
-        }
-      });
-    }
-  }, [socket]);
+  useSocketEvent('update_group_staff_message_count', (groupId: string) => {
+    scheduleBadgeRefresh(dispatch);
+    setGroups((prevGroupList) => {
+      if (!prevGroupList) return prevGroupList;
+      const updated = prevGroupList.map((group) => (group.id === groupId ? { ...group, message_count: 0 } : group));
+      return updated.sort((a, b) => (a.id === groupId ? -1 : b.id === groupId ? 1 : 0));
+    });
+  });
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -686,15 +627,16 @@ const ChatInterface = ({ type }: { type: string }) => {
     setMResetKey(Date.now());
   };
   const handleGroupChange = (group: any, type: string) => {
+    // Fresh data on (re)open for whichever query this screen reads (the keys used to be swapped)
+    setResetKey(Date.now());
+    setMResetKey(Date.now());
     if (type === 'group') {
-      setResetKey(Date.now());
       socket.emit('group_user_add', {
         channel_id: group.group_channel.channelId,
         group_id: group.id,
       });
       socket.emit('update_group_staff_message_count', group.id);
     } else {
-      setMResetKey(Date.now());
       socket?.emit('staff_open_truck_group', group.id);
     }
 

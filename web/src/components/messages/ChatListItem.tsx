@@ -46,8 +46,9 @@ export default function ChatListItem(props: ChatListItemProps) {
             setSelectedUserId(user?.userProfileId);
             socket.emit('staff_open_chat', user?.userProfileId);
             //if (user.unreadCount > 0) {
+              // The server acks with update_channel_sent_message_count, which zeroes the row and
+              // schedules one coalesced badge refresh (no immediate refetch on every click)
               socket.emit('update_channel_sent_message_count', { channelId, userId: id });
-              dispatch(apiSlice.util.invalidateTags(['channels']));
             //}
           }}
           selected={selected}

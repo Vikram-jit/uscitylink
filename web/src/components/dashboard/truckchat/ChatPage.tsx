@@ -15,6 +15,8 @@ import { useDispatch } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
 import useDebounce from '@/hooks/useDebounce';
+import { useSocketEvent } from '@/hooks/use-socket-event';
+import { scheduleBadgeRefresh } from '@/lib/badge-refresh';
 
 import { MediaGallery } from '../truckgroup/view';
 import { ChatView } from './ChatView';
@@ -27,7 +29,7 @@ const ChatPage = () => {
   const searchItem = useDebounce(search, 200);
   const [pageMessage, setPageMessage] = React.useState(1);
   const [hasMoreMessage, setHasMoreMessage] = React.useState<boolean>(false);
-  const { socket } = useSocket();
+  const { socket, reconnectCount } = useSocket();
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState<boolean>(false);
   const [uploadMultipleFiles, { isLoading: multipleLoader }] = useUploadMultipleFilesMutation();
@@ -69,6 +71,8 @@ const ChatPage = () => {
   );
 
   const [message, setMessage] = useState<MessageModel[]>([]);
+  // True only when the loaded group data belongs to the group the staff member has open
+  const isOpenGroupLoaded = () => Boolean(currentChatId && (messages?.data as any)?.group?.id === currentChatId);
 
   const loadMoreGroupMessages = () => {
     console.log('Loading more messages...');
@@ -85,8 +89,8 @@ const ChatPage = () => {
       setHasMore((truckGroups?.data?.pagination.currentPage || 0) < (truckGroups?.data?.pagination.totalPages || 0));
 
       if ((truckGroups?.data?.pagination?.currentPage || 1) > 1) {
-        // Append to existing messages
-        setGroups((prev) => [...prev, ...newGroups]);
+        // Append the next page (skip groups already in the list)
+        setGroups((prev) => [...prev, ...newGroups.filter((g: GroupModel) => !prev.some((p) => p.id === g.id))]);
       } else {
         // Replace existing messages
         setGroups(newGroups);
@@ -101,8 +105,8 @@ const ChatPage = () => {
       setHasMoreMessage((messages?.data?.pagination?.currentPage || 0) < (messages?.data?.pagination?.totalPages || 0));
 
       if ((messages?.data?.pagination?.currentPage || 1) > 1) {
-        // Append to existing messages
-        setMessage((prev) => [...prev, ...newMessages]);
+        // Append older messages (skip any already shown, e.g. after a socket message shifted the pages)
+        setMessage((prev) => [...prev, ...newMessages.filter((m: MessageModel) => !prev.some((p) => p.id === m.id))]);
       } else {
         // Replace existing messages
         setMessage(newMessages);
@@ -136,74 +140,97 @@ const ChatPage = () => {
     }
   };
 
-  const handleNewMessageCountUpdate = ({
-    channelId,
-    userId,
-    message,
-  }: {
-    channelId: string;
-    userId: string;
-    message: MessageModel;
-  }) => {
-    if (message) {
-      const currentId = currentChatIdRef.current;
-      if (message.groupId == currentId) {
-        socket.emit('staff_open_truck__message_count', {
-          groupId: message.groupId,
-          count: 0,
-        });
-         setGroups((prevGroups) =>
-        prevGroups.map((group) =>
-          group.id === message.groupId
-            ? { ...group, message_count: 0 }
-            : group
-        )
-      );
-        return; // Ignore the message if the groupId does not match selectedId
-      }
-      setGroups((prevGroups) =>
-        prevGroups.map((group) =>
-          group.id === message.groupId
-            ? { ...group, last_message: message, message_count: (group.message_count || 0) + 1 }
-            : group
-        )
-      );
+  // Marking the open group read is heavy on the server (it marks every member's messages read).
+  // Throttle: emit right away for the first message, then at most once per 5s while messages keep
+  // arriving; a pending mark-read is still sent if the staff member leaves the chat.
+  const markReadRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; pendingGroupId: string | null }>({
+    timer: null,
+    pendingGroupId: null,
+  });
+  const emitMarkRead = (groupId: string) => socket?.emit('staff_open_truck__message_count', { groupId, count: 0 });
+  const scheduleMarkRead = (groupId: string) => {
+    const state = markReadRef.current;
+    if (state.timer) {
+      state.pendingGroupId = groupId;
+      return;
     }
+    emitMarkRead(groupId);
+    state.timer = setTimeout(function flush() {
+      const pending = markReadRef.current.pendingGroupId;
+      markReadRef.current.pendingGroupId = null;
+      markReadRef.current.timer = null;
+      if (pending) scheduleMarkRead(pending);
+    }, 5000);
   };
-  useEffect(() => {
-    if (socket) {
-      socket.on('update_url_status_truck_group', (data: any) => {
-        setMessage((prev: any) =>
-          prev.map((e: any) => (e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e))
+  useEffect(
+    () => () => {
+      const state = markReadRef.current;
+      if (state.timer) clearTimeout(state.timer);
+      if (state.pendingGroupId) emitMarkRead(state.pendingGroupId);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush once on unmount
+    []
+  );
+
+  // ---- real-time (leak-free: one listener each, removed on unmount) ----
+  useSocketEvent('update_url_status_truck_group', (statusData: any) => {
+    setMessage((prev: any) =>
+      prev.map((e: any) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e))
+    );
+  });
+
+  useSocketEvent('receive_message_group_truck', (incoming: MessageModel) => {
+    handleReceiveMessage(incoming, currentChatIdRef.current || '');
+  });
+
+  useSocketEvent(
+    'new_message_count_update_staff',
+    ({ message: incoming }: { channelId: string; userId: string; message: MessageModel }) => {
+      if (!incoming?.groupId) return;
+      scheduleBadgeRefresh(dispatch);
+      const isOpen = incoming.groupId === currentChatIdRef.current;
+      if (isOpen) scheduleMarkRead(incoming.groupId);
+      setGroups((prevGroups) => {
+        const updated = prevGroups.map((group) =>
+          group.id === incoming.groupId
+            ? {
+                ...group,
+                last_message: incoming,
+                message_count: isOpen ? 0 : (group.message_count || 0) + 1,
+              }
+            : group
         );
+        // Most recent conversation first
+        const index = updated.findIndex((group) => group.id === incoming.groupId);
+        if (index > 0) updated.unshift(updated.splice(index, 1)[0]);
+        return updated;
       });
-      // socket.on('receive_message_group', (message: MessageModel) => handleReceiveMessage(message, selectedGroup));
-      socket.on('receive_message_group_truck', (message: MessageModel) =>
-        handleReceiveMessage(message, currentChatId!)
-      );
-      socket.on('new_message_count_update_staff', handleNewMessageCountUpdate);
-
-      // Cleanup the event listener when the component unmounts or socket changes
-      return () => {
-        socket.off('receive_message_group_truck', handleReceiveMessage);
-      };
     }
-  }, [socket]);
+  );
 
-  // Interval effect
+  // Re-register the open group after a channel switch (the server clears it then)
+  useSocketEvent('update_channel', () => {
+    if (currentChatIdRef.current) socket?.emit('staff_open_truck_chat', currentChatIdRef.current);
+  });
+
+  // Keep the server's "open group" registration alive (was every 2s; selection/reconnect cover the rest)
   useEffect(() => {
-    if (currentChatId && socket?.connected) {
-      intervalRef.current = setInterval(() => {
-        socket.emit('staff_open_truck_chat', currentChatId);
-      }, 2000);
-    }
+    if (!currentChatId || !socket) return undefined;
+    const keepAlive = setInterval(() => socket.emit('staff_open_truck_chat', currentChatId), 30000);
+    return () => clearInterval(keepAlive);
+  }, [currentChatId, socket]);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [currentChatId, socket?.connected]);
+  // After a socket reconnect: re-register the open group and resync once
+  useEffect(() => {
+    if (reconnectCount === 0) return;
+    const openId = currentChatIdRef.current;
+    if (openId) {
+      socket?.emit('staff_open_truck_chat', openId);
+      if (pageMessage !== 1) setPageMessage(1);
+      else refetchMessages();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on reconnect
+  }, [reconnectCount]);
 
   const renderFilePreview = () => {
     const extension = file.name?.split('.')[file.name?.split('.').length - 1];
@@ -231,6 +258,10 @@ const ChatPage = () => {
 
   async function sendFiles() {
     try {
+      if (!isOpenGroupLoaded()) {
+        alert('The group is still loading. Please try again in a moment.');
+        return;
+      }
       const userIds = messages?.data.members
         .filter((e) => e.userProfileId && e.status == 'active')
         .map((e) => e.userProfileId);
@@ -294,6 +325,11 @@ const ChatPage = () => {
         return;
       }
       if (messages?.data) {
+        // While a newly selected group loads, `messages` still holds the previous group's members
+        if (!isOpenGroupLoaded()) {
+          alert('The group is still loading. Please try again in a moment.');
+          return;
+        }
         const userIds = messages?.data?.members
           .filter((e) => e.userProfileId && e.status == 'active')
           .map((e) => e.userProfileId);
@@ -363,6 +399,11 @@ const ChatPage = () => {
 
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'webm', 'mpeg', 'mpg', 'wmv'];
       dispatch(showLoader());
+      if (messages?.data && !isOpenGroupLoaded()) {
+        alert('The group is still loading. Please try again in a moment.');
+        dispatch(hideLoader());
+        return;
+      }
       if (messages?.data) {
         const userIds = messages?.data.members
           .filter((e) => e.userProfileId && e.status == 'active')
@@ -462,7 +503,11 @@ const ChatPage = () => {
           viewDetailGroup={viewDetailGroup}
           viewMedia={viewMedia}
           setViewMedia={setViewMedia}
-          handleReset={() => refetchMessages()}
+          handleReset={() => {
+            setMessage([]);
+            if (pageMessage !== 1) setPageMessage(1);
+            else refetchMessages();
+          }}
           hasMoreMessage={hasMoreMessage}
           loadMoreGroupMessages={loadMoreGroupMessages}
           messageLoader={messageLoader || isMessagesFetching}

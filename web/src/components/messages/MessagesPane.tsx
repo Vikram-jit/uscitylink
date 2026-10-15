@@ -12,6 +12,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import { useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import { useSocketEvent } from '@/hooks/use-socket-event';
 
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
@@ -74,17 +75,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
   
 
   React.useEffect(() => {
-    if (!userId) return; // Skip if userId is falsy
-  
-    // Call refetch only if the query is ready
-    try {
-      refetch?.(); // Use optional chaining to prevent calling undefined
-    } catch (err) {
-      console.warn("Refetch error:", err);
-    }
-  }, [userId, refetch]);
-
-  React.useEffect(() => {
     if (!userId) return;
   
     // Reset states when `userId` changes
@@ -96,7 +86,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setPinMessage('0');
     setUnReadMessage('0');
     setSelectedMessageToReply(null);
-    setResetKey(Date.now());
   
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
@@ -104,15 +93,6 @@ export default function MessagesPane(props: MessagesPaneProps) {
         behavior: 'smooth',
       });
       setButtonTitle('Scroll to Bottom');
-    }
-  
-    // Ensure refetch is available before calling
-    if (typeof refetch === 'function') {
-      try {
-        refetch();
-      } catch (e) {
-        console.warn('Refetch failed:', e);
-      }
     }
   }, [userId]);
 
@@ -172,129 +152,58 @@ export default function MessagesPane(props: MessagesPaneProps) {
     setResetKey(Date.now());
    
   };
-  // Socket handling (e.g., new messages)
-  React.useEffect(() => {
-    if (socket) {
-      socket.emit('staff_active_channel_user_update', userId);
-      
-      socket.on('receive_message_channel', (message: MessageModel) => {
-     
-        if(message?.userProfileId == userId){
-          setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
-        }
-      
-        if (showScrollToBottomButton) {
-          setButtonTitle('New Message');
-        }
-        // Update user list if necessary
-        setUserList((prevUserList) => {
-          if (!prevUserList) return prevUserList;
-          const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
-            if (channel.userProfileId === message.userProfileId) {
-              return { ...channel, sent_message_count: 0, last_message: message };
-            }
-            return channel;
-          });
-          return { ...prevUserList, user_channels: updatedUserChannels };
-        });
-      });
-      socket.on('user_online', (socketData: any) => {
-        // Safeguard: Ensure socketData contains userId and isOnline before proceeding
-        if (!socketData || typeof socketData.userId === 'undefined' || typeof socketData.isOnline === 'undefined') {
-          console.warn('Invalid socket data received:', socketData);
-          return;
-        }
-      
-        const { userId, isOnline } = socketData;
-      
-        // Check if the sender exists and if the userId matches the sender's id
-        if (sender?.id === userId) {
-          setSender((prevSender) => {
-            if (!prevSender) {
-              console.warn('Sender data not found!');
-              return prevSender;  // Prevent updating if sender doesn't exist
-            }
-      
-            // Update the sender's isOnline status
-            return { ...prevSender, isOnline };  // Return updated sender with new isOnline status
-          });
-        }
-      });
-      socket.on('typing', (data: any) => {
-        setIsTyping(data.isTyping);
-      });
+  // Socket handling (leak-free; refs give handlers the current chat)
+  const userIdRef = React.useRef(userId);
+  userIdRef.current = userId;
+  const showScrollRef = React.useRef(showScrollToBottomButton);
+  showScrollRef.current = showScrollToBottomButton;
 
-      socket.on('stopTyping', () => {
-        setIsTyping(false);
-      });
-
-      socket.on('pin_done_web',(data:any)=>{
-        if(data.value == "0"){
-          toast.success("Un-pin message successfully")
-        }else{
-          toast.success("Pin message successfully")
-        }
-       
-        setMessages((prev) =>
-          prev.map((e) =>
-            e.id === data?.messageId ? { ...e, staffPin: data?.value } : e
-          )
-        );
-       
-       
-      })
-      socket.on("update_file_recivied_status",(data:any)=>{
-       setMessages((prev) =>
-          prev.map((e) =>
-            e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-          )
-        );
-       })
-       socket.on("update_file_sent_status",(data:any)=>{
-        setMessages((prev) =>
-           prev.map((e) =>
-             e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-           )
-         );
-        })
- 
-       
-      socket.on('delete_message',(data:any)=>{
-      
-       
-        setMessages((prev) =>
-          prev.filter((e) =>
-            e.id != data 
-          )
-        );
-      
-          toast.error("Deleted message successfully")
-        
-      })
+  useSocketEvent('receive_message_channel', (message: MessageModel) => {
+    if (message?.userProfileId == userIdRef.current) {
+      setMessages((prevMessages) =>
+        prevMessages.some((m) => m.id === message.id) ? prevMessages : [{ ...message }, ...prevMessages]
+      );
+      if (showScrollRef.current) setButtonTitle('New Message');
     }
-    
-  
-    
-    const intervalId = setInterval(() => {
-      if (userId && socket) {
-        socket.emit('staff_open_chat', userId);
-       
-      }
-    }, 15000); // Every 15 seconds
+    setUserList((prevUserList) => {
+      if (!prevUserList) return prevUserList;
+      const updatedUserChannels = prevUserList?.user_channels?.map((channel: any) =>
+        channel.userProfileId === message.userProfileId ? { ...channel, sent_message_count: 0, last_message: message } : channel
+      );
+      return { ...prevUserList, user_channels: updatedUserChannels };
+    });
+  });
 
-    // Cleanup the interval when the component is unmounted or userId changes
-    return () => {
-      if (socket) {
-        socket.off('update_file_sent_status');
-        socket.off('delete_message');
-        socket.off('update_file_recivied_status');
-        socket.off('receive_message_channel');
-        socket.off('pin_done');
-        socket.off('pin_done_web');
-        socket.off('staff_open_chat', userId);
-      }
-      clearInterval(intervalId); 
-    };
+  useSocketEvent('user_online', (socketData: any) => {
+    if (!socketData || typeof socketData.userId === 'undefined' || typeof socketData.isOnline === 'undefined') return;
+    if (socketData.userId !== userIdRef.current) return;
+    setSender((prevSender) => (prevSender ? { ...prevSender, isOnline: socketData.isOnline } : prevSender));
+  });
+
+  useSocketEvent('typing', (typingData: any) => setIsTyping(typingData.isTyping));
+  useSocketEvent('stopTyping', () => setIsTyping(false));
+
+  useSocketEvent('pin_done_web', (pinData: any) => {
+    toast.success(pinData.value == '0' ? 'Un-pin message successfully' : 'Pin message successfully');
+    setMessages((prev) => prev.map((e) => (e.id === pinData?.messageId ? { ...e, staffPin: pinData?.value } : e)));
+  });
+
+  const applyUploadStatus = (statusData: any) =>
+    setMessages((prev) => prev.map((e) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e)));
+  useSocketEvent('update_file_recivied_status', applyUploadStatus);
+  useSocketEvent('update_file_sent_status', applyUploadStatus);
+
+  useSocketEvent('delete_message', (messageId: any) => {
+    setMessages((prev) => prev.filter((e) => e.id != messageId));
+    toast.error('Deleted message successfully');
+  });
+
+  // Tell the server which driver this staff member is viewing (+ keep-alive)
+  React.useEffect(() => {
+    if (!socket || !userId) return undefined;
+    socket.emit('staff_active_channel_user_update', userId);
+    const intervalId = setInterval(() => socket.emit('staff_open_chat', userId), 15000);
+    return () => clearInterval(intervalId);
   }, [socket, userId]);
 
   const handleScroll = () => {

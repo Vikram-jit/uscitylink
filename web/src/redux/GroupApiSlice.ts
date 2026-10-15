@@ -49,7 +49,7 @@ export const GroupApiSlice = apiSlice.injectEndpoints({
       }),
     }),
     createGroup: builder.mutation<ApiResponse, { name: string; description?: string; type?: string }>({
-      invalidatesTags: ['groups'],
+      invalidatesTags: ['groups', 'truck-groups'],
       query: (payload) => ({
         url: 'group',
         method: 'POST',

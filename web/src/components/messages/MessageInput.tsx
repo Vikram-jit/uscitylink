@@ -32,6 +32,7 @@ import 'react-image-gallery/styles/css/image-gallery.css';
 import { File, Video } from '@phosphor-icons/react';
 
 import { useSocket } from '@/lib/socketProvider';
+import { useSocketEvent } from '@/hooks/use-socket-event';
 
 import MediaComponent from './MediaComment';
 
@@ -88,21 +89,14 @@ export default function MessageInput(props: MessageInputProps) {
   const [files, setFiles] = React.useState<any>([]);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    if (socket) {
-      socket.on('typingUser', (data: any) => {
-        if (data.userId == props.userId) {
-          if (data?.isTyping) {
-            setUserTyping(data?.isTyping);
-            setUserTypingMessage(data?.message);
-          } else {
-            setUserTyping(data?.isTyping);
-            setUserTypingMessage('');
-          }
-        }
-      });
-    }
-  }, [socket, props.userId]);
+  // Driver typing indicator for the open conversation (leak-free)
+  const typingUserIdRef = React.useRef(props.userId);
+  typingUserIdRef.current = props.userId;
+  useSocketEvent('typingUser', (typingData: any) => {
+    if (typingData.userId != typingUserIdRef.current) return;
+    setUserTyping(typingData?.isTyping);
+    setUserTypingMessage(typingData?.isTyping ? typingData?.message : '');
+  });
 
   // Handle the file input change event
   const handleFileChange = (event: any) => {

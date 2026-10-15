@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { apiSlice } from '@/redux/apiSlice';
+import { scheduleTagRefresh } from '@/lib/badge-refresh';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -9,11 +10,14 @@ import { io } from 'socket.io-client';
 type SocketContextType = {
   socket: any | null;
   isConnected: boolean;
+  // Increments on every reconnect after the first connect; screens resync once when it changes
+  reconnectCount: number;
 };
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false,
+  reconnectCount: 0,
 });
 
 
@@ -37,12 +41,14 @@ export const SocketProvider = ({
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   // const [audioContext, setAudioContext] = useState<any>(null)
   const [newMessage,setNewMessage] = useState<boolean>(false)
+  const [reconnectCount, setReconnectCount] = useState(0);
   // Read once in the browser; localStorage does not exist during server rendering
   const [token] = useState<string | null>(() =>
     typeof window === 'undefined' ? null : localStorage.getItem('custom-auth-token')
   );
   const dispatch = useDispatch();
   useEffect(() => {
+    let hasConnectedBefore = false;
     const socketServer = io(process.env.SOCKET_URL, {
       transports: ['websocket'],
       query: { token: token },
@@ -75,6 +81,9 @@ export const SocketProvider = ({
       setIsConnected(true);
       setReconnectAttempts(0); //
       setSocket(socketServer);
+      // Anything missed while offline is recovered by the screens on this signal
+      if (hasConnectedBefore) setReconnectCount((count) => count + 1);
+      hasConnectedBefore = true;
     }
 
     function onDisconnect() {
@@ -83,10 +92,7 @@ export const SocketProvider = ({
     
     socketServer.on('connect', onConnect);
     socketServer.on('disconnect', onDisconnect);
-    socketServer.on('notification_new_message', (message: string) => {
-      socketServer.on('reconnect_attempt', onReconnectAttempt);
-      socketServer.on('reconnect_error', onReconnectError);
-      socketServer.on('reconnect_failed', onReconnectFailed);
+    const onNotificationNewMessage = (message: string) => {
       toast.success(message);
       document.title = "New Message";
      // dispatch(apiSlice.util.invalidateTags([ 'messages','channels']));
@@ -97,8 +103,9 @@ export const SocketProvider = ({
         // the audio is now playable; play it if permissions allow
         audio.play()
       })
-    });
-    socketServer.on("notification_group",(message)=>{
+    };
+    socketServer.on('notification_new_message', onNotificationNewMessage);
+    const onNotificationGroup = (message: string) => {
       toast.success(message);
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
 
@@ -106,12 +113,12 @@ export const SocketProvider = ({
         // the audio is now playable; play it if permissions allow
         audio.play()
       })
-     // 
-     dispatch(apiSlice.util.invalidateTags(['channels','dashboard']));
-     // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
-    })
+     // Coalesced: a burst of group messages refreshes the badges/dashboard once
+     scheduleTagRefresh(dispatch, ['channels', 'dashboard']);
+    };
+    socketServer.on('notification_group', onNotificationGroup);
 
-    socketServer.on("notification_forward_message",(message)=>{
+    const onNotificationForward = (message: string) => {
       toast.success(message);
       const audio = new Audio('https://ciity-sms.s3.us-west-1.amazonaws.com/mixkit-positive-notification-951.wav')
 
@@ -121,8 +128,8 @@ export const SocketProvider = ({
       })
      // 
       dispatch(apiSlice.util.invalidateTags(['members']));
-     // dispatch(apiSlice.util.invalidateTags(['groups', 'group', ]));
-    })
+    };
+    socketServer.on('notification_forward_message', onNotificationForward);
    const createAudioContext = () => {
   if (!audioContext) {
     try {
@@ -153,12 +160,7 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
     socketServer.on('reconnect_attempt', onReconnectAttempt);
       socketServer.on('reconnect_error', onReconnectError);
       socketServer.on('reconnect_failed', onReconnectFailed);
-    socketServer.on('typingUser', (data: any) => {
-      
-      // if(data.userId == props.userId){
-      //   setUserTyping(data?.isTyping)
-      // }
-    });
+
     // Ping server every 5 seconds
     const pingInterval = setInterval(() => {
       if (isConnected) {
@@ -174,14 +176,21 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
       //    socketServer.off("notification_new_message");
       //    socketServer.off("update_channel_sent_message_count");
       //  socketServer.off('staff_open_chat');
+      socketServer.off('connect', onConnect);
+      socketServer.off('disconnect', onDisconnect);
+      socketServer.off('notification_new_message', onNotificationNewMessage);
+      socketServer.off('notification_group', onNotificationGroup);
+      socketServer.off('notification_forward_message', onNotificationForward);
       socketServer.off('reconnect_attempt', onReconnectAttempt);
       socketServer.off('reconnect_error', onReconnectError);
       socketServer.off('reconnect_failed', onReconnectFailed);
+      document.removeEventListener('click', createAudioContext);
+      document.removeEventListener('touchstart', createAudioContext);
       clearInterval(pingInterval);
       socketServer.off('pong');
       socketServer.disconnect();
     };
-  }, [token, dispatch,audioContext]);
+  }, [token, dispatch]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -199,5 +208,5 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
     };
   }, [isConnected, socket]);
 
-  return <SocketContext.Provider value={{ socket, isConnected }}> {children}</SocketContext.Provider>;
+  return <SocketContext.Provider value={{ socket, isConnected, reconnectCount }}> {children}</SocketContext.Provider>;
 };

@@ -7,6 +7,8 @@ import { Box, CircularProgress } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import { scheduleBadgeRefresh } from '@/lib/badge-refresh';
+import { useSocketEvent } from '@/hooks/use-socket-event';
 import useDebounce from '@/hooks/useDebounce';
 
 import ChatsPane from './ChatsPane';
@@ -37,7 +39,17 @@ export default function MyMessage() {
   const [userList, setUserList] = React.useState<SingleChannelModel | null>(null);
 
   const [selectedUserId, setSelectedUserId] = React.useState<string>('');
-  const { socket } = useSocket();
+  const { socket, isConnected, reconnectCount } = useSocket();
+  const dispatch = useDispatch();
+
+  // Selecting a driver resets the thread paging in the SAME update, so the thread query
+  // runs once with its final arguments (it used to fire 3 requests per click)
+  const selectUser = React.useCallback((id: string) => {
+    setMPage(1);
+    setMHasMore(true);
+    setPinMessage('0');
+    setSelectedUserId(id);
+  }, []) as React.Dispatch<React.SetStateAction<string>>;
 
   React.useEffect(() => {
     if (searchItem == '' && page == 1) {
@@ -100,151 +112,126 @@ export default function MyMessage() {
     }
   }, [trackChannelState]);
 
-  React.useEffect(() => {
-    if (socket) {
-      const handleUpdateUserList = (user: UserChannel) => {
-        if (data?.data?.id === user?.channelId) {
-          setUserList((prevUserList) => {
-            if (!prevUserList) return prevUserList;
+  // ---- real-time list updates (leak-free; handlers always see current state via refs) ----
+  const channelIdRef = React.useRef<string | undefined>(undefined);
+  channelIdRef.current = data?.data?.id;
+  const listChannelIdRef = React.useRef<string | undefined>(undefined);
+  listChannelIdRef.current = userList?.id;
 
-            const { channelId: newChannelId, userProfileId: newUserProfileId } = user;
+  // The server announces one driver message up to 3 times (new_message_count_update_staff twice,
+  // notification_new_message_with_user once). Count every message exactly once by its id; the
+  // server's own unreadCount wins when it is higher (it can lag behind, never run ahead).
+  const countedMessageIdsRef = React.useRef(new Set<string>());
+  const selectedUserIdRef = React.useRef(selectedUserId);
+  selectedUserIdRef.current = selectedUserId;
+  const countOnce = (messageId?: string): boolean => {
+    if (!messageId) return false;
+    const seen = countedMessageIdsRef.current;
+    if (seen.has(messageId)) return false;
+    if (seen.size > 1000) seen.clear();
+    seen.add(messageId);
+    return true;
+  };
 
-            let found = false;
-
-            const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
-              if (channel?.channelId === newChannelId && channel?.userProfileId === newUserProfileId) {
-                found = true;
-                return {
-                  ...channel,
-                  ...user, // Replace with new user data
-                };
-              }
-              return channel;
-            });
-
-            if (!found) {
-              // Prepend new user to the beginning
-              updatedUserChannels.unshift(user);
-            }
-
-            return {
-              ...prevUserList,
-              user_channels: updatedUserChannels,
-            };
-          });
+  // Full, per-staff row for the driver (unreadCount, last_message, assigned trucks)
+  useSocketEvent('notification_new_message_with_user', (user: UserChannel) => {
+    scheduleBadgeRefresh(dispatch);
+    if (channelIdRef.current !== user?.channelId) return;
+    const isOpen = user?.userProfileId === selectedUserIdRef.current;
+    const isNew = countOnce((user as any)?.last_message?.id);
+    setUserList((prevUserList) => {
+      if (!prevUserList) return prevUserList;
+      const { channelId: newChannelId, userProfileId: newUserProfileId } = user;
+      let found = false;
+      const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
+        if (channel?.channelId === newChannelId && channel?.userProfileId === newUserProfileId) {
+          found = true;
+          const local = (channel.unreadCount || 0) + (isNew ? 1 : 0);
+          return { ...channel, ...user, unreadCount: isOpen ? 0 : Math.max(local, user.unreadCount || 0) };
         }
-      };
-      const handleNewMessageCountUpdate = ({
-        channelId,
-        userId,
-        message,
-      }: {
-        channelId: string;
-        userId: string;
-        message: MessageModel;
-      }) => {
-        // Check if the current channel matches the one receiving the socket update
-        if (data?.data?.id === channelId) {
-          // Update the user list with the new message count
-          setUserList((prevUserList) => {
-            if (!prevUserList) return prevUserList; // Return if no user list exists
-
-            // Map through the user channels to find and update the user
-            const updatedUserChannels = prevUserList?.user_channels?.map((channel) => {
-              if (channel?.userProfileId === userId) {
-                return {
-                  ...channel,
-                  unreadCount: channel.unreadCount + 1,
-                  last_message: message,
-                };
-              }
-              return channel;
-            });
-
-            // Sort the user channels so that the updated user is at the top
-            const updatedUserList = updatedUserChannels.sort((a, b) => {
-              if (a.userProfileId === userId) return -1;
-              if (b.userProfileId === userId) return 1;
-              return 0;
-            });
-
-            return { ...prevUserList, user_channels: updatedUserList };
-          });
-        }
-      };
-      socket.on('notification_new_message_with_user', (data: any) => handleUpdateUserList(data));
-      // Attach the event listener when the component mounts
-      socket.on('new_message_count_update_staff', handleNewMessageCountUpdate);
-
-      socket.on('update_channel', ({ channelId, userId }: { channelId: string; userId: string }) => {
-        setSelectedUserId('');
+        return channel;
       });
+      if (!found) updatedUserChannels.unshift({ ...user, unreadCount: isOpen ? 0 : user.unreadCount });
+      return { ...prevUserList, user_channels: updatedUserChannels };
+    });
+  });
 
-      socket.on('user_online', (socketData: any) => {
-        if (data && data.data?.id === socketData?.channelId) {
-          setUserList((prevUserList) => {
-            if (!prevUserList) return prevUserList;
-
-            const { userId, isOnline } = socketData || {}; // Extract userId and isOnline from socketData
-
-            if (!userId) return prevUserList; // Guard clause for missing userId
-
-            // Create a new list by mapping through the user_channels
-            const updatedUserChannels = prevUserList.user_channels.map((channel) => {
-              if (channel?.userProfileId === userId) {
-                // Only update the UserProfile if isOnline has changed
-                if (channel?.UserProfile?.isOnline !== isOnline) {
-                  return {
-                    ...channel,
-                    UserProfile: {
-                      ...channel.UserProfile,
-                      isOnline, // Update the isOnline status
-                    },
-                  };
-                }
+  useSocketEvent(
+    'new_message_count_update_staff',
+    ({ channelId, userId, message }: { channelId: string; userId: string; message: MessageModel }) => {
+      scheduleBadgeRefresh(dispatch);
+      if (channelIdRef.current !== channelId) return;
+      const isOpen = userId === selectedUserIdRef.current;
+      const isNew = countOnce(message?.id);
+      setUserList((prevUserList) => {
+        if (!prevUserList) return prevUserList;
+        const updatedUserChannels = prevUserList?.user_channels?.map((channel) =>
+          channel?.userProfileId === userId
+            ? {
+                ...channel,
+                unreadCount: isOpen ? 0 : (channel.unreadCount || 0) + (isNew ? 1 : 0),
+                last_message: message,
               }
-              return channel; // No changes to other channels
-            });
-
-            // Check if any changes occurred
-            const isChanged = updatedUserChannels.some((channel, index) => {
-              return channel !== prevUserList?.user_channels[index];
-            });
-
-            if (!isChanged) {
-              return prevUserList; // No change, return the original list
-            }
-
-            return { ...prevUserList, user_channels: updatedUserChannels }; // Return updated state
-          });
-        }
+            : channel
+        );
+        const updatedUserList = updatedUserChannels.sort((a, b) => {
+          if (a.userProfileId === userId) return -1;
+          if (b.userProfileId === userId) return 1;
+          return 0;
+        });
+        return { ...prevUserList, user_channels: updatedUserList };
       });
-
-      socket.on('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
-        if (userList && userList?.id === channelId) {
-          setUserList((prevUserList) => {
-            if (!prevUserList) return prevUserList;
-
-            const updatedUserChannels = prevUserList?.user_channels.map((channel) => {
-              if (channel.userProfileId === userId) {
-                return {
-                  ...channel,
-                  unreadCount: 0,
-                };
-              }
-              return channel;
-            });
-
-            return { ...prevUserList, user_channels: updatedUserChannels };
-          });
-        }
-      });
-      return () => {
-        socket.off('update_channel_sent_message_count');
-        socket.off('new_message_count_update_staff');
-      };
     }
-  }, [socket, userList]);
+  );
+
+  useSocketEvent('update_channel', () => {
+    setSelectedUserId('');
+  });
+
+  useSocketEvent('user_online', (socketData: any) => {
+    if (channelIdRef.current !== socketData?.channelId) return;
+    setUserList((prevUserList) => {
+      if (!prevUserList) return prevUserList;
+      const { userId, isOnline } = socketData || {};
+      if (!userId) return prevUserList;
+      let changed = false;
+      const updatedUserChannels = prevUserList.user_channels.map((channel) => {
+        if (channel?.userProfileId === userId && channel?.UserProfile?.isOnline !== isOnline) {
+          changed = true;
+          return { ...channel, UserProfile: { ...channel.UserProfile, isOnline } };
+        }
+        return channel;
+      });
+      return changed ? { ...prevUserList, user_channels: updatedUserChannels } : prevUserList;
+    });
+  });
+
+  // Server ack after a conversation is marked read
+  useSocketEvent('update_channel_sent_message_count', ({ channelId, userId }: { channelId: string; userId: string }) => {
+    scheduleBadgeRefresh(dispatch);
+    if (listChannelIdRef.current !== channelId) return;
+    setUserList((prevUserList) => {
+      if (!prevUserList) return prevUserList;
+      const updatedUserChannels = prevUserList?.user_channels.map((channel) =>
+        channel.userProfileId === userId ? { ...channel, unreadCount: 0 } : channel
+      );
+      return { ...prevUserList, user_channels: updatedUserChannels };
+    });
+  });
+
+  // After a socket reconnect, resync once (events may have been missed while offline)
+  React.useEffect(() => {
+    if (reconnectCount === 0) return;
+    setUserList(null);
+    if (page !== 1) setPage(1);
+    else refetch();
+    if (selectedUserId) {
+      setMPage(1);
+      setResetKey(Date.now());
+    }
+    scheduleBadgeRefresh(dispatch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on reconnect
+  }, [reconnectCount]);
 
   function onChangeUnread() {
     setUserList(null);
@@ -266,10 +253,11 @@ export default function MyMessage() {
     refetch: mRefetch,
     isFetching: mIsFetching,
   } = useGetMessagesByUserIdQuery(
-    { id: selectedUserId, page: mPage, pageSize: 10, pinMessage: pinMessage, unreadMessage: unreadMessage, resetKey },
+    { id: selectedUserId, page: mPage, pageSize: 10, pinMessage: pinMessage, resetKey },
     {
       skip: !selectedUserId,
-      pollingInterval: 60000,
+      // Socket delivers new messages; poll only as a fallback while it is disconnected
+      pollingInterval: isConnected ? 0 : 30000,
       refetchOnFocus: false,
       selectFromResult: ({ data, isLoading, isFetching }) => ({
         data,
@@ -324,7 +312,7 @@ export default function MyMessage() {
           loadMoreMessages={loadMoreMessages}
           chats={userList!}
           selectedUserId={selectedUserId}
-          setSelectedUserId={setSelectedUserId}
+          setSelectedUserId={selectUser}
         />
       </Box>
       {mLoader && <CircularProgress />}

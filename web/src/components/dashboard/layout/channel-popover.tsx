@@ -20,7 +20,8 @@ export interface ChannelPopoverProps {
 }
 
 export function ChannelPopover({ anchorEl, onClose, open }: ChannelPopoverProps): React.JSX.Element {
-  const { data, isLoading } = useGetChannelsQuery();
+  // Only needed while the popover is open (it is mounted all the time inside the sidebar)
+  const { data, isLoading } = useGetChannelsQuery(undefined, { skip: !open });
   const [updateActiveChannel] = useUpdateActiveChannelMutation();
   const { socket } = useSocket();
   const dispatch = useDispatch()

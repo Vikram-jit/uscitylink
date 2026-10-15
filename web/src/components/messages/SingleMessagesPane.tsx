@@ -12,6 +12,7 @@ import InfiniteScroll from 'react-infinite-scroll-component';
 import { useSelector } from 'react-redux';
 
 import { useSocket } from '@/lib/socketProvider';
+import { useSocketEvent } from '@/hooks/use-socket-event';
 
 import AvatarWithStatus from './AvatarWithStatus';
 import ChatBubble from './ChatBubble';
@@ -32,7 +33,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
 
   const [textAreaValue, setTextAreaValue] = React.useState('');
   const [messages, setMessages] = React.useState<MessageModel[]>([]);
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
   const [mediaPanel, setMediaPanel] = React.useState<boolean>(false);
   const [isTyping, setIsTyping] = React.useState<boolean>(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
@@ -55,8 +56,8 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
     {
       
       skip: !userId,
-      pollingInterval: 30000,
-      refetchOnFocus: true,
+      // Socket delivers new messages; poll only as a fallback while it is disconnected
+      pollingInterval: isConnected ? 0 : 30000,
       selectFromResult: ({ data, isLoading, isFetching }) => ({
         data,
         isLoading,
@@ -64,12 +65,6 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
       }),
     }
   );
-
-  React.useEffect(() => {
-    if (userId) {
-      refetch();
-    }
-  }, [userId, refetch]);
 
   React.useEffect(() => {
     if (userId) {
@@ -120,95 +115,40 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
     }
   };
 
-  // Socket handling (e.g., new messages)
+  // Socket handling (leak-free; only this driver's messages)
+  const userIdRef = React.useRef(userId);
+  userIdRef.current = userId;
+  const showScrollRef = React.useRef(showScrollToBottomButton);
+  showScrollRef.current = showScrollToBottomButton;
+
+  useSocketEvent('receive_message_channel', (message: MessageModel) => {
+    // The server sends this to every staff with a chat open in the channel; keep only this driver's
+    if (message?.userProfileId != userIdRef.current) return;
+    setMessages((prevMessages) =>
+      prevMessages.some((m) => m.id === message.id) ? prevMessages : [{ ...message }, ...prevMessages]
+    );
+    if (showScrollRef.current) setButtonTitle('New Message');
+  });
+  useSocketEvent('typing', (typingData: any) => setIsTyping(typingData.isTyping));
+  useSocketEvent('stopTyping', () => setIsTyping(false));
+  useSocketEvent('pin_done_web', (pinData: any) => {
+    toast.success(pinData.value == '0' ? 'Un-pin message successfully' : 'Pin message successfully');
+    setMessages((prev) => prev.map((e) => (e.id === pinData?.messageId ? { ...e, staffPin: pinData?.value } : e)));
+  });
+  const applyUploadStatus = (statusData: any) =>
+    setMessages((prev) => prev.map((e) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e)));
+  useSocketEvent('update_file_recivied_status', applyUploadStatus);
+  useSocketEvent('update_file_sent_status', applyUploadStatus);
+  useSocketEvent('delete_message', (messageId: any) => {
+    setMessages((prev) => prev.filter((e) => e.id != messageId));
+    toast.error('Deleted message successfully');
+  });
+
   React.useEffect(() => {
-    if (socket) {
-      socket.emit('staff_active_channel_user_update', userId);
-      
-      socket.on('receive_message_channel', (message: MessageModel) => {
-        setMessages((prevMessages) => [{ ...message }, ...prevMessages]);
-        if (showScrollToBottomButton) {
-          setButtonTitle('New Message');
-        }
-        // Update user list if necessary
-       
-      });
-
-      socket.on('typing', (data: any) => {
-        setIsTyping(data.isTyping);
-      });
-
-      socket.on('stopTyping', () => {
-        setIsTyping(false);
-      });
-
-      socket.on('pin_done_web',(data:any)=>{
-        if(data.value == "0"){
-          toast.success("Un-pin message successfully")
-        }else{
-          toast.success("Pin message successfully")
-        }
-       
-        setMessages((prev) =>
-          prev.map((e) =>
-            e.id === data?.messageId ? { ...e, staffPin: data?.value } : e
-          )
-        );
-       
-       
-      })
-      socket.on("update_file_recivied_status",(data:any)=>{
-       setMessages((prev) =>
-          prev.map((e) =>
-            e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-          )
-        );
-       })
-       socket.on("update_file_sent_status",(data:any)=>{
-        setMessages((prev) =>
-           prev.map((e) =>
-             e.id === data?.messageId ? { ...e, url_upload_type: data?.status } : e
-           )
-         );
-        })
- 
-       
-      socket.on('delete_message',(data:any)=>{
-      
-       
-        setMessages((prev) =>
-          prev.filter((e) =>
-            e.id != data 
-          )
-        );
-      
-          toast.error("Deleted message successfully")
-        
-      })
-    }
-    
-  
-    
-    const intervalId = setInterval(() => {
-      if (userId && socket) {
-        socket.emit('staff_open_chat', userId);
-       
-      }
-    }, 15000); // Every 15 seconds
-
-    // Cleanup the interval when the component is unmounted or userId changes
-    return () => {
-      if (socket) {
-        socket.off('update_file_sent_status');
-        socket.off('delete_message');
-        socket.off('update_file_recivied_status');
-        socket.off('receive_message_channel');
-        socket.off('pin_done');
-        socket.off('pin_done_web');
-        socket.off('staff_open_chat', userId);
-      }
-      clearInterval(intervalId); // Clear interval to avoid memory leaks
-    };
+    if (!socket || !userId) return undefined;
+    socket.emit('staff_active_channel_user_update', userId);
+    const intervalId = setInterval(() => socket.emit('staff_open_chat', userId), 15000);
+    return () => clearInterval(intervalId);
   }, [socket, userId]);
 
   const handleScroll = () => {
