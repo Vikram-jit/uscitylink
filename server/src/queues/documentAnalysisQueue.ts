@@ -5,8 +5,12 @@ import { MessageDocument } from "../models/MessageDocument";
 import { getSocketInstance } from "../sockets/socket";
 import {
   analyzePreparedFile,
+  getActiveDocTypes,
   NonRetryableAnalysisError,
 } from "../services/documentAi/analyzeDocument";
+import { precheckDocument } from "../services/documentAi/precheck";
+import { getPrecheckSettings } from "../services/documentAi/settings";
+import { getLiveFlowDocTypes } from "../services/flowEngine/liveDocTypes";
 import { getAnalyzableKind, loadFileForAnalysis } from "../services/documentAi/fileSource";
 import { buildFlowContext } from "../services/flowEngine/context";
 import { runFlows } from "../services/flowEngine/runFlows";
@@ -79,7 +83,47 @@ export const processDocumentAnalysis = async (job: Job<{ messageId: string }>) =
       await doc.update({ status: "skipped", error: "Unsupported file" });
       return;
     }
+
+    // Only document types used by LIVE flows are read in full; a quick cheap check decides first
+    let fullReadTypes: Awaited<ReturnType<typeof getActiveDocTypes>> | undefined;
+    const precheck = await getPrecheckSettings();
+    if (precheck.enabled) {
+      const live = await getLiveFlowDocTypes();
+      const targets = (await getActiveDocTypes()).filter((d) => live.docTypes.includes(d.key));
+      if (!targets.length) {
+        // No live flow needs a document read, so no AI call at all
+        await doc.update({ status: "skipped", error: "No live flow needs this document read" });
+        emitToStaff("document_analyzed", doc.toJSON());
+        return;
+      }
+      const check = await precheckDocument(file, targets, {
+        model: precheck.model,
+        caption: message.body,
+        usage: { source: "message", messageId: message.id },
+      }).catch((err) => {
+        // Fail open: if the quick check is down, read the document in full rather than miss it
+        console.warn("[documentAnalysis] pre-check failed, doing the full read:", err?.message);
+        return null;
+      });
+      if (check && !check.pass) {
+        await doc.update({
+          status: "skipped",
+          doc_type_key: "other",
+          confidence: check.confidence,
+          error: `Quick check: not a ${targets.map((d) => d.name).join(" / ")}`,
+          model: check.model,
+          input_tokens: check.input_tokens,
+          output_tokens: check.output_tokens,
+          latency_ms: check.latency_ms,
+        });
+        emitToStaff("document_analyzed", doc.toJSON());
+        return;
+      }
+      fullReadTypes = targets;
+    }
+
     const analysis = await analyzePreparedFile(file, {
+      docTypes: fullReadTypes,
       caption: message.body,
       usage: { source: "message", messageId: message.id },
     });

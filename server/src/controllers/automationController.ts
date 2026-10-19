@@ -26,8 +26,9 @@ import { ACTION_TYPES, validateAction } from "../services/flowEngine/actions";
 import { enqueueDocumentAnalysis } from "../queues/documentAnalysisQueue";
 import { cleanKeywords, suggestKeywords } from "../services/documentAi/keywords";
 import { buildUsageReport, estimateByModel, estimateCallTokens } from "../services/documentAi/usageReport";
-import { DEFAULT_AI_MODEL, getAiModelSetting, setAiModel } from "../services/documentAi/settings";
-import { RATE_CARD } from "../services/documentAi/pricing";
+import { getLiveFlowDocTypes } from "../services/flowEngine/liveDocTypes";
+import { DEFAULT_AI_MODEL, getAiModelSetting, getPrecheckSettings, PRECHECK_MODEL, setAiModel, setPrecheckSettings } from "../services/documentAi/settings";
+import { findRate, RATE_CARD } from "../services/documentAi/pricing";
 
 export const automationUpload = multer({
   storage: multer.memoryStorage(),
@@ -669,6 +670,16 @@ export const getAutomationSettings = async (req: Request, res: Response): Promis
       status: true,
       data: {
         ai: { ...(await getAiModelSetting()), envDefault: DEFAULT_AI_MODEL },
+        precheck: {
+          ...(await getPrecheckSettings()),
+          docTypes: (await getActiveDocTypes()).map((d) => ({ key: d.key, name: d.name })),
+          live: await getLiveFlowDocTypes(),
+          // ~1,100 input tokens (768px photo + short prompt) and ~30 output tokens per quick check
+          estimatedPerCheck: (() => {
+            const r = findRate(PRECHECK_MODEL).rate;
+            return Math.round(((1100 * r.input + 30 * r.output) / 1_000_000) * 1_000_000) / 1_000_000;
+          })(),
+        },
         models: RATE_CARD.map((r) => {
           const e = perDoc.find((m) => m.model === r.model)!;
           // Realistic per-document cost with the current prompt/examples
@@ -684,10 +695,11 @@ export const getAutomationSettings = async (req: Request, res: Response): Promis
 
 export const updateAutomationSettings = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { model } = req.body || {};
-    if (!model) throw new Error("Choose a model");
-    const saved = await setAiModel(String(model), req.user?.id);
-    return res.status(200).json({ status: true, message: "AI model updated", data: { model: saved } });
+    const { model, precheckEnabled } = req.body || {};
+    if (!model && typeof precheckEnabled !== "boolean") throw new Error("Nothing to update");
+    const saved = model ? await setAiModel(String(model), req.user?.id) : undefined;
+    const precheck = await setPrecheckSettings({ enabled: precheckEnabled }, req.user?.id);
+    return res.status(200).json({ status: true, message: "Settings updated", data: { model: saved, precheck } });
   } catch (err) {
     return fail(res, err);
   }

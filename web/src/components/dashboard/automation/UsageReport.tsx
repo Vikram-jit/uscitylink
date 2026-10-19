@@ -40,7 +40,8 @@ const compact = (v: number) => new Intl.NumberFormat('en-US', { notation: 'compa
 const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 const SOURCE_LABELS: Record<string, string> = {
-  message: 'Driver documents',
+  message: 'Driver documents (full read)',
+  precheck: 'Quick check (every upload)',
   reread: 'Second read (keywords changed type)',
   sample: 'Training samples',
   test: 'Flow tests',

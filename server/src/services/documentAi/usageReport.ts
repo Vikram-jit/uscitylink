@@ -135,7 +135,7 @@ export const buildUsageReport = async (days: number) => {
   const statusCount = (s: string) => num(docStatus.find((d) => d.status === s)?.count);
   const corrections = await MessageDocument.count({ where: { ...where, corrected_by: { [Op.ne]: null } } as any });
 
-  const real = bySource.filter((s) => s.source === "message" || s.source === "reread");
+  const real = bySource.filter((s) => s.source === "message" || s.source === "precheck" || s.source === "reread");
   const messageCalls = real.reduce((a, s) => a + s.calls, 0);
   const messageCost = real.reduce((a, s) => a + s.cost, 0);
   const documentsRead = statusCount("done");

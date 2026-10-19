@@ -11,6 +11,7 @@ import type {
   TestFlowResult,
   UsageReport,
   AutomationSettings,
+  AutomationSettingsUpdate,
 } from './models/AutomationModel';
 
 interface Res<T> {
@@ -158,7 +159,7 @@ export const AutomationApiSlice = apiSlice.injectEndpoints({
       query: () => ({ url: 'automation/settings', method: 'GET' }),
       keepUnusedDataFor: 0,
     }),
-    updateAutomationSettings: builder.mutation<Res<{ model: string }>, { model: string }>({
+    updateAutomationSettings: builder.mutation<Res<{ model?: string }>, AutomationSettingsUpdate>({
       query: (body) => ({ url: 'automation/settings', method: 'PUT', body }),
     }),
 

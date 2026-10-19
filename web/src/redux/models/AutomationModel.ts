@@ -265,4 +265,20 @@ export interface UsageReport {
 export interface AutomationSettings {
   ai: { model: string; isDefault: boolean; updatedAt: string | null; updatedBy: string | null; envDefault: string };
   models: (Rate & { estimatedPerDocument: number })[];
+  precheck: {
+    enabled: boolean;
+    model: string;
+    docTypes: { key: string; name: string }[];
+    estimatedPerCheck: number;
+    live: {
+      docTypes: string[];
+      flows: { id: string; name: string; docTypes: string[] }[];
+      anyTypeFlows: { id: string; name: string }[];
+    };
+  };
+}
+
+export interface AutomationSettingsUpdate {
+  model?: string;
+  precheckEnabled?: boolean;
 }
