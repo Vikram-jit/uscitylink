@@ -322,7 +322,7 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
       <Card>
         <CardHeader subheader="Conditions are checked against what the AI read from the document" title="IF" />
         <CardContent>
-          <ConditionGroupEditor fields={fields} group={draft.conditions} onChange={(g) => set('conditions', g)} />
+          <ConditionGroupEditor fields={fields.filter((f) => !f.templateOnly)} group={draft.conditions} onChange={(g) => set('conditions', g)} />
         </CardContent>
       </Card>
 
@@ -339,7 +339,7 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
       </Card>
 
       <Card>
-        <CardHeader subheader="Optional — runs when the conditions do not match" title="OTHERWISE" />
+        <CardHeader subheader="Optional — runs when the document is the right type but the other conditions do not match. Use {{flow.reasons}} in a message to say exactly what failed." title="OTHERWISE" />
         <CardContent>
           <ActionListEditor
             actions={draft.else_actions}

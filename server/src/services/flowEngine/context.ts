@@ -36,6 +36,8 @@ export interface FlowContext {
     weekday: string;
     date: string;
   };
+  // Filled per flow just before its actions run (see flowEngine/reasons)
+  flow?: { reasons: string; checks: string };
 }
 
 export const buildDocContext = (doc: Partial<MessageDocument> | null): FlowContext["doc"] => {

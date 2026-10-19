@@ -4,6 +4,8 @@ import { FlowRun } from "../../models/FlowRun";
 import { evaluate, TraceNode } from "./evaluate";
 import { FlowContext } from "./context";
 import { ActionResult, FlowAction, previewAction, runAction } from "./actions";
+import { DocType } from "../../models/DocType";
+import { describeTrace } from "./reasons";
 
 export interface FlowEvaluation {
   flowId: string;
@@ -29,6 +31,12 @@ const isOnCooldown = async (flow: Flow, ctx: FlowContext) => {
   return recent > 0;
 };
 
+const fieldLabels = async (docType: string | null): Promise<Record<string, string>> => {
+  if (!docType) return {};
+  const type = await DocType.findOne({ where: { key: docType }, attributes: ["fields"] });
+  return Object.fromEntries((type?.fields || []).map((f) => [f.key, f.label]));
+};
+
 const planned = (actions: FlowAction[], ctx: FlowContext): ActionResult[] =>
   actions.map((a) => ({ type: a.type, ok: true, planned: true, preview: previewAction(a, ctx) }));
 
@@ -39,11 +47,18 @@ export const evaluateFlow = async (
   options: { dryRun?: boolean } = {},
 ): Promise<FlowEvaluation> => {
   const trace = evaluate(flow.conditions, ctx);
-  const actionsToRun: FlowAction[] = (trace.result ? flow.actions : flow.else_actions) || [];
+  // "Otherwise" means: the right kind of document, but its checks failed. A flow for scale tickets
+  // must not send its "otherwise" reply for a fuel receipt, so a failed top-level document-type
+  // condition runs neither branch.
+  const wrongDocType =
+    !trace.result && trace.type === "all" && (trace.children || []).some((c) => c.type === "condition" && c.field === "doc.type" && !c.result);
+  const actionsToRun: FlowAction[] = (trace.result ? flow.actions : wrongDocType ? [] : flow.else_actions) || [];
   const base = { flowId: flow.id, flowName: flow.name, matched: trace.result, trace };
+  // Templates can use {{flow.reasons}} / {{flow.checks}}, built from this flow's own conditions
+  const actionCtx = actionsToRun.length ? { ...ctx, flow: describeTrace(trace, await fieldLabels(ctx.doc.type)) } : ctx;
 
   if (options.dryRun) {
-    return { ...base, actions: planned(actionsToRun, ctx) };
+    return { ...base, actions: planned(actionsToRun, actionCtx) };
   }
 
   // Job retries must not send the same reply twice
@@ -81,12 +96,12 @@ export const evaluateFlow = async (
 
   let results: ActionResult[];
   if (flow.shadow_mode) {
-    results = planned(actionsToRun, ctx);
+    results = planned(actionsToRun, actionCtx);
   } else {
     results = [];
     for (const action of actionsToRun) {
       results.push(
-        await runAction(action, ctx, { flowId: flow.id, flowName: flow.name, flowRunId: run.id }),
+        await runAction(action, actionCtx, { flowId: flow.id, flowName: flow.name, flowRunId: run.id }),
       );
     }
   }

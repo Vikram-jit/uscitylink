@@ -164,9 +164,11 @@ export interface MessageDocument {
 export interface ContextField {
   path: string;
   label: string;
-  type: DocFieldType | 'enum';
+  type: DocFieldType | 'enum' | 'text';
   options?: string[];
   docType?: string;
+  // Only for message templates (e.g. {{flow.reasons}}), never offered as a condition
+  templateOnly?: boolean;
 }
 
 export interface BuilderMeta {

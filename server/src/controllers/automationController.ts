@@ -558,6 +558,9 @@ export const builderMeta = async (req: Request, res: Response): Promise<any> => 
       { path: "message.caption", label: "Driver caption", type: "string" },
       { path: "time.hour", label: "Hour of day (0–23)", type: "number" },
       { path: "time.weekday", label: "Weekday", type: "enum", options: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
+      // Template-only: generated from the flow's conditions when its actions run
+      { path: "flow.reasons", label: "Why it matched (e.g. which axle is over)", type: "text", templateOnly: true },
+      { path: "flow.checks", label: "All checked values with limits", type: "text", templateOnly: true },
       ...docTypes.flatMap((d) =>
         (d.fields || []).map((f) => ({
           path: `doc.fields.${f.key}`,
