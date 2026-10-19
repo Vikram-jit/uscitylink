@@ -76,10 +76,24 @@ export interface Flow {
   conditions: ConditionGroup;
   actions: FlowAction[];
   else_actions: FlowAction[];
+  // ELSE IF branches, checked in order when IF does not match
+  else_if?: FlowBranch[] | null;
   cooldown_minutes: number;
   stop_on_match: boolean;
   last7Days?: { matched: number; total: number };
   updatedAt?: string;
+}
+
+export interface FlowBranch {
+  name?: string;
+  conditions: ConditionGroup;
+  actions: FlowAction[];
+}
+
+export interface BranchInfo {
+  kind: 'if' | 'else_if' | 'else' | 'none';
+  index?: number;
+  name?: string;
 }
 
 export interface TraceNode {
@@ -90,6 +104,9 @@ export interface TraceNode {
   expected?: any;
   actual?: any;
   children?: TraceNode[];
+  // Top-level trace of a flow run: which branch ran, and the ELSE IF conditions that decided it
+  branch?: BranchInfo;
+  branch_trace?: TraceNode | null;
 }
 
 export interface ActionResult {
@@ -191,6 +208,7 @@ export interface TestFlowResult {
     flowId: string;
     flowName: string;
     matched: boolean;
+    branch?: BranchInfo;
     trace: TraceNode;
     actions: ActionResult[];
   };

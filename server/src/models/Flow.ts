@@ -4,6 +4,12 @@ import { jsonGetter } from "./jsonColumn";
 
 export type FlowTrigger = "document_analyzed" | "attachment_received";
 
+export interface FlowBranch {
+  name?: string;
+  conditions: any;
+  actions: any[];
+}
+
 export class Flow extends Model {
   public id!: string;
   public name!: string;
@@ -15,6 +21,8 @@ export class Flow extends Model {
   public conditions!: any;
   public actions!: any[];
   public else_actions?: any[] | null;
+  // ELSE IF branches, checked in order when IF does not match: [{ name, conditions, actions }]
+  public else_if?: FlowBranch[] | null;
   public cooldown_minutes!: number;
   public stop_on_match!: boolean;
   public created_by?: string | null;
@@ -73,6 +81,11 @@ Flow.init(
     else_actions: {
       type: DataTypes.JSON,
       get: jsonGetter("else_actions"),
+      allowNull: true,
+    },
+    else_if: {
+      type: DataTypes.JSON,
+      get: jsonGetter("else_if"),
       allowNull: true,
     },
     cooldown_minutes: {

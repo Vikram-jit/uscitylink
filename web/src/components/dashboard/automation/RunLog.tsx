@@ -59,6 +59,11 @@ function RunRow({ run }: { run: FlowRun }): React.JSX.Element {
             ) : (
               <Chip color={run.matched ? 'success' : 'default'} label={run.matched ? 'Matched' : 'No match'} size="small" />
             )}
+            {run.condition_trace?.branch?.kind === 'else_if' ? (
+              <Chip color="warning" label={run.condition_trace.branch.name || 'Else if'} size="small" variant="outlined" />
+            ) : run.condition_trace?.branch?.kind === 'else' ? (
+              <Chip label="Else" size="small" variant="outlined" />
+            ) : null}
             {run.shadow ? <Chip color="info" label="Shadow" size="small" variant="outlined" /> : null}
             {run.error ? <Chip color="error" label="Error" size="small" /> : null}
           </Stack>
@@ -73,6 +78,14 @@ function RunRow({ run }: { run: FlowRun }): React.JSX.Element {
                   Conditions
                 </Typography>
                 <TraceView node={run.condition_trace} />
+                {run.condition_trace?.branch_trace ? (
+                  <>
+                    <Typography color="text.secondary" sx={{ display: 'block', mt: 1 }} variant="caption">
+                      ELSE IF &quot;{run.condition_trace.branch?.name}&quot;
+                    </Typography>
+                    <TraceView node={run.condition_trace.branch_trace} />
+                  </>
+                ) : null}
               </Grid>
               <Grid item md={6} xs={12}>
                 <Typography gutterBottom variant="subtitle2">

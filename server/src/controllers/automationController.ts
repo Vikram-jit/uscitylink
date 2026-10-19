@@ -288,9 +288,18 @@ const validateFlowBody = (body: any) => {
   if (conditionError) throw new Error(conditionError);
   const actions = body.actions || [];
   const elseActions = body.else_actions || [];
-  if (!Array.isArray(actions) || !Array.isArray(elseActions)) throw new Error("Actions must be a list");
-  if (!actions.length && !elseActions.length) throw new Error("Add at least one action");
-  for (const action of [...actions, ...elseActions]) {
+  const elseIf = body.else_if || [];
+  if (!Array.isArray(actions) || !Array.isArray(elseActions) || !Array.isArray(elseIf)) throw new Error("Actions must be a list");
+  elseIf.forEach((branch: any, i: number) => {
+    const label = `ELSE IF ${i + 1}`;
+    if (!branch || !Array.isArray(branch.actions)) throw new Error(`${label}: actions must be a list`);
+    if (!branch.actions.length) throw new Error(`${label}: add at least one action`);
+    const err = validateConditionTree(branch.conditions || { all: [] });
+    if (err) throw new Error(`${label}: ${err}`);
+  });
+  const branchActions = elseIf.flatMap((b: any) => b.actions);
+  if (!actions.length && !elseActions.length && !branchActions.length) throw new Error("Add at least one action");
+  for (const action of [...actions, ...elseActions, ...branchActions]) {
     const err = validateAction(action);
     if (err) throw new Error(err);
   }
@@ -304,6 +313,7 @@ const validateFlowBody = (body: any) => {
     conditions: body.conditions || { all: [] },
     actions,
     else_actions: elseActions,
+    else_if: elseIf.map((b: any) => ({ name: String(b.name || "").trim(), conditions: b.conditions || { all: [] }, actions: b.actions })),
     cooldown_minutes: Math.max(0, Number(body.cooldown_minutes) || 0),
     stop_on_match: !!body.stop_on_match,
   };
@@ -559,8 +569,9 @@ export const builderMeta = async (req: Request, res: Response): Promise<any> => 
       { path: "time.hour", label: "Hour of day (0–23)", type: "number" },
       { path: "time.weekday", label: "Weekday", type: "enum", options: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
       // Template-only: generated from the flow's conditions when its actions run
-      { path: "flow.reasons", label: "Why it matched (e.g. which axle is over)", type: "text", templateOnly: true },
+      { path: "flow.reasons", label: "Why this branch ran (e.g. which axle is over)", type: "text", templateOnly: true },
       { path: "flow.checks", label: "All checked values with limits", type: "text", templateOnly: true },
+      { path: "flow.failed", label: "Every failed check on the document", type: "text", templateOnly: true },
       ...docTypes.flatMap((d) =>
         (d.fields || []).map((f) => ({
           path: `doc.fields.${f.key}`,

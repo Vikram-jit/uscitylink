@@ -15,13 +15,14 @@ import {
   Drawer,
   FormControlLabel,
   Grid,
+  IconButton,
   MenuItem,
   Stack,
   Switch,
   TextField,
   Typography,
 } from '@mui/material';
-import { ArrowLeft, Flask, UploadSimple } from '@phosphor-icons/react';
+import { ArrowLeft, Flask, Plus, Trash, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'react-toastify';
 
 import { paths } from '@/paths';
@@ -32,7 +33,7 @@ import {
   useTestFlowMutation,
   useUpdateFlowMutation,
 } from '@/redux/AutomationApiSlice';
-import type { Flow, TestFlowResult } from '@/redux/models/AutomationModel';
+import type { BranchInfo, Flow, FlowBranch, TestFlowResult } from '@/redux/models/AutomationModel';
 
 import { ActionListEditor } from './ActionEditor';
 import { ConditionGroupEditor } from './ConditionEditor';
@@ -52,8 +53,19 @@ const EMPTY_FLOW: FlowDraft = {
   conditions: { all: [{ field: 'doc.type', op: 'eq', value: '' }] },
   actions: [{ type: 'reply_driver', template: '' }],
   else_actions: [],
+  else_if: [],
   cooldown_minutes: 0,
   stop_on_match: false,
+};
+
+const NEW_BRANCH: FlowBranch = { name: '', conditions: { all: [] }, actions: [{ type: 'reply_driver', template: '' }] };
+
+export const branchLabel = (branch?: BranchInfo | null): string => {
+  if (!branch) return '';
+  if (branch.kind === 'if') return 'IF matched — THEN actions ran';
+  if (branch.kind === 'else_if') return `ELSE IF "${branch.name || `#${(branch.index ?? 0) + 1}`}" matched`;
+  if (branch.kind === 'else') return 'Nothing matched — ELSE actions ran';
+  return 'Different document type — no branch ran';
 };
 
 const errorMessage = (err: any) => err?.data?.message || err?.message || 'Something went wrong';
@@ -129,10 +141,12 @@ function TestPanel({ draft, open, onClose }: { draft: FlowDraft; open: boolean; 
 
         {result ? (
           <Stack spacing={2.5}>
-            <Alert severity={result.result.matched ? 'success' : 'info'}>
-              {result.result.matched
-                ? 'Conditions matched — the THEN actions would run.'
-                : 'Conditions did not match — the OTHERWISE actions would run.'}
+            <Alert severity={result.result.branch?.kind === 'if' ? 'success' : result.result.branch?.kind === 'none' ? 'info' : 'warning'}>
+              {result.result.branch
+                ? `${branchLabel(result.result.branch)} (dry run, nothing sent).`
+                : result.result.matched
+                  ? 'Conditions matched — the THEN actions would run.'
+                  : 'Conditions did not match — the ELSE actions would run.'}
             </Alert>
 
             <Stack spacing={1}>
@@ -173,6 +187,14 @@ function TestPanel({ draft, open, onClose }: { draft: FlowDraft; open: boolean; 
             <Stack spacing={1}>
               <Typography variant="subtitle2">Conditions</Typography>
               <TraceView node={result.result.trace} />
+              {result.result.trace?.branch_trace ? (
+                <>
+                  <Typography color="text.secondary" variant="caption">
+                    ELSE IF &quot;{result.result.branch?.name}&quot;
+                  </Typography>
+                  <TraceView node={result.result.trace.branch_trace} />
+                </>
+              ) : null}
             </Stack>
 
             <Divider />
@@ -200,12 +222,21 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
   React.useEffect(() => {
     if (existing?.data) {
       const { id: _id, last7Days: _stats, updatedAt: _updated, ...rest } = existing.data;
-      setDraft({ ...EMPTY_FLOW, ...rest, else_actions: rest.else_actions || [] });
+      setDraft({ ...EMPTY_FLOW, ...rest, else_actions: rest.else_actions || [], else_if: rest.else_if || [] });
     }
   }, [existing]);
 
   const fields = meta?.data?.contextFields || [];
   const set = <K extends keyof FlowDraft>(key: K, value: FlowDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  const conditionFields = fields.filter((f) => !f.templateOnly);
+  const branches = draft.else_if || [];
+  const setBranch = (index: number, next: FlowBranch | null) =>
+    setDraft((d) => {
+      const list = [...(d.else_if || [])];
+      if (next) list[index] = next;
+      else list.splice(index, 1);
+      return { ...d, else_if: list };
+    });
 
   const save = async () => {
     try {
@@ -322,7 +353,7 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
       <Card>
         <CardHeader subheader="Conditions are checked against what the AI read from the document" title="IF" />
         <CardContent>
-          <ConditionGroupEditor fields={fields.filter((f) => !f.templateOnly)} group={draft.conditions} onChange={(g) => set('conditions', g)} />
+          <ConditionGroupEditor fields={conditionFields} group={draft.conditions} onChange={(g) => set('conditions', g)} />
         </CardContent>
       </Card>
 
@@ -338,12 +369,62 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
         </CardContent>
       </Card>
 
+      {branches.map((branch, index) => (
+        <Card key={index} sx={{ borderLeft: '4px solid var(--mui-palette-warning-main)' }}>
+          <CardHeader
+            action={
+              <IconButton aria-label="Remove ELSE IF" onClick={() => setBranch(index, null)}>
+                <Trash />
+              </IconButton>
+            }
+            subheader="Checked only if everything above did not match. The first branch that matches runs."
+            title={`ELSE IF ${branches.length > 1 ? index + 1 : ''}`.trim()}
+          />
+          <CardContent>
+            <Stack spacing={2}>
+              <TextField
+                label="Branch name (shown in the run log)"
+                onChange={(e) => setBranch(index, { ...branch, name: e.target.value })}
+                placeholder="e.g. Trailer axle over the limit"
+                size="small"
+                value={branch.name || ''}
+              />
+              <ConditionGroupEditor
+                fields={conditionFields}
+                group={branch.conditions}
+                onChange={(g) => setBranch(index, { ...branch, conditions: g })}
+              />
+              <Divider textAlign="left">
+                <Typography color="text.secondary" variant="caption">
+                  THEN
+                </Typography>
+              </Divider>
+              <ActionListEditor
+                actions={branch.actions}
+                emptyText="Add an action for this branch."
+                fields={fields}
+                onChange={(a) => setBranch(index, { ...branch, actions: a })}
+              />
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
+
+      <Box>
+        <Button onClick={() => set('else_if', [...branches, NEW_BRANCH])} startIcon={<Plus />} variant="outlined">
+          Add ELSE IF
+        </Button>
+      </Box>
+
       <Card>
-        <CardHeader subheader="Optional — runs when the document is the right type but the other conditions do not match. Use {{flow.reasons}} in a message to say exactly what failed." title="OTHERWISE" />
+        <CardHeader
+          subheader="Optional — runs when nothing above matched (for the right document type). Use {{flow.failed}} to list every check that failed."
+          title="ELSE"
+        />
         <CardContent>
           <ActionListEditor
             actions={draft.else_actions}
-            emptyText="Nothing happens when the conditions don't match."
+            emptyText="Nothing happens when no branch matches."
             fields={fields}
             onChange={(a) => set('else_actions', a)}
           />

@@ -5,6 +5,8 @@ import { TraceNode } from "./evaluate";
 //   reasons: why this branch ran, e.g. "- Trailer axle: 33,980 lbs (280 lbs over the 33,700 limit)".
 //            Flow matched -> the conditions that were true. "Otherwise" branch -> the checks that failed,
 //            so one flow "all weights within limits" can explain an overweight or unreadable ticket.
+//            ELSE IF branch -> that branch's own conditions that were true.
+//   failed:  every IF check that did not pass (all problems on the document), in any branch
 //   checks:  every number condition with its value and limit, e.g. "- Steer axle: 11,740 lbs (limit 12,000)"
 
 const NUMBER_OPS = ["gt", "gte", "lt", "lte"];
@@ -77,17 +79,16 @@ const describeCheck = (leaf: TraceNode, labels: Record<string, string>): string 
   return `- ${labelFor(field, labels)}: ${actual === null ? "not readable" : `${fmt(actual)}${unit}`} (${kind} ${fmt(limit)})`;
 };
 
-export const describeTrace = (trace: TraceNode, labels: Record<string, string>) => {
-  const all = leaves(trace);
-  const reasons = (
-    trace.result
-      ? all.filter((l) => l.result).map((l) => describeReason(l, labels))
-      : all.filter((l) => !l.result).map((l) => describeFailure(l, labels))
-  ).filter(Boolean);
+// main: the IF trace. branch: the ELSE IF that ran, if any.
+export const describeTrace = (main: TraceNode, labels: Record<string, string>, branch?: TraceNode | null) => {
+  const all = leaves(main);
+  const failed = all.filter((l) => !l.result).map((l) => describeFailure(l, labels)).filter(Boolean);
+  const matchedIn = (node: TraceNode) => leaves(node).filter((l) => l.result).map((l) => describeReason(l, labels)).filter(Boolean);
+  const reasons = branch ? matchedIn(branch) : main.result ? matchedIn(main) : failed;
   const seen = new Set<string>();
   const checks = all
     .filter((l) => (seen.has(l.field || "") ? false : (seen.add(l.field || ""), true)))
     .map((l) => describeCheck(l, labels))
     .filter(Boolean);
-  return { reasons: reasons.join("\n"), checks: checks.join("\n") };
+  return { reasons: reasons.join("\n"), checks: checks.join("\n"), failed: failed.join("\n") };
 };

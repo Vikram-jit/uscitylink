@@ -37,7 +37,7 @@ export interface FlowContext {
     date: string;
   };
   // Filled per flow just before its actions run (see flowEngine/reasons)
-  flow?: { reasons: string; checks: string };
+  flow?: { reasons: string; checks: string; failed: string };
 }
 
 export const buildDocContext = (doc: Partial<MessageDocument> | null): FlowContext["doc"] => {
