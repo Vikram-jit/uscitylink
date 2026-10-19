@@ -275,11 +275,13 @@ export default function MyMessage() {
       sx={{
         flex: 1,
         width: '100%',
+        minWidth: 0,
 
         display: 'grid',
+        // minmax(0, 1fr): the chat column must fit the screen; a plain 1fr grows to its widest content
         gridTemplateColumns: {
-          xs: '1fr',
-          sm: 'minmax(min-content, min(20%, 400px)) 1fr',
+          xs: 'minmax(0, 1fr)',
+          sm: 'minmax(min-content, min(20%, 400px)) minmax(0, 1fr)',
         },
       }}
     >

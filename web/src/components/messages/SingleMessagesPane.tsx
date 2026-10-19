@@ -177,6 +177,8 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
         height: { xs: 'calc(100vh - 5vh)', md: '92vh' },
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
+        overflow: 'hidden',
         backgroundColor: 'var(--mui-palette-background-level1)',
       }}
     >
@@ -214,6 +216,7 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
                   px: 2,
                   py: 3,
                   overflowY: 'scroll',
+                  overflowX: 'hidden',
                   flexDirection: 'column-reverse', // Most recent messages at the bottom
                 }}
               >

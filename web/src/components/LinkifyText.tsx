@@ -13,7 +13,7 @@ const LinkifyText: React.FC<LinkifyTextProps> = ({ text,onClick }) => {
   const parts = text.split(urlRegex);
 
   return (
-    <Typography sx={{ fontSize: 16, whiteSpace: 'pre-wrap' }} onClick={onClick}>
+    <Typography sx={{ fontSize: 16, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }} onClick={onClick}>
       {parts.map((part, index) =>
         urlRegex.test(part) ? (
           <a

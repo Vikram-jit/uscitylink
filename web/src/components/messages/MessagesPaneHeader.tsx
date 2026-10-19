@@ -54,6 +54,9 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
       direction="row"
       sx={{
         justifyContent: 'space-between',
+        // On narrower screens the action buttons move to a second line instead of squeezing the name
+        flexWrap: 'wrap',
+        rowGap: 1,
         py: 1.5,
         px: 2.5,
         borderBottom: '1px solid',
@@ -64,7 +67,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
       <Stack
         direction="row"
         spacing={1.5}
-        sx={{ alignItems: 'center', flex: '1 1 auto', minWidth: 0, pr: 2 }}
+        sx={{ alignItems: 'center', flex: '1 1 280px', minWidth: 0, pr: 2 }}
       >
         <IconButton
           color="default"
@@ -107,7 +110,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
           </Stack>
         </Box>
       </Stack>
-      <Stack spacing={1} direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>
+      <Stack spacing={1} direction="row" sx={{ alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
 
         <Button
           onClick={()=>setMediaPanel((prev) => !prev)}
