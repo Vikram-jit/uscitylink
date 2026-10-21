@@ -8,6 +8,7 @@ import { SideNav } from '@/components/dashboard/layout/side-nav';
 import { SocketProvider } from '@/lib/socketProvider';
 import NotificationGuard from '@/components/auth/notificationguard';
 import MessageDialog from '@/components/MessageDialog';
+import { ScrollLockReset } from '@/components/dashboard/layout/scroll-lock-reset';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           <main>{children}</main>
         </Box>
       </Box>
+      <ScrollLockReset />
       <MessageDialog/>
       </SocketProvider>
       {/* </NotificationGuard> */}

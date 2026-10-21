@@ -28,6 +28,7 @@ import type { Flow } from '@/redux/models/AutomationModel';
 import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 
 import { ACTION_LABELS } from './utils';
+import { AdminOnly, useAutomationAccess } from './AdminGuard';
 
 const statusChip = (flow: Flow) => {
   if (!flow.active) return <Chip label="Off" size="small" />;
@@ -37,6 +38,7 @@ const statusChip = (flow: Flow) => {
 
 export function FlowList(): React.JSX.Element {
   const { data, isLoading } = useGetFlowsQuery();
+  const { readOnly } = useAutomationAccess();
   const [toggleFlow] = useToggleFlowMutation();
   const [deleteFlow] = useDeleteFlowMutation();
   const [deleting, setDeleting] = React.useState<string | null>(null);
@@ -56,9 +58,11 @@ export function FlowList(): React.JSX.Element {
           Flows run in priority order on every document a driver sends. Shadow mode logs what would happen without
           messaging anyone.
         </Typography>
-        <Button component={RouterLink} href={`${paths.automation.flows}/new`} startIcon={<Plus />} variant="contained">
-          New flow
-        </Button>
+        <AdminOnly>
+          <Button component={RouterLink} href={`${paths.automation.flows}/new`} startIcon={<Plus />} variant="contained">
+            New flow
+          </Button>
+        </AdminOnly>
       </Stack>
 
       <Card>
@@ -110,25 +114,28 @@ export function FlowList(): React.JSX.Element {
                   </TableCell>
                   <TableCell>{statusChip(flow)}</TableCell>
                   <TableCell>
-                    <Switch checked={flow.active} onChange={(e) => void toggle(flow.id, { active: e.target.checked })} />
+                    <Switch checked={flow.active} disabled={readOnly} onChange={(e) => void toggle(flow.id, { active: e.target.checked })} />
                   </TableCell>
                   <TableCell>
                     <Switch
                       checked={flow.shadow_mode}
+                      disabled={readOnly}
                       onChange={(e) => void toggle(flow.id, { shadow_mode: e.target.checked })}
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="Edit">
+                    <Tooltip title={readOnly ? 'View' : 'Edit'}>
                       <IconButton component={RouterLink} href={`${paths.automation.flows}/${flow.id}`}>
                         <PencilSimple size={18} />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton onClick={() => setDeleting(flow.id)}>
-                        <Trash size={18} />
-                      </IconButton>
-                    </Tooltip>
+                    <AdminOnly>
+                      <Tooltip title="Delete">
+                        <IconButton onClick={() => setDeleting(flow.id)}>
+                          <Trash size={18} />
+                        </IconButton>
+                      </Tooltip>
+                    </AdminOnly>
                   </TableCell>
                 </TableRow>
               ))}

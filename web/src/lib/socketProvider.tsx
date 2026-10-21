@@ -123,6 +123,11 @@ export const SocketProvider = ({
       dispatch(apiSlice.util.invalidateTags([{ type: 'messageDocument', id: doc.message_id }, 'reviewQueue']));
     };
     socketServer.on('document_analyzed', onDocumentAnalyzed);
+    // Scale agent: refresh the check card under the ticket and the approval list
+    const onScaleCheckUpdated = (check: { message_id: string }) => {
+      dispatch(apiSlice.util.invalidateTags([{ type: 'messageDocument', id: check.message_id }, 'scaleChecks']));
+    };
+    socketServer.on('scale_check_updated', onScaleCheckUpdated);
     const onAutomationAlert = (alert: { title?: string; body?: string; severity?: string; driverName?: string }) => {
       const text = [alert.title, alert.body].filter(Boolean).join(' — ') || 'Automation alert';
       if (alert.severity === 'critical') toast.error(text, { autoClose: false });
@@ -195,6 +200,7 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
       socketServer.off('notification_group', onNotificationGroup);
       socketServer.off('notification_forward_message', onNotificationForward);
       socketServer.off('document_analyzed', onDocumentAnalyzed);
+      socketServer.off('scale_check_updated', onScaleCheckUpdated);
       socketServer.off('automation_alert', onAutomationAlert);
       socketServer.off('reconnect_attempt', onReconnectAttempt);
       socketServer.off('reconnect_error', onReconnectError);

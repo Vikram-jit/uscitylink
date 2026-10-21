@@ -29,6 +29,7 @@ import type { MessageDocument } from '@/redux/models/AutomationModel';
 
 import { CorrectionDialog } from './CorrectionDialog';
 import { formatValue, humanizeKey, s3Url } from './utils';
+import { AdminOnly } from './AdminGuard';
 
 const reason = (doc: MessageDocument) => {
   if (doc.status === 'failed') return { label: 'Failed', color: 'error' as const };
@@ -77,6 +78,7 @@ function ReviewCard({ doc }: { doc: MessageDocument }): React.JSX.Element {
                 {formatValue(v)}
               </Typography>
             ))}
+          <AdminOnly>
           <Stack direction="row" spacing={1}>
             <Button onClick={() => setCorrecting(true)} size="small" variant="contained">
               Correct
@@ -92,6 +94,7 @@ function ReviewCard({ doc }: { doc: MessageDocument }): React.JSX.Element {
               Re-read
             </Button>
           </Stack>
+          </AdminOnly>
         </Stack>
       </CardContent>
       {correcting ? <CorrectionDialog doc={doc} onClose={() => setCorrecting(false)} open /> : null}
@@ -122,6 +125,7 @@ function CandidateExamples(): React.JSX.Element | null {
                 <CardContent>
                   <Stack spacing={1}>
                     <Typography variant="subtitle2">{ex.docType?.name}</Typography>
+                    <AdminOnly>
                     <Stack direction="row" spacing={1}>
                       <Button onClick={() => void updateExample({ id: ex.id, active: true })} size="small" variant="contained">
                         Approve
@@ -130,6 +134,7 @@ function CandidateExamples(): React.JSX.Element | null {
                         Dismiss
                       </Button>
                     </Stack>
+                    </AdminOnly>
                   </Stack>
                 </CardContent>
               </Card>

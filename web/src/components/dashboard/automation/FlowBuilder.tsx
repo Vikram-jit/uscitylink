@@ -36,6 +36,7 @@ import {
 import type { BranchInfo, Flow, FlowBranch, TestFlowResult } from '@/redux/models/AutomationModel';
 
 import { ActionListEditor } from './ActionEditor';
+import { AdminOnly, ReadOnlyArea } from './AdminGuard';
 import { ConditionGroupEditor } from './ConditionEditor';
 import { ProcessingNotice } from './ProcessingNotice';
 import { ActionResultsView, TraceView } from './TraceView';
@@ -268,14 +269,18 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
           Flows
         </Button>
         <Box sx={{ flex: 1 }} />
-        <Button onClick={() => setTestOpen(true)} startIcon={<Flask />} variant="outlined">
-          Test
-        </Button>
-        <Button disabled={creating || updating} onClick={() => void save()} variant="contained">
-          {isNew ? 'Create flow' : 'Save'}
-        </Button>
+        <AdminOnly>
+          <Button onClick={() => setTestOpen(true)} startIcon={<Flask />} variant="outlined">
+            Test
+          </Button>
+          <Button disabled={creating || updating} onClick={() => void save()} variant="contained">
+            {isNew ? 'Create flow' : 'Save'}
+          </Button>
+        </AdminOnly>
       </Stack>
 
+      <ReadOnlyArea>
+      <Stack spacing={3}>
       <Card>
         <CardContent>
           <Grid container spacing={2}>
@@ -410,11 +415,13 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
         </Card>
       ))}
 
-      <Box>
-        <Button onClick={() => set('else_if', [...branches, NEW_BRANCH])} startIcon={<Plus />} variant="outlined">
-          Add ELSE IF
-        </Button>
-      </Box>
+      <AdminOnly>
+        <Box>
+          <Button onClick={() => set('else_if', [...branches, NEW_BRANCH])} startIcon={<Plus />} variant="outlined">
+            Add ELSE IF
+          </Button>
+        </Box>
+      </AdminOnly>
 
       <Card>
         <CardHeader
@@ -430,6 +437,9 @@ export function FlowBuilder({ id }: { id: string }): React.JSX.Element {
           />
         </CardContent>
       </Card>
+
+      </Stack>
+      </ReadOnlyArea>
 
       <TestPanel draft={draft} onClose={() => setTestOpen(false)} open={testOpen} />
     </Stack>

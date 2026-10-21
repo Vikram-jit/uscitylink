@@ -19,7 +19,9 @@ export const navItems = [
   { key: 'channel Members', title: 'Channel Members', href: paths.channel.members, icon: 'users-four',badge:false },
   { key: 'training', title: 'Training Section', href: paths.dashboard.trainings, icon: 'users-four',badge:false },
   { key: 'staff chat', title: 'Staff Chat', href: paths.dashboard.staff_chat, icon: 'chat',badge:true },
-  { key: 'automation', title: 'Automation', href: paths.dashboard.automation, icon: 'robot', badge: false, adminOnly: true, matcher: { type: 'startsWith', href: paths.dashboard.automation } },
+  { key: 'scale_checks', title: 'Scale checks', href: paths.compliance.scaleChecks, icon: 'scales', badge: false },
+  { key: 'equipment', title: 'Equipment', href: paths.compliance.equipment, icon: 'trailer', badge: false },
+  { key: 'automation', title: 'Automation', href: paths.dashboard.automation, icon: 'robot', badge: false, matcher: { type: 'startsWith', href: paths.dashboard.automation } },
 
 
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },

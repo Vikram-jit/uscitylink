@@ -1,3 +1,4 @@
+import { isStaffRole } from "../middleware/requireRole";
 import { Request, Response } from "express";
 import multer from "multer";
 import { Op, fn, col } from "sequelize";
@@ -7,6 +8,7 @@ import { MessageDocument } from "../models/MessageDocument";
 import { Flow } from "../models/Flow";
 import { FlowRun } from "../models/FlowRun";
 import { Message } from "../models/Message";
+import { primarySequelize } from "../sequelize";
 import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import {
@@ -27,7 +29,14 @@ import { enqueueDocumentAnalysis } from "../queues/documentAnalysisQueue";
 import { cleanKeywords, suggestKeywords } from "../services/documentAi/keywords";
 import { buildUsageReport, estimateByModel, estimateCallTokens } from "../services/documentAi/usageReport";
 import { getLiveFlowDocTypes } from "../services/flowEngine/liveDocTypes";
-import { DEFAULT_AI_MODEL, getAiModelSetting, getPrecheckSettings, PRECHECK_MODEL, setAiModel, setPrecheckSettings } from "../services/documentAi/settings";
+import { decideScaleCheck, recordAdjustment, runScaleAgent } from "../services/scaleAgent/run";
+import { buildScaleReport } from "../services/scaleAgent/report";
+import { isVerified } from "../services/scaleAgent/rules";
+import { EquipmentProfile } from "../models/EquipmentProfile";
+import { DriverTrip } from "../models/DriverTrip";
+import { ScaleCheck } from "../models/ScaleCheck";
+import { WeightRuleSet } from "../models/WeightRuleSet";
+import { DEFAULT_AI_MODEL, getAiModelSetting, getPrecheckSettings, getScalePolicy, isScaleAgentEnabled, PRECHECK_MODEL, setAiModel, setPrecheckSettings, setScaleAgentEnabled, setScalePolicy } from "../services/documentAi/settings";
 import { findRate, RATE_CARD } from "../services/documentAi/pricing";
 
 export const automationUpload = multer({
@@ -595,7 +604,14 @@ export const builderMeta = async (req: Request, res: Response): Promise<any> => 
 export const getMessageDocument = async (req: Request, res: Response): Promise<any> => {
   try {
     const doc = await MessageDocument.findOne({ where: { message_id: req.params.messageId } });
-    return res.status(200).json({ status: true, data: doc });
+    // The chat shows a scale ticket's check with the document, without a second request per image
+    const check = doc && (doc.corrected_doc_type || doc.doc_type_key) === "scale_ticket"
+      ? await ScaleCheck.findOne({ where: { message_id: doc.message_id } })
+      : null;
+    return res.status(200).json({
+      status: true,
+      data: doc ? { ...doc.toJSON(), scale_check: check ? (await withNames([check]))[0] : null } : null,
+    });
   } catch (err) {
     return fail(res, err, 500);
   }
@@ -621,6 +637,14 @@ export const correctMessageDocument = async (req: Request, res: Response): Promi
       corrected_doc_type: doc_type_key || doc.doc_type_key,
       corrected_fields: fields || null,
     });
+
+    // A corrected scale ticket is judged again on the corrected weights (updates its check, no duplicate)
+    const message = await Message.findByPk(doc.message_id);
+    if (message) {
+      await runScaleAgent(message, doc, { reason: "corrected" }).catch((err) =>
+        console.error("[scaleAgent] re-check after correction failed:", err?.message || err),
+      );
+    }
 
     // Corrections become inactive candidate examples; a admin promotes the good ones
     if (save_as_example && doc.media_key) {
@@ -659,7 +683,7 @@ export const automationMe = async (req: Request, res: Response): Promise<any> =>
       include: [{ model: Role, as: "role" }],
     });
     const role = profile?.role?.name || null;
-    return res.status(200).json({ status: true, data: { role, isAdmin: role === "admin" } });
+    return res.status(200).json({ status: true, data: { role, isAdmin: role === "admin", isStaff: isStaffRole(role) } });
   } catch (err) {
     return fail(res, err, 500);
   }
@@ -684,6 +708,7 @@ export const getAutomationSettings = async (req: Request, res: Response): Promis
       status: true,
       data: {
         ai: { ...(await getAiModelSetting()), envDefault: DEFAULT_AI_MODEL },
+        scaleAgent: { enabled: await isScaleAgentEnabled(), ...(await getScalePolicy()) },
         precheck: {
           ...(await getPrecheckSettings()),
           docTypes: (await getActiveDocTypes()).map((d) => ({ key: d.key, name: d.name })),
@@ -709,11 +734,408 @@ export const getAutomationSettings = async (req: Request, res: Response): Promis
 
 export const updateAutomationSettings = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { model, precheckEnabled } = req.body || {};
-    if (!model && typeof precheckEnabled !== "boolean") throw new Error("Nothing to update");
+    const { model, precheckEnabled, scaleAgentEnabled, scaleReleaseRole, scaleWebhookUrl } = req.body || {};
+    if (!model && typeof precheckEnabled !== "boolean" && typeof scaleAgentEnabled !== "boolean" && !scaleReleaseRole && scaleWebhookUrl === undefined) {
+      throw new Error("Nothing to update");
+    }
+    if (scaleReleaseRole || scaleWebhookUrl !== undefined) {
+      await setScalePolicy({ releaseRole: scaleReleaseRole, webhookUrl: scaleWebhookUrl }, req.user?.id);
+    }
+    if (typeof scaleAgentEnabled === "boolean") await setScaleAgentEnabled(scaleAgentEnabled, req.user?.id);
     const saved = model ? await setAiModel(String(model), req.user?.id) : undefined;
     const precheck = await setPrecheckSettings({ enabled: precheckEnabled }, req.user?.id);
     return res.status(200).json({ status: true, message: "Settings updated", data: { model: saved, precheck } });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// ---------- Scale ticket compliance agent ----------
+
+// Driver and decision-maker names for display
+const withNames = async (checks: ScaleCheck[]) => {
+  const ids = Array.from(new Set(checks.flatMap((c) => [c.driver_id, c.approved_by]).filter(Boolean))) as string[];
+  const profiles = ids.length ? await UserProfile.findAll({ where: { id: ids }, attributes: ["id", "username"] }) : [];
+  const name = (id?: string | null) => profiles.find((p) => p.id === id)?.username || null;
+  return checks.map((c) => ({ ...c.toJSON(), driver_name: name(c.driver_id), approved_by_name: name(c.approved_by) }));
+};
+
+export const listScaleChecks = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(100, Number(req.query.pageSize) || 25);
+    const where: any = {};
+    if (req.query.status) where.status = String(req.query.status);
+    if (req.query.approval) where.approval_status = String(req.query.approval);
+    const { rows, count } = await ScaleCheck.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+    const pending = await ScaleCheck.count({ where: { approval_status: "pending" } });
+    return res.status(200).json({
+      status: true,
+      data: { checks: await withNames(rows), pending, pagination: { page, pageSize, total: count } },
+    });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+export const getScaleCheckByMessage = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const check = await ScaleCheck.findOne({ where: { message_id: req.params.messageId } });
+    return res.status(200).json({ status: true, data: check ? (await withNames([check]))[0] : null });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+const decide = (decision: "approve" | "reject") => async (req: Request, res: Response): Promise<any> => {
+  try {
+    const check = await ScaleCheck.findByPk(req.params.id);
+    if (!check) return fail(res, "Scale check not found", 404);
+    const updated = await decideScaleCheck(check, decision, req.user?.id, req.body?.note);
+    return res.status(200).json({
+      status: true,
+      message: decision === "approve" ? "Released — the driver has been told" : "Rejected — the driver has been told",
+      data: (await withNames([updated]))[0],
+    });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+export const approveScaleCheck = decide("approve");
+export const rejectScaleCheck = decide("reject");
+
+export const listRuleSets = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const ruleSets = await WeightRuleSet.findAll({ order: [["jurisdiction", "ASC"], ["road_class", "ASC"], ["version", "DESC"]] });
+    const reviewers = await UserProfile.findAll({
+      where: { id: ruleSets.map((r) => r.reviewed_by).filter(Boolean) as string[] },
+      attributes: ["id", "username"],
+    });
+    const now = new Date();
+    return res.status(200).json({
+      status: true,
+      data: ruleSets.map((r) => {
+        const due = r.reviewed_at ? new Date(r.reviewed_at) : null;
+        if (due) due.setMonth(due.getMonth() + (r.review_months || 12));
+        return {
+          ...r.toJSON(),
+          verified: isVerified(r.toJSON() as any, now),
+          review_due: due,
+          reviewed_by_name: reviewers.find((u) => u.id === r.reviewed_by)?.username || null,
+        };
+      }),
+    });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+const ROAD_CLASSES = ["interstate", "state_highway", "local", "all"];
+
+// Rule sets are never edited in place: a change is saved as the next version and the old one retired.
+// Without baseId it starts a new jurisdiction/road class (e.g. a state's own rules) at version 1.
+// A new version is unreviewed until an admin signs it off (POST /rule-sets/:id/review).
+export const createRuleSetVersion = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const body = req.body || {};
+    const base = body.baseId ? await WeightRuleSet.findByPk(body.baseId) : null;
+    if (body.baseId && !base) return fail(res, "Rule set not found", 404);
+    const jurisdiction = String(base?.jurisdiction || body.jurisdiction || "").trim().toUpperCase();
+    const roadClass = String(base?.road_class || body.road_class || "").trim();
+    if (!/^[A-Z]{2,3}$/.test(jurisdiction)) throw new Error("Jurisdiction must be a 2-letter state code (or FED)");
+    if (!ROAD_CLASSES.includes(roadClass)) throw new Error(`Road class must be one of ${ROAD_CLASSES.join(", ")}`);
+    const num = (key: string, min: number, max: number, optional = false) => {
+      const raw = body[key] === undefined ? (base as any)?.[key] : body[key];
+      if (optional && (raw === null || raw === undefined || raw === "")) return null;
+      const v = Number(raw);
+      if (!Number.isFinite(v) || v < min || v > max) throw new Error(`${key} must be between ${min} and ${max}`);
+      return v;
+    };
+    if (!String(body.notes || "").trim()) throw new Error("Add a note explaining the change (kept for the audit trail)");
+    if (!base && !String(body.citation || "").trim()) throw new Error("Add the legal citation for these limits");
+    const next = {
+      jurisdiction,
+      road_class: roadClass,
+      name: String(body.name || base?.name || `${jurisdiction} ${roadClass.replace("_", " ")}`),
+      single_axle_lb: num("single_axle_lb", 1000, 100000),
+      tandem_lb: num("tandem_lb", 1000, 100000),
+      gross_lb: num("gross_lb", 10000, 200000),
+      steer_target_lb: num("steer_target_lb", 1000, 100000, true),
+      sum_tolerance_lb: num("sum_tolerance_lb", 0, 5000, !!base) ?? 100,
+      min_confidence: num("min_confidence", 0, 1, !!base) ?? 0.8,
+      kpra_max_ft: num("kpra_max_ft", 20, 80, true),
+      bridge_formula: body.bridge_formula === undefined ? base?.bridge_formula ?? true : !!body.bridge_formula,
+      review_months: num("review_months", 1, 60, true) ?? base?.review_months ?? 12,
+      citation: body.citation ?? base?.citation ?? null,
+      source_url: body.source_url ?? base?.source_url ?? null,
+      notes: String(body.notes).trim(),
+      effective_date: body.effective_date || new Date().toISOString().slice(0, 10),
+      reviewed_by: null,
+      reviewed_at: null,
+    };
+    const latest = await WeightRuleSet.max("version", { where: { jurisdiction, road_class: roadClass } });
+    const created = await primarySequelize.transaction(async (transaction) => {
+      await WeightRuleSet.update({ active: false }, { where: { jurisdiction, road_class: roadClass }, transaction });
+      return WeightRuleSet.create({ ...next, version: Number(latest || 0) + 1, active: true }, { transaction });
+    });
+    return res.status(200).json({
+      status: true,
+      message: `Saved as ${created.jurisdiction} ${created.road_class} v${created.version} — mark it reviewed once checked against the statute`,
+      data: created,
+    });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// Named sign-off of a rule version (spec §10: legal review before activation, periodic re-review)
+export const reviewRuleSet = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const rule = await WeightRuleSet.findByPk(req.params.id);
+    if (!rule) return fail(res, "Rule set not found", 404);
+    await rule.update({ reviewed_by: req.user?.id, reviewed_at: new Date() });
+    return res.status(200).json({ status: true, message: `${rule.jurisdiction} v${rule.version} marked reviewed`, data: rule });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// Re-judge a driver's open tickets after their route or equipment changed
+const recheckOpenChecks = async (where: any) => {
+  const checks = await ScaleCheck.findAll({
+    where: { ...where, approval_status: { [Op.notIn]: ["approved", "superseded"] }, createdAt: { [Op.gte]: new Date(Date.now() - 12 * 60 * 60 * 1000) } },
+  });
+  for (const check of checks) {
+    const message = await Message.findByPk(check.message_id);
+    const doc = await MessageDocument.findOne({ where: { message_id: check.message_id } });
+    if (message && doc) await runScaleAgent(message, doc, { reason: "recheck" }).catch((e) => console.error("[scaleAgent] recheck:", e?.message));
+  }
+  return checks.length;
+};
+
+export const recheckScaleCheck = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const check = await ScaleCheck.findByPk(req.params.id);
+    if (!check) return fail(res, "Scale check not found", 404);
+    const message = await Message.findByPk(check.message_id);
+    const doc = await MessageDocument.findOne({ where: { message_id: check.message_id } });
+    if (!message || !doc) return fail(res, "The ticket message is gone", 404);
+    const updated = await runScaleAgent(message, doc, { reason: "recheck" });
+    return res.status(200).json({ status: true, message: "Re-checked", data: updated ? (await withNames([updated]))[0] : null });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+export const recordScaleAdjustment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const check = await ScaleCheck.findByPk(req.params.id);
+    if (!check) return fail(res, "Scale check not found", 404);
+    const updated = await recordAdjustment(check, req.body || {}, req.user?.id);
+    return res.status(200).json({ status: true, message: "Adjustment recorded — the reweigh will be compared with it", data: (await withNames([updated]))[0] });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+export const scaleCheckReport = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const check = await ScaleCheck.findByPk(req.params.id);
+    if (!check) return fail(res, "Scale check not found", 404);
+    return res.status(200).json({ status: true, data: buildScaleReport(check) });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+// ---------- Equipment profiles (admin) ----------
+
+const EQUIPMENT_FIELDS: Record<string, "num" | "int"> = {
+  axle_count: "int",
+  steer_to_drive_center_ft: "num",
+  drive_spread_ft: "num",
+  kingpin_to_drive_center_ft: "num",
+  fifth_wheel_range_in: "num",
+  kpra_ft: "num",
+  trailer_spread_ft: "num",
+  length_ft: "num",
+  hole_spacing_in: "num",
+  holes_forward_available: "int",
+  holes_back_available: "int",
+  steer_rating_lb: "int",
+  drive_rating_lb: "int",
+  trailer_rating_lb: "int",
+  gvwr_lb: "int",
+  lb_per_hole: "num",
+};
+
+const equipmentData = (input: any) => {
+  const kind = String(input.kind || "").toLowerCase();
+  if (!["tractor", "trailer"].includes(kind)) throw new Error("Kind must be tractor or trailer");
+  const unitNumber = String(input.unit_number || "").trim().toUpperCase();
+  if (!unitNumber) throw new Error("Unit number is required");
+  const data: any = { kind, unit_number: unitNumber, notes: input.notes || null };
+  Object.entries(EQUIPMENT_FIELDS).forEach(([key, type]) => {
+    const raw = input[key];
+    if (raw === undefined) return;
+    if (raw === null || raw === "") return (data[key] = null);
+    const v = Number(raw);
+    if (!Number.isFinite(v) || v < 0) throw new Error(`${unitNumber}: ${key} must be a positive number`);
+    data[key] = type === "int" ? Math.round(v) : v;
+  });
+  return data;
+};
+
+export const listEquipment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const where: any = { active: true };
+    if (req.query.kind) where.kind = String(req.query.kind);
+    const profiles = await EquipmentProfile.findAll({ where, order: [["kind", "ASC"], ["unit_number", "ASC"]] });
+    return res.status(200).json({ status: true, data: profiles });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+export const saveEquipment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const data = { ...equipmentData(req.body || {}), active: true, updated_by: req.user?.id };
+    const existing = req.params.id
+      ? await EquipmentProfile.findByPk(req.params.id)
+      : await EquipmentProfile.findOne({ where: { kind: data.kind, unit_number: data.unit_number } });
+    const profile = existing ? await existing.update(data) : await EquipmentProfile.create(data);
+    const rechecked = await recheckOpenChecks({ [data.kind === "trailer" ? "trailer_unit" : "tractor_unit"]: data.unit_number });
+    return res.status(200).json({ status: true, message: `Saved ${profile.kind} ${profile.unit_number}${rechecked ? ` — re-checked ${rechecked} open ticket(s)` : ""}`, data: profile });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+export const deleteEquipment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    await EquipmentProfile.update({ active: false, updated_by: req.user?.id }, { where: { id: req.params.id } });
+    return res.status(200).json({ status: true, message: "Removed" });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// CSV with a header row using the field names above (kind,unit_number,kpra_ft,...)
+export const importEquipment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const text = String(req.body?.csv || "").trim();
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) throw new Error("Paste a header row and at least one row");
+    const split = (l: string) => l.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const header = split(lines[0]).map((h) => h.toLowerCase());
+    if (!header.includes("kind") || !header.includes("unit_number")) throw new Error("The header must include kind and unit_number");
+    const rows = lines.slice(1).map((l, i) => {
+      const cells = split(l);
+      const obj: any = {};
+      header.forEach((h, j) => (obj[h] = cells[j] ?? ""));
+      try {
+        return { ok: true as const, data: equipmentData(obj) };
+      } catch (e: any) {
+        return { ok: false as const, error: `Row ${i + 2}: ${e.message}` };
+      }
+    });
+    const errors = rows.filter((r) => !r.ok).map((r: any) => r.error);
+    if (errors.length) return res.status(400).json({ status: false, message: errors.slice(0, 10).join("\n") });
+    let saved = 0;
+    for (const r of rows as any[]) {
+      const existing = await EquipmentProfile.findOne({ where: { kind: r.data.kind, unit_number: r.data.unit_number } });
+      const data = { ...r.data, active: true, updated_by: req.user?.id };
+      if (existing) await existing.update(data);
+      else await EquipmentProfile.create(data);
+      saved++;
+    }
+    return res.status(200).json({ status: true, message: `Imported ${saved} profile(s)` });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// ---------- Driver trips (dispatch) ----------
+
+const US_STATES = new Set(
+  "AL AZ AR CA CO CT DE FL GA ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(" "),
+);
+
+const tripData = (input: any) => {
+  const segments = (Array.isArray(input.segments) ? input.segments : []).map((s: any, i: number) => {
+    const state = String(s?.state || "").trim().toUpperCase();
+    if (!US_STATES.has(state)) throw new Error(`Segment ${i + 1}: "${s?.state}" is not a state code`);
+    if (!["interstate", "state_highway", "local"].includes(s?.road_class)) throw new Error(`Segment ${i + 1}: choose the road type`);
+    return { state, road_class: s.road_class, note: s?.note ? String(s.note) : undefined };
+  });
+  if (!segments.length) throw new Error("Add at least one route segment (state + road type)");
+  const permits = (Array.isArray(input.permits) ? input.permits : []).map((p: any, i: number) => {
+    const state = String(p?.state || "").trim().toUpperCase();
+    if (!US_STATES.has(state)) throw new Error(`Permit ${i + 1}: "${p?.state}" is not a state code`);
+    if (!String(p?.number || "").trim()) throw new Error(`Permit ${i + 1}: permit number is required`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p?.expires_at || ""))) throw new Error(`Permit ${i + 1}: expiry date is required`);
+    const n = (v: any) => (v === null || v === undefined || v === "" ? null : Number(v));
+    return { state, number: String(p.number).trim(), expires_at: p.expires_at, gross_lb: n(p.gross_lb), tandem_lb: n(p.tandem_lb), single_axle_lb: n(p.single_axle_lb) };
+  });
+  return {
+    truck: input.truck ? String(input.truck).trim().toUpperCase() : null,
+    trailer: input.trailer ? String(input.trailer).trim().toUpperCase() : null,
+    origin: input.origin || null,
+    destination: input.destination || null,
+    cargo: input.cargo || null,
+    notes: input.notes || null,
+    segments,
+    permits,
+  };
+};
+
+export const getDriverTrip = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const trip = await DriverTrip.findOne({ where: { driver_id: req.params.driverId, status: "active" }, order: [["createdAt", "DESC"]] });
+    return res.status(200).json({ status: true, data: trip });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+export const listTrips = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const trips = await DriverTrip.findAll({ where: { status: "active" }, order: [["updatedAt", "DESC"]], limit: 200 });
+    const drivers = await UserProfile.findAll({ where: { id: trips.map((t) => t.driver_id) }, attributes: ["id", "username"] });
+    return res.status(200).json({
+      status: true,
+      data: trips.map((t) => ({ ...t.toJSON(), driver_name: drivers.find((d) => d.id === t.driver_id)?.username || null })),
+    });
+  } catch (err) {
+    return fail(res, err, 500);
+  }
+};
+
+// One active trip per driver: saving replaces the current one, then open tickets are re-checked
+export const saveDriverTrip = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const driverId = req.params.driverId;
+    const data = tripData(req.body || {});
+    const current = await DriverTrip.findOne({ where: { driver_id: driverId, status: "active" } });
+    const trip = current
+      ? await current.update(data)
+      : await DriverTrip.create({ ...data, driver_id: driverId, status: "active", created_by: req.user?.id });
+    const rechecked = await recheckOpenChecks({ driver_id: driverId });
+    return res.status(200).json({ status: true, message: `Route saved${rechecked ? ` — re-checked ${rechecked} open ticket(s)` : ""}`, data: trip });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+export const closeDriverTrip = async (req: Request, res: Response): Promise<any> => {
+  try {
+    await DriverTrip.update({ status: "closed", closed_at: new Date() }, { where: { driver_id: req.params.driverId, status: "active" } });
+    return res.status(200).json({ status: true, message: "Trip closed" });
   } catch (err) {
     return fail(res, err);
   }

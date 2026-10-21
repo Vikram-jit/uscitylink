@@ -48,7 +48,7 @@ export const previewAction = (action: FlowAction, ctx: FlowContext): any => {
   }
 };
 
-const sendWebhook = async (url: string, payload: any) => {
+export const sendWebhook = async (url: string, payload: any) => {
   const body = JSON.stringify(payload);
   const signature = crypto
     .createHmac("sha256", process.env.AUTOMATION_WEBHOOK_SECRET || "")

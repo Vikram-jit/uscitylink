@@ -53,6 +53,7 @@ import DeleteConfirmationDialog from '@/components/DeleteConfirmationDialog';
 import { FieldValuesEditor } from './FieldValuesEditor';
 import { ProcessingNotice } from './ProcessingNotice';
 import { formatValue, s3Url } from './utils';
+import { AdminOnly, ReadOnlyArea } from './AdminGuard';
 
 type Draft = Pick<DocType, 'key' | 'name' | 'description' | 'identify_hints' | 'keywords' | 'fields' | 'active'>;
 
@@ -284,9 +285,9 @@ function ExamplesSection({ docType }: { docType: DocType }): React.JSX.Element {
     <Card>
       <CardHeader
         action={
-          <Button onClick={() => setOpen(true)} startIcon={<Plus />} variant="contained">
+<AdminOnly><Button onClick={() => setOpen(true)} startIcon={<Plus />} variant="contained">
             Add example
-          </Button>
+          </Button></AdminOnly>
         }
         subheader="Training examples: real photos with the correct values. Up to 2 active examples per type are shown to the AI on every document."
         title="Examples"
@@ -463,16 +464,20 @@ export function DocTypeEditor({ id }: { id: string }): React.JSX.Element {
           Document types
         </Button>
         <Box sx={{ flex: 1 }} />
-        {!isNew ? (
-          <Button color="error" onClick={() => setConfirmDelete(true)}>
-            Delete
+        <AdminOnly>
+          {!isNew ? (
+            <Button color="error" onClick={() => setConfirmDelete(true)}>
+              Delete
+            </Button>
+          ) : null}
+          <Button disabled={creating || updating} onClick={() => void save()} variant="contained">
+            {isNew ? 'Create' : 'Save'}
           </Button>
-        ) : null}
-        <Button disabled={creating || updating} onClick={() => void save()} variant="contained">
-          {isNew ? 'Create' : 'Save'}
-        </Button>
+        </AdminOnly>
       </Stack>
 
+      <ReadOnlyArea>
+      <Stack spacing={3}>
       <Card>
         <CardContent>
           <Grid container spacing={2}>
@@ -541,6 +546,8 @@ export function DocTypeEditor({ id }: { id: string }): React.JSX.Element {
 
       {!isNew && data?.data ? <ExamplesSection docType={data.data} /> : null}
 
+      </Stack>
+      </ReadOnlyArea>
       {confirmDelete ? (
         <DeleteConfirmationDialog
           onClose={() => setConfirmDelete(false)}

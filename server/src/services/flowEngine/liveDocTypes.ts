@@ -1,7 +1,8 @@
 import { Flow } from "../../models/Flow";
+import { isScaleAgentEnabled } from "../documentAi/settings";
 
-// Which document types the automation actually needs read: the ones named in the conditions of
-// LIVE flows (on, not shadow mode, triggered by a read document). Uploads of any other type stop
+// Which document types the automation actually needs read: the scale agent's (when on) plus the ones
+// named in the conditions of LIVE flows (on, not shadow mode, triggered by a read document). Uploads of any other type stop
 // after the quick check, and with no live flow nothing is sent to the AI at all.
 
 export interface LiveFlowDocTypes {
@@ -36,6 +37,11 @@ export const getLiveFlowDocTypes = async (): Promise<LiveFlowDocTypes> => {
     } else {
       result.anyTypeFlows.push({ id: flow.id, name: flow.name });
     }
+  }
+  // The scale ticket compliance agent needs scale tickets read even without a flow
+  if (await isScaleAgentEnabled()) {
+    all.add("scale_ticket");
+    result.flows.unshift({ id: "scale-agent", name: "Scale ticket agent", docTypes: ["scale_ticket"] });
   }
   result.docTypes = [...all];
   return result;

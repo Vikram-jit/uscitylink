@@ -27,9 +27,13 @@ export function toggleSidebar() {
   }
 }
 
+// The chat slides over the list only on phone widths (MyMessage grid, xs); only lock the page there,
+// otherwise the lock outlives the Messages screen and blocks scrolling on every other page
+const isPhoneWidth = () => window.matchMedia('(max-width: 599.95px)').matches;
+
 export function openMessagesPane() {
   if (typeof window !== 'undefined') {
-    document.body.style.overflow = 'hidden';
+    if (isPhoneWidth()) document.body.style.overflow = 'hidden';
     document.documentElement.style.setProperty('--MessagesPane-slideIn', '1');
   }
 }

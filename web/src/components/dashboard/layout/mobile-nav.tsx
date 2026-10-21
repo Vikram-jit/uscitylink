@@ -31,7 +31,7 @@ export interface MobileNavProps {
 export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element {
   const pathname = usePathname();
   const { data: me } = useGetAutomationMeQuery();
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || me?.data?.isAdmin);
+  const visibleNavItems = (navItems as NavItemConfig[]).filter((item) => !item.adminOnly || me?.data?.isAdmin);
 
   return (
     <Drawer

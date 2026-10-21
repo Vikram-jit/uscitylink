@@ -7,6 +7,7 @@ import { FileText } from '@phosphor-icons/react';
 import { useGetMessageDocumentQuery } from '@/redux/AutomationApiSlice';
 
 import { CorrectionDialog } from './CorrectionDialog';
+import { ScaleCheckCard } from './ScaleCheckCard';
 import { formatValue, humanizeKey } from './utils';
 
 const HEADLINE_FIELDS = ['gross_lb', 'bol_number', 'received_qty', 'amount'];
@@ -60,6 +61,7 @@ export function DocumentChip({ messageId }: { messageId: string }): React.JSX.El
           />
         </Box>
       </Tooltip>
+      {doc.scale_check ? <ScaleCheckCard check={doc.scale_check} /> : null}
       {open ? <CorrectionDialog doc={doc} onClose={() => setOpen(false)} open /> : null}
     </>
   );

@@ -12,6 +12,10 @@ import type {
   UsageReport,
   AutomationSettings,
   AutomationSettingsUpdate,
+  ScaleCheck,
+  WeightRuleSet,
+  EquipmentProfile,
+  DriverTrip,
 } from './models/AutomationModel';
 
 interface Res<T> {
@@ -22,7 +26,7 @@ interface Res<T> {
 
 export const AutomationApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getAutomationMe: builder.query<Res<{ role: string | null; isAdmin: boolean }>, void>({
+    getAutomationMe: builder.query<Res<{ role: string | null; isAdmin: boolean; isStaff?: boolean }>, void>({
       query: () => ({ url: 'automation/me', method: 'GET' }),
     }),
 
@@ -164,6 +168,80 @@ export const AutomationApiSlice = apiSlice.injectEndpoints({
     }),
 
     // Staff: chat attachments
+    getScaleChecks: builder.query<
+      Res<{ checks: ScaleCheck[]; pending: number; pagination: { page: number; pageSize: number; total: number } }>,
+      { page: number; approval?: string; status?: string }
+    >({
+      query: ({ page, approval, status }) => ({
+        url: `automation/scale-checks?page=${page}${approval ? `&approval=${approval}` : ''}${status ? `&status=${status}` : ''}`,
+        method: 'GET',
+      }),
+      keepUnusedDataFor: 0,
+      providesTags: ['scaleChecks'],
+    }),
+    decideScaleCheck: builder.mutation<Res<ScaleCheck>, { id: string; messageId: string; decision: 'approve' | 'reject'; note?: string }>({
+      query: ({ id, decision, note }) => ({ url: `automation/scale-checks/${id}/${decision}`, method: 'POST', body: { note } }),
+      invalidatesTags: (_r, _e, { messageId }) => ['scaleChecks', { type: 'messageDocument', id: messageId }],
+    }),
+    recheckScaleCheck: builder.mutation<Res<ScaleCheck>, { id: string; messageId: string }>({
+      query: ({ id }) => ({ url: `automation/scale-checks/${id}/recheck`, method: 'POST' }),
+      invalidatesTags: (_r, _e, { messageId }) => ['scaleChecks', { type: 'messageDocument', id: messageId }],
+    }),
+    recordScaleAdjustment: builder.mutation<
+      Res<ScaleCheck>,
+      { id: string; messageId: string; action: string; holes?: number | null; parked_confirmed: boolean }
+    >({
+      query: ({ id, messageId: _m, ...body }) => ({ url: `automation/scale-checks/${id}/adjustment`, method: 'POST', body }),
+      invalidatesTags: (_r, _e, { messageId }) => ['scaleChecks', { type: 'messageDocument', id: messageId }],
+    }),
+    getScaleReport: builder.query<Res<any>, { id: string }>({
+      query: ({ id }) => ({ url: `automation/scale-checks/${id}/report`, method: 'GET' }),
+      keepUnusedDataFor: 0,
+    }),
+    reviewRuleSet: builder.mutation<Res<WeightRuleSet>, { id: string }>({
+      query: ({ id }) => ({ url: `automation/rule-sets/${id}/review`, method: 'POST' }),
+      invalidatesTags: ['ruleSets'],
+    }),
+    getEquipment: builder.query<Res<EquipmentProfile[]>, void>({
+      query: () => ({ url: 'automation/equipment', method: 'GET' }),
+      providesTags: ['equipment'],
+    }),
+    saveEquipment: builder.mutation<Res<EquipmentProfile>, Partial<EquipmentProfile>>({
+      query: ({ id, ...body }) => ({ url: id ? `automation/equipment/${id}` : 'automation/equipment', method: id ? 'PUT' : 'POST', body }),
+      invalidatesTags: ['equipment', 'scaleChecks', 'messageDocument'],
+    }),
+    deleteEquipment: builder.mutation<Res<null>, { id: string }>({
+      query: ({ id }) => ({ url: `automation/equipment/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['equipment'],
+    }),
+    importEquipment: builder.mutation<Res<null>, { csv: string }>({
+      query: (body) => ({ url: 'automation/equipment/import', method: 'POST', body }),
+      invalidatesTags: ['equipment'],
+    }),
+    getTrips: builder.query<Res<DriverTrip[]>, void>({
+      query: () => ({ url: 'automation/trips', method: 'GET' }),
+      providesTags: ['trips'],
+    }),
+    getDriverTrip: builder.query<Res<DriverTrip | null>, { driverId: string }>({
+      query: ({ driverId }) => ({ url: `automation/trips/driver/${driverId}`, method: 'GET' }),
+      providesTags: (_r, _e, { driverId }) => [{ type: 'trips', id: driverId }],
+    }),
+    saveDriverTrip: builder.mutation<Res<DriverTrip>, { driverId: string } & DriverTrip>({
+      query: ({ driverId, ...body }) => ({ url: `automation/trips/driver/${driverId}`, method: 'PUT', body }),
+      invalidatesTags: ['trips', 'scaleChecks', 'messageDocument'],
+    }),
+    closeDriverTrip: builder.mutation<Res<null>, { driverId: string }>({
+      query: ({ driverId }) => ({ url: `automation/trips/driver/${driverId}/close`, method: 'POST' }),
+      invalidatesTags: ['trips'],
+    }),
+    getRuleSets: builder.query<Res<WeightRuleSet[]>, void>({
+      query: () => ({ url: 'automation/rule-sets', method: 'GET' }),
+      providesTags: ['ruleSets'],
+    }),
+    createRuleSetVersion: builder.mutation<Res<WeightRuleSet>, Partial<WeightRuleSet> & { baseId?: string; notes: string }>({
+      query: (body) => ({ url: 'automation/rule-sets', method: 'POST', body }),
+      invalidatesTags: ['ruleSets'],
+    }),
     getMessageDocument: builder.query<Res<MessageDocument | null>, { messageId: string }>({
       query: ({ messageId }) => ({ url: `automation/message-documents/${messageId}`, method: 'GET' }),
       providesTags: (_result, _error, { messageId }) => [{ type: 'messageDocument', id: messageId }],
@@ -220,4 +298,20 @@ export const {
   useGetMessageDocumentQuery,
   useCorrectMessageDocumentMutation,
   useReanalyzeMessageMutation,
+  useGetScaleChecksQuery,
+  useDecideScaleCheckMutation,
+  useGetRuleSetsQuery,
+  useCreateRuleSetVersionMutation,
+  useRecheckScaleCheckMutation,
+  useRecordScaleAdjustmentMutation,
+  useLazyGetScaleReportQuery,
+  useReviewRuleSetMutation,
+  useGetEquipmentQuery,
+  useSaveEquipmentMutation,
+  useDeleteEquipmentMutation,
+  useImportEquipmentMutation,
+  useGetTripsQuery,
+  useGetDriverTripQuery,
+  useSaveDriverTripMutation,
+  useCloseDriverTripMutation,
 } = AutomationApiSlice;

@@ -33,7 +33,7 @@ export function SideNav(): React.JSX.Element {
   const { data: profile } = useGetProfileQuery();
   const { data: me } = useGetAutomationMeQuery();
   // Admin-only items (Automation) are hidden from regular staff
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || me?.data?.isAdmin);
+  const visibleNavItems = (navItems as NavItemConfig[]).filter((item) => !item.adminOnly || me?.data?.isAdmin);
   const sections = groupNavItems(visibleNavItems);
   const name = profile?.data?.username || 'Dispatcher';
 

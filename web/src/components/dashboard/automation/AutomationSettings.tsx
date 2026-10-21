@@ -12,6 +12,8 @@ import {
   CircularProgress,
   Divider,
   FormControlLabel,
+  MenuItem,
+  TextField,
   Radio,
   Stack,
   Switch,
@@ -22,6 +24,7 @@ import { toast } from 'react-toastify';
 
 import { useGetAutomationSettingsQuery, useUpdateAutomationSettingsMutation } from '@/redux/AutomationApiSlice';
 import type { AutomationSettings } from '@/redux/models/AutomationModel';
+import { AdminOnly, ReadOnlyArea } from './AdminGuard';
 
 // Plain-language guidance shown next to each model
 const MODEL_NOTES: Record<string, { summary: string; tag?: { label: string; color: 'primary' | 'success' | 'default' } }> = {
@@ -76,16 +79,18 @@ export function AutomationSettingsPanel(): React.JSX.Element {
   };
 
   return (
+    <ReadOnlyArea>
     <Stack spacing={3}>
+      <ScaleAgentCard agent={settings.scaleAgent} onSaved={refetch} />
       <PrecheckCard settings={settings} onSaved={refetch} />
       <Card>
         <CardHeader
           subheader="The model that does the full read (document type, fields, keywords) after the quick check passes. Changes apply to the next document — no restart needed."
           title="AI model for the full read"
           action={
-            <Button disabled={!changed || saving} onClick={() => void save()} variant="contained">
+<AdminOnly><Button disabled={!changed || saving} onClick={() => void save()} variant="contained">
               {saving ? 'Saving…' : 'Save'}
-            </Button>
+            </Button></AdminOnly>
           }
         />
         <Divider />
@@ -163,6 +168,7 @@ export function AutomationSettingsPanel(): React.JSX.Element {
         </Alert>
       ) : null}
     </Stack>
+    </ReadOnlyArea>
   );
 }
 
@@ -198,9 +204,9 @@ function PrecheckCard({ settings, onSaved }: { settings: AutomationSettings; onS
         title="Read only for live flows"
         subheader={`Every upload is first screened by ${checkModel?.label || pre.model} on a small copy of the photo. Only document types used by a Live flow go on to the full read with ${fullModel?.label || settings.ai.model}.`}
         action={
-          <Button disabled={enabled === pre.enabled || saving} onClick={() => void save()} variant="contained">
+<AdminOnly><Button disabled={enabled === pre.enabled || saving} onClick={() => void save()} variant="contained">
             {saving ? 'Saving…' : 'Save'}
-          </Button>
+          </Button></AdminOnly>
         }
       />
       <Divider />
@@ -242,6 +248,73 @@ function PrecheckCard({ settings, onSaved }: { settings: AutomationSettings; onS
             Quick check ≈ {cents(pre.estimatedPerCheck)} per upload ({usd(pre.estimatedPerCheck * 1000)} per 1,000). Shadow-mode
             flows do not count as live. If the quick check is unsure or unavailable, the upload is read in full so nothing is missed.
           </Typography>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Scale ticket compliance agent: on/off, who may release loads, where the report goes
+function ScaleAgentCard({ agent, onSaved }: { agent: AutomationSettings['scaleAgent']; onSaved: () => void }): React.JSX.Element {
+  const [updateSettings, { isLoading }] = useUpdateAutomationSettingsMutation();
+  const [webhook, setWebhook] = React.useState(agent?.webhookUrl || '');
+  React.useEffect(() => setWebhook(agent?.webhookUrl || ''), [agent?.webhookUrl]);
+  const save = async (patch: Parameters<typeof updateSettings>[0], message: string) => {
+    try {
+      await updateSettings(patch).unwrap();
+      toast.success(message);
+      onSaved();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Could not save');
+    }
+  };
+  const enabled = agent?.enabled ?? true;
+  return (
+    <Card>
+      <CardHeader
+        title="Scale ticket agent"
+        subheader="Checks every CAT scale ticket against the route's weight rules and the equipment, tells the driver what to adjust, and requires a dispatcher to release the load. Results under Compliance → Scale checks."
+        action={
+          <FormControlLabel
+            control={
+              <Switch checked={enabled} disabled={isLoading} onChange={(e) => void save({ scaleAgentEnabled: e.target.checked }, e.target.checked ? 'Scale agent on' : 'Scale agent off')} />
+            }
+            label={enabled ? 'On' : 'Off'}
+          />
+        }
+      />
+      <Divider />
+      <CardContent>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <TextField
+            helperText="Rejecting is open to all staff"
+            label="Who can release a load"
+            onChange={(e) => void save({ scaleReleaseRole: e.target.value as 'staff' | 'admin' }, 'Release permission saved')}
+            select
+            size="small"
+            sx={{ minWidth: 220 }}
+            value={agent?.releaseRole || 'staff'}
+          >
+            <MenuItem value="staff">Any dispatcher / staff</MenuItem>
+            <MenuItem value="admin">Admins only</MenuItem>
+          </TextField>
+          <TextField
+            fullWidth
+            helperText="Optional. Every check, adjustment and release is POSTed here as the spec's JSON report (signed with X-USCityLink-Signature)."
+            label="Report webhook URL"
+            onChange={(e) => setWebhook(e.target.value)}
+            placeholder="https://"
+            size="small"
+            value={webhook}
+          />
+<AdminOnly><Button
+            disabled={isLoading || webhook === (agent?.webhookUrl || '')}
+            onClick={() => void save({ scaleWebhookUrl: webhook }, 'Webhook saved')}
+            sx={{ alignSelf: 'flex-start' }}
+            variant="outlined"
+          >
+            Save
+          </Button></AdminOnly>
         </Stack>
       </CardContent>
     </Card>

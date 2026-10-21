@@ -176,6 +176,8 @@ export interface MessageDocument {
     messageTimestampUtc: string;
     sender?: { id: string; username: string };
   };
+  // Present for scale tickets: the compliance agent's check
+  scale_check?: ScaleCheck | null;
 }
 
 export interface ContextField {
@@ -285,6 +287,7 @@ export interface UsageReport {
 export interface AutomationSettings {
   ai: { model: string; isDefault: boolean; updatedAt: string | null; updatedBy: string | null; envDefault: string };
   models: (Rate & { estimatedPerDocument: number })[];
+  scaleAgent: { enabled: boolean; releaseRole: 'staff' | 'admin'; webhookUrl: string | null };
   precheck: {
     enabled: boolean;
     model: string;
@@ -301,4 +304,148 @@ export interface AutomationSettings {
 export interface AutomationSettingsUpdate {
   model?: string;
   precheckEnabled?: boolean;
+  scaleAgentEnabled?: boolean;
+  scaleReleaseRole?: 'staff' | 'admin';
+  scaleWebhookUrl?: string;
+}
+
+// ---------- Scale ticket compliance agent ----------
+
+export type ScaleStatus =
+  | 'PASS_PRELIMINARY'
+  | 'OVER_GROSS'
+  | 'ADJUST_AND_REWEIGH'
+  | 'OCR_UNCERTAIN'
+  | 'ROUTE_REVIEW_REQUIRED'
+  | 'BRIDGE_REVIEW';
+export type ScaleApproval = 'pending' | 'approved' | 'rejected' | 'not_required' | 'superseded';
+export type ScaleGroup = 'steer' | 'drive' | 'trailer' | 'gross';
+
+export interface ScaleAdjustment {
+  action: 'tandems_forward' | 'tandems_backward' | 'fifth_wheel_forward' | 'fifth_wheel_back' | 'rework_cargo';
+  from?: ScaleGroup;
+  to?: ScaleGroup;
+  needed_lb?: number;
+  available_lb?: number;
+  holes?: number | null;
+  kpra_after_ft?: number | null;
+  reason?: 'weight' | 'kpra';
+}
+
+export interface ScaleCheck {
+  id: string;
+  message_id: string;
+  driver_id?: string | null;
+  driver_name?: string | null;
+  channel_id?: string | null;
+  truck?: string | null;
+  ticket_number?: string | null;
+  measured_weights?: Partial<Record<ScaleGroup, number | null>> | null;
+  confidence?: number | null;
+  image_quality?: string | null;
+  rule_set_version?: string | null;
+  model?: string | null;
+  status: ScaleStatus;
+  flags?: string[] | null;
+  group_overages_lb?: Partial<Record<ScaleGroup, number>> | null;
+  headroom_lb?: Partial<Record<ScaleGroup, number>> | null;
+  feasible_adjustments?: ScaleAdjustment[] | null;
+  assumptions?: string[] | null;
+  required_actions?: string[] | null;
+  driver_message?: string | null;
+  previous_check_id?: string | null;
+  reweigh_check_id?: string | null;
+  approval_status: ScaleApproval;
+  approved_by?: string | null;
+  approved_by_name?: string | null;
+  approved_at?: string | null;
+  approval_note?: string | null;
+  trip_id?: string | null;
+  tractor_unit?: string | null;
+  trailer_unit?: string | null;
+  controlling_rules?: {
+    route_known: boolean;
+    segments: { state: string; road_class: string; rules: string[]; missing: boolean; unverified: string[]; permit?: string | null; expired_permit?: string | null }[];
+    limits: { single_axle_lb: number; tandem_lb: number; gross_lb: number; steer_target_lb?: number | null; kpra_max_ft?: number | null };
+    sources: Record<string, string>;
+    rule_labels: string[];
+    missing: string[];
+    unverified: string[];
+    axle_positions_ft?: number[] | null;
+    equipment_missing?: string[];
+  } | null;
+  bridge_results?: { axles: string; count: number; length_ft: number; weight_lb: number; limit_lb: number; over_lb: number; rule: string }[] | null;
+  kpra?: { required: boolean; max_ft: number | null; kpra_ft: number | null; over_ft: number | null; verified: boolean } | null;
+  adjustment_made?: { action: string; holes?: number | null; parked_confirmed: boolean; by?: string; at?: string } | null;
+  prediction?: { action: string; holes: number | null; expected_shift_lb: number | null; actual_shift_lb: number | null; direction_ok: boolean | null; mismatch: boolean; learned_lb_per_hole: number | null; note: string } | null;
+  createdAt: string;
+}
+
+export interface WeightRuleSet {
+  id: string;
+  jurisdiction: string;
+  road_class: string;
+  version: number;
+  name: string;
+  single_axle_lb: number;
+  tandem_lb: number;
+  gross_lb: number;
+  steer_target_lb?: number | null;
+  sum_tolerance_lb: number;
+  min_confidence: number;
+  citation?: string | null;
+  source_url?: string | null;
+  effective_date?: string | null;
+  notes?: string | null;
+  active: boolean;
+  kpra_max_ft?: number | null;
+  bridge_formula: boolean;
+  review_months: number;
+  reviewed_at?: string | null;
+  reviewed_by_name?: string | null;
+  verified?: boolean;
+  review_due?: string | null;
+  createdAt: string;
+}
+
+export interface EquipmentProfile {
+  id: string;
+  kind: 'tractor' | 'trailer';
+  unit_number: string;
+  axle_count?: number | null;
+  steer_to_drive_center_ft?: number | null;
+  drive_spread_ft?: number | null;
+  kingpin_to_drive_center_ft?: number | null;
+  fifth_wheel_range_in?: number | null;
+  kpra_ft?: number | null;
+  trailer_spread_ft?: number | null;
+  length_ft?: number | null;
+  hole_spacing_in?: number | null;
+  holes_forward_available?: number | null;
+  holes_back_available?: number | null;
+  steer_rating_lb?: number | null;
+  drive_rating_lb?: number | null;
+  trailer_rating_lb?: number | null;
+  gvwr_lb?: number | null;
+  lb_per_hole?: number | null;
+  lb_per_hole_samples?: number;
+  notes?: string | null;
+  updatedAt?: string;
+}
+
+export type RoadClass = 'interstate' | 'state_highway' | 'local';
+
+export interface DriverTrip {
+  id?: string;
+  driver_id?: string;
+  driver_name?: string | null;
+  truck?: string | null;
+  trailer?: string | null;
+  origin?: string | null;
+  destination?: string | null;
+  cargo?: string | null;
+  notes?: string | null;
+  segments: { state: string; road_class: RoadClass; note?: string }[];
+  permits: { state: string; number: string; expires_at: string; gross_lb?: number | null; tandem_lb?: number | null; single_axle_lb?: number | null }[];
+  updatedAt?: string;
 }

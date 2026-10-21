@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Container, Stack, Tab, Tabs, Typography } from '@mui/material';
 
 import { paths } from '@/paths';
-import { AdminGuard } from '@/components/dashboard/automation/AdminGuard';
+import { AutomationGuard, ReadOnlyBanner } from '@/components/dashboard/automation/AdminGuard';
 
 const TABS = [
   { label: 'Overview', href: paths.dashboard.automation },
@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }): Rea
 
   return (
     <Container maxWidth="xl" sx={{ py: '48px' }}>
-      <AdminGuard>
+      <AutomationGuard>
         <Stack spacing={3}>
           <Stack spacing={0.5}>
             <Typography variant="h4">Automation</Typography>
@@ -39,9 +39,10 @@ export default function Layout({ children }: { children: React.ReactNode }): Rea
               <Tab component={RouterLink} href={t.href} key={t.href} label={t.label} value={t.href} />
             ))}
           </Tabs>
+          <ReadOnlyBanner />
           {children}
         </Stack>
-      </AdminGuard>
+      </AutomationGuard>
     </Container>
   );
 }

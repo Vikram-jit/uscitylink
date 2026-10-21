@@ -20,6 +20,7 @@ import { Plus } from '@phosphor-icons/react';
 
 import { paths } from '@/paths';
 import { useGetDocTypesQuery } from '@/redux/AutomationApiSlice';
+import { AdminOnly } from './AdminGuard';
 
 export function DocTypeList(): React.JSX.Element {
   const { data, isLoading } = useGetDocTypesQuery();
@@ -31,9 +32,11 @@ export function DocTypeList(): React.JSX.Element {
           Each document type tells the AI what the paperwork looks like and which fields to read. Add 1–2 corrected
           example photos to each type to improve accuracy.
         </Typography>
-        <Button component={RouterLink} href={`${paths.automation.docTypes}/new`} startIcon={<Plus />} variant="contained">
-          New document type
-        </Button>
+        <AdminOnly>
+          <Button component={RouterLink} href={`${paths.automation.docTypes}/new`} startIcon={<Plus />} variant="contained">
+            New document type
+          </Button>
+        </AdminOnly>
       </Stack>
       <Card>
         <Box sx={{ overflowX: 'auto' }}>

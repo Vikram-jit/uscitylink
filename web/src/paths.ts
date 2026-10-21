@@ -31,6 +31,10 @@ export const paths = {
   channel:{
     "members":'/dashboard/channels/members'
   },
+  compliance: {
+    scaleChecks: '/dashboard/compliance/scale-checks',
+    equipment: '/dashboard/compliance/equipment',
+  },
   automation: {
     flows: '/dashboard/automation/flows',
     docTypes: '/dashboard/automation/doc-types',

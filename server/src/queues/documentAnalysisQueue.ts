@@ -11,6 +11,7 @@ import {
 import { precheckDocument } from "../services/documentAi/precheck";
 import { getPrecheckSettings } from "../services/documentAi/settings";
 import { getLiveFlowDocTypes } from "../services/flowEngine/liveDocTypes";
+import { runScaleAgent } from "../services/scaleAgent/run";
 import { getAnalyzableKind, loadFileForAnalysis } from "../services/documentAi/fileSource";
 import { buildFlowContext } from "../services/flowEngine/context";
 import { runFlows } from "../services/flowEngine/runFlows";
@@ -157,6 +158,14 @@ export const processDocumentAnalysis = async (job: Job<{ messageId: string }>) =
   }
 
   emitToStaff("document_analyzed", doc.toJSON());
+
+  // Scale tickets are judged by the compliance agent (rules + arithmetic, dispatcher approval).
+  // Its failure must not stop the flows or retry the AI read.
+  try {
+    await runScaleAgent(message, doc);
+  } catch (err: any) {
+    console.error(`[scaleAgent] message ${message.id} failed:`, err?.message || err);
+  }
 
   const ctx = await buildFlowContext(message, doc);
   await runFlows("document_analyzed", ctx);
