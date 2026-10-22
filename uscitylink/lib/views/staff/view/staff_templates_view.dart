@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/template_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/view/template/template_details_view.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffTemplatesView extends StatelessWidget {
   StaffTemplatesView({super.key});
@@ -20,7 +21,7 @@ class StaffTemplatesView extends StatelessWidget {
     return Scaffold(
       key: _scaffoldKey,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.amber,
+        backgroundColor: StaffColors.primary,
         onPressed: () {
           _dashboardController.getStaffDashboard();
           Get.to(() => TemplateDetailsView(template: Template()));
@@ -49,7 +50,7 @@ class StaffTemplatesView extends StatelessWidget {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "Templates",
                 style: Theme.of(context)
@@ -60,7 +61,7 @@ class StaffTemplatesView extends StatelessWidget {
             ),
             Container(
               height: 60.0,
-              color: TColors.primaryStaff,
+              color: StaffColors.primary,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
@@ -90,7 +91,7 @@ class StaffTemplatesView extends StatelessWidget {
                   // ElevatedButton(
                   //   onPressed: () {},
                   //   style: ElevatedButton.styleFrom(
-                  //     backgroundColor: Colors.amber,
+                  //     backgroundColor: StaffColors.primary,
                   //     shape: RoundedRectangleBorder(
                   //         borderRadius: BorderRadius.circular(5)),
                   //     padding: EdgeInsets.zero,

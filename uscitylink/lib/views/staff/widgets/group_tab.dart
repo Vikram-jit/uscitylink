@@ -4,7 +4,8 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class GroupTab extends StatefulWidget {
@@ -21,18 +22,18 @@ class _GroupTabState extends State<GroupTab> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.zero,
       child: Obx(() {
         if (_staffgroupController.loading.value &&
             (_staffgroupController.groups.value?.data?.isEmpty ?? true)) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator(color: StaffColors.primary));
         }
         if (_staffgroupController.groups.value?.data?.isEmpty ?? true) {
-          return Center(child: Text("No any record found."));
+          return StaffEmptyState(icon: Icons.groups_outlined, title: "No groups found", message: "Pull down to refresh, or create one with the button below.");
         }
         return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.base, AppSpacing.base, 96),
             controller: ScrollController()
               ..addListener(() {
                 if (_staffgroupController.loading.value) return;
@@ -60,70 +61,16 @@ class _GroupTabState extends State<GroupTab> {
                 }
               }
               var group = _staffgroupController.groups.value.data?[index];
-              return Dismissible(
-                key: Key('${group?.id}'),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) {
-                  _staffgroupController.deleteGroup(group!.id!);
-                },
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(0),
-                  leading: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.grey.shade400,
-                    child: Text(
-                      group?.name?.substring(0, 1) ?? '',
-                      style: const TextStyle(color: Colors.black, fontSize: 18),
-                    ),
-                  ),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          group?.name ?? 'Unnamed Group',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            Utils.formatUtcTime(
-                                    group?.lastMessage?.messageTimestampUtc) ??
-                                '',
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.black45),
-                          ),
-                          group?.messageCount != 0
-                              ? Badge(
-                                  label: Text(
-                                    group?.messageCount == 0
-                                        ? ""
-                                        : '${group?.messageCount}',
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                  backgroundColor: TColors.primary,
-                                )
-                              : const SizedBox(),
-                        ],
-                      ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    group?.lastMessage?.body ?? "Not message yet",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
+              return StaffListCard(
+                  dismissKey: Key('${group?.id}'),
+                  onDismissed: (direction) {
+                    _staffgroupController.deleteGroup(group!.id!);
+                  },
+                  leading: StaffAvatar(name: group?.name),
+                  title: group?.name ?? 'Unnamed group',
+                  subtitle: group?.lastMessage?.body ?? "No messages yet",
+                  time: Utils.formatUtcTime(group?.lastMessage?.messageTimestampUtc),
+                  unread: group?.messageCount ?? 0,
                   onTap: () {
                     if (group != null) {
                       _socketService.updateStaffGroup(group.id!);
@@ -137,9 +84,8 @@ class _GroupTabState extends State<GroupTab> {
                         'groupId': group?.id
                       },
                     );
-                  },
-                ),
-              );
+                  }
+                );
             });
       }),
     );

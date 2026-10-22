@@ -6,7 +6,9 @@ import 'package:uscitylink/controller/drawer_controller.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/model/group_model.dart';
 import 'package:uscitylink/services/socket_service.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/theme/app_text.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 import 'package:uscitylink/views/staff/widgets/group_tab.dart';
 import 'package:uscitylink/views/staff/widgets/truck_group_tab.dart';
@@ -77,264 +79,174 @@ class _StaffGroupChatViewState extends State<StaffGroupChatView>
   @override
   Widget build(BuildContext context) {
     _staffGroupController.getTrucks();
-    return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "kjdld",
-        backgroundColor: Colors.amber,
-        onPressed: () {
-          _showGroupNameDialog(_staffGroupController.type.value);
-        },
-        label: Row(
+    return AnnotatedRegion(
+      value: kStaffOverlay,
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: StaffColors.canvas,
+        drawer: CustomDrawer(),
+        floatingActionButton: Obx(() {
+          final isGroup = _staffGroupController.type.value == "group";
+          return StaffFab(
+            heroTag: "kjdld",
+            label: isGroup ? "New group" : "New truck group",
+            icon: Icons.add_rounded,
+            onPressed: () => _showGroupNameDialog(_staffGroupController.type.value),
+          );
+        }),
+        body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 4.0),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
+            StaffHeader(
+              title: "Group chats",
+              subtitle: "Truck groups and team groups",
+              onLeading: () => _scaffoldKey.currentState?.openDrawer(),
+              bottom: Column(
+                children: [
+                  StaffSearchField(
+                    controller: _staffGroupController.searchController,
+                    onChanged: _staffGroupController.onSearchChanged,
+                    hint: "Search groups…",
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  StaffSegmentedTabs(controller: _tabController, labels: const ['Truck groups', 'Groups']),
+                ],
               ),
             ),
-            Obx(() {
-              return Text(
-                  _staffGroupController.type.value == "group"
-                      ? "Add Group"
-                      : "ADD TRUCK GROUP",
-                  style: TextStyle(color: Colors.white));
-            })
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  TruckGroupTab(),
+                  GroupTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      key: _scaffoldKey,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(
-            Icons.menu,
-            color: Colors.white,
-          ),
-          onPressed: () {
-            // Open the drawer using the scaffold key
-            _scaffoldKey.currentState?.openDrawer();
-          },
-        ),
-        backgroundColor: TColors.primaryStaff,
-        title: Text("Group Chats",
-            style: Theme.of(context)
-                .textTheme
-                .headlineMedium
-                ?.copyWith(color: Colors.white)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
+    );
+  }
+
+  // New group / truck group
+  void _showGroupNameDialog(String type) {
+    final isGroup = type == "group";
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.lg)),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 50.0, // Height for the search bar
-                color: TColors.primaryStaff,
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Column(
-                  children: [
-                    Container(
-                      height: 40,
-                      child: TextField(
-                        controller: _staffGroupController.searchController,
-                        onChanged: _staffGroupController.onSearchChanged,
-                        decoration: InputDecoration(
-                          hintText: "Search ...",
-                          hintStyle: TextStyle(color: Colors.grey),
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                          isDense: true,
-                          contentPadding: EdgeInsets.all(0),
-                        ),
-                      ),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: StaffColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
                     ),
-                  ],
-                ),
-              ),
-              TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey.shade500,
-                indicatorColor: Colors.white,
-                controller: _tabController,
-                tabs: [
-                  Tab(
-                    text: 'Truck Groups',
+                    child: Icon(isGroup ? Icons.groups_rounded : Icons.local_shipping_rounded, color: StaffColors.primary),
                   ),
-                  Tab(text: 'Groups'),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      isGroup ? 'New group' : 'New truck group',
+                      style: AppText.titleLg.copyWith(color: StaffColors.textStrong),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close_rounded, color: StaffColors.textMuted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.base),
+              if (isGroup)
+                TextField(
+                  controller: _staffGroupController.groupName,
+                  autofocus: true,
+                  decoration: _fieldDecoration('Group name'),
+                ),
+              if (!isGroup)
+                Obx(
+                  () => DropdownButtonFormField<String>(
+                    dropdownColor: Colors.white,
+                    isExpanded: true,
+                    value: _staffGroupController.selectedTruck.value.isEmpty
+                        ? null
+                        : _staffGroupController.selectedTruck.value,
+                    decoration: _fieldDecoration('Truck number'),
+                    hint: const Text('Select a truck'),
+                    onChanged: (String? newValue) {
+                      _staffGroupController.selectedTruck.value = newValue ?? "";
+                    },
+                    items: _staffGroupController.trucks
+                        .map<DropdownMenuItem<String>>(
+                          (value) => DropdownMenuItem<String>(
+                            value: value.number,
+                            child: Text("${value.number}", style: AppText.bodyLg),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: StaffColors.textBody,
+                        side: const BorderSide(color: StaffColors.hairline, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.sm)),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _staffGroupController.addGroup(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: StaffColors.primary,
+                        foregroundColor: Colors.white,
+                        side: BorderSide.none,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.sm)),
+                      ),
+                      child: Text(isGroup ? 'Create group' : 'Create truck group'),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Channels tab content
-          TruckGroupTab(),
-          GroupTab(),
-          // Groups tab content
-        ],
-      ),
-      drawer: CustomDrawer(),
     );
   }
 
-  // Function to show dialog
-  void _showGroupNameDialog(String type) {
-    Get.dialog(
-      Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+  InputDecoration _fieldDecoration(String label) => InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: StaffColors.canvas,
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.base, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: BorderSide.none,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: TColors.primaryStaff,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(6),
-                  topRight: Radius.circular(6),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  // crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        type == "group" ? 'ADD GROUP' : 'ADD TRUCK GROUP',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(color: Colors.white),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: InkWell(
-                        onTap: () {
-                          Get.back();
-                        },
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // TextField for entering the group name
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  SizedBox(height: 10),
-                  if (type == "group")
-                    TextField(
-                      controller: _staffGroupController.groupName,
-                      decoration: InputDecoration(
-                        hintText: 'Enter group name',
-                        helperStyle: TextStyle(color: Colors.grey.shade500),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(0)),
-                      ),
-                    ),
-                  if (type == "truck")
-                    Obx(
-                      () => SizedBox(
-                        width: double
-                            .infinity, // Makes the DropdownButton take up all available width
-                        child: DropdownButton<String>(
-                            dropdownColor: Colors.white,
-                            value: _staffGroupController
-                                    .selectedTruck.value.isEmpty
-                                ? null
-                                : _staffGroupController.selectedTruck.value,
-                            hint: Text('Select Truck Number '),
-                            // value: _staffGroupController.selectedTruck.value, // Bind the selected value here
-                            onChanged: (String? newValue) {
-                              _staffGroupController.selectedTruck.value =
-                                  newValue ?? ""; // Update selected truck
-                            },
-                            items: [
-                              ..._staffGroupController.trucks
-                                  .map<DropdownMenuItem<String>>((value) {
-                                return DropdownMenuItem<String>(
-                                  value: value.number,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 10),
-                                        child: Text(
-                                          "${value.number}",
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineSmall,
-                                        ),
-                                      ),
-                                      Divider()
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ]),
-                      ),
-                    )
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0, bottom: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Submit button
-                  InkWell(
-                    onTap: () {
-                      _staffGroupController.addGroup(context);
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.0),
-                      decoration: BoxDecoration(
-                          color: TColors.primaryStaff,
-                          borderRadius: BorderRadius.circular(6)),
-                      height: 30,
-                      child: Center(
-                        child: Text(
-                          "submit",
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16),
-                        ),
-                      ),
-                    ),
-                  )
-                  // Close button
-                ],
-              ),
-            ),
-          ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: const BorderSide(color: StaffColors.primary, width: 1.5),
         ),
-      ),
-    );
-  }
+      );
 }

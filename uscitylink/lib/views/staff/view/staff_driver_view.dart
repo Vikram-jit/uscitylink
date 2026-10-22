@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffdriver_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffDriverView extends StatelessWidget {
   StaffDriverView({super.key});
@@ -43,7 +44,7 @@ class StaffDriverView extends StatelessWidget {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "Drivers",
                 style: Theme.of(context)
@@ -54,7 +55,7 @@ class StaffDriverView extends StatelessWidget {
             ),
             Container(
               height: 60.0,
-              color: TColors.primaryStaff,
+              color: StaffColors.primary,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
@@ -223,7 +224,7 @@ class StaffDriverView extends StatelessWidget {
                         padding: EdgeInsets.all(6),
                         height: 30,
                         decoration: BoxDecoration(
-                            color: TColors.primaryStaff,
+                            color: StaffColors.primary,
                             borderRadius: BorderRadius.circular(6)),
                         child: Text(
                           "Generate New Password",

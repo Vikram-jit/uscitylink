@@ -1,3 +1,4 @@
+import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,12 +12,23 @@ import 'package:uscitylink/hive/hive_adapters.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/closed_box_guard.dart';
 import 'package:uscitylink/utils/theme/theme.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Logout deletes every Hive box. Any request that finishes afterwards and tries to cache its
+  // result hits a closed box; that is expected (the cache write is simply skipped), not a crash.
+  final previousOnError = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    if (isClosedBoxError(error)) {
+      debugPrint('ℹ️ Skipped a cache write after logout: $error');
+      return true;
+    }
+    return previousOnError?.call(error, stack) ?? false;
+  };
   await pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
   await Hive.initFlutter();
 

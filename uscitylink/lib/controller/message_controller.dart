@@ -212,8 +212,8 @@ class MessageController extends GetxController {
           messages.addAll(response.data.messages!);
         }
 
-        // 💾 Cache the fetched messages for this page
-        await box.put(cacheKey, response.data.messages);
+        // 💾 Cache the fetched messages for this page (skipped if the user logged out meanwhile)
+        if (box.isOpen) await box.put(cacheKey, response.data.messages);
 
         if (response.data.pagination != null) {
           currentPage.value = response.data.pagination!.currentPage!;

@@ -8,6 +8,7 @@ import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/model/staff/channel_member_model.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffChannelMembersView extends StatelessWidget {
   StaffChannelMembersView({super.key});
@@ -37,7 +38,7 @@ class StaffChannelMembersView extends StatelessWidget {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "Channel Members",
                 style: Theme.of(context)
@@ -48,7 +49,7 @@ class StaffChannelMembersView extends StatelessWidget {
             ),
             Container(
               height: 60.0,
-              color: TColors.primaryStaff,
+              color: StaffColors.primary,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
@@ -79,7 +80,7 @@ class StaffChannelMembersView extends StatelessWidget {
                           context, _staffChannelController);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: StaffColors.primary,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5)),
                       padding: EdgeInsets.zero,

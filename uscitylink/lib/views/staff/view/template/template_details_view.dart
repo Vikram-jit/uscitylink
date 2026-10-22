@@ -9,6 +9,7 @@ import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/template_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class TemplateDetailsView extends StatefulWidget {
   Template template;
@@ -41,7 +42,7 @@ class _TemplateDetailsViewState extends State<TemplateDetailsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.amber,
+        backgroundColor: StaffColors.primary,
         onPressed: () {
           _templateController.templateAction({
             "id": widget?.template?.id,
@@ -70,7 +71,7 @@ class _TemplateDetailsViewState extends State<TemplateDetailsView> {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "${widget?.template?.name ?? "Add New Template"}",
                 style: Theme.of(context)
@@ -162,7 +163,7 @@ class _TemplateDetailsViewState extends State<TemplateDetailsView> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
                       borderSide:
-                          BorderSide(color: TColors.primaryStaff, width: 2),
+                          BorderSide(color: StaffColors.primary, width: 2),
                     ),
                     isDense: true,
                     contentPadding: EdgeInsets.all(8),
@@ -207,7 +208,7 @@ class _TemplateDetailsViewState extends State<TemplateDetailsView> {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
                     borderSide:
-                        BorderSide(color: TColors.primaryStaff, width: 2),
+                        BorderSide(color: StaffColors.primary, width: 2),
                   ),
                   isDense: true,
                   contentPadding: EdgeInsets.all(8),
@@ -269,7 +270,7 @@ class _TemplateDetailsViewState extends State<TemplateDetailsView> {
                         // Show a loading indicator while the image is loading
                         return Center(
                           child: CircularProgressIndicator(
-                            color: TColors.primaryStaff,
+                            color: StaffColors.primary,
                             value: loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
                                     (loadingProgress.expectedTotalBytes ?? 1)

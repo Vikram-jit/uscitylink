@@ -7,10 +7,10 @@ import 'package:uscitylink/model/user_channel_model.dart';
 import 'package:uscitylink/model/vehicle_gps_model.dart';
 
 class Constant {
-  static const String baseUrl = 'http://localhost:4300/api';
-  static const String tempImageUrl = 'http://localhost:4300/';
+  static const String baseUrl = 'http://52.9.12.189:4300/api';
+  static const String tempImageUrl = 'http://52.9.12.189:4300/';
 
-  static const String versionApi = "v1";
+  static const String versionApi = "v2"; // v1 = builds already in the stores
 
   static const url = '$baseUrl/$versionApi';
 
@@ -42,7 +42,7 @@ class Constant {
 
 // 1. First, define a box that stores dynamic lists
   static Future<Box> getChannelMessagesBox() async {
-    const boxName = 'channelMessages';
+    const boxName = HiveBoxes.channelMessagesCache;
     if (Hive.isBoxOpen(boxName)) {
       return Hive.box(boxName);
     } else {

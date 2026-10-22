@@ -5,6 +5,7 @@ import 'package:hive_ce/hive.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
+import 'package:uscitylink/hive_boxes.dart';
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/google_map_controller.dart';
 import 'package:uscitylink/controller/station_controller.dart';
@@ -111,15 +112,15 @@ class RouteController extends GetxController {
       _truckBox = await Constant.getTruckLocationBox();
       _stationsBox = await Constant.getStationsBox();
       _lastUpdatedBox = await Constant.getlastUpdatedBox();
-      _metadataBox = await Hive.openBox<int>('metadata_box');
+      _metadataBox = await Hive.openBox<int>(HiveBoxes.routeMetadata);
 
       print('✅ Hive boxes initialized successfully');
     } catch (e) {
       print('❌ Error initializing Hive boxes: $e');
-      _truckBox = await Hive.openBox<VehicleGpsModel>('truck_fallback');
-      _stationsBox = await Hive.openBox<Stations>('stations_fallback');
-      _lastUpdatedBox = await Hive.openBox<DateTime>('last_updated_fallback');
-      _metadataBox = await Hive.openBox<int>('metadata_fallback');
+      _truckBox = await Hive.openBox<VehicleGpsModel>(HiveBoxes.truckFallback);
+      _stationsBox = await Hive.openBox<Stations>(HiveBoxes.stationsFallback);
+      _lastUpdatedBox = await Hive.openBox<DateTime>(HiveBoxes.lastUpdatedFallback);
+      _metadataBox = await Hive.openBox<int>(HiveBoxes.metadataFallback);
     }
   }
 

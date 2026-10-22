@@ -20,6 +20,7 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffMessageView extends StatefulWidget {
   final String channelId;
@@ -162,7 +163,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
             color: Colors.white,
           ),
         ),
-        backgroundColor: TColors.primaryStaff,
+        backgroundColor: StaffColors.primary,
         title: InkWell(
           onTap: () {
             Get.toNamed(
@@ -254,7 +255,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
                 _staffchatController.message.value.messages?.length == 0) {
               return Center(
                 child: CircularProgressIndicator(
-                  color: TColors.primaryStaff,
+                  color: StaffColors.primary,
                 ),
               );
             }
@@ -487,7 +488,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
                             // Show a loading indicator while the image is loading
                             return Center(
                               child: CircularProgressIndicator(
-                                color: TColors.primaryStaff,
+                                color: StaffColors.primary,
                                 value: loadingProgress.expectedTotalBytes !=
                                         null
                                     ? loadingProgress.cumulativeBytesLoaded /

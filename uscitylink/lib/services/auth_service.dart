@@ -212,13 +212,16 @@ class LoginWithPassword {
 class LoginWithOTP {
   final String email;
   final String otp;
+  // Which profile was chosen (staff / driver / security); the server uses it to pick the right login
+  final String role;
 
-  LoginWithOTP({required this.email, required this.otp});
+  LoginWithOTP({required this.email, required this.otp, this.role = ''});
 
   Map<String, dynamic> toJson() {
     return {
       'email': email,
       'otp': otp,
+      if (role.isNotEmpty) 'role': role,
     };
   }
 }

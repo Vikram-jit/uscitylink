@@ -6,6 +6,7 @@ import 'package:uscitylink/controller/dashboard_controller.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/Colors.dart';
 import 'package:uscitylink/views/staff/view/tainings/training_detail_view.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffTrainingsView extends StatefulWidget {
   const StaffTrainingsView({super.key});
@@ -41,7 +42,7 @@ class _StaffTrainingsViewState extends State<StaffTrainingsView> {
                   Navigator.pop(context); // Navigate back
                 },
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "Tarinings Video",
                 style: Theme.of(context)
@@ -52,7 +53,7 @@ class _StaffTrainingsViewState extends State<StaffTrainingsView> {
             ),
             Container(
               height: 60.0,
-              color: TColors.primaryStaff,
+              color: StaffColors.primary,
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [

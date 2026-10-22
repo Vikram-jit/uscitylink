@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/model/staff/driver_model.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class DriverDialog {
   // This is the public method to open the bottom sheet
@@ -119,7 +120,7 @@ class DriverDialog {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6.0),
-                      color: TColors.primaryStaff,
+                      color: StaffColors.primary,
                     ),
                     child: TextButton(
                       onPressed: () {
@@ -265,7 +266,7 @@ class DriverDialog {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6.0),
-                      color: TColors.primaryStaff,
+                      color: StaffColors.primary,
                     ),
                     child: TextButton(
                       onPressed: () {

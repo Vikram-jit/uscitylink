@@ -89,6 +89,12 @@ class ChannelController extends GetxController {
     try {
       final response = await __channelService.getUserChannels();
 
+      // Logged out while the request was running: the box is gone, drop this response
+      if (!userChannelBox.isOpen) {
+        loading.value = false;
+        return;
+      }
+
       // Save list to Hive
       await userChannelBox.clear(); // Optional: clear old entries
       for (var channel in response.data) {

@@ -14,6 +14,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uscitylink/utils/staff_feedback.dart';
 
 class StaffchatController extends GetxController {
   SocketService _socketService = Get.find<SocketService>();
@@ -259,11 +260,11 @@ class StaffchatController extends GetxController {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
       } else {
-        Utils.snackBar('No data', 'No messages found.');
+        staffSnackBar('No data', 'No messages found.');
       }
     } catch (error) {
       // Handle error by showing a snack bar
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       // Ensure loading state is reset
       loading.value = false;
@@ -299,7 +300,7 @@ class StaffchatController extends GetxController {
       }
     } catch (error) {
       // Handle error by showing a snack bar
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       // Ensure loading state is reset
       loading.value = false;
@@ -364,7 +365,7 @@ class StaffchatController extends GetxController {
       String? groupId, String? source, String? userId) async {
     try {
       if (recordingPath.value.isEmpty) {
-        Utils.snackBar("Error", "Please record audio before send.");
+        staffSnackBar("Error", "Please record audio before send.");
         return;
       }
       Utils.showLoader();
@@ -401,7 +402,7 @@ class StaffchatController extends GetxController {
       }
     } catch (e) {
       Utils.hideLoader();
-      Utils.snackBar("File Upload Error", e.toString());
+      staffSnackBar("File Upload Error", e.toString());
     }
   }
 

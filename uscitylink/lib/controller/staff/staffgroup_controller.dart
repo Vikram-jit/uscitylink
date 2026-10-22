@@ -10,6 +10,7 @@ import 'package:uscitylink/services/staff_services/group_service.dart';
 import 'package:uscitylink/services/group_service.dart' as groupS;
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/staff/view/group/staff_group_detail.dart';
+import 'package:uscitylink/utils/staff_feedback.dart';
 
 class StaffgroupController extends GetxController {
   var innerTabIndex = 0.obs;
@@ -67,7 +68,7 @@ class StaffgroupController extends GetxController {
       }
     } catch (error) {
       // Handle error by showing a snack bar
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       // Ensure loading state is reset
       loading.value = false;
@@ -93,10 +94,10 @@ class StaffgroupController extends GetxController {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
       } else {
-        Utils.snackBar('No data', 'No group found.');
+        staffSnackBar('No data', 'No group found.');
       }
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }
@@ -114,7 +115,7 @@ class StaffgroupController extends GetxController {
         trucks.value = response.data;
       }
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       truckLoader.value = false;
     }
@@ -152,12 +153,12 @@ class StaffgroupController extends GetxController {
         groups.value.data?.insert(0, response.data);
         groups.refresh();
         Get.to(() => StaffGroupDetail(groupId: response.data.id ?? ""));
-        Utils.snackBar('Success', '${response?.message}');
+        staffSnackBar('Success', '${response?.message}');
       } else {
-        Utils.snackBar('No data', 'No group found.');
+        staffSnackBar('No data', 'No group found.');
       }
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {}
   }
 
@@ -171,7 +172,7 @@ class StaffgroupController extends GetxController {
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     });
   }
 

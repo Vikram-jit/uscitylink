@@ -9,6 +9,7 @@ import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/driver/views/trainings/quiz_view.dart';
 import 'package:uscitylink/views/staff/view/tainings/assgined_drivers_view.dart';
 import 'package:video_player/video_player.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class TrainingDetailView extends StatefulWidget {
   final Trainings trainings;
@@ -50,7 +51,7 @@ class _TrainingDetailViewState extends State<TrainingDetailView> {
     return Scaffold(
       backgroundColor: TColors.white,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.amber,
+        backgroundColor: StaffColors.primary,
         onPressed: () {
           Get.to(() => AssginedDriversView(
                 trainingId: widget.trainings.id!,
@@ -89,7 +90,7 @@ class _TrainingDetailViewState extends State<TrainingDetailView> {
                   color: Colors.white,
                 ),
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "${widget.trainings.title}",
                 style: Theme.of(context)

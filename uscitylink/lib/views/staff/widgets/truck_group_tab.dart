@@ -4,7 +4,8 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffgroup_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class TruckGroupTab extends StatefulWidget {
@@ -20,7 +21,7 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.zero,
       child: RefreshIndicator(
         onRefresh: () async {
           _staffgroupController.getGroups(
@@ -29,14 +30,14 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
         child: Obx(() {
           if (_staffgroupController.loading.value &&
               (_staffgroupController.groups.value?.data?.isEmpty ?? true)) {
-            return Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator(color: StaffColors.primary));
           }
           if (_staffgroupController.groups.value?.data?.isEmpty ?? true) {
-            return Center(child: Text("No any record found."));
+            return StaffEmptyState(icon: Icons.local_shipping_outlined, title: "No truck groups found", message: "Pull down to refresh, or create one with the button below.");
           }
           return ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.base, AppSpacing.base, 96),
               controller: ScrollController()
                 ..addListener(() {
                   if (_staffgroupController.loading.value) return;
@@ -56,69 +57,23 @@ class _TruckGroupTabState extends State<TruckGroupTab> {
               itemCount: _staffgroupController.groups.value.data?.length,
               itemBuilder: (context, index) {
                 var group = _staffgroupController.groups.value.data?[index];
-                return Dismissible(
-                  key: Key('${group?.id}'),
-                  direction: DismissDirection.endToStart,
+                return StaffListCard(
+                  dismissKey: Key('${group?.id}'),
                   onDismissed: (direction) {
                     _staffgroupController.deleteGroup(group!.id!);
                   },
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(0),
-                    leading: CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.grey.shade400,
-                      child: Text(
-                        group?.name?.substring(0, 1) ?? '',
-                        style:
-                            const TextStyle(color: Colors.black, fontSize: 18),
-                      ),
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            group?.name ?? 'Unnamed Group',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              Utils.formatUtcTime(group
-                                      ?.lastMessage?.messageTimestampUtc) ??
-                                  '',
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.black45),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      group?.lastMessage?.body ?? "messages",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    onTap: () {
+                  leading: StaffAvatar(name: group?.name, icon: Icons.local_shipping_rounded),
+                  title: group?.name ?? 'Unnamed group',
+                  subtitle: group?.lastMessage?.body ?? "No messages yet",
+                  time: Utils.formatUtcTime(group?.lastMessage?.messageTimestampUtc),
+                  onTap: () {
                       _socketService?.socket
                           ?.emit('staff_open_truck_group', group?.id);
                       Get.toNamed(
                         AppRoutes.staff_truck_group_detail,
                         arguments: {'groupId': group?.id},
                       );
-                    },
-                  ),
+                    }
                 );
               });
         }),

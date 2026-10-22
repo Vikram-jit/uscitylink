@@ -118,7 +118,8 @@ class SelectOption extends StatelessWidget {
                         email,
                         phone_number,
                         _loginController.checkedEmailOtp.value,
-                        _loginController.checkedPhoneNumberOtp.value);
+                        _loginController.checkedPhoneNumberOtp.value,
+                        role);
                   },
                   child: const Text(
                     "Send OTP",

@@ -21,6 +21,7 @@ import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
 import 'package:uscitylink/views/widgets/audio_record_widget.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffTruckGroupUi extends StatefulWidget {
   final String groupId;
@@ -151,7 +152,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
         child: Column(
           children: [
             AppBar(
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
@@ -330,7 +331,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
                           // Show a loading indicator while the image is loading
                           return Center(
                             child: CircularProgressIndicator(
-                              color: TColors.primaryStaff,
+                              color: StaffColors.primary,
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded /
                                       (loadingProgress.expectedTotalBytes ?? 1)

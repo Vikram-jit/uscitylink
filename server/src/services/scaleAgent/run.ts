@@ -234,6 +234,10 @@ export const decideScaleCheck = async (
   if (check.approval_status === "superseded") {
     throw new Error("This ticket was replaced by a reweigh. Review the newer ticket instead.");
   }
+  // A decision is made once: re-releasing would message the driver again
+  if (check.approval_status === "approved" || check.approval_status === "rejected") {
+    throw new Error(`This ticket was already ${check.approval_status === "approved" ? "released" : "rejected"}.`);
+  }
   if (decision === "approve" && !RELEASABLE.includes(check.status)) {
     throw new Error("Only a ticket within the weight limits can be released. Ask the driver for a new ticket.");
   }

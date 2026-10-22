@@ -16,6 +16,7 @@ import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff_services/channel_service.dart';
 import 'package:uscitylink/services/staff_services/chat_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/utils/staff_feedback.dart';
 
 class StaffchannelController extends GetxController {
   var channels = <ChannelModel>[].obs;
@@ -53,7 +54,7 @@ class StaffchannelController extends GetxController {
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     });
   }
 
@@ -84,7 +85,7 @@ class StaffchannelController extends GetxController {
       var response = await __channelService.getStaffChannelMember();
       channelMebers.value = response.data;
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }
@@ -118,7 +119,7 @@ class StaffchannelController extends GetxController {
       }
     } catch (error) {
       // Handle error by showing a snack bar
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       // Ensure loading state is reset
       loading.value = false;
@@ -144,10 +145,10 @@ class StaffchannelController extends GetxController {
         currentPage.value = response.data.pagination!.currentPage!;
         totalPages.value = response.data.pagination!.totalPages!;
       } else {
-        Utils.snackBar('No data', 'No user found.');
+        staffSnackBar('No data', 'No user found.');
       }
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }
@@ -168,7 +169,7 @@ class StaffchannelController extends GetxController {
       drivers.value = response.data;
       driverFilter.value = response.data;
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }
@@ -189,7 +190,7 @@ class StaffchannelController extends GetxController {
       drivers.value = response.data;
       driverFilter.value = response.data;
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }
@@ -282,7 +283,7 @@ class StaffchannelController extends GetxController {
         _socketService.switchStaffChannel(id);
       }
     } catch (error) {
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     } finally {
       loading.value = false;
     }

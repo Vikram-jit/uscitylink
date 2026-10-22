@@ -21,6 +21,7 @@ import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/driver/views/chats/attachement_ui.dart';
 import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
 import 'package:uscitylink/views/widgets/audio_record_widget.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffGroupChatUi extends StatefulWidget {
   final String channelId;
@@ -152,7 +153,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
           children: [
             AppBar(
               centerTitle: true,
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
@@ -343,7 +344,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
                                 // Show a loading indicator while the image is loading
                                 return Center(
                                   child: CircularProgressIndicator(
-                                    color: TColors.primaryStaff,
+                                    color: StaffColors.primary,
                                     value: loadingProgress.expectedTotalBytes !=
                                             null
                                         ? loadingProgress

@@ -5,6 +5,7 @@ import 'package:uscitylink/model/dashboard_model.dart';
 import 'package:uscitylink/model/staff/staff_dashboard_model.dart';
 import 'package:uscitylink/services/dashboard_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/utils/staff_feedback.dart';
 
 class DashboardController extends GetxController {
   DashboardService _dashboardService = DashboardService();
@@ -24,11 +25,13 @@ class DashboardController extends GetxController {
     loading.value = true;
     _dashboardService.getDashboard().then((response) {
       dashboard.value = response.data;
-      dashboardBox.put('dashboardBox', response.data);
+      // The user may have logged out while this request was running: the box is deleted then
+      if (dashboardBox.isOpen) dashboardBox.put('dashboardBox', response.data);
       loading.value = false;
     }).onError((error, stackTrace) {
       if (error.toString() == "Exception: No Internet Connection") {
-        DashboardModel? cachedDashboard = dashboardBox.get('dashboardBox');
+        DashboardModel? cachedDashboard =
+            dashboardBox.isOpen ? dashboardBox.get('dashboardBox') : null;
         if (cachedDashboard != null) {
           dashboard.value = cachedDashboard;
         }
@@ -47,7 +50,7 @@ class DashboardController extends GetxController {
     }).onError((error, stackTrace) {
       loading.value = false;
       print('Error: $error');
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     });
   }
 }

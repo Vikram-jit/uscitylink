@@ -381,7 +381,7 @@ export async function updateAppVersion(
   }
 }
 
-//login With Password
+//login With Password (api/v1: unchanged, used by the published app)
 export async function loginWithPassword(
   req: Request,
   res: Response,
@@ -424,6 +424,72 @@ export async function loginWithPassword(
     if (!isMatch) throw new Error("Invalid credentials");
 
     const token = await generateToken(isProfile?.id!);
+
+    return res.status(200).json({
+      status: true,
+      message: `Login Successfully.`,
+      data: {
+        access_toke: token,
+        user: isProfile,
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+// login With Password (api/v2): an unknown account, or no profile for the chosen role, answers
+// "Invalid credentials" instead of failing inside the password check.
+export async function loginWithPasswordV2(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const { email, password, role } = req.body;
+
+    const isEmailValid = isValidEmail(email);
+    const queryValue = isEmailValid ? email : email;
+
+    const isRole = await Role.findOne({
+      where: {
+        name: role,
+      },
+    });
+
+    const isUser = await User.findOne({
+      where: {
+        [isEmailValid ? "email" : "phone_number"]: queryValue,
+        status: "active",
+      },
+    });
+
+    // Unknown account or role: same answer as a wrong password (and never query with undefined)
+    if (!isUser || !isRole) throw new Error("Invalid credentials");
+
+    const isProfile = await UserProfile.findOne({
+      where: {
+        userId: isUser.id,
+        role_id: isRole.id,
+      },
+
+      include: [
+        {
+          model: Role,
+          as: "role",
+        },
+      ],
+    });
+
+    // A person can have a staff and a driver login: the role they picked must exist for them
+    if (!isProfile || !isProfile.password) throw new Error("Invalid credentials");
+
+    const isMatch = await comparePasswords(password, isProfile.password!);
+
+    if (!isMatch) throw new Error("Invalid credentials");
+
+    const token = await generateToken(isProfile.id!);
 
     return res.status(200).json({
       status: true,
@@ -501,7 +567,7 @@ export async function resendOtp(req: Request, res: Response): Promise<any> {
   }
 }
 
-//Validate OTP AND Login
+//Validate OTP AND Login (api/v1: unchanged, used by the published app)
 export async function validateOtp(req: Request, res: Response): Promise<any> {
   try {
     const { email, otp } = req.body;
@@ -537,6 +603,63 @@ export async function validateOtp(req: Request, res: Response): Promise<any> {
     });
 
     const token = await generateToken(isProfile?.id!);
+
+    return res.status(200).json({
+      status: true,
+      message: `OTP verified successfully`,
+      data: {
+        access_toke: token,
+        user: isProfile,
+      },
+    });
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+
+// Validate OTP AND Login (api/v2). A person can have several profiles (e.g. staff and driver):
+// the app sends the role they picked; without it the driver profile is used.
+export async function validateOtpV2(req: Request, res: Response): Promise<any> {
+  try {
+    const { email, otp, role } = req.body;
+
+    if (!email || !otp) {
+      throw new Error("Email and OTP are required");
+    }
+
+    const isVerified = await verifyOTP(email, otp);
+    if (!isVerified) {
+      throw new Error("Invalid or expired OTP");
+    }
+
+    const isEmailValid = isValidEmail(email);
+    const isUser = await User.findOne({
+      where: {
+        [isEmailValid ? "email" : "phone_number"]: email,
+        status: "active",
+      },
+    });
+    if (!isUser) throw new Error("Invalid credentials");
+
+    const profiles = await UserProfile.findAll({
+      where: { userId: isUser.id },
+      include: [{ model: Role, as: "role" }],
+      order: [["createdAt", "ASC"]],
+    });
+
+    let isProfile: UserProfile | undefined;
+    if (role) {
+      isProfile = profiles.find((p) => p.role?.name === role);
+      if (!isProfile) throw new Error(`No ${role} login exists for this account`);
+    } else {
+      isProfile = profiles.find((p) => p.role?.name === "driver") || profiles[0];
+    }
+    if (!isProfile) throw new Error("Invalid credentials");
+
+    const token = await generateToken(isProfile.id!);
 
     return res.status(200).json({
       status: true,

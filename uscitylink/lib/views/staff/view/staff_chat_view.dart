@@ -1,371 +1,166 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/staff/staffchannel_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
-import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/utils/theme/app_tokens.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffChatView extends StatelessWidget {
   StaffChatView({super.key});
-  StaffchannelController _staffchannelController =
-      Get.find<StaffchannelController>();
+  final StaffchannelController _staffchannelController = Get.find<StaffchannelController>();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  SocketService socketService = Get.find<SocketService>();
-  StaffchatController _staffchatController = Get.put(StaffchatController());
+  final SocketService socketService = Get.find<SocketService>();
+  // Registered here because the message screen expects it
+  // ignore: unused_field
+  final StaffchatController _staffchatController = Get.put(StaffchatController());
   final ScrollController _scrollController = ScrollController();
+
+  void _toggleTruckSearch() {
+    _staffchannelController.searchController.text = "";
+    _staffchannelController.truckSearch.value =
+        _staffchannelController.truckSearch.value == "truck" ? "normal" : "truck";
+    _staffchannelController.getChnnelChatUser(
+        _staffchannelController.currentPage.value + 1, _staffchannelController.searchController.text);
+  }
 
   @override
   Widget build(BuildContext context) {
-    Timer(Duration(seconds: 2), () {
+    Timer(const Duration(seconds: 2), () {
       socketService.checkVersion();
     });
     _scrollController.addListener(() {
       if (_staffchannelController.loading.value) return;
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        if (_staffchannelController.currentPage.value <
-            _staffchannelController.totalPages.value) {
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+        if (_staffchannelController.currentPage.value < _staffchannelController.totalPages.value) {
           _staffchannelController.getChnnelChatUser(
-              _staffchannelController.currentPage.value + 1,
-              _staffchannelController.searchController.text);
+              _staffchannelController.currentPage.value + 1, _staffchannelController.searchController.text);
         }
       }
     });
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(116), // Set height for the AppBar
-        child: Column(
+    return AnnotatedRegion(
+      value: kStaffOverlay,
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: StaffColors.canvas,
+        drawer: CustomDrawer(),
+        floatingActionButton: StaffFab(
+          heroTag: "chat-1",
+          label: "Add driver",
+          icon: Icons.person_add_alt_1_rounded,
+          onPressed: () => DriverDialog.showDriverBottomSheet(context, _staffchannelController),
+        ),
+        body: Column(
           children: [
-            AppBar(
-              leading: IconButton(
-                icon: Icon(
-                  Icons.menu,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  // Open the drawer using the scaffold key
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-              backgroundColor: TColors
-                  .primaryStaff, // Set your custom color (TColors.primaryStaff)
-              title: Obx(() {
-                return Text(
-                  "Channel ${_staffchannelController.channelChatUser.value.name} Message",
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(color: Colors.white),
-                );
-              }),
-            ),
-            Container(
-              height: 60.0, // Height for the search bar + button
-              color: TColors
-                  .primaryStaff, // Set your custom color (TColors.primaryStaff)
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  // Search bar
-                  Expanded(
-                    child: Container(
-                        height: 40,
-                        child: Obx(() {
-                          return TextField(
-                            onChanged: (value) {
-                              _staffchannelController.onSearchChanged(value);
-                            },
-                            controller:
-                                _staffchannelController.searchController,
-                            decoration: InputDecoration(
-                              suffixIcon: InkWell(
-                                  onTap: () => {
-                                        if (_staffchannelController
-                                                .truckSearch.value ==
-                                            "truck")
-                                          {
-                                            _staffchannelController
-                                                .searchController.text = "",
-                                            _staffchannelController
-                                                .truckSearch.value = "normal",
-                                            _staffchannelController
-                                                .getChnnelChatUser(
-                                                    _staffchannelController
-                                                            .currentPage.value +
-                                                        1,
-                                                    _staffchannelController
-                                                        .searchController.text)
-                                          }
-                                        else
-                                          {
-                                            _staffchannelController
-                                                .searchController.text = "",
-                                            _staffchannelController
-                                                .truckSearch.value = "truck",
-                                            _staffchannelController
-                                                .getChnnelChatUser(
-                                                    _staffchannelController
-                                                            .currentPage.value +
-                                                        1,
-                                                    _staffchannelController
-                                                        .searchController.text)
-                                          }
-                                      },
-                                  child: Obx(() => Icon(
-                                        Icons.fire_truck,
-                                        color: _staffchannelController
-                                                    .truckSearch.value ==
-                                                "normal"
-                                            ? Colors.grey
-                                            : TColors.buttonPrimary,
-                                      ))),
-                              hintText:
-                                  _staffchannelController.truckSearch.value ==
-                                          "Search by truck"
-                                      ? "truck number"
-                                      : "Search by code,name,phone...",
-                              hintStyle: TextStyle(color: Colors.grey),
-                              prefixIcon:
-                                  Icon(Icons.search, color: Colors.grey),
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(20),
-                                borderSide: BorderSide.none,
-                              ),
-                              isDense: true,
-                              contentPadding: EdgeInsets.all(0),
+            Obx(() {
+              final channelName = _staffchannelController.channelChatUser.value.name;
+              final truckMode = _staffchannelController.truckSearch.value == "truck";
+              return StaffHeader(
+                title: "Messages",
+                subtitle: channelName == null ? null : "Channel · $channelName",
+                onLeading: () => _scaffoldKey.currentState?.openDrawer(),
+                bottom: StaffSearchField(
+                  controller: _staffchannelController.searchController,
+                  onChanged: _staffchannelController.onSearchChanged,
+                  hint: truckMode ? "Search by truck number" : "Search by code, name, phone…",
+                  suffix: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Tooltip(
+                      message: truckMode ? "Searching by truck" : "Search by truck",
+                      child: Material(
+                        color: truckMode ? StaffColors.primary : StaffColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadii.sm - 4),
+                        child: InkWell(
+                          onTap: _toggleTruckSearch,
+                          borderRadius: BorderRadius.circular(AppRadii.sm - 4),
+                          child: SizedBox(
+                            width: 34,
+                            child: Icon(
+                              Icons.local_shipping_rounded,
+                              size: 19,
+                              color: truckMode ? Colors.white : StaffColors.primary,
                             ),
-                          );
-                        })),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
+                ),
+              );
+            }),
+            Expanded(
+              child: RefreshIndicator(
+                color: StaffColors.primary,
+                onRefresh: () async {
+                  _staffchannelController.getChnnelChatUser(1, _staffchannelController.searchController.text);
+                },
+                child: Obx(() {
+                  final users = _staffchannelController.channelChatUser.value.userChannels;
+                  if (_staffchannelController.loading.value && users == null) {
+                    return const Center(child: CircularProgressIndicator(color: StaffColors.primary));
+                  }
+                  if (users?.isEmpty == true) {
+                    return const StaffEmptyState(
+                      icon: Icons.forum_outlined,
+                      title: "No conversations yet",
+                      message: "Drivers in this channel appear here. Use “Add driver” to add one.",
+                    );
+                  }
+                  return ListView.builder(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.base, AppSpacing.base, 96),
+                    itemCount: (users?.length ?? 0) + (_staffchannelController.loading.value ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index >= (users?.length ?? 0)) {
+                        return const Padding(
+                          padding: EdgeInsets.all(AppSpacing.base),
+                          child: Center(child: CircularProgressIndicator(color: StaffColors.primary)),
+                        );
+                      }
+                      final channel = users![index];
+                      final profile = channel.userProfile;
+                      final driverNumber = profile?.user?.driverNumber;
+                      final trucks = channel.assginTrucks ?? "";
+                      return StaffListCard(
+                        dismissKey: Key('${channel.channelId}-${profile?.id}'),
+                        onDismissed: (_) => _staffchannelController.deleteMember(profile!.id!),
+                        leading: StaffAvatar(name: profile?.username, online: profile?.isOnline ?? false),
+                        title: profile?.username ?? 'Unnamed driver',
+                        chips: [
+                          if (driverNumber != null && driverNumber.isNotEmpty)
+                            StaffPill(label: driverNumber, icon: Icons.badge_outlined, color: StaffColors.textBody),
+                          if (trucks.isNotEmpty) StaffPill(label: "Truck $trucks", icon: Icons.local_shipping_rounded),
+                        ],
+                        subtitle: channel.lastMessage?.body ?? "No messages yet",
+                        time: Utils.formatUtcTime(channel.lastMessage?.messageTimestampUtc),
+                        unread: channel.unreadCount ?? 0,
+                        onTap: () {
+                          if (socketService.isConnected.value) {
+                            socketService.staffUnreadAllUserMessage(channel.channelId, profile?.id);
+                          }
+                          Get.toNamed(
+                            AppRoutes.staff_user_message,
+                            arguments: {
+                              'channelId': channel.channelId,
+                              'name': profile?.username,
+                              'userId': profile?.id
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                }),
               ),
             ),
           ],
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: RefreshIndicator(
-          onRefresh: () async {
-            // Trigger the refresh action when the user pulls down the list
-            _staffchannelController.getChnnelChatUser(
-                1, _staffchannelController.searchController.text);
-          },
-          child: Obx(() {
-            if (_staffchannelController.loading.value &&
-                _staffchannelController.channelChatUser.value.userChannels ==
-                    null) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            // If no channels are available, show loading indicator
-            if (_staffchannelController
-                    .channelChatUser.value.userChannels?.isEmpty ==
-                true) {
-              return const Center(child: Text("No Users Found Yet."));
-            } else {
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      itemCount: _staffchannelController
-                              .channelChatUser.value.userChannels?.length ??
-                          0,
-                      itemBuilder: (context, index) {
-                        var channel = _staffchannelController
-                            .channelChatUser.value.userChannels?[index];
-
-                        return Dismissible(
-                          key: Key(
-                              '${channel?.channelId}'), // Use the unique channel ID
-                          direction:
-                              DismissDirection.endToStart, // Swipe to delete
-
-                          onDismissed: (direction) {
-                            _staffchannelController
-                                .deleteMember(channel!.userProfile!.id!);
-                          },
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child:
-                                const Icon(Icons.delete, color: Colors.white),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(0),
-                            leading: GetBuilder<StaffchannelController>(
-                              builder: (controller) {
-                                return Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 25,
-                                      backgroundColor: Colors.grey.shade400,
-                                      child: Text(
-                                        channel?.userProfile?.username
-                                                ?.substring(0, 1)
-                                                .toUpperCase() ??
-                                            '', // Show first letter of username
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Online Badge in the top-right corner, wrapped in Obx
-                                    if (channel?.userProfile?.isOnline ??
-                                        false) // Show badge if user is online
-                                      Positioned(
-                                        right: 0,
-                                        bottom: 0,
-                                        child: Container(
-                                          width: 10,
-                                          height: 10,
-                                          decoration: BoxDecoration(
-                                            color: Colors
-                                                .green, // Green color for online status
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors
-                                                  .white, // White border around the badge
-                                              width: 2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                            title: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Channel name
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "${channel?.userProfile?.username} (${channel?.userProfile?.user?.driverNumber})" ??
-                                            'Unnamed User',
-                                        style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      channel?.assginTrucks != ""
-                                          ? Text(
-                                              "Assgin trucks: ${channel?.assginTrucks}" ??
-                                                  'Unnamed User',
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500),
-                                              overflow: TextOverflow.ellipsis,
-                                            )
-                                          : SizedBox(),
-                                    ],
-                                  ),
-                                ),
-                                // Time and Badge column
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Formatted time (UTC converted to local time)
-                                    Text(
-                                      Utils.formatUtcTime(channel?.lastMessage
-                                              ?.messageTimestampUtc) ??
-                                          '',
-                                      style: const TextStyle(
-                                          fontSize: 12, color: Colors.black45),
-                                    ),
-
-                                    // Badge showing unread message count
-                                    channel?.unreadCount != 0
-                                        ? Badge(
-                                            label: Text(
-                                              channel?.unreadCount == 0
-                                                  ? ""
-                                                  : '${channel?.unreadCount}', // Example unread count, replace with actual count
-                                              style:
-                                                  const TextStyle(fontSize: 11),
-                                            ),
-                                            backgroundColor: TColors.primary,
-                                          )
-                                        : const SizedBox(),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              channel?.lastMessage?.body ??
-                                  "Not message yet", // Message body or description
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                            onTap: () {
-                              if (socketService.isConnected.value) {
-                                socketService.staffUnreadAllUserMessage(
-                                    channel?.channelId,
-                                    channel?.userProfile?.id);
-                              }
-                              Get.toNamed(
-                                AppRoutes.staff_user_message,
-                                arguments: {
-                                  'channelId': channel?.channelId,
-                                  'name': channel?.userProfile?.username,
-                                  'userId': channel?.userProfile?.id
-                                },
-                              );
-                              // Handle navigation to the message screen (pass channel as an argument)
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (_staffchannelController.loading.value)
-                    Column(
-                      children: [
-                        Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ],
-                    ),
-                ],
-              );
-            }
-          }),
-        ),
-      ),
-      drawer: CustomDrawer(),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "chat-1",
-        backgroundColor: Colors.amber,
-        onPressed: () {
-          DriverDialog.showDriverBottomSheet(context, _staffchannelController);
-        },
-        label: Text(
-          "Add Driver",
-          style: TextStyle(color: Colors.white),
-        ),
-        icon: Icon(
-          Icons.add,
-          color: Colors.white,
         ),
       ),
     );

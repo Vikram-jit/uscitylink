@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/training_controller.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class AssginedDriversView extends StatelessWidget {
   final String trainingId;
@@ -29,7 +30,7 @@ class AssginedDriversView extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              backgroundColor: TColors.primaryStaff,
+              backgroundColor: StaffColors.primary,
               title: Text(
                 "Assgined Drivers",
                 style: Theme.of(context)

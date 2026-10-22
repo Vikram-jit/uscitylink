@@ -20,6 +20,8 @@ import 'package:uscitylink/services/auth_service.dart';
 import 'package:uscitylink/services/fcm_service.dart';
 import 'package:uscitylink/services/network_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/utils/hive_cleaner.dart';
+import 'package:uscitylink/utils/roles.dart';
 import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
@@ -68,7 +70,15 @@ class LoginController extends GetxController {
     Map data = {"email": emailController.value.text};
     __authService.login(data).then((value) {
       if (value.status == true) {
-        if (value.data.profiles?.length == 2) {
+        final profiles = value.data.profiles ?? <Profiles>[];
+        if (profiles.isEmpty) {
+          Utils.snackBar('Error', 'No profile found for this account');
+          return;
+        }
+        final email = value.data.email ?? "";
+        final phone = value.data.phoneNumber ?? "";
+        if (profiles.length > 1) {
+          // One person with several logins (e.g. staff and driver): choose which one to sign in to
           showAdaptiveActionSheet(
             context: context,
             title: Text(
@@ -76,163 +86,113 @@ class LoginController extends GetxController {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             actions: <BottomSheetAction>[
-              if (value?.data?.profiles?[0] != null)
+              for (final profile in profiles)
                 BottomSheetAction(
                   title: Text(
-                    '${value.data.profiles?[0].role?.name?.toUpperCase()}',
-                    style: TextStyle(
+                    '${profile.role?.name?.toUpperCase() ?? ''}',
+                    style: const TextStyle(
                         color: Colors.blue, fontWeight: FontWeight.w600),
                   ),
-                  onPressed: (_) {
-                    showAdaptiveActionSheet(
-                      context: context,
-                      actions: <BottomSheetAction>[
-                        BottomSheetAction(
-                          title: const Text(
-                            'Send OTP',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Get.back();
-                            Get.to((_) => SelectOption(
-                                name: value.data?.profiles?[0].username ?? "",
-                                role: value.data.profiles?[0].role?.name ?? "",
-                                email: value.data.email ?? "",
-                                phone_number: value.data.phoneNumber ?? ""));
-                            // sendOtp(context, emailController.value.text);
-                          },
-                        ),
-                        BottomSheetAction(
-                          title: const Text(
-                            'Use Password',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Get.back();
-
-                            Get.to(() => PasswordView(
-                                email: emailController.value.text,
-                                role: value.data.profiles?[0].role?.name
-                                    as String));
-                            //Navigator.of(context).pop();
-                            // Pass email to Password view
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              if (value?.data?.profiles?[1] != null)
-                BottomSheetAction(
-                  title: Text(
-                    '${value.data.profiles?[1].role?.name?.toUpperCase()}',
-                    style: TextStyle(
-                        color: Colors.blue, fontWeight: FontWeight.w600),
-                  ),
-                  onPressed: (_) {
-                    showAdaptiveActionSheet(
-                      context: context,
-                      actions: <BottomSheetAction>[
-                        BottomSheetAction(
-                          title: const Text(
-                            'Send OTP',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Get.back();
-
-                            Get.to((_) => SelectOption(
-                                name: value.data?.profiles?[1].username ?? "",
-                                role: value.data.profiles?[1].role?.name ?? "",
-                                email: value.data.email ?? "",
-                                phone_number: value.data.phoneNumber ?? ""));
-                            //sendOtp(context, emailController.value.text);
-                          },
-                        ),
-                        BottomSheetAction(
-                          title: const Text(
-                            'Use Password',
-                            style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: (_) {
-                            Get.back();
-
-                            Get.to(() => PasswordView(
-                                email: emailController.value.text,
-                                role: value.data.profiles?[1].role?.name
-                                    as String));
-                            //Navigator.of(context).pop();
-                            // Pass email to Password view
-                          },
-                        ),
-                      ],
-                    );
+                  onPressed: (sheetContext) {
+                    // Close this sheet first, otherwise it stays open under the next screen
+                    Navigator.of(sheetContext).pop();
+                    _showLoginMethods(context, profile, email, phone);
                   },
                 ),
             ],
           );
         } else {
-          showAdaptiveActionSheet(
-            context: context,
-            actions: <BottomSheetAction>[
-              BottomSheetAction(
-                title: const Text(
-                  'Send OTP',
-                  style: TextStyle(
-                      color: Colors.blue, fontWeight: FontWeight.w600),
-                ),
-                onPressed: (_) {
-                  Get.back();
-
-                  Get.to(() => SelectOption(
-                      name: value.data?.profiles?[0].username ?? "",
-                      role: value.data.profiles?[0].role?.name ?? "",
-                      email: value.data.email ?? "",
-                      phone_number: value.data.phoneNumber ?? ""));
-                  // sendOtp(context, emailController.value.text);
-                },
-              ),
-              BottomSheetAction(
-                title: const Text(
-                  'Use Password',
-                  style: TextStyle(
-                      color: Colors.blue, fontWeight: FontWeight.w600),
-                ),
-                onPressed: (_) {
-                  Get.to(() => PasswordView(
-                      email: emailController.value.text,
-                      role: value.data.profiles?[0].role?.name as String));
-                  //Navigator.of(context).pop();
-                  // Pass email to Password view
-                },
-              ),
-            ],
-          );
+          _showLoginMethods(context, profiles.first, email, phone);
         }
       }
-      // if (value != null) {
-      //   print('Login successful: $value');
-      // } else {
-      //   print('Login failed');
-      //   Utils.snackBar('Error', 'Login failed, please try again.');
-      // }
     }).onError((error, stackTrace) {
       print('Error: $error');
       Utils.snackBar('Error', error.toString());
     });
   }
 
+  // "Send OTP" / "Use Password" for the profile that was chosen
+  void _showLoginMethods(
+      BuildContext context, Profiles profile, String email, String phone) {
+    final role = profile.role?.name ?? "";
+    showAdaptiveActionSheet(
+      context: context,
+      title: _methodSheetTitle(profile),
+      actions: <BottomSheetAction>[
+        BottomSheetAction(
+          title: const Text(
+            'Send OTP',
+            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
+          ),
+          onPressed: (sheetContext) {
+            Navigator.of(sheetContext).pop();
+            Get.to(() => SelectOption(
+                name: profile.username ?? "",
+                role: role,
+                email: email,
+                phone_number: phone));
+          },
+        ),
+        BottomSheetAction(
+          title: const Text(
+            'Use Password',
+            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
+          ),
+          onPressed: (sheetContext) {
+            Navigator.of(sheetContext).pop();
+            Get.to(() => PasswordView(
+                email: emailController.value.text, role: role));
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget? _methodSheetTitle(Profiles profile) {
+    final role = profile.role?.name;
+    if (role == null || role.isEmpty) return null;
+    return Text(
+      'Sign in as ${role[0].toUpperCase()}${role.substring(1)}',
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    );
+  }
+
   Future<PackageInfo> getAppVersion() async {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     return packageInfo;
+  }
+
+  // Everything after a successful login (password or OTP): same for both, and the stored role and the
+  // dashboard always come from the profile the server actually signed in
+  Future<void> _completeLogin(
+      LoginWithPasswordModel data, String chosenRole) async {
+    await userPreferenceController.storeToken(data);
+    final role = data.profiles?.role?.name ?? chosenRole;
+    await userPreferenceController.storeRole(role);
+    Utils.toastMessage("Login Successfully");
+    if (!Get.isRegistered<MessageController>()) {
+      Get.put(MessageController());
+      print('📡 MessageController registered');
+    }
+    // ✅ Register NetworkService if not already
+    if (!Get.isRegistered<NetworkService>()) {
+      Get.put(NetworkService());
+      print('📡 NetworkService registered');
+    }
+
+    final fcmService = Get.put(FCMService());
+    String? token = fcmService.fcmToken.value;
+    if (token.isNotEmpty) {
+      await fcmService.updateDeviceToken(token);
+    }
+    await socketService.connectSocket();
+    if (isStaffRole(role)) {
+      Get.offAllNamed(AppRoutes.staff_dashboard);
+    } else if (role == "security") {
+      Get.offAllNamed(AppRoutes.securityDashboard);
+    } else {
+      Get.offAllNamed(AppRoutes.driverDashboard);
+    }
   }
 
   void loginWithPassword(BuildContext context, String email, String role) {
@@ -242,73 +202,22 @@ class LoginController extends GetxController {
       password: passwordController.value.text,
     );
 
-    __authService.loginWithPassword(loginData).then((value) {
-      if (value.status == true) {
-        if (value.data.access_token!.isNotEmpty) {
-          userPreferenceController
-              .storeToken(value.data)
-              .then((response) async {
-            Utils.toastMessage("Login Successfully");
-            if (!Get.isRegistered<MessageController>()) {
-              Get.put(MessageController());
-              print('📡 MessageController registered');
-            }
-            // ✅ Register NetworkService if not already
-            if (!Get.isRegistered<NetworkService>()) {
-              Get.put(NetworkService());
-              print('📡 NetworkService registered');
-            }
-
-            final fcmService = Get.put(FCMService());
-            String? token = fcmService.fcmToken.value;
-            if (token.isNotEmpty) {
-              await fcmService.updateDeviceToken(token);
-            }
-            await socketService.connectSocket();
-            await userPreferenceController
-                .storeRole(value.data.profiles!.role!.name!);
-            if (value.data.profiles?.role?.name == "staff") {
-              Get.offAllNamed(AppRoutes.staff_dashboard);
-            } else if (value.data.profiles?.role?.name == "security") {
-              Get.offAllNamed(AppRoutes.securityDashboard);
-            } else {
-              Get.offAllNamed(AppRoutes.driverDashboard);
-            }
-          });
-        }
+    __authService.loginWithPassword(loginData).then((value) async {
+      if (value.status == true && (value.data.access_token ?? '').isNotEmpty) {
+        await _completeLogin(value.data, role);
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());
     });
   }
 
-  void loginWithOtp(BuildContext context, String email, String otp) {
-    LoginWithOTP loginData = LoginWithOTP(email: email, otp: otp);
+  void loginWithOtp(BuildContext context, String email, String otp,
+      [String role = '']) {
+    LoginWithOTP loginData = LoginWithOTP(email: email, otp: otp, role: role);
 
-    __authService.verifyOtp(loginData).then((value) {
-      if (value.status == true) {
-        if (value.data.access_token!.isNotEmpty) {
-          userPreferenceController.storeToken(value.data).then((value) async {
-            Utils.toastMessage("Login Successfully");
-            if (!Get.isRegistered<MessageController>()) {
-              Get.put(MessageController());
-              print('📡 MessageController registered');
-            }
-            // ✅ Register NetworkService if not already
-            if (!Get.isRegistered<NetworkService>()) {
-              Get.put(NetworkService());
-              print('📡 NetworkService registered');
-            }
-
-            final fcmService = Get.put(FCMService());
-            String? token = fcmService.fcmToken.value;
-            if (token.isNotEmpty) {
-              await fcmService.updateDeviceToken(token);
-            }
-            await socketService.connectSocket();
-            Get.offAllNamed(AppRoutes.driverDashboard);
-          });
-        }
+    __authService.verifyOtp(loginData).then((value) async {
+      if (value.status == true && (value.data.access_token ?? '').isNotEmpty) {
+        await _completeLogin(value.data, role);
       }
     }).onError((error, stackTrace) {
       Utils.snackBar('Error', error.toString());
@@ -316,7 +225,8 @@ class LoginController extends GetxController {
   }
 
   void sendOtp(BuildContext context, String email, String phone_number,
-      bool isEmail, bool isPhoneNumber) {
+      bool isEmail, bool isPhoneNumber,
+      [String role = '']) {
     OTP OTPData = OTP(
       isEmail: isEmail,
       isPhoneNumber: isPhoneNumber,
@@ -333,6 +243,7 @@ class LoginController extends GetxController {
               phone_number: phone_number,
               isEmail: isEmail,
               isPhoneNumber: isPhoneNumber,
+              role: role,
             ));
       }
     }).onError((error, stackTrace) {
@@ -376,7 +287,7 @@ class LoginController extends GetxController {
           if (result.data != "NewVersion") {
             //Get.offAll(() => UpdateView());
           } else {
-            if (value?.data?.role?.name == "staff") {
+            if (isStaffRole(value?.data?.role?.name)) {
               final fcmService = Get.put(FCMService());
               String? token = fcmService.fcmToken.value;
               if (token.isNotEmpty) {
@@ -406,7 +317,7 @@ class LoginController extends GetxController {
             }
           }
         } else {
-          if (value?.data?.role?.name == "staff") {
+          if (isStaffRole(value?.data?.role?.name)) {
             final fcmService = Get.put(FCMService());
             String? token = fcmService.fcmToken.value;
             if (token.isNotEmpty) {
@@ -445,7 +356,7 @@ class LoginController extends GetxController {
           Timer(const Duration(seconds: 1),
               () => Get.offAllNamed(AppRoutes.driverDashboard));
         }
-        if (role == "Staff") {
+        if (isStaffRole(role)) {
           Timer(const Duration(seconds: 1),
               () => Get.offAllNamed(AppRoutes.staff_dashboard));
         }
@@ -545,54 +456,12 @@ class LoginController extends GetxController {
 
   Future<void> _forceClearAllHiveData() async {
     print('📦 FORCE CLEARING ALL HIVE DATA...');
-
-    // List of all box names used in the app
-    final boxNames = [
-      HiveBoxes.channelMessages,
-      HiveBoxes.userChannel,
-      HiveBoxes.driverDashboard,
-      HiveBoxes.queueMessageBox,
-      HiveBoxes.mediaQueueBox,
-      HiveBoxes.truckLocationBox,
-      HiveBoxes.stationsBox,
-      HiveBoxes.lastUpdatedBox,
-      'prefs_box',
-      'routes_box',
-      'metadata_box',
-
-      // Add any other box names from your app
-    ];
-
-    // Method 1: Delete boxes completely (most thorough)
-    for (final boxName in boxNames) {
-      try {
-        // Check if box is open and close it
-        if (Hive.isBoxOpen(boxName)) {
-          final box = Hive.box(boxName);
-          await box.clear();
-          await box.close();
-          print('✅ Cleared and closed box: $boxName');
-        }
-
-        // Delete the box entirely from disk
-        await Hive.deleteBoxFromDisk(boxName);
-        print('✅ Deleted box from disk: $boxName');
-      } catch (e) {
-        print('⚠️ Error with box $boxName: $e');
-
-        // Fallback: try to open and clear
-        try {
-          final box = await Hive.openBox(boxName);
-          await box.clear();
-          await box.close();
-          print('✅ Fallback cleared box: $boxName');
-        } catch (e2) {
-          print('❌ Failed to clear box $boxName even with fallback: $e2');
-        }
-      }
+    final failed = await clearAllHiveData(log: print);
+    if (failed.isEmpty) {
+      print('✅ ALL HIVE DATA FORCE CLEARED');
+    } else {
+      print('❌ Hive boxes not cleared: ${failed.join(', ')}');
     }
-
-    print('✅ ALL HIVE DATA FORCE CLEARED');
   }
 
   /// Deletes a controller by its registered *type* — every controller in
@@ -635,31 +504,6 @@ class LoginController extends GetxController {
     _disposeByType<RouteController>('RouteController');
     _disposeByType<StationController>('StationController');
     _disposeByType<GoogleMapController>('GoogleMapController');
-  }
-
-// Also add this helper method to verify clearing
-  Future<void> verifyDataCleared() async {
-    print('🔍 VERIFYING DATA CLEARED...');
-
-    try {
-      // Try to reopen boxes and check if they're empty
-      final testBoxes = [
-        await Hive.openBox(HiveBoxes.truckLocationBox),
-        await Hive.openBox(HiveBoxes.stationsBox),
-        await Hive.openBox(HiveBoxes.lastUpdatedBox),
-        await Hive.openBox('prefs_box'),
-        await Hive.openBox('routes_box'),
-      ];
-
-      for (var box in testBoxes) {
-        print('Box ${box.name}: ${box.length} items');
-        await box.close();
-      }
-
-      print('✅ Verification complete');
-    } catch (e) {
-      print('❌ Verification error: $e');
-    }
   }
 
   void changePassword(BuildContext context, String old_password,

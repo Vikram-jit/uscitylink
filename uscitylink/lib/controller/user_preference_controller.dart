@@ -39,6 +39,8 @@ class UserPreferenceController extends GetxController {
     SharedPreferences sp = await SharedPreferences.getInstance();
 
     sp.remove('token');
+    // The next login may be the other profile (staff / driver): never keep the old role
+    sp.remove('role');
 
     return true;
   }

@@ -5,6 +5,7 @@ import helmet from "helmet";
 import dotenv from "dotenv";
 import { initSocket } from "./sockets/socket";
 import authRoutes from "./routes/authRoutes";
+import authRoutesV2 from "./routes/authRoutesV2";
 import { primarySequelize, secondarySequelize } from "./sequelize";
 import { connectRedis } from "./redis";
 import User from "./models/User";
@@ -88,25 +89,31 @@ app.get("/:id", async (req, res) => {
 });
 
 // Use authentication routes
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/broadcast", broadcastRoutes);
-app.use("/api/v1/user", userRoutes);
-app.use("/api/v1/channel", channelRoutes);
-app.use("/api/v1/group", groupRoutes);
-app.use("/api/v1/channel/member", channelMemberRoutes);
-app.use("/api/v1/message", messageRoutes);
-app.use("/api/v1/messageV2", messageV2Routes);
-app.use("/api/v1/media", mediaRoutes);
-app.use("/api/v1/yard", yardRoutes);
-app.use("/api/v1/security", securityRoutes);
-app.use("/api/v1/trainings", trainingRoutes);
-app.use("/api/v1/driver/trainings", driverTrainingRoutes);
-app.use("/api/v1/template", templateRoutes);
-app.use("/api/v1/staff/channel", channelStaffRoutes);
-app.use("/api/v1/staff/chat", chatRoutes);
-app.use("/api/v1/staff/groups", staffGroupRoutes);
-app.use("/api/v1/staff/private/chat", staffChatRoutes);
-app.use("/api/v1/automation", automationRoutes);
+// The published app keeps calling /api/v1 while a new app build waits for store review; the new
+// build calls /api/v2. Only auth differs between the two today, so every other router is shared.
+const mountApi = (base: string, auth: typeof authRoutes) => {
+  app.use(`${base}/auth`, auth);
+  app.use(`${base}/broadcast`, broadcastRoutes);
+  app.use(`${base}/user`, userRoutes);
+  app.use(`${base}/channel`, channelRoutes);
+  app.use(`${base}/group`, groupRoutes);
+  app.use(`${base}/channel/member`, channelMemberRoutes);
+  app.use(`${base}/message`, messageRoutes);
+  app.use(`${base}/messageV2`, messageV2Routes);
+  app.use(`${base}/media`, mediaRoutes);
+  app.use(`${base}/yard`, yardRoutes);
+  app.use(`${base}/security`, securityRoutes);
+  app.use(`${base}/trainings`, trainingRoutes);
+  app.use(`${base}/driver/trainings`, driverTrainingRoutes);
+  app.use(`${base}/template`, templateRoutes);
+  app.use(`${base}/staff/channel`, channelStaffRoutes);
+  app.use(`${base}/staff/chat`, chatRoutes);
+  app.use(`${base}/staff/groups`, staffGroupRoutes);
+  app.use(`${base}/staff/private/chat`, staffChatRoutes);
+  app.use(`${base}/automation`, automationRoutes);
+};
+mountApi("/api/v1", authRoutes);
+mountApi("/api/v2", authRoutesV2);
 
 
 // Start server

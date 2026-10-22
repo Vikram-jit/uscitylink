@@ -11,13 +11,16 @@ class OtpView extends StatefulWidget {
   final String phone_number;
   final bool isEmail;
   final bool isPhoneNumber;
+  // The profile chosen on the login screen (staff / driver / security)
+  final String role;
 
   const OtpView(
       {super.key,
       required this.email,
       required this.phone_number,
       required this.isEmail,
-      required this.isPhoneNumber});
+      required this.isPhoneNumber,
+      this.role = ''});
   @override
   _OtpViewState createState() => _OtpViewState();
 }
@@ -66,7 +69,7 @@ class _OtpViewState extends State<OtpView> {
   void _submitOtp(String otp) {
     // Handle OTP submission
     if (otp.length == 6) {
-      loginController.loginWithOtp(context, widget.email, otp);
+      loginController.loginWithOtp(context, widget.email, otp, widget.role);
     }
   }
 

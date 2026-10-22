@@ -45,7 +45,9 @@ class Utils {
   }
 
   static hideLoader() {
-    if (Get.isDialogOpen == true) Get.back();
+    // Pop the dialog route directly: Get.back() only closes a visible snackbar (e.g. the error
+    // from a previous failed login) and would leave the loader on screen.
+    if (Get.isDialogOpen == true) Get.key.currentState?.pop();
   }
 
   static String formatUtcTime(String? utcTimeString) {

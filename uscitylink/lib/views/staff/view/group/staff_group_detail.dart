@@ -8,6 +8,7 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
+import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffGroupDetail extends StatefulWidget {
   String groupId = "";
@@ -36,7 +37,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
     return Scaffold(
         backgroundColor: Colors.grey.shade100,
         appBar: AppBar(
-          backgroundColor: TColors.primaryStaff,
+          backgroundColor: StaffColors.primary,
           title: Obx(() {
             return Text(
               "${groupController.group.value.group?.name}",
@@ -59,7 +60,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
             //   child: ElevatedButton(
             //     onPressed: () {},
             //     style: ElevatedButton.styleFrom(
-            //       backgroundColor: Colors.amber,
+            //       backgroundColor: StaffColors.primary,
             //       // Set button color
             //       shape: RoundedRectangleBorder(
             //         borderRadius: BorderRadius.circular(5), // Rounded corners
@@ -222,9 +223,9 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                                 groupController.group.value.group?.id ?? "");
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber,
+                            backgroundColor: StaffColors.primary,
                             // Set button color
-                            side: BorderSide(width: 2.0, color: Colors.amber),
+                            side: BorderSide(width: 2.0, color: StaffColors.primary),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5.0),
                             ),
@@ -341,7 +342,7 @@ class _StaffGroupDetailState extends State<StaffGroupDetail> {
                                 Row(
                                   children: [
                                     Switch(
-                                      activeTrackColor: TColors.primaryStaff,
+                                      activeTrackColor: StaffColors.primary,
                                       padding: EdgeInsets.all(0),
                                       value: groupController.group.value
                                               .groupMembers?[index].status ==

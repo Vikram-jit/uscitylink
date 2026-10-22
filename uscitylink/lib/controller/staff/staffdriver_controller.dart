@@ -3,6 +3,7 @@ import 'package:uscitylink/model/staff/driver_pagination_model.dart';
 import 'package:uscitylink/model/template_model.dart';
 import 'package:uscitylink/services/staff_services/channel_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/utils/staff_feedback.dart';
 
 class StaffDriverController extends GetxController {
   var drivers = <Driver>[].obs;
@@ -22,7 +23,7 @@ class StaffDriverController extends GetxController {
       loading.value = false;
     }).onError((error, stackTrace) {
       loading.value = false;
-      Utils.snackBar('Error', error.toString());
+      staffSnackBar('Error', error.toString());
     });
   }
 }
