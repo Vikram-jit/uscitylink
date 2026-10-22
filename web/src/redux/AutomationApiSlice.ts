@@ -214,6 +214,13 @@ export const AutomationApiSlice = apiSlice.injectEndpoints({
       query: ({ id }) => ({ url: `automation/equipment/${id}`, method: 'DELETE' }),
       invalidatesTags: ['equipment'],
     }),
+    syncEquipmentFromYard: builder.mutation<
+      Res<Record<'tractor' | 'trailer', { inYard: number; added: number; alreadyThere: number; removedByStaff: number }>>,
+      void
+    >({
+      query: () => ({ url: 'automation/equipment/sync', method: 'POST' }),
+      invalidatesTags: ['equipment'],
+    }),
     importEquipment: builder.mutation<Res<null>, { csv: string }>({
       query: (body) => ({ url: 'automation/equipment/import', method: 'POST', body }),
       invalidatesTags: ['equipment'],
@@ -310,6 +317,7 @@ export const {
   useSaveEquipmentMutation,
   useDeleteEquipmentMutation,
   useImportEquipmentMutation,
+  useSyncEquipmentFromYardMutation,
   useGetTripsQuery,
   useGetDriverTripQuery,
   useSaveDriverTripMutation,

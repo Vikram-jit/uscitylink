@@ -15,18 +15,20 @@ import {
   Divider,
   Grid,
   IconButton,
+  InputAdornment,
   Stack,
   Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
+  TablePagination,
   TableRow,
   Tabs,
   TextField,
   Typography,
 } from '@mui/material';
-import { PencilSimple, Plus, Trash, UploadSimple } from '@phosphor-icons/react';
+import { ArrowsClockwise, MagnifyingGlass, PencilSimple, Plus, Trash, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'react-toastify';
 
 import {
@@ -34,6 +36,7 @@ import {
   useGetEquipmentQuery,
   useImportEquipmentMutation,
   useSaveEquipmentMutation,
+  useSyncEquipmentFromYardMutation,
 } from '@/redux/AutomationApiSlice';
 import type { EquipmentProfile } from '@/redux/models/AutomationModel';
 
@@ -180,6 +183,10 @@ function ImportDialog({ onClose }: { onClose: () => void }): React.JSX.Element {
   );
 }
 
+// Added by "Sync from yard" (or by hand) with no measurements yet
+const needsDetails = (p: EquipmentProfile): boolean =>
+  FIELDS[p.kind as Kind].every((section) => section.fields.every((f) => p[f.key] === null || p[f.key] === undefined));
+
 const show = (v?: number | null, suffix = '') => (v === null || v === undefined ? '—' : `${Number(v).toLocaleString('en-US')}${suffix}`);
 
 export function Equipment(): React.JSX.Element {
@@ -188,7 +195,38 @@ export function Equipment(): React.JSX.Element {
   const [kind, setKind] = React.useState<Kind>('trailer');
   const [editing, setEditing] = React.useState<Partial<EquipmentProfile> | null | undefined>(undefined);
   const [importing, setImporting] = React.useState(false);
-  const rows = (data?.data || []).filter((p) => p.kind === kind);
+  const [sync, { isLoading: syncing }] = useSyncEquipmentFromYardMutation();
+  const [search, setSearch] = React.useState('');
+  const [onlyMissing, setOnlyMissing] = React.useState(false);
+  const all = data?.data || [];
+  // Unit numbers are numeric strings: 10065 before 100165
+  const ofKind = all
+    .filter((p) => p.kind === kind)
+    .sort((a, b) => a.unit_number.localeCompare(b.unit_number, undefined, { numeric: true }));
+  const missingCount = ofKind.filter(needsDetails).length;
+  const [page, setPage] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(10);
+  // Unit numbers only; an exact match is listed first, then numbers starting with it, then the rest
+  const q = search.trim();
+  const rank = (u: string) => (u === q ? 0 : u.startsWith(q) ? 1 : 2);
+  const filtered = ofKind
+    .filter((p) => (!q || p.unit_number.includes(q)) && (!onlyMissing || needsDetails(p)))
+    .sort((a, b) => (q ? rank(a.unit_number) - rank(b.unit_number) : 0));
+  const lastPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
+  const rows = filtered.slice(Math.min(page, lastPage) * pageSize, (Math.min(page, lastPage) + 1) * pageSize);
+  React.useEffect(() => setPage(0), [kind, q, onlyMissing]);
+
+  const runSync = async () => {
+    try {
+      const res = await sync().unwrap();
+      toast.success(res.message || 'Synced');
+      const removed = (res.data?.tractor?.removedByStaff || 0) + (res.data?.trailer?.removedByStaff || 0);
+      if (removed) toast.info(`${removed} unit${removed === 1 ? ' was' : 's were'} removed here before, so not added back.`);
+      if (res.data?.tractor?.added || res.data?.trailer?.added) setOnlyMissing(true);
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Sync failed');
+    }
+  };
 
   return (
     <Stack spacing={3}>
@@ -199,7 +237,10 @@ export function Equipment(): React.JSX.Element {
       <Card>
         <CardHeader
           action={
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="flex-end">
+              <Button disabled={syncing} onClick={() => void runSync()} startIcon={<ArrowsClockwise />} variant="outlined">
+                {syncing ? 'Syncing…' : 'Sync from yard'}
+              </Button>
               <Button onClick={() => setImporting(true)} startIcon={<UploadSimple />}>
                 Import CSV
               </Button>
@@ -208,12 +249,37 @@ export function Equipment(): React.JSX.Element {
               </Button>
             </Stack>
           }
+          subheader="Sync from yard adds every active truck and trailer with empty measurements for you to fill in"
           title="Equipment profiles"
         />
         <Tabs onChange={(_e, v) => setKind(v)} sx={{ px: 2 }} value={kind}>
-          <Tab label="Trailers" value="trailer" />
-          <Tab label="Tractors" value="tractor" />
+          <Tab label={`Trailers (${all.filter((p) => p.kind === 'trailer').length})`} value="trailer" />
+          <Tab label={`Tractors (${all.filter((p) => p.kind === 'tractor').length})`} value="tractor" />
         </Tabs>
+        <Divider />
+        <Stack alignItems="center" direction="row" flexWrap="wrap" gap={1.5} sx={{ px: 2, py: 1.5 }}>
+          <TextField
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <MagnifyingGlass />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', 'aria-label': `${kind} number` }}
+            onChange={(e) => setSearch(e.target.value.replace(/\D/g, ''))}
+            placeholder={`Search ${kind} number`}
+            size="small"
+            sx={{ width: 260, maxWidth: '100%' }}
+            value={search}
+          />
+          <Chip
+            color={onlyMissing ? 'warning' : 'default'}
+            label={`Needs details (${missingCount})`}
+            onClick={() => setOnlyMissing((v) => !v)}
+            variant={onlyMissing ? 'filled' : 'outlined'}
+          />
+        </Stack>
         <Divider />
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small">
@@ -244,6 +310,7 @@ export function Equipment(): React.JSX.Element {
                 <TableRow hover key={p.id}>
                   <TableCell>
                     <b>{p.unit_number}</b>
+                    {needsDetails(p) ? <Chip color="warning" label="Needs details" size="small" sx={{ ml: 1 }} variant="outlined" /> : null}
                     {p.notes ? (
                       <Typography color="text.secondary" sx={{ display: 'block' }} variant="caption">
                         {p.notes}
@@ -299,7 +366,9 @@ export function Equipment(): React.JSX.Element {
                 <TableRow>
                   <TableCell colSpan={7}>
                     <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                      No {kind}s yet. Add them one by one or import a spreadsheet.
+                      {ofKind.length
+                        ? 'No matches.'
+                        : `No ${kind}s yet. Use Sync from yard, add them one by one or import a spreadsheet.`}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -307,6 +376,19 @@ export function Equipment(): React.JSX.Element {
             </TableBody>
           </Table>
         </Box>
+        <TablePagination
+          component="div"
+          count={filtered.length}
+          labelRowsPerPage="Per page"
+          onPageChange={(_e, p) => setPage(p)}
+          onRowsPerPageChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(0);
+          }}
+          page={Math.min(page, lastPage)}
+          rowsPerPage={pageSize}
+          rowsPerPageOptions={[10, 25, 50]}
+        />
       </Card>
       {editing !== undefined ? <EditDialog kind={kind} onClose={() => setEditing(undefined)} profile={editing} /> : null}
       {importing ? <ImportDialog onClose={() => setImporting(false)} /> : null}

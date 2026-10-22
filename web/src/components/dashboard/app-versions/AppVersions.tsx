@@ -230,9 +230,21 @@ export function AppVersions(): React.JSX.Element {
         can stay active during the rollout, then mark them Deprecated.
       </Alert>
       <Alert severity="warning">
-        Builds <b>older than 1.3.22</b> get stuck on the loader after the splash screen when their exact build is marked Active (an
-        app bug fixed in 1.3.22). Leave those builds Pending or Deprecated: it only changes the &ldquo;Logins needing an update&rdquo;
-        count, users are not blocked. Mark 1.3.22 and newer Active as usual.
+        <b>How each app build reacts</b>
+        <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+          <li>
+            <b>1.3.20 and older:</b> show the update screen whenever their exact build is <b>not Active</b>. Keep the build users should
+            keep using Active; set it to Deprecated to make them update.
+          </li>
+          <li>
+            <b>1.3.21:</b> no update screen. If its exact build is Active it gets stuck on the loader at start-up, so leave 1.3.21 Pending
+            or Deprecated.
+          </li>
+          <li>
+            <b>1.3.22 and newer:</b> use the <b>Force update</b> switch on a version: everyone on an older build must update; without it
+            they get a dismissible &ldquo;Update available&rdquo; prompt.
+          </li>
+        </Box>
       </Alert>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>

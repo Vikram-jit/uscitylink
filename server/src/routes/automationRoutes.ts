@@ -47,6 +47,7 @@ import {
   saveEquipment,
   deleteEquipment,
   importEquipment,
+  syncEquipmentFromYard,
   getDriverTrip,
   listTrips,
   saveDriverTrip,
@@ -119,5 +120,6 @@ router.post("/equipment", ...compliance, saveEquipment);
 router.put("/equipment/:id", ...compliance, saveEquipment);
 router.delete("/equipment/:id", ...compliance, deleteEquipment);
 router.post("/equipment/import", ...compliance, importEquipment);
+router.post("/equipment/sync", ...compliance, syncEquipmentFromYard);
 
 export default router;

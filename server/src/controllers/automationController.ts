@@ -1,14 +1,14 @@
 import { isStaffRole } from "../middleware/requireRole";
 import { Request, Response } from "express";
 import multer from "multer";
-import { Op, fn, col } from "sequelize";
+import { Op, fn, col, QueryTypes } from "sequelize";
 import { DocField, DocType } from "../models/DocType";
 import { DocTypeExample } from "../models/DocTypeExample";
 import { MessageDocument } from "../models/MessageDocument";
 import { Flow } from "../models/Flow";
 import { FlowRun } from "../models/FlowRun";
 import { Message } from "../models/Message";
-import { primarySequelize } from "../sequelize";
+import { primarySequelize, secondarySequelize } from "../sequelize";
 import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import {
@@ -1020,6 +1020,54 @@ export const deleteEquipment = async (req: Request, res: Response): Promise<any>
   try {
     await EquipmentProfile.update({ active: false, updated_by: req.user?.id }, { where: { id: req.params.id } });
     return res.status(200).json({ status: true, message: "Removed" });
+  } catch (err) {
+    return fail(res, err);
+  }
+};
+
+// Equipment → "Sync from yard": adds every active truck (as a tractor) and trailer from the yard
+// database (yard_management) that has no profile yet, with all measurements empty for staff to fill
+// in. Existing profiles are never changed, and units staff removed stay removed.
+export const syncEquipmentFromYard = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const yard = async (sql: string) =>
+      (await secondarySequelize.query<{ number: string }>(sql, { type: QueryTypes.SELECT }))
+        .map((r) => String(r.number ?? "").trim())
+        .filter(Boolean);
+    const units: Record<"tractor" | "trailer", string[]> = {
+      tractor: await yard("SELECT number FROM trucks WHERE status = 1 AND deleted_at IS NULL"),
+      trailer: await yard("SELECT number FROM trailers WHERE is_active = 1 AND deleted_at IS NULL"),
+    };
+
+    const existing = await EquipmentProfile.findAll({ attributes: ["kind", "unit_number", "active"] });
+    const known = new Map(existing.map((p) => [`${p.kind}:${p.unit_number}`, p.active]));
+
+    const summary: Record<string, { inYard: number; added: number; alreadyThere: number; removedByStaff: number }> = {};
+    const rows: any[] = [];
+    for (const kind of ["tractor", "trailer"] as const) {
+      const unique = [...new Set(units[kind])];
+      const s = { inYard: unique.length, added: 0, alreadyThere: 0, removedByStaff: 0 };
+      for (const unit_number of unique) {
+        const state = known.get(`${kind}:${unit_number}`);
+        if (state === undefined) {
+          rows.push({ kind, unit_number, active: true, updated_by: req.user?.id || null });
+          s.added++;
+        } else if (state) s.alreadyThere++;
+        else s.removedByStaff++;
+      }
+      summary[kind] = s;
+    }
+    // ignoreDuplicates: two staff pressing Sync at once can't fail on the (kind, unit_number) key
+    if (rows.length) await EquipmentProfile.bulkCreate(rows, { ignoreDuplicates: true });
+
+    const added = summary.tractor.added + summary.trailer.added;
+    return res.status(200).json({
+      status: true,
+      message: added
+        ? `Added ${summary.tractor.added} tractor${summary.tractor.added === 1 ? "" : "s"} and ${summary.trailer.added} trailer${summary.trailer.added === 1 ? "" : "s"} — fill in their measurements`
+        : "Everything is already in sync",
+      data: summary,
+    });
   } catch (err) {
     return fail(res, err);
   }
