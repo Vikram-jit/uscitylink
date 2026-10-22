@@ -11,6 +11,7 @@ import moment from "moment";
 import Channel from "../models/Channel";
 import { UserProfile } from "../models/UserProfile";
 import { sendNotificationToDevice } from "../utils/fcmService";
+import { isNotificationMuted, messageNotificationText, notificationText } from "../services/staffNotifications";
 import GroupMessage from "../models/GroupMessage";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
@@ -99,7 +100,7 @@ groupNotificationStaffQueue.process(async (job) => {
       if (user) {
         if (!staffIds.includes(user.id)) {
           const deviceToken = user.device_token;
-          if (deviceToken) {
+          if (deviceToken && !isNotificationMuted(user)) {
             const isActiveChannel =
               global.staffActiveChannel[user?.id]?.channelId == channelId
                 ? "1"
@@ -109,7 +110,7 @@ groupNotificationStaffQueue.process(async (job) => {
                 `${senderProfile?.username} (${groupProfile?.name} Group)` ||
                 "",
               badge: 0,
-              body: body,
+              body: notificationText(body),
               data: {
                 channelId: channelId,
                 type: "GROUP NEW MESSAGE STAFF",
@@ -159,6 +160,10 @@ notificationQueue.process(async (job: any) => {
   });
 
   const channel = await Channel.findByPk(channel_id);
+  // userName is the channel's name at most call sites: show who actually wrote
+  const sender = userId ? await UserProfile.findByPk(userId, { attributes: ["username"] }) : null;
+  const driverName = sender?.username || userName || "Driver";
+  const text = await messageNotificationText(messageId, body);
 
   const users = await UserProfile.findAll({
     where: {
@@ -198,20 +203,20 @@ notificationQueue.process(async (job: any) => {
           );
 
           const deviceToken = user.device_token;
-          if (deviceToken) {
+          if (deviceToken && !isNotificationMuted(user)) {
             const isActiveChannel =
               global.staffActiveChannel[user?.id]?.channelId == channel_id
                 ? "1"
                 : "0";
 
             await sendNotificationToDevice(deviceToken, {
-              title: `${userName} (${channel?.name})` || "",
+              title: channel?.name ? `${driverName} (${channel.name})` : driverName,
               badge: 0,
-              body: body,
+              body: text,
               data: {
                 channelId: channel_id,
                 type: "DRIVER NEW MESSAGE",
-                title: userName,
+                title: driverName,
                 userId: userId,
                 isActiveChannel,
               },

@@ -586,9 +586,46 @@ class FCMService extends GetxController {
       iOS: iosDetails,
     );
 
+    // Staff notifications (a driver or group wrote): show the whole text instead of one cut-off
+    // line, and give each conversation its own id so two drivers don't replace each other.
+    // Driver notifications keep the original single notification.
+    final staffType = _staffNotificationKey(payload);
+    if (staffType != null) {
+      await flutterLocalNotificationsPlugin.show(
+        staffType.hashCode & 0x7fffffff,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription: 'This channel is used for high importance notifications.',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            styleInformation: BigTextStyleInformation(body, contentTitle: title),
+          ),
+          iOS: iosDetails,
+        ),
+        payload: payload,
+      );
+      return;
+    }
+
     // Show the notification (ID 0 is the notification ID, can be changed)
     await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails,
         payload: payload);
+  }
+
+  /// Conversation key for notifications sent to staff, null for everything else.
+  String? _staffNotificationKey(String payload) {
+    try {
+      final data = jsonDecode(payload);
+      if (data is! Map) return null;
+      if (data['type'] == 'DRIVER NEW MESSAGE') return 'driver:${data['channelId']}:${data['userId']}';
+      if (data['type'] == 'GROUP NEW MESSAGE STAFF') return 'group:${data['groupId']}';
+    } catch (_) {}
+    return null;
   }
 
   // Update the device token to the server (Assuming you have an `updateDeviceToken` method)

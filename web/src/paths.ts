@@ -20,6 +20,7 @@ export const paths = {
     staff_chat: '/dashboard/staff_chat',
     system_messages: '/dashboard/system-messages',
     automation: '/dashboard/automation',
+    app_versions: '/dashboard/app-versions',
   },
   user:{
     "add":'/dashboard/users/add'

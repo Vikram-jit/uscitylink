@@ -22,6 +22,7 @@ export const navItems = [
   { key: 'scale_checks', title: 'Scale checks', href: paths.compliance.scaleChecks, icon: 'scales', badge: false },
   { key: 'equipment', title: 'Equipment', href: paths.compliance.equipment, icon: 'trailer', badge: false },
   { key: 'automation', title: 'Automation', href: paths.dashboard.automation, icon: 'robot', badge: false, matcher: { type: 'startsWith', href: paths.dashboard.automation } },
+  { key: 'app_versions', title: 'App Versions', href: paths.dashboard.app_versions, icon: 'mobile', badge: false, adminOnly: true },
 
 
   // { key: 'error', title: 'Error', href: paths.errors.notFound, icon: 'x-square' },

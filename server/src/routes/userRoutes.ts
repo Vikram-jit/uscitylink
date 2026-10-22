@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { changePassword, dashboard, dashboardNew, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getHosStatus,  getLiveLocation,  getProfile,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, searchResult, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { getNotificationMute, setNotificationMute } from '../services/staffNotifications';
 
 const router = Router();
 
@@ -26,6 +27,9 @@ router.put('/updateActiveChannel',authMiddleware, updateUserActiveChannel);
 router.post('/change-password',authMiddleware, changePassword);
 router.get('/new-dashboard',authMiddleware, dashboardNew);
 router.get('/search',authMiddleware, searchResult);
+// Staff app → Settings: mute push notifications for a while
+router.get('/notification-mute', authMiddleware, getNotificationMute);
+router.put('/notification-mute', authMiddleware, setNotificationMute);
 
 
 

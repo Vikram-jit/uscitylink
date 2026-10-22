@@ -29,6 +29,7 @@ import chatRoutes from "./routes/staff/chatRoutes";
 import staffChatRoutes from "./routes/staff/staffChatRoutes";
 import staffGroupRoutes from "./routes/staff/groupRoutes";
 import automationRoutes from "./routes/automationRoutes";
+import appVersionRoutes from "./routes/appVersionRoutes";
 import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
 import GroupChannel from "./models/GroupChannel";
@@ -111,6 +112,7 @@ const mountApi = (base: string, auth: typeof authRoutes) => {
   app.use(`${base}/staff/groups`, staffGroupRoutes);
   app.use(`${base}/staff/private/chat`, staffChatRoutes);
   app.use(`${base}/automation`, automationRoutes);
+  app.use(`${base}/app-versions`, appVersionRoutes);
 };
 mountApi("/api/v1", authRoutes);
 mountApi("/api/v2", authRoutesV2);

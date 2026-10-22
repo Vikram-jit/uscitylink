@@ -8,6 +8,7 @@ export class AppVersions extends Model {
   public buildNumber?: string;
   public status?: string | null;
   public platform?: string;
+  public releaseNotes?: string | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -33,6 +34,9 @@ AppVersions.init(
     },
     platform:{
       type: DataTypes.STRING,
+    },
+    releaseNotes: {
+      type: DataTypes.TEXT,
     },
    
   },

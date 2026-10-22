@@ -16,6 +16,7 @@ import Otp from "../models/Otp";
 import moment from "moment";
 import { verifyOTP } from "../utils/OtpService";
 import { AppVersions } from "../models/AppVersions";
+import { recordInstalledVersion } from "../services/appInstalls";
 import Channel from "../models/Channel";
 import UserChannel from "../models/UserChannel";
 
@@ -277,6 +278,8 @@ export async function updateAppVersion(
 ): Promise<any> {
   try {
     const { version, buildNumber, platform } = req.body;
+    // After the answer is sent, so the check below sees the previously stored build as before
+    res.on("finish", () => void recordInstalledVersion(req.user?.id, version, buildNumber));
 
     const appLiveVersion = await AppVersions.findOne({
       where: {

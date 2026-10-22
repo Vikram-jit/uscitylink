@@ -13,6 +13,7 @@ import 'package:uscitylink/views/staff/view/compliance/equipment_view.dart';
 import 'package:uscitylink/views/staff/view/compliance/scale_checks_view.dart';
 import 'package:uscitylink/views/staff/view/compliance/weight_rules_view.dart';
 import 'package:uscitylink/views/staff/view/system_messages/system_messages_view.dart';
+import 'package:uscitylink/views/staff/view/settings/staff_settings_view.dart';
 
 class CustomDrawer extends StatefulWidget {
   CustomDrawer({super.key});
@@ -135,7 +136,7 @@ class _CustomDrawerState extends State<CustomDrawer>
                 _buildDrawerItem(context, Icons.gavel_rounded, 'Weight rules', () => _open(const WeightRulesView())),
                 const SizedBox(height: AppSpacing.sm),
                 _sectionLabel('App'),
-                _buildDrawerItem(context, Icons.settings_rounded, 'Settings', () => {}),
+                _buildDrawerItem(context, Icons.settings_rounded, 'Settings', () => _open(const StaffSettingsView())),
               ],
             ),
           ),

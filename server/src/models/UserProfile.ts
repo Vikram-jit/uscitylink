@@ -24,6 +24,7 @@ interface UserProfileAttributes {
   channelId?:string | null;
   buildNumber?:string | null;
   appUpdate?:string | null;
+  notifications_muted_until?: Date | null;
   role?:Role
 }
 
@@ -52,6 +53,7 @@ export class UserProfile
   public version?: string | null;
   public buildNumber?: string | null;
   public appUpdate?: string | null;
+  public notifications_muted_until?: Date | null;
   public role?: Role | undefined;
 
   public readonly createdAt!: Date;
@@ -111,6 +113,10 @@ UserProfile.init(
       type: DataTypes.ENUM('0','1'),
      
       defaultValue:'0'
+    },
+    notifications_muted_until: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     role_id: {
       type: DataTypes.UUID,

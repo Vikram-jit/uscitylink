@@ -33,6 +33,7 @@ import {
 } from "./messageHandler";
 import moment from "moment";
 import { AppVersions } from "../models/AppVersions";
+import { recordInstalledVersion } from "../services/appInstalls";
 import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import { Message } from "../models/Message";
@@ -735,6 +736,8 @@ export const initSocket = (httpServer: any) => {
           }
         } catch (error) {
           console.log(error);
+        } finally {
+          await recordInstalledVersion(socket?.user?.id, version, buildNumber);
         }
       }
     );

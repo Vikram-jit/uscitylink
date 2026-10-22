@@ -11,6 +11,7 @@ import Group from "../../models/Group";
 import moment from "moment";
 import { getSocketInstance } from "../../sockets/socket";
 import { sendNotificationToDevice } from "../../utils/fcmService";
+import { isNotificationMuted, notificationText } from "../../services/staffNotifications";
 import Role from "../../models/Role";
 import Queue from "bull";
 import GroupChannel from "../../models/GroupChannel";
@@ -67,12 +68,12 @@ groupNotificationStaffQueueApi.process(async (job)=>{
         if (!staffIds.includes(user.id)) {
           const deviceToken = user.device_token;
           
-          if (deviceToken) {
+          if (deviceToken && !isNotificationMuted(user)) {
             const isActiveChannel =   global.staffActiveChannel[user?.id]?.channelId == channelId ? "1" : "0"
             await sendNotificationToDevice(deviceToken, {
               title: `${senderProfile?.username} (${groupProfile?.name} Group)` || "",
               badge: 0,
-              body: body,
+              body: notificationText(body),
               data: {
                 channelId: channelId,
                 type: "GROUP NEW MESSAGE STAFF",
