@@ -27,6 +27,7 @@ import 'package:uscitylink/views/auth/otp_view.dart';
 import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/auth/select_option.dart';
 import 'package:uscitylink/views/update_view.dart';
+import 'package:uscitylink/services/app_update_service.dart';
 
 class LoginController extends GetxController {
   final __authService = AuthService();
@@ -269,105 +270,61 @@ class LoginController extends GetxController {
     });
   }
 
+  /// After the splash screen with a saved token: open the dashboard for the saved login's role.
+  ///
+  /// It must always leave the splash screen. It used to open the dashboard only when the version
+  /// check answered "NewVersion", so once the installed build was marked Active on the web
+  /// ("UpToDate") — or the server timed out / errored — the app sat on the loader forever.
   void checkRole() {
     __authService.getProfile().then((value) async {
-      if (value.status == true) {
-        await userPreferenceController.storeRole(value?.data?.role?.name ?? "");
+      if (value.status != true) {
+        Get.offAllNamed(AppRoutes.login);
+        return;
+      }
+      final role = value.data?.role?.name ?? '';
+      await userPreferenceController.storeRole(role);
 
-        var buildInfo = await getAppVersion();
+      // Reports the installed build (Admin → App versions). A forced update replaces the dashboard
+      // with the update screen; anything else (or no answer) carries on so start-up never hangs.
+      final update = await AppUpdateService.to.check();
+      if (update?.status == UpdateStatus.forceUpdate) {
+        await AppUpdateService.to.apply(update);
+        return;
+      }
 
-        if (buildInfo != null) {
-          AppUpdateInfo appData = AppUpdateInfo(
-              buildNumber: buildInfo.buildNumber,
-              version: buildInfo.version,
-              platform: Platform.operatingSystem);
+      try {
+        final fcmService = Get.put(FCMService());
+        final token = fcmService.fcmToken.value;
+        if (token.isNotEmpty) await fcmService.updateDeviceToken(token);
+      } catch (e) {
+        print('updateDeviceToken failed: $e');
+      }
 
-          var result = await __authService.updateAppVersion(appData);
-
-          if (result.data != "NewVersion") {
-            //Get.offAll(() => UpdateView());
-          } else {
-            if (isStaffRole(value?.data?.role?.name)) {
-              final fcmService = Get.put(FCMService());
-              String? token = fcmService.fcmToken.value;
-              if (token.isNotEmpty) {
-                await fcmService.updateDeviceToken(token);
-              }
-
-              Timer(const Duration(seconds: 1),
-                  () => Get.offAllNamed(AppRoutes.staff_dashboard));
-            } else if (value?.data?.role?.name == "security") {
-              final fcmService = Get.put(FCMService());
-              String? token = fcmService.fcmToken.value;
-              if (token.isNotEmpty) {
-                await fcmService.updateDeviceToken(token);
-              }
-
-              Timer(const Duration(seconds: 1),
-                  () => Get.offAllNamed(AppRoutes.securityDashboard));
-            } else {
-              final fcmService = Get.put(FCMService());
-              String? token = fcmService.fcmToken.value;
-              if (token.isNotEmpty) {
-                await fcmService.updateDeviceToken(token);
-              }
-
-              Timer(const Duration(seconds: 1),
-                  () => Get.offAllNamed(AppRoutes.driverDashboard));
-            }
-          }
-        } else {
-          if (isStaffRole(value?.data?.role?.name)) {
-            final fcmService = Get.put(FCMService());
-            String? token = fcmService.fcmToken.value;
-            if (token.isNotEmpty) {
-              await fcmService.updateDeviceToken(token);
-            }
-
-            Timer(const Duration(seconds: 1),
-                () => Get.offAllNamed(AppRoutes.staff_dashboard));
-          } else if (value?.data?.role?.name == "security") {
-            final fcmService = Get.put(FCMService());
-            String? token = fcmService.fcmToken.value;
-            if (token.isNotEmpty) {
-              await fcmService.updateDeviceToken(token);
-            }
-
-            Timer(const Duration(seconds: 1),
-                () => Get.offAllNamed(AppRoutes.securityDashboard));
-          } else {
-            final fcmService = Get.put(FCMService());
-            String? token = fcmService.fcmToken.value;
-            if (token.isNotEmpty) {
-              await fcmService.updateDeviceToken(token);
-            }
-
-            Timer(const Duration(seconds: 1),
-                () => Get.offAllNamed(AppRoutes.driverDashboard));
-          }
-        }
+      _openDashboardFor(role);
+      // "Update available" prompt once the dashboard is up
+      if (update?.status == UpdateStatus.updateAvailable) {
+        Timer(const Duration(seconds: 2), () => AppUpdateService.to.apply(update));
       }
     }).onError((error, stackTrace) async {
-      // print('Error: $error');
-
-      if (error.toString() == "No Internet Connection") {
-        String role = await userPreferenceController.getRole();
-        if (role == "driver") {
-          Timer(const Duration(seconds: 1),
-              () => Get.offAllNamed(AppRoutes.driverDashboard));
-        }
-        if (isStaffRole(role)) {
-          Timer(const Duration(seconds: 1),
-              () => Get.offAllNamed(AppRoutes.staff_dashboard));
-        }
-        if (role == "security") {
-          Timer(const Duration(seconds: 1),
-              () => Get.offAllNamed(AppRoutes.securityDashboard));
-        }
-      }
-      // Utils.snackBar('Error', error.toString());
-      // Utils.snackBar('Error', error.toString());
+      // Offline, timeout or server error: open with the role saved at login; the screens retry on
+      // their own. No saved role (e.g. the session expired and was logged out) → login.
+      final role = await userPreferenceController.getRole();
+      _openDashboardFor(role);
     });
+  }
+
+  void _openDashboardFor(String? role) {
+    final String route;
+    if (isStaffRole(role)) {
+      route = AppRoutes.staff_dashboard;
+    } else if (role == 'security') {
+      route = AppRoutes.securityDashboard;
+    } else if (role == 'driver') {
+      route = AppRoutes.driverDashboard;
+    } else {
+      route = AppRoutes.login;
+    }
+    Timer(const Duration(seconds: 1), () => Get.offAllNamed(route));
   }
 
   void getProfile() {

@@ -1,6 +1,7 @@
 import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:uscitylink/services/app_update_service.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
@@ -81,6 +82,9 @@ void main() async {
     statusBarColor: Colors.blue, // Set your color here
     statusBarIconBrightness: Brightness.light,
   ));
+
+  // Version check on resume (forced update screen / update available prompt)
+  Get.put(AppUpdateService(), permanent: true);
 
   runApp(const MyApp());
 }

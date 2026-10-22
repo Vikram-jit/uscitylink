@@ -9,6 +9,7 @@ export class AppVersions extends Model {
   public status?: string | null;
   public platform?: string;
   public releaseNotes?: string | null;
+  public force_update?: boolean;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -37,6 +38,11 @@ AppVersions.init(
     },
     releaseNotes: {
       type: DataTypes.TEXT,
+    },
+    force_update: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
    
   },

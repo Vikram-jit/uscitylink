@@ -10,6 +10,7 @@ export interface AppVersion {
   platform: AppPlatform;
   status: AppVersionStatus;
   releaseNotes?: string | null;
+  force_update: boolean; // users on an older build of this platform must update
   users: number; // logins whose last reported version + build match this row
   createdAt: string;
   updatedAt: string;
@@ -18,6 +19,7 @@ export interface AppVersion {
 export type AppVersionInput = Pick<AppVersion, 'version' | 'buildNumber' | 'platform' | 'status'> & {
   id?: string;
   releaseNotes?: string | null;
+  force_update?: boolean;
 };
 
 export interface InstallGroup {

@@ -11,9 +11,9 @@ import Role from "../models/Role";
 export const PLATFORMS = ["android", "ios"];
 export const STATUSES = ["pending", "active", "deprecated"];
 
-type Body = { version?: string; buildNumber?: string | number; platform?: string; status?: string; releaseNotes?: string | null };
+type Body = { version?: string; buildNumber?: string | number; platform?: string; status?: string; releaseNotes?: string | null; force_update?: boolean };
 
-function validate(body: Body): { version: string; buildNumber: number; platform: string; status: string; releaseNotes: string | null } {
+function validate(body: Body): { version: string; buildNumber: number; platform: string; status: string; releaseNotes: string | null; force_update: boolean } {
   const version = String(body.version ?? "").trim();
   const buildNumber = Number(body.buildNumber);
   const platform = String(body.platform ?? "").trim().toLowerCase();
@@ -23,7 +23,7 @@ function validate(body: Body): { version: string; buildNumber: number; platform:
   if (!PLATFORMS.includes(platform)) throw new Error("Platform must be android or ios");
   if (!STATUSES.includes(status)) throw new Error("Status must be pending, active or deprecated");
   const releaseNotes = body.releaseNotes ? String(body.releaseNotes).trim() : null;
-  return { version, buildNumber, platform, status, releaseNotes };
+  return { version, buildNumber, platform, status, releaseNotes, force_update: body.force_update === true || String(body.force_update) === "true" };
 }
 
 async function ensureUnique(v: { version: string; buildNumber: number; platform: string }, exceptId?: string) {

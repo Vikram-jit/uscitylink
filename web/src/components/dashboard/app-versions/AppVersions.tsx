@@ -14,10 +14,12 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
+  FormControlLabel,
   IconButton,
   Link,
   MenuItem,
   Stack,
+  Switch,
   Tab,
   Table,
   TableBody,
@@ -73,8 +75,8 @@ function EditDialog({ row, onClose }: { row: AppVersion | null; onClose: () => v
   const [save, { isLoading }] = useSaveAppVersionMutation();
   const [form, setForm] = React.useState<Partial<AppVersionInput>>(
     row
-      ? { id: row.id, version: row.version, buildNumber: row.buildNumber, platform: row.platform, status: row.status, releaseNotes: row.releaseNotes }
-      : { platform: 'android', status: 'pending', version: '', releaseNotes: '' }
+      ? { id: row.id, version: row.version, buildNumber: row.buildNumber, platform: row.platform, status: row.status, releaseNotes: row.releaseNotes, force_update: row.force_update }
+      : { platform: 'android', status: 'pending', version: '', releaseNotes: '', force_update: false }
   );
   const set = (patch: Partial<AppVersionInput>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -152,6 +154,17 @@ function EditDialog({ row, onClose }: { row: AppVersion | null; onClose: () => v
             size="small"
             value={form.releaseNotes ?? ''}
           />
+          <Box sx={{ border: 1, borderColor: form.force_update ? 'error.main' : 'divider', borderRadius: 1, px: 1.5, py: 1 }}>
+            <FormControlLabel
+              control={<Switch checked={!!form.force_update} color="error" onChange={(e) => set({ force_update: e.target.checked })} />}
+              label={<Typography variant="subtitle2">Force update</Typography>}
+            />
+            <Typography color="text.secondary" display="block" variant="caption">
+              While this build is Active, everyone on an older {form.platform === 'ios' ? 'iOS' : 'Android'} build sees a full-screen
+              &ldquo;Update required&rdquo; page and can&apos;t use the app until they update. Without it they get a dismissible
+              &ldquo;Update available&rdquo; prompt. Only turn it on once the build is live in the store. Works for app 1.3.22 and newer.
+            </Typography>
+          </Box>
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -215,6 +228,11 @@ export function AppVersions(): React.JSX.Element {
         The app sends its version, build number and platform when it opens. A user is up to date only if that exact build is{' '}
         <b>Active</b> here, so keep the build currently in the store active and add the new one as Active when it goes live. Older builds
         can stay active during the rollout, then mark them Deprecated.
+      </Alert>
+      <Alert severity="warning">
+        Builds <b>older than 1.3.22</b> get stuck on the loader after the splash screen when their exact build is marked Active (an
+        app bug fixed in 1.3.22). Leave those builds Pending or Deprecated: it only changes the &ldquo;Logins needing an update&rdquo;
+        count, users are not blocked. Mark 1.3.22 and newer Active as usual.
       </Alert>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
@@ -286,7 +304,14 @@ export function AppVersions(): React.JSX.Element {
                       <span>{PLATFORM[r.platform]?.label || r.platform || '—'}</span>
                     </Stack>
                   </TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600 }}>{fullVersion(r)}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {fullVersion(r)}
+                    {r.force_update ? (
+                      <Tooltip title="Users on older builds must update">
+                        <Chip color="error" label="Force" size="small" sx={{ ml: 1, fontFamily: 'inherit' }} variant="outlined" />
+                      </Tooltip>
+                    ) : null}
+                  </TableCell>
                   <TableCell>
                     <TextField
                       onChange={(e) => changeStatus(r, e.target.value as AppVersionStatus)}
