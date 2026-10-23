@@ -162,10 +162,13 @@ class _EquipmentFormViewState extends State<EquipmentFormView> {
   late final TextEditingController _notes = TextEditingController(text: widget.profile?.notes ?? '');
   late final Map<String, TextEditingController> _fields = {
     for (final f in widget.kind == 'tractor' ? tractorFields : trailerFields)
-      f.key: TextEditingController(text: widget.profile?.values[f.key]?.toString() ?? ''),
+      f.key: TextEditingController(
+          text: (_fixed(f.key) ?? widget.profile?.values[f.key])?.toString() ?? ''),
   };
 
   List<EquipmentField> get _defs => widget.kind == 'tractor' ? tractorFields : trailerFields;
+
+  num? _fixed(String key) => widget.kind == 'trailer' ? fixedTrailerValues[key] : null;
 
   @override
   void dispose() {
@@ -291,6 +294,7 @@ class _EquipmentFormViewState extends State<EquipmentFormView> {
         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
         child: TextField(
           controller: _fields[f.key],
+          enabled: _fixed(f.key) == null,
           keyboardType: TextInputType.numberWithOptions(decimal: !f.integer),
           decoration: _field(f.label, help: f.help),
         ),

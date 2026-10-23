@@ -278,9 +278,12 @@ const tractorFields = [
   EquipmentField('gvwr_lb', 'GVWR (lb)', integer: true),
 ];
 
+/// Set by the server for every trailer; shown locked in the form.
+const fixedTrailerValues = <String, num>{'length_ft': 53};
+
 const trailerFields = [
   EquipmentField('axle_count', 'Rear axles', integer: true),
-  EquipmentField('length_ft', 'Trailer length (ft)'),
+  EquipmentField('length_ft', 'Trailer length (ft)', help: 'Fixed: every trailer is 53 ft'),
   EquipmentField('kpra_ft', 'Kingpin → rearmost axle center (ft)', help: 'At the current tandem position'),
   EquipmentField('trailer_spread_ft', 'Trailer axle spread (ft)'),
   EquipmentField('hole_spacing_in', 'Hole spacing (in)'),

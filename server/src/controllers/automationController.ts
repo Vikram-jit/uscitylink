@@ -974,6 +974,9 @@ const EQUIPMENT_FIELDS: Record<string, "num" | "int"> = {
   lb_per_hole: "num",
 };
 
+// Every trailer in the fleet is 53 ft: fixed here so add, edit, CSV import and yard sync all agree
+export const TRAILER_LENGTH_FT = 53;
+
 const equipmentData = (input: any) => {
   const kind = String(input.kind || "").toLowerCase();
   if (!["tractor", "trailer"].includes(kind)) throw new Error("Kind must be tractor or trailer");
@@ -988,6 +991,7 @@ const equipmentData = (input: any) => {
     if (!Number.isFinite(v) || v < 0) throw new Error(`${unitNumber}: ${key} must be a positive number`);
     data[key] = type === "int" ? Math.round(v) : v;
   });
+  if (kind === "trailer") data.length_ft = TRAILER_LENGTH_FT;
   return data;
 };
 
@@ -1050,7 +1054,13 @@ export const syncEquipmentFromYard = async (req: Request, res: Response): Promis
       for (const unit_number of unique) {
         const state = known.get(`${kind}:${unit_number}`);
         if (state === undefined) {
-          rows.push({ kind, unit_number, active: true, updated_by: req.user?.id || null });
+          rows.push({
+            kind,
+            unit_number,
+            active: true,
+            updated_by: req.user?.id || null,
+            ...(kind === "trailer" ? { length_ft: TRAILER_LENGTH_FT } : {}),
+          });
           s.added++;
         } else if (state) s.alreadyThere++;
         else s.removedByStaff++;
