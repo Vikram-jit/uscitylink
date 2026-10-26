@@ -974,8 +974,14 @@ const EQUIPMENT_FIELDS: Record<string, "num" | "int"> = {
   lb_per_hole: "num",
 };
 
-// Every trailer in the fleet is 53 ft: fixed here so add, edit, CSV import and yard sync all agree
+// Standard trailer length: new trailers (add, CSV import, yard sync) start at 53 ft; staff can change it
 export const TRAILER_LENGTH_FT = 53;
+
+// Only when the profile is created; an edit or re-import keeps whatever length was entered
+const withTrailerDefaults = (data: any) =>
+  data.kind === "trailer" && (data.length_ft === undefined || data.length_ft === null)
+    ? { ...data, length_ft: TRAILER_LENGTH_FT }
+    : data;
 
 const equipmentData = (input: any) => {
   const kind = String(input.kind || "").toLowerCase();
@@ -991,7 +997,6 @@ const equipmentData = (input: any) => {
     if (!Number.isFinite(v) || v < 0) throw new Error(`${unitNumber}: ${key} must be a positive number`);
     data[key] = type === "int" ? Math.round(v) : v;
   });
-  if (kind === "trailer") data.length_ft = TRAILER_LENGTH_FT;
   return data;
 };
 
@@ -1012,7 +1017,7 @@ export const saveEquipment = async (req: Request, res: Response): Promise<any> =
     const existing = req.params.id
       ? await EquipmentProfile.findByPk(req.params.id)
       : await EquipmentProfile.findOne({ where: { kind: data.kind, unit_number: data.unit_number } });
-    const profile = existing ? await existing.update(data) : await EquipmentProfile.create(data);
+    const profile = existing ? await existing.update(data) : await EquipmentProfile.create(withTrailerDefaults(data));
     const rechecked = await recheckOpenChecks({ [data.kind === "trailer" ? "trailer_unit" : "tractor_unit"]: data.unit_number });
     return res.status(200).json({ status: true, message: `Saved ${profile.kind} ${profile.unit_number}${rechecked ? ` — re-checked ${rechecked} open ticket(s)` : ""}`, data: profile });
   } catch (err) {
@@ -1109,7 +1114,7 @@ export const importEquipment = async (req: Request, res: Response): Promise<any>
       const existing = await EquipmentProfile.findOne({ where: { kind: r.data.kind, unit_number: r.data.unit_number } });
       const data = { ...r.data, active: true, updated_by: req.user?.id };
       if (existing) await existing.update(data);
-      else await EquipmentProfile.create(data);
+      else await EquipmentProfile.create(withTrailerDefaults(data));
       saved++;
     }
     return res.status(200).json({ status: true, message: `Imported ${saved} profile(s)` });

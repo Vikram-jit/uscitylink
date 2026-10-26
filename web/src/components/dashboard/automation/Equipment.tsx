@@ -43,9 +43,10 @@ import type { EquipmentProfile } from '@/redux/models/AutomationModel';
 type Kind = 'tractor' | 'trailer';
 type Field = { key: keyof EquipmentProfile; label: string; help?: string };
 
-// Set by the server for every trailer (add, edit, import and sync); shown locked in the form
+// New trailers start at the standard length (the server does the same for import and yard sync).
+// It's a default, not a measurement, so it doesn't count when deciding whether a unit needs details.
 const TRAILER_LENGTH_FT = 53;
-const FIXED: Partial<Record<keyof EquipmentProfile, number>> = { length_ft: TRAILER_LENGTH_FT };
+const DEFAULTED: (keyof EquipmentProfile)[] = ['length_ft'];
 
 const FIELDS: Record<Kind, { title: string; fields: Field[] }[]> = {
   tractor: [
@@ -72,7 +73,7 @@ const FIELDS: Record<Kind, { title: string; fields: Field[] }[]> = {
       title: 'Axle layout',
       fields: [
         { key: 'axle_count', label: 'Rear axles' },
-        { key: 'length_ft', label: 'Trailer length (ft)', help: 'Fixed: every trailer is 53 ft' },
+        { key: 'length_ft', label: 'Trailer length (ft)', help: 'Standard is 53 ft' },
         { key: 'kpra_ft', label: 'Kingpin → center of rearmost axle (ft)', help: 'At the current tandem position, not to the bumper' },
         { key: 'trailer_spread_ft', label: 'Trailer axle spread (ft)' },
       ],
@@ -96,7 +97,9 @@ trailer,87565,,,,,,40,4.08,2,6,8,8,34000`;
 
 function EditDialog({ profile, kind, onClose }: { profile: Partial<EquipmentProfile> | null; kind: Kind; onClose: () => void }): React.JSX.Element {
   const [save, { isLoading }] = useSaveEquipmentMutation();
-  const [form, setForm] = React.useState<Partial<EquipmentProfile>>(profile || { kind });
+  const [form, setForm] = React.useState<Partial<EquipmentProfile>>(
+    profile || { kind, ...(kind === 'trailer' ? { length_ft: TRAILER_LENGTH_FT } : {}) }
+  );
   const submit = async () => {
     try {
       const res = await save({ ...form, kind }).unwrap();
@@ -127,14 +130,13 @@ function EditDialog({ profile, kind, onClose }: { profile: Partial<EquipmentProf
                 {section.fields.map((f) => (
                   <Grid item key={f.key} md={4} sm={6} xs={12}>
                     <TextField
-                      disabled={kind === 'trailer' && FIXED[f.key] !== undefined}
                       fullWidth
                       helperText={f.help}
                       label={f.label}
                       onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value === '' ? null : Number(e.target.value) }))}
                       size="small"
                       type="number"
-                      value={kind === 'trailer' && FIXED[f.key] !== undefined ? FIXED[f.key] : ((form[f.key] as any) ?? '')}
+                      value={(form[f.key] as any) ?? ''}
                     />
                   </Grid>
                 ))}
@@ -191,7 +193,7 @@ function ImportDialog({ onClose }: { onClose: () => void }): React.JSX.Element {
 // Added by "Sync from yard" (or by hand) with no measurements yet
 const needsDetails = (p: EquipmentProfile): boolean =>
   FIELDS[p.kind as Kind].every((section) =>
-    section.fields.every((f) => FIXED[f.key] !== undefined || p[f.key] === null || p[f.key] === undefined)
+    section.fields.every((f) => DEFAULTED.includes(f.key) || p[f.key] === null || p[f.key] === undefined)
   );
 
 const show = (v?: number | null, suffix = '') => (v === null || v === undefined ? '—' : `${Number(v).toLocaleString('en-US')}${suffix}`);

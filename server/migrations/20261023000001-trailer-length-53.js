@@ -1,9 +1,9 @@
 'use strict';
 
-// All trailers are 53 ft; the app and web now show the length as fixed
+// Trailers start at the standard 53 ft; staff can change a trailer's length afterwards
 module.exports = {
   up: async (queryInterface) => {
-    await queryInterface.sequelize.query("UPDATE equipment_profiles SET length_ft = 53 WHERE kind = 'trailer'");
+    await queryInterface.sequelize.query("UPDATE equipment_profiles SET length_ft = 53 WHERE kind = 'trailer' AND length_ft IS NULL");
   },
 
   down: async () => {
