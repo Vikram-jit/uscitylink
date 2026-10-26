@@ -4,7 +4,10 @@ dotenv.config();
 export const redisHost =
   process.env.DB_SERVER === 'local' ? '127.0.0.1' : (process.env.REDIS_HOST || '127.0.0.1');
 export const redisPort = Number(process.env.REDIS_PORT) || 6379;
-export const redisPassword = process.env.REDIS_PASSWORD;
+// Redis on the servers has no password set (AUTH would fail with "called without any password
+// configured"), so none is sent even if REDIS_PASSWORD is still in .env or pm2's environment.
+// To turn it back on: set requirepass in redis.conf and use process.env.REDIS_PASSWORD here again.
+export const redisPassword: string | undefined = undefined;
 
 const redisUrl = redisPassword
     ? `redis://:${encodeURIComponent(redisPassword)}@${redisHost}:${redisPort}`
