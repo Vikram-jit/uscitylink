@@ -40,7 +40,26 @@ export interface CallStatsSummary {
 
 const MAX_RESTARTS = 6;
 
+/** Why the microphone could not be opened, in words a dispatcher can act on. */
+export function microphoneErrorText(err: unknown, action: string): string {
+  if (typeof window !== 'undefined' && (!window.isSecureContext || !navigator.mediaDevices)) {
+    return `Calls need a secure page: open this site with https:// (the browser blocks the microphone on http://) to ${action}`;
+  }
+  const name = (err as { name?: string })?.name;
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return `Microphone is blocked. Click the lock icon next to the address, set Microphone to Allow, reload the page, then try again to ${action}`;
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return `No microphone found. Plug one in or choose another in the call settings to ${action}`;
+  }
+  if (name === 'NotReadableError') {
+    return `The microphone is in use by another app. Close it and try again to ${action}`;
+  }
+  return `Could not open the microphone to ${action}`;
+}
+
 export async function getMicrophone(deviceId?: string): Promise<MediaStream> {
+  if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('Insecure context', 'SecurityError');
   return navigator.mediaDevices.getUserMedia({
     audio: {
       deviceId: deviceId ? { exact: deviceId } : undefined,

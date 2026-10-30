@@ -8,7 +8,7 @@ import { useSocketEvent } from '@/hooks/use-socket-event';
 import { useSaveCallQualityMutation } from '@/redux/CallApiSlice';
 
 import { playEndTone, playRingback, playRingtone, stopTones } from './sounds';
-import { getMicrophone, SignalData, WebRtcEngine } from './webrtcEngine';
+import { getMicrophone, microphoneErrorText, SignalData, WebRtcEngine } from './webrtcEngine';
 
 // Voice calls on the web dashboard. One call at a time; the server (server/src/calls) decides who
 // rings and when a call ends, this provider runs the WebRTC side and the UI state.
@@ -250,8 +250,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       let mic: MediaStream;
       try {
         mic = await getMicrophone(micId || undefined);
-      } catch {
-        toast.error('Allow microphone access in the browser to make calls');
+      } catch (err) {
+        toast.error(microphoneErrorText(err, 'make calls'));
         return;
       }
       void refreshMicrophones();
@@ -285,8 +285,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     let mic: MediaStream;
     try {
       mic = await getMicrophone(micId || undefined);
-    } catch {
-      toast.error('Allow microphone access in the browser to answer calls');
+    } catch (err) {
+      toast.error(microphoneErrorText(err, 'answer calls'));
       socket?.emit('call:decline', { callId });
       setState(IDLE);
       return;
