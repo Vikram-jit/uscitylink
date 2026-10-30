@@ -10,7 +10,7 @@ import GroupUser from "../models/GroupUser";
 import Group from "../models/Group";
 import GroupChannel from "../models/GroupChannel";
 import { secondarySequelize } from "../sequelize";
-import { Op, QueryTypes, Sequelize } from "sequelize";
+import { Op, QueryTypes, Sequelize, literal } from "sequelize";
 import { comparePasswords, hashPassword } from "../utils/passwordCrypto";
 import { generateNumericPassword } from "../utils/OtpService";
 import { sendNewPasswordEmail } from "../utils/sendEmail";
@@ -1811,6 +1811,11 @@ export async function getUnrepliedMessages(channelId: string): Promise<any[]> {
         type: {
           [Op.ne]: "group",
         },
+        // A call dispatch answered isn't waiting for a reply; a missed one still is
+        [Op.or]: [
+          { call_id: null },
+          { call_id: { [Op.in]: literal("(SELECT id FROM calls WHERE status <> 'completed')") } },
+        ],
       },
       include: {
         model: UserProfile,

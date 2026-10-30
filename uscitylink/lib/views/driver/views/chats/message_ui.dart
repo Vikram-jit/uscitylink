@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:uscitylink/services/call/call_service.dart';
+import 'package:uscitylink/views/call/call_log_bubble.dart';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
@@ -305,6 +307,20 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Voice call to dispatch (rings the staff working this channel)
+                    Obx(() => CallService.to.enabled.value
+                        ? Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: InkWell(
+                              key: const Key('callDispatchButton'),
+                              onTap: () => CallService.to.startCall(
+                                  channelId: messageController.channelId.value,
+                                  name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
+                                  subtitle: 'Dispatch'),
+                              child: const Icon(Icons.call_rounded, color: Colors.white),
+                            ),
+                          )
+                        : const SizedBox.shrink()),
                     InkWell(
                       onTap: () {
                         imagePickerController.pickImageFromCameraMultiple(
@@ -796,6 +812,17 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       MessageController messageController,
       FocusNode _focusNode,
       SocketService socketService) {
+    // Call log ("Voice call · 3:42" / "Missed voice call"): tap to call dispatch back
+    if (message.callId != null) {
+      return CallLogBubble(
+        message: message,
+        viewerIsDriver: true,
+        onCallBack: () => CallService.to.startCall(
+            channelId: messageController.channelId.value,
+            name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
+            subtitle: 'Dispatch'),
+      );
+    }
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Slidable(

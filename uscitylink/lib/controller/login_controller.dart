@@ -28,6 +28,7 @@ import 'package:uscitylink/views/auth/password_view.dart';
 import 'package:uscitylink/views/auth/select_option.dart';
 import 'package:uscitylink/views/update_view.dart';
 import 'package:uscitylink/services/app_update_service.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 class LoginController extends GetxController {
   final __authService = AuthService();
@@ -170,6 +171,8 @@ class LoginController extends GetxController {
     await userPreferenceController.storeToken(data);
     final role = data.profiles?.role?.name ?? chosenRole;
     await userPreferenceController.storeRole(role);
+    // Voice calls for this login (socket listeners, CallKit, VoIP token)
+    CallService.to.registerVoipToken();
     Utils.toastMessage("Login Successfully");
     if (!Get.isRegistered<MessageController>()) {
       Get.put(MessageController());
@@ -359,6 +362,13 @@ class LoginController extends GetxController {
         const Center(child: CircularProgressIndicator()),
         barrierDismissible: false,
       );
+
+      // 0. Stop ringing this phone for this account (while the token is still valid)
+      try {
+        if (Get.isRegistered<CallService>()) await Get.find<CallService>().onLogout();
+      } catch (e) {
+        print('call logout: $e');
+      }
 
       // 1. Socket logout
       try {

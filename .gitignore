@@ -8,3 +8,6 @@ server/src/config/firebase.json
 server/config/firebase.json
 server/config/config.json
 
+
+# Apple APNs auth keys (voice-call VoIP push) — secret
+server/config/*.p8

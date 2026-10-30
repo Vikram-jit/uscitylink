@@ -35,6 +35,7 @@ export class Message extends Model {
   public completedBy!: string | null;
   public note?: string | null;
   public is_automated?: boolean;
+  public call_id?: string | null; // set on the call-log bubble (models/Call.ts)
   public flow_run_id?: string | null;
 
   public getSender!: BelongsToGetAssociationMixin<UserProfile>;
@@ -156,6 +157,10 @@ Message.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    call_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
     flow_run_id: {
       type: DataTypes.UUID,

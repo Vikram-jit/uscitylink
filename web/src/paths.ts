@@ -21,6 +21,7 @@ export const paths = {
     system_messages: '/dashboard/system-messages',
     automation: '/dashboard/automation',
     app_versions: '/dashboard/app-versions',
+    calls: '/dashboard/calls',
   },
   user:{
     "add":'/dashboard/users/add'

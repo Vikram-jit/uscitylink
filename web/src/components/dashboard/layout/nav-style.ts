@@ -17,7 +17,7 @@ export const navCssVars = {
 export const navSurface = 'var(--mui-palette-background-paper)';
 
 const SECTIONS: { label: string; keys: string[] }[] = [
-  { label: 'Inbox', keys: ['overview', 'messages', 'truckchat', 'groups', 'staff chat', 'system_messages', 'boardcast_messages'] },
+  { label: 'Inbox', keys: ['overview', 'messages', 'truckchat', 'groups', 'staff chat', 'calls', 'system_messages', 'boardcast_messages'] },
   { label: 'Fleet', keys: ['truckgroup', 'driver', 'channels', 'channel Members'] },
   { label: 'Compliance', keys: ['scale_checks', 'equipment'] },
   { label: 'Admin', keys: ['templates', 'user', 'training', 'automation', 'app_versions'] },

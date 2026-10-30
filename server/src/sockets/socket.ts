@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import { verifyToken } from "../utils/jwt";
 import { UserProfile } from "../models/UserProfile";
 import SocketEvents from "./socketEvents";
+import { callsOnDisconnect, registerCallHandlers } from "../calls/callSocket";
 import Role from "../models/Role";
 import {
   staffActiveChannelUpdate,
@@ -351,6 +352,9 @@ export const initSocket = (httpServer: any) => {
 
   io.on("connection", (socket: CustomSocket) => {
     console.log("Connection" + socket.id);
+
+    // Voice calls (server/src/calls): signalling + resume after a reconnect
+    registerCallHandlers(socket);
 
     socket.on("group_user_add", async ({ group_id, channel_id }) => {
       const user_id = socket?.user?.id!;
@@ -1049,6 +1053,9 @@ export const initSocket = (httpServer: any) => {
         console.log(`stale socket disconnect ignored for ${userId}`);
         return;
       }
+
+      // Keeps an ongoing call alive for a short grace period while the network comes back
+      callsOnDisconnect(userId);
 
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];

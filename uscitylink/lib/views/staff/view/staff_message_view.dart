@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:uscitylink/services/call/call_service.dart';
+import 'package:uscitylink/views/call/call_log_bubble.dart';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
@@ -226,6 +228,20 @@ class _StaffMessageViewState extends State<StaffMessageView>
           ),
         ),
         actions: [
+          // Voice call to this driver
+          Obx(() => CallService.to.enabled.value
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: InkWell(
+                    key: const Key('callDriverButton'),
+                    onTap: () => CallService.to.startCall(
+                        driverId: _staffchatController.userId.value,
+                        name: _staffchatController.userName.value,
+                        subtitle: 'Driver'),
+                    child: const Icon(Icons.call_rounded, color: Colors.white),
+                  ),
+                )
+              : const SizedBox.shrink()),
           InkWell(
             onTap: () {
               setState(() {
@@ -768,6 +784,15 @@ class _StaffMessageViewState extends State<StaffMessageView>
       String trucknumbers,
       StaffchatController staffchatController,
       FocusNode focusNode) {
+    // Call log: tap to call the driver back
+    if (message.callId != null) {
+      return CallLogBubble(
+        message: message,
+        viewerIsDriver: false,
+        onCallBack: () => CallService.to.startCall(
+            driverId: staffchatController.userId.value, name: staffchatController.userName.value, subtitle: 'Driver'),
+      );
+    }
     bool hasImageUrl = message.url != null && message.url!.isNotEmpty;
 
     return Align(

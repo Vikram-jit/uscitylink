@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:uscitylink/services/call/call_service.dart';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -70,6 +71,10 @@ class FCMService extends GetxController {
       if (payload.isNotEmpty) {
         try {
           var decodedPayload = jsonDecode(payload);
+          if (decodedPayload is Map && CallService.isCallPush(decodedPayload)) {
+            CallService.to.openFromNotification(Map<String, dynamic>.from(decodedPayload));
+            return;
+          }
 
           if (decodedPayload['type'] == "GROUP MESSAGE") {
             if (AppRoutes.driverGroupMessage.isNotEmpty) {
@@ -261,6 +266,12 @@ class FCMService extends GetxController {
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print('Received a message in the foreground:');
+      // Voice calls ring through the call service (native call screen), not a notification
+      final type = '${message.data['type'] ?? ''}';
+      if (type == 'CALL_INCOMING' || type == 'CALL_ENDED') {
+        await CallService.to.onPush(Map<String, dynamic>.from(message.data));
+        return;
+      }
       if (Get.isRegistered<DashboardController>()) {
         Get.find<DashboardController>().getDashboard();
         Get.find<DashboardController>().getStaffDashboard();
@@ -278,6 +289,11 @@ class FCMService extends GetxController {
     //App IN BACKGROUND
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       var decodedPayload = message.data;
+      // Call notifications (incoming / missed) open the call screen, never a chat
+      if (CallService.isCallPush(decodedPayload)) {
+        CallService.to.openFromNotification(Map<String, dynamic>.from(decodedPayload));
+        return;
+      }
 
       if (decodedPayload['type'] == "GROUP MESSAGE") {
         if (AppRoutes.driverGroupMessage.isNotEmpty) {
@@ -430,6 +446,10 @@ class FCMService extends GetxController {
         socketService.connectSocket();
         // Handle the notification and navigate to the desired screen
         var data = message.data;
+        if (CallService.isCallPush(data)) {
+          CallService.to.openFromNotification(Map<String, dynamic>.from(data));
+          return;
+        }
 
         if (data['type'] == "GROUP MESSAGE") {
           Utils.showLoader();

@@ -9,6 +9,8 @@ import { SocketProvider } from '@/lib/socketProvider';
 import NotificationGuard from '@/components/auth/notificationguard';
 import MessageDialog from '@/components/MessageDialog';
 import { ScrollLockReset } from '@/components/dashboard/layout/scroll-lock-reset';
+import { CallProvider } from '@/calls/CallProvider';
+import { CallOverlay } from '@/calls/CallOverlay';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,6 +33,8 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         }}
       />
      <SocketProvider>
+      {/* Voice calls: state + incoming card + floating call bar on every dashboard page */}
+      <CallProvider>
        <Box
         sx={{
           bgcolor: 'var(--mui-palette-background-default)',
@@ -48,6 +52,8 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
       </Box>
       <ScrollLockReset />
       <MessageDialog/>
+      <CallOverlay />
+      </CallProvider>
       </SocketProvider>
       {/* </NotificationGuard> */}
     </AuthGuard>

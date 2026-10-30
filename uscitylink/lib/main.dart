@@ -2,6 +2,9 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:uscitylink/services/app_update_service.dart';
+import 'package:uscitylink/services/call/call_kit.dart';
+import 'package:uscitylink/services/call/call_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
@@ -56,12 +59,17 @@ void main() async {
     ..registerAdapter(VehicleGpsModelAdapter());
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Rings for voice calls while the app is closed (Android FCM data; other messages are untouched)
+  FirebaseMessaging.onBackgroundMessage(callFirebaseBackgroundHandler);
 
   final socketService = Get.put(SocketService());
 
   String? accessToken = await UserPreferenceController().getToken();
 
   socketService.connectSocket();
+
+  // Voice calls: socket/push/CallKit wiring (after the socket service exists)
+  if (accessToken != null && accessToken.isNotEmpty) Get.put(CallService(), permanent: true);
 
   // Explicitly update the FCM token after login
   // String? token = fcmService.fcmToken.value;

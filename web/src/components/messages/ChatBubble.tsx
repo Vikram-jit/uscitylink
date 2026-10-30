@@ -19,6 +19,7 @@ import MediaComponent from './MediaComment';
 import { chat } from '@/styles/theme/chat-tokens';
 import { DocumentChip } from '../dashboard/automation/DocumentChip';
 import { formatUtcTime } from './utils';
+import { CallBubble } from '@/calls/CallBubble';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -61,6 +62,14 @@ export default function ChatBubble(props: ChatBubbleProps) {
     setAnchorEl(null);
   };
   const open = Boolean(anchorEl);
+  // Call log ("Voice call · 3:42", "Missed voice call"), see server/src/calls/callLog.ts
+  if ((props as { call_id?: string | null }).call_id) {
+    return (
+      <Box sx={{ maxWidth: '60%', minWidth: 0 }}>
+        <CallBubble body={body} sent={messageDirection === 'S'} time={messageTimestampUtc as any} />
+      </Box>
+    );
+  }
   return (
     <Box sx={{ maxWidth: '60%', minWidth: 0, position: 'relative' }}>
       <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', mb: 0.25 }}>

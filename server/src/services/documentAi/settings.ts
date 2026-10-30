@@ -11,6 +11,7 @@ export const PRECHECK_MODEL = process.env.AI_PRECHECK_MODEL || "claude-haiku-5-5
 const KEY_AI_MODEL = "ai_model";
 const KEY_PRECHECK_ENABLED = "precheck_enabled";
 const KEY_SCALE_AGENT = "scale_agent_enabled";
+const KEY_CALLS = "calls_enabled";
 const KEY_SCALE_RELEASE_ROLE = "scale_release_role";
 const KEY_SCALE_WEBHOOK = "scale_webhook_url";
 const CACHE_MS = 30_000;
@@ -116,3 +117,14 @@ export const setScalePolicy = async (input: Partial<ScalePolicy>, userId?: strin
 
 // Haiku models do not offer the server-side refusal fallback
 export const supportsFallback = (model: string) => !/haiku/i.test(model);
+
+// Voice calls (server/src/calls): on by default; admins can switch calling off for everyone
+export const isCallsEnabled = async (): Promise<boolean> => {
+  const row = await readSetting(KEY_CALLS);
+  return row?.value ? row.value === "true" : true;
+};
+
+export const setCallsEnabled = async (enabled: boolean, userId?: string | null) => {
+  await writeSetting(KEY_CALLS, String(enabled), userId);
+  return enabled;
+};

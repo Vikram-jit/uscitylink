@@ -38,7 +38,7 @@
 <string>This app requires access to your camera to allow you to take photos or record videos to send in your chat conversations.</string>
 
 <key>NSMicrophoneUsageDescription</key>
-<string>This app requires access to your microphone to allow you to record audio or videos to send in your chat conversations.</string>
+<string>USCityLink uses the microphone for voice calls with dispatch and to record audio or videos for your chat conversations.</string>
 
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need access to your photo library to save your images and videos.</string>
@@ -47,10 +47,33 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<string>voip</string>
+		<string>audio</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

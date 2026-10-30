@@ -30,5 +30,6 @@ export interface MessageModel {
   r_message:MessageModel
   url_upload_type:string,
   is_automated?: boolean,
+  call_id?: string | null, // call-log bubble (server/src/calls/callLog.ts)
   private_chat_id:string|null,driverPin:string|null
 }

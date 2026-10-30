@@ -25,6 +25,7 @@ interface UserProfileAttributes {
   buildNumber?:string | null;
   appUpdate?:string | null;
   notifications_muted_until?: Date | null;
+  voip_token?: string | null;
   role?:Role
 }
 
@@ -54,6 +55,7 @@ export class UserProfile
   public buildNumber?: string | null;
   public appUpdate?: string | null;
   public notifications_muted_until?: Date | null;
+  public voip_token?: string | null; // iOS PushKit token for incoming calls
   public role?: Role | undefined;
 
   public readonly createdAt!: Date;
@@ -116,6 +118,10 @@ UserProfile.init(
     },
     notifications_muted_until: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    voip_token: {
+      type: DataTypes.STRING(255),
       allowNull: true,
     },
     role_id: {

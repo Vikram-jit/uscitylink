@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   flutter_doc_scanner
   flutter_sound
+  flutter_webrtc
   gal
   geolocator_windows
   permission_handler_windows

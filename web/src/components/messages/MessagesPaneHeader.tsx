@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import { CallButton } from '@/calls/CallButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CircleIcon from '@mui/icons-material/Circle';
@@ -111,6 +112,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
         </Box>
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
+        <CallButton driver={sender} />
 
         <Button
           onClick={()=>setMediaPanel((prev) => !prev)}

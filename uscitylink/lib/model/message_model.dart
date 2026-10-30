@@ -25,6 +25,8 @@ class MessageModel {
   String? url_upload_type;
   String? temp_id;
   bool? isAutomated;
+  // Set on the call-log bubble (server/src/calls/callLog.ts). JSON only, not in the Hive cache.
+  String? callId;
   MessageModel? r_message;
 
   MessageModel(
@@ -51,7 +53,8 @@ class MessageModel {
       this.staffPin,
       this.url_upload_type,
       this.temp_id,
-      this.isAutomated});
+      this.isAutomated,
+      this.callId});
 
   MessageModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -75,6 +78,7 @@ class MessageModel {
     staffPin = json['staffPin'];
     driverPin = json['driverPin'];
     isAutomated = json['is_automated'] == true || json['is_automated'] == 1;
+    callId = json['call_id'];
     r_message = json['r_message'] != null
         ? MessageModel.fromJson(json['r_message'])
         : null;
@@ -106,6 +110,7 @@ class MessageModel {
     data['driverPin'] = driverPin;
     data['staffPin'] = staffPin;
     data['is_automated'] = isAutomated;
+    data['call_id'] = callId;
     if (sender != null) {
       data['sender'] = sender?.toJson();
     }
