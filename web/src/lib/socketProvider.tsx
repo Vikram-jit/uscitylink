@@ -6,6 +6,7 @@ import { scheduleTagRefresh } from '@/lib/badge-refresh';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
+import { socketUrl } from '@/lib/serverUrl';
 
 type SocketContextType = {
   socket: any | null;
@@ -49,7 +50,7 @@ export const SocketProvider = ({
   const dispatch = useDispatch();
   useEffect(() => {
     let hasConnectedBefore = false;
-    const socketServer = io(process.env.SOCKET_URL, {
+    const socketServer = io(socketUrl(), {
       transports: ['websocket'],
       query: { token: token },
       reconnection: true, // Ensure reconnection is enabled

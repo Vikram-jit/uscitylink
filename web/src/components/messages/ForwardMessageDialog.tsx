@@ -36,6 +36,7 @@ import useDebounce from '@/hooks/useDebounce';
 
 import LinkifyText from '../LinkifyText';
 import MediaComponent from './MediaComment';
+import { mediaServerUrl } from '@/lib/serverUrl';
 
 interface ForwardMessageDialogProps {
   open: boolean;
@@ -169,8 +170,8 @@ const ForwardMessageDialog: React.FC<ForwardMessageDialogProps> = ({ open, onClo
                     height={20}
                     messageDirection={message.messageDirection}
                     type={'server'}
-                    thumbnail={`http://52.9.12.189:4300/${message.url}`}
-                    url={`http://52.9.12.189:4300/${message.url}`}
+                    thumbnail={`${mediaServerUrl()}/${message.url}`}
+                    url={`${mediaServerUrl()}/${message.url}`}
                     fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${message.url}`}
                     name={message.url ? message.url : ' '}
                   />

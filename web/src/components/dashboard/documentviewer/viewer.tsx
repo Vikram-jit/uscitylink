@@ -12,6 +12,7 @@ import Image from 'next/image';
 import ReactPlayer from 'react-player';
 
 import DropdownButton from './dropdown_button';
+import { socketUrl } from '@/lib/serverUrl';
 
 const options = {
   cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
@@ -161,7 +162,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
               controls={true}
               url={
                 uploadType === 'not-upload' || uploadType === 'local'
-                  ? `${process.env.SOCKET_URL}/uscitylink/${key}`
+                  ? `${socketUrl()}/uscitylink/${key}`
                   : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`
               }
               width={'100%'}
@@ -227,7 +228,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
                   <Image
                     src={
                       uploadType === 'not-upload' || uploadType === 'local'
-                        ? `${process.env.SOCKET_URL}/uscitylink/${key}`
+                        ? `${socketUrl()}/uscitylink/${key}`
                         : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`
                     }
                     alt="image"

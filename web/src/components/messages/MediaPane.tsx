@@ -25,6 +25,7 @@ import utc from 'dayjs/plugin/utc';
 
 import DocumentDialog from '../DocumentDialog';
 import MediaComponent from './MediaComment';
+import { socketUrl } from '@/lib/serverUrl';
 
 dayjs.extend(utc);
 
@@ -295,11 +296,11 @@ export default function MediaPane({
               {data.data.media.map((item, index) => {
                 const url =
                   item.upload_type === 'local'
-                    ? `${process.env.SOCKET_URL}/${item.key}`
+                    ? `${socketUrl()}/${item.key}`
                     : `https://ciity-sms.s3.us-west-1.amazonaws.com/${item.key}`;
                 const thumb =
                   item.upload_type === 'local'
-                    ? `${process.env.SOCKET_URL}/${item.key}`
+                    ? `${socketUrl()}/${item.key}`
                     : `https://ciity-sms.s3.us-west-1.amazonaws.com/${item.thumbnail}`;
 
                 return (

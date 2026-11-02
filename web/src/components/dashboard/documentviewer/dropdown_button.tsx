@@ -3,6 +3,7 @@ import { Button, Menu, MenuItem } from '@mui/material';
 import LoaderDialog from '@/components/LoaderDialog';
 import { useDispatch } from 'react-redux';
 import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
+import { apiUrl } from '@/lib/serverUrl';
 
 export default function DropdownButton({ btnName, fileName }: { btnName: string; fileName: string }) {
     const [anchorEl, setAnchorEl] = useState(null);
@@ -70,7 +71,7 @@ export default function DropdownButton({ btnName, fileName }: { btnName: string;
         <MenuItem
           onClick={() =>
             downloadFile(
-              `${process.env.API_URL}media/convertAndDownload/${encodeURIComponent(fileName)}`,
+              `${apiUrl()}media/convertAndDownload/${encodeURIComponent(fileName)}`,
               fileName,
               'jpg'
             )
@@ -81,7 +82,7 @@ export default function DropdownButton({ btnName, fileName }: { btnName: string;
         <MenuItem
           onClick={() =>
             downloadFile(
-              `${process.env.API_URL}media/convertAndDownloadPdf/${encodeURIComponent(fileName)}`,
+              `${apiUrl()}media/convertAndDownloadPdf/${encodeURIComponent(fileName)}`,
               fileName,
               'pdf'
             )

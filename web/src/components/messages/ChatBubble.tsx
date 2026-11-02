@@ -20,6 +20,7 @@ import { chat } from '@/styles/theme/chat-tokens';
 import { DocumentChip } from '../dashboard/automation/DocumentChip';
 import { formatUtcTime } from './utils';
 import { CallBubble } from '@/calls/CallBubble';
+import { mediaServerUrl } from '@/lib/serverUrl';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -105,8 +106,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
               onClick={props.onClick}
               messageDirection={props.messageDirection}
               type={'server'}
-              thumbnail={`http://52.9.12.189:4300/${props.url}`}
-              url={`http://52.9.12.189:4300/${props.url}`}
+              thumbnail={`${mediaServerUrl()}/${props.url}`}
+              url={`${mediaServerUrl()}/${props.url}`}
               // the local copy is deleted once the upload reaches S3
               fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${props.url}`}
               name={url ? url : ' '}
@@ -189,8 +190,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
                         createAt={r_message.messageTimestampUtc}
                         messageDirection={props.messageDirection}
                         type={'server'}
-                        thumbnail={`http://52.9.12.189:4300/${r_message.url}`}
-                        url={`http://52.9.12.189:4300/${r_message.url}`}
+                        thumbnail={`${mediaServerUrl()}/${r_message.url}`}
+                        url={`${mediaServerUrl()}/${r_message.url}`}
                         fallbackUrl={`https://ciity-sms.s3.us-west-1.amazonaws.com/${r_message.url}`}
                         name={r_message.url ? r_message.url : ' '}
                       />
@@ -312,7 +313,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
-                    window.open(`http://52.9.12.189:4300/${props.url}`, '_blank');
+                    window.open(`${mediaServerUrl()}/${props.url}`, '_blank');
 
                     handleClose();
                   }}

@@ -1,22 +1,27 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { apiUrl } from '@/lib/serverUrl';
 
 
 
 
-const baseQuery = fetchBaseQuery({
-  baseUrl: process.env.API_URL, // Replace with your API base URL
-  prepareHeaders: (headers) => {
-    const token = localStorage.getItem('custom-auth-token'); // Retrieve the token from local storage
+const prepareHeaders = (headers: Headers) => {
+  const token = localStorage.getItem('custom-auth-token'); // Retrieve the token from local storage
 
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
+  return headers;
+};
 
-return headers;
+// The server is chosen at request time (IP dashboard → IP server, domain dashboard → domain server)
+let cached: { url: string; query: ReturnType<typeof fetchBaseQuery> } | null = null;
 
-  },
-});
+const baseQuery: ReturnType<typeof fetchBaseQuery> = (args, api, extraOptions) => {
+  const url = apiUrl();
+  if (!cached || cached.url !== url) cached = { url, query: fetchBaseQuery({ baseUrl: url, prepareHeaders }) };
+  return cached.query(args, api, extraOptions);
+};
 
 export interface ApiResponse<T = unknown> {
   status: boolean
