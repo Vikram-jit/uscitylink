@@ -1,3 +1,4 @@
+import { ActingSocket } from "./userConnections";
 import { STAFF_ROLES } from "../middleware/requireRole";
 //Message to channel
 
@@ -555,7 +556,7 @@ export async function driverMessageQueueProcessWithoutSocket(
 
 export async function driverMessageQueueProcessResend(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   messageId: string,
   body: string,
   url: string | null,
@@ -971,7 +972,7 @@ export async function driverMessageQueueProcessResend(
 
 export async function driverMessageQueueProcess(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   messageId: string,
   body: string,
   url: string | null,
@@ -1407,7 +1408,7 @@ export async function driverMessageQueueProcess(
 
 export async function messageToChannelToUser(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   body: string,
   url: string | null,
   channelId: string,
@@ -2059,7 +2060,7 @@ export async function messageToDriverByForward(
 
 export async function messageToDriver(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   userId: string,
   body: string,
   direction: string,
@@ -2497,7 +2498,7 @@ export async function messageToMultipleDrivers(
 }
 export async function messageToDriverByTruckGroup(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   userId: string,
   groupId: string,
   body: string,
@@ -3027,7 +3028,7 @@ export async function unreadAllUserMessage(
 
 export async function messageToGroup(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   groupId: string,
   channelId: string,
   body: string,
@@ -3234,7 +3235,7 @@ export async function unreadAllGroupMessageByStaffGroup(
 
 export async function notifiyFileUploadStaffToDriver(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   channelId: string,
   messageId: string,
   type: string,
@@ -3287,7 +3288,7 @@ export async function notifiyFileUploadStaffToDriver(
 
 export async function notifiyFileUploadStaffToStaff(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   channelId: string,
   messageId: string,
   type: string,
@@ -3366,7 +3367,7 @@ export async function notifiyFileUploadStaffToStaff(
 
 export async function notifiyFileUploadDriverToStaffGroup(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   groupId: string,
   channelId: string,
   messageId: string,
@@ -3409,7 +3410,7 @@ export async function notifiyFileUploadDriverToStaffGroup(
 
 export async function notifiyFileUploadDriverToStaff(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   channelId: string,
   messageId: string,
   type: string,
@@ -3465,7 +3466,7 @@ export async function notifiyFileUploadDriverToStaff(
 
 export async function notifiyFileUploadTruckGroupMembers(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   channelId: string,
   groupId: string,
   messageId: string,
@@ -3538,7 +3539,7 @@ export async function notifiyFileUploadTruckGroupMembers(
 
 export async function sendMessageToStaffMember(
   io: Server,
-  socket: CustomSocket,
+  socket: ActingSocket,
   body: string,
   messageDirection: string,
   type: string,

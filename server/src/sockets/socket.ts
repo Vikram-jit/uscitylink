@@ -4,6 +4,7 @@ import { verifyToken } from "../utils/jwt";
 import { UserProfile } from "../models/UserProfile";
 import SocketEvents from "./socketEvents";
 import { callsOnDisconnect, registerCallHandlers } from "../calls/callSocket";
+import { addUserSocket, initUserConnections, removeUserSocket, UserConnection } from "./userConnections";
 import Role from "../models/Role";
 import {
   staffActiveChannelUpdate,
@@ -76,7 +77,7 @@ interface staff_open_truck_group {
 }
 
 declare global {
-  var userSockets: Record<string, Socket>;
+  var userSockets: Record<string, UserConnection>;
   var socketIO: Server;
   var userActiveRoom: Record<string, string>;
   var staffActiveChannel: Record<string, staffActiveChannel>;
@@ -101,6 +102,7 @@ export const initSocket = (httpServer: any) => {
   });
 
   global.userSockets = {};
+  initUserConnections(io);
   global.socketIO = io;
   global.userActiveRoom = {};
   global.onlineUsers = {};
@@ -165,7 +167,7 @@ export const initSocket = (httpServer: any) => {
             truck_group_id: groupUser ? groupUser?.dataValues?.groupId : "",
           };
 
-          global.userSockets[userProfile.id] = socket;
+          addUserSocket(socket, userProfile.id);
 
           //Store Staff into global variable with matched role staff with active channel
 
@@ -966,20 +968,22 @@ export const initSocket = (httpServer: any) => {
 
     socket.on("driverLogout", () => {
       const userId = socket?.user?.id!;
+      // Still signed in on another tab/device: keep their state
+      if (!removeUserSocket(socket, userId)) return;
 
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
-      delete global.userSockets[userId];
 
       //  global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
     });
 
     socket.on("logout", async () => {
       const userId = socket?.user?.id!;
+      // Still signed in on another tab/device: they stay online
+      if (!removeUserSocket(socket, userId)) return;
 
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
-      delete global.userSockets[userId];
       // global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter(
         (user) => user.driverId !== userId
@@ -1037,7 +1041,7 @@ export const initSocket = (httpServer: any) => {
     socket.on("ping", () => {
       console.log("Received ping from client");
    
-      global.userSockets[socket?.user?.id!]=socket;
+      if (socket?.user?.id) addUserSocket(socket, socket.user.id);
       socket.emit("pong"); // Send back pong message
     });
   
@@ -1045,12 +1049,10 @@ export const initSocket = (httpServer: any) => {
       console.log("disconnect");
       const userId = socket?.user?.id!;
 
-      // A newer connection for this user is already registered (second tab, or a reconnect that
-      // arrived before this old socket timed out). Don't wipe the live connection's state or mark
-      // the user offline because the stale one closed.
-      const currentSocket = global.userSockets[userId];
-      if (currentSocket && currentSocket.id !== socket.id) {
-        console.log(`stale socket disconnect ignored for ${userId}`);
+      // The user still has another live connection (second tab, IP + domain, a reconnect that
+      // arrived before this socket timed out): they are still online, keep their state.
+      if (userId && !removeUserSocket(socket, userId)) {
+        console.log(`one of several connections closed for ${userId}`);
         return;
       }
 
@@ -1060,7 +1062,6 @@ export const initSocket = (httpServer: any) => {
       delete global.staffOpenChat[userId];
       delete global.staffActiveChannel[userId];
 
-      delete global.userSockets[userId];
       // global.onlineUsers = global.onlineUsers.filter((user) => user.socketId !== socket?.id);
       global.driverOpenChat = global.driverOpenChat.filter(
         (user) => user.driverId !== userId

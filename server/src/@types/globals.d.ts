@@ -1,4 +1,5 @@
-import { Socket ,Server} from 'socket.io';  // Import Socket from socket.io
+import { Server } from 'socket.io';
+import type { UserConnection } from '../sockets/userConnections';
 
 // Define the structure of the user
 interface User {
@@ -10,7 +11,7 @@ interface User {
 // Augment the globalThis type
 declare global {
   // Declare the global variables and their types
-  var userSockets: Record<string, Socket>;       // A map of user ID to their Socket.IO socket instance
+  var userSockets: Record<string, UserConnection>; // user ID → all of that user's live sockets (see sockets/userConnections.ts)
   var socketIO: Server;                 // The Socket.IO server instance
   var userActiveRoom: Record<string, string>;    // A map of user ID to active room ID
   var onlineUsers: User[];                       // List of online users
