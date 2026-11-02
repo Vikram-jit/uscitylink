@@ -2922,6 +2922,19 @@ export async function unreadAllStaffMessage(
   }
 }
 
+/** Re-runs a query that MySQL aborted to break a deadlock (safe for idempotent updates). */
+async function withDeadlockRetry<T>(run: () => Promise<T>, tries = 3): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (err: any) {
+      const code = err?.parent?.code || err?.original?.code;
+      if (attempt >= tries || (code !== "ER_LOCK_DEADLOCK" && code !== "ER_LOCK_WAIT_TIMEOUT")) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+    }
+  }
+}
+
 export async function unreadAllUserMessage(
   io: Server,
   socket: CustomSocket,
@@ -2930,22 +2943,21 @@ export async function unreadAllUserMessage(
 ) {
   console.log(channelId, userId, "===============");
   if (channelId) {
-    const limit = 100; // or a smaller safe chunk
-    await primarySequelize.transaction(async (t) => {
-      const unreadMessages = await MessageStaff.findAll({
-        where: {
-          driverId: userId,
-          staffId: socket?.user?.id,
-          status: "un-read",
+    // One UPDATE instead of locking every unread row and updating them one by one in a
+    // transaction: that held the locks for the whole loop and deadlocked (crashing the server)
+    // when the same chat was marked read twice at once, e.g. from two tabs.
+    await withDeadlockRetry(() =>
+      MessageStaff.update(
+        { status: "read" },
+        {
+          where: {
+            driverId: userId,
+            staffId: socket?.user?.id,
+            status: "un-read",
+          },
         },
-        transaction: t,
-        lock: t.LOCK.UPDATE,
-      });
-
-      for (const message of unreadMessages) {
-        await message.update({ status: "read" }, { transaction: t });
-      }
-    });
+      ),
+    );
     await UserChannel.update(
       {
         sent_message_count: 0,

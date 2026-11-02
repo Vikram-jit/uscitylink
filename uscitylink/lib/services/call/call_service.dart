@@ -60,6 +60,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
   String? get callId => info.value?.callId;
   bool get busy => phase.value != CallPhase.idle && phase.value != CallPhase.ended;
 
+  /// True while a call is ringing or connected. Screens that drop the socket when the app goes to
+  /// the background must skip that during a call: the call's signalling runs on that socket.
+  static bool get inCall => Get.isRegistered<CallService>() && Get.find<CallService>().busy;
+
   // ---------- lifecycle ----------
 
   @override
@@ -88,10 +92,20 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Opened the app while a call is ringing: switch to the in-app incoming screen
-    if (state == AppLifecycleState.resumed && phase.value == CallPhase.incoming) {
+    final call = info.value;
+    if (phase.value != CallPhase.incoming || call == null) return;
+    if (state == AppLifecycleState.paused) {
+      // Minimised while our own incoming screen was ringing: show the phone's call screen instead
+      // (CallKit / Android full-screen call), like an incoming WhatsApp call
+      CallTones.stop();
+      CallKit.showIncoming(call);
+    } else if (state == AppLifecycleState.resumed) {
+      // Back in the app while it rings: show the in-app incoming screen. If the native screen is
+      // still ringing, let it ring rather than playing a second ringtone.
       _openCallScreen();
-      CallTones.ringtone();
+      CallKit.isShowing(call.callId).then((native) {
+        if (!native && phase.value == CallPhase.incoming) CallTones.ringtone();
+      });
     }
   }
 
@@ -319,7 +333,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
     final id = callId;
     if (id != null) {
       _boundSocket?.emit('call:media', {'callId': id, 'muted': value});
-      FlutterCallkitIncoming.muteCall(id, isMuted: value).catchError((_) {});
+      if (_nativeAccepted.contains(id)) FlutterCallkitIncoming.muteCall(id, isMuted: value).catchError((_) {});
     }
   }
 
@@ -426,7 +440,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
           case EngineState.connected:
             phase.value = CallPhase.active;
             reconnecting.value = false;
-            FlutterCallkitIncoming.setCallConnected(id).catchError((_) {});
+            if (_nativeAccepted.contains(id)) FlutterCallkitIncoming.setCallConnected(id).catchError((_) {});
             break;
           case EngineState.reconnecting:
             reconnecting.value = true;
@@ -455,12 +469,15 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   Future<void> _onCallKitEvent(CallEvent? event) async {
     if (event == null) return;
-    if (event is CallEventActionCallAccept) {
+    if (event is CallEventActionCallIncoming) {
+      await _onNativeIncoming(event.callKitParams);
+    } else if (event is CallEventActionCallAccept) {
       await accept(event.callKitParams.id, fromNative: true);
     } else if (event is CallEventActionCallDecline) {
       // Declined on the native ringing screen. Ignore it for a call that isn't ringing here any more
       // (answered in the app, or a native failure reported as a decline).
       final id = event.callKitParams.id;
+      if (_accepting.contains(id)) return; // we closed the native screen because it was answered in the app
       final ringingHere = callId == id && phase.value == CallPhase.incoming;
       final notSeenYet = callId == null && !_inForeground; // app woken from closed, call not loaded yet
       if (ringingHere || notSeenYet) await declineCall(id);
@@ -475,6 +492,28 @@ class CallService extends GetxService with WidgetsBindingObserver {
       if (callId == event.id && phase.value == CallPhase.incoming) _reset();
     } else if (event is CallEventActionDidUpdateDevicePushTokenVoip) {
       await registerVoipToken();
+    }
+  }
+
+  /// iOS showed a call from a VoIP push (AppDelegate.swift), possibly with the app closed. Track it
+  /// and connect the socket, so a caller who hangs up — or a dispatcher answering elsewhere — stops
+  /// the phone ringing right away instead of after the ring timeout.
+  Future<void> _onNativeIncoming(CallKitParams params) async {
+    final extra = Map<String, dynamic>.from(params.extra ?? {});
+    final id = '${extra['callId'] ?? params.id ?? ''}';
+    if (id.isEmpty || callId == id || busy) return;
+    _reset();
+    _isCaller = false;
+    info.value = CallInfo.fromPush({...extra, 'callId': id});
+    phase.value = CallPhase.incoming;
+    peerName.value = CallKit.callerTitle(info.value!);
+    peerSubtitle.value = CallKit.callerSubtitle(info.value!);
+    // Connects the socket if needed, then checks the call wasn't cancelled before we connected
+    final res = await _emitAck('call:status', {'callId': id});
+    if (res['ok'] == false && res['live'] == null) return; // no connection: CallKit's own timeout ends it
+    if (callId == id && phase.value == CallPhase.incoming && (res['live'] != true || res['ringing'] != true)) {
+      await CallKit.end(id);
+      _reset();
     }
   }
 

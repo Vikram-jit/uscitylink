@@ -13,6 +13,7 @@ import 'package:uscitylink/views/driver/widegts/document_status_card.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 
 import '../../../model/login_model.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 const double _kProfileCardOverflow = 150;
 
@@ -39,7 +40,7 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused && !CallService.inCall) {
       if (socketService.isConnected.value) {
         socketService.socket.disconnect();
       }

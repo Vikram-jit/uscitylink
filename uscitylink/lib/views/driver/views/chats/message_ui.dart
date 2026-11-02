@@ -110,8 +110,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes (background/foreground)
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    if ((state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive) &&
+        !CallService.inCall) {
       // App is minimized or goes to background
       socketService.updateActiveChannel("");
 

@@ -40,10 +40,37 @@ async function fcmData(token: string, data: Record<string, string>, ttlMs: numbe
 // ---- APNs (VoIP) over HTTP/2 with a token-based (JWT, ES256) auth key ----
 
 let apnsJwt: { token: string; at: number } | null = null;
-let apnsSession: http2.ClientHttp2Session | null = null;
+const apnsSessions = new Map<string, http2.ClientHttp2Session>();
+
+const APNS_PROD = "https://api.push.apple.com";
+const APNS_SANDBOX = "https://api.sandbox.push.apple.com";
+// Builds run from Xcode get sandbox VoIP tokens; TestFlight/App Store builds get production ones.
+// APNS_PRODUCTION picks which server is tried first; a token from the other kind of build is retried
+// there, so one server rings both. Remembered per token to skip the failed try next time.
+const tokenHost = new Map<string, string>();
 
 const apnsConfigured = () =>
   !!(process.env.APNS_KEY_PATH && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID && process.env.APNS_BUNDLE_ID);
+
+/** Logged at startup: without APNs, iPhones only get a notification for calls, not the call screen. */
+export function logCallPushSetup() {
+  if (!apnsConfigured()) {
+    console.warn(
+      "[calls] iOS VoIP push is OFF (APNS_KEY_PATH / APNS_KEY_ID / APNS_TEAM_ID / APNS_BUNDLE_ID missing): " +
+        "iPhones get a plain notification for calls instead of the full-screen call. See docs/calls/README.md"
+    );
+    return;
+  }
+  if (!fs.existsSync(process.env.APNS_KEY_PATH!)) {
+    console.warn(`[calls] iOS VoIP push key not found at ${process.env.APNS_KEY_PATH}`);
+    return;
+  }
+  console.log(
+    `[calls] iOS VoIP push ready (key ${process.env.APNS_KEY_ID}, ${
+      process.env.APNS_PRODUCTION === "true" ? "production" : "sandbox"
+    } first)`
+  );
+}
 
 function apnsAuthToken(): string {
   // Apple accepts a token for up to an hour and rejects refreshing more than every 20 min
@@ -57,19 +84,56 @@ function apnsAuthToken(): string {
   return token;
 }
 
-function apnsClient(): http2.ClientHttp2Session {
-  if (apnsSession && !apnsSession.closed && !apnsSession.destroyed) return apnsSession;
-  const host = process.env.APNS_PRODUCTION === "true" ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com";
-  apnsSession = http2.connect(host);
-  apnsSession.on("error", () => (apnsSession = null));
-  apnsSession.on("goaway", () => (apnsSession = null));
-  return apnsSession;
+// One HTTP/2 connection per Apple server, reused for every push
+function apnsClient(host: string): http2.ClientHttp2Session {
+  const open = apnsSessions.get(host);
+  if (open && !open.closed && !open.destroyed) return open;
+  const session = http2.connect(host);
+  const drop = () => apnsSessions.get(host) === session && apnsSessions.delete(host);
+  session.on("error", drop);
+  session.on("goaway", drop);
+  session.on("close", drop);
+  apnsSessions.set(host, session);
+  return session;
 }
 
-function apnsVoip(deviceToken: string, payload: Record<string, any>): Promise<number> {
+interface ApnsResult {
+  status: number;
+  reason: string;
+}
+
+/** Sends a VoIP push, trying the other Apple server when the token belongs to the other kind of build. */
+async function apnsVoip(deviceToken: string, payload: Record<string, any>): Promise<boolean> {
+  const preferred = process.env.APNS_PRODUCTION === "true" ? APNS_PROD : APNS_SANDBOX;
+  const first = tokenHost.get(deviceToken) ?? preferred;
+  const second = first === APNS_PROD ? APNS_SANDBOX : APNS_PROD;
+
+  let res = await apnsSend(first, deviceToken, payload);
+  if (res.status === 400 && res.reason === "BadDeviceToken") {
+    const retry = await apnsSend(second, deviceToken, payload);
+    if (retry.status === 200) {
+      tokenHost.set(deviceToken, second);
+      return true;
+    }
+    res = retry;
+  }
+  if (res.status === 200) {
+    tokenHost.set(deviceToken, first);
+    return true;
+  }
+  // Dead token (app deleted / token rejected by both servers): forget it, the app sends a new one
+  if (res.status === 410 || res.reason === "BadDeviceToken" || res.reason === "Unregistered") {
+    tokenHost.delete(deviceToken);
+    await UserProfile.update({ voip_token: null }, { where: { voip_token: deviceToken } }).catch(() => undefined);
+  }
+  console.warn(`[calls] APNs VoIP push failed ${res.status}: ${res.reason || "no response"}`);
+  return false;
+}
+
+function apnsSend(host: string, deviceToken: string, payload: Record<string, any>): Promise<ApnsResult> {
   return new Promise((resolve) => {
     try {
-      const req = apnsClient().request({
+      const req = apnsClient(host).request({
         ":method": "POST",
         ":path": `/3/device/${deviceToken}`,
         authorization: `bearer ${apnsAuthToken()}`,
@@ -82,23 +146,20 @@ function apnsVoip(deviceToken: string, payload: Record<string, any>): Promise<nu
       let body = "";
       req.on("response", (h) => (status = Number(h[":status"]) || 0));
       req.on("data", (c) => (body += c));
-      req.on("end", async () => {
-        if (status === 410 || /BadDeviceToken|Unregistered/.test(body)) {
-          await UserProfile.update({ voip_token: null }, { where: { voip_token: deviceToken } }).catch(() => undefined);
-        } else if (status !== 200) {
-          console.warn(`[calls] APNs VoIP push ${status}: ${body}`);
+      req.on("end", () => {
+        let reason = "";
+        try {
+          reason = body ? JSON.parse(body).reason || "" : "";
+        } catch {
+          reason = body;
         }
-        resolve(status);
+        resolve({ status, reason });
       });
-      req.on("error", (err) => {
-        console.warn("[calls] APNs error:", err.message);
-        resolve(0);
-      });
+      req.on("error", (err) => resolve({ status: 0, reason: err.message }));
       req.setTimeout(8000, () => req.close());
       req.end(JSON.stringify(payload));
     } catch (err: any) {
-      console.warn("[calls] APNs push failed:", err?.message || err);
-      resolve(0);
+      resolve({ status: 0, reason: err?.message || String(err) });
     }
   });
 }
@@ -121,10 +182,9 @@ export async function pushIncomingCall(profile: UserProfile, call: IncomingCallP
   };
 
   if (profile.platform === "ios") {
-    if (profile.voip_token && apnsConfigured()) {
-      await apnsVoip(profile.voip_token, { aps: {}, ...data });
-      return;
-    }
+    // VoIP push → full-screen CallKit call. If it can't be sent, a plain notification still tells
+    // the driver someone is calling.
+    if (profile.voip_token && apnsConfigured() && (await apnsVoip(profile.voip_token, { aps: {}, ...data }))) return;
     if (profile.device_token) {
       await sendNotificationToDevice(profile.device_token, {
         title: `Incoming call · ${call.callerName}`,

@@ -74,7 +74,7 @@ class _StaffMessageViewState extends State<StaffMessageView>
       socketService.updateStaffActiveUserChat("");
       _staffchatController.currentPage.value = 1;
       _staffchatController.totalPages.value = 1;
-      if (socketService.isConnected.value) {
+      if (socketService.isConnected.value && !CallService.inCall) {
         socketService.socket.disconnect();
       }
       print("App is in the background");

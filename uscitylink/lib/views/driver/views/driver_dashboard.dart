@@ -33,6 +33,7 @@ import 'package:uscitylink/views/driver/views/hos_status_view.dart';
 import 'package:uscitylink/views/driver/views/live_location_webview.dart';
 import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 const double _kKpiCardHeight = 112;
 const double _kKpiOverlap = 46;
@@ -86,7 +87,7 @@ class _DriverDashboardState extends State<DriverDashboard>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes (background/foreground)
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused && !CallService.inCall) {
       if (socketService.isConnected.value) {
         // if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();

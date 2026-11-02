@@ -40,11 +40,18 @@ import { verifyToken } from "./utils/jwt";
 import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
 import path from "path";
+import { logCallPushSetup } from "./calls/callPush";
 
 
 dotenv.config();
 
 const app = express();
+// A failed database call in a socket handler (most have no try/catch) used to crash the process,
+// dropping every connection and live call until pm2 restarted it. Log it and keep serving.
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+
 const server = http.createServer(app);
 const __root = path.resolve();
 
@@ -123,6 +130,7 @@ mountApi("/api/v2", authRoutesV2);
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
+  logCallPushSetup();
   await primarySequelize.authenticate();
   console.log("Connected to primary database.");
 

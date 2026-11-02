@@ -15,6 +15,7 @@ import 'package:uscitylink/views/driver/drawer/driver_custom_drawer.dart';
 import 'package:uscitylink/views/driver/views/chats/channels_tab.dart';
 import 'package:uscitylink/views/driver/views/group/groups_tab.dart';
 import 'package:badges/badges.dart' as badges;
+import 'package:uscitylink/services/call/call_service.dart';
 
 const double _kTabsCardOverflow = 20;
 
@@ -101,7 +102,7 @@ class _ChatViewState extends State<ChatView>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Handle app lifecycle changes (background/foreground)
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused && !CallService.inCall) {
       if (socketService.isConnected.value) {
         //   if (_hiveController.isProcessing.value == false) {
         socketService.socket.disconnect();

@@ -6,10 +6,15 @@ import flutter_callkit_incoming
 
 // import flutter_local_notifications
 
-// UIScene lifecycle (required by upcoming iOS versions): the window is managed by SceneDelegate
-// (Info.plist → UIApplicationSceneManifest) and plugins register on the implicit Flutter engine.
+// One Flutter engine for the whole app, started at launch. With the UIScene lifecycle Flutter would
+// otherwise create its engine only when a window opens — but when the app is killed, iOS launches
+// it in the background for an incoming call (VoIP push) WITHOUT a window. The engine, the plugins
+// and the PushKit registry must exist by then, or the call can't be shown (and iOS stops
+// delivering VoIP pushes to apps that fail to report them). SceneDelegate shows this same engine
+// when the window opens.
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, PKPushRegistryDelegate {
+@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate {
+  lazy var flutterEngine = FlutterEngine(name: "uscitylink")
   // Strong reference: a registry that is released stops receiving VoIP pushes
   private var voipRegistry: PKPushRegistry?
 
@@ -19,23 +24,21 @@ import flutter_callkit_incoming
   ) -> Bool {
     GMSServices.provideAPIKey("AIzaSyBoOuJLi6p2J748EZDbRKibMpVEXiZbSi0")
 
+    flutterEngine.run()
+    GeneratedPluginRegistrant.register(with: flutterEngine)
+
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-
     // Voice calls: VoIP pushes ring the phone through CallKit even when the app is closed.
-    // Created after the plugins register, so the CallKit plugin exists when a push is delivered
-    // (PushKit holds pending pushes until the registry is created).
+    // Created after the plugins register, so the CallKit plugin exists when a push is delivered.
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
     registry.desiredPushTypes = [PKPushType.voIP]
     voipRegistry = registry
+
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   // MARK: - PushKit (VoIP) — server/src/calls/callPush.ts sends these
@@ -85,6 +88,14 @@ import flutter_callkit_incoming
     ] as NSDictionary
     // iOS requires every VoIP push to be reported to CallKit right away
     if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {
+      // Only one call at a time is allowed, so a call left over in CallKit (caller hung up while the
+      // app was closed) would make iOS reject this one. The server only rings a driver who isn't on
+      // a call, so anything else still listed is stale: end it first.
+      for active in plugin.activeCalls() {
+        if let id = active["id"] as? String, id.lowercased() != callId.lowercased() {
+          plugin.saveEndCall(id, 2)
+        }
+      }
       plugin.showCallkitIncoming(data, fromPushKit: true) { completion() }
     } else {
       completion()
@@ -92,6 +103,28 @@ import flutter_callkit_incoming
   }
 }
 
-/// Hosts the Flutter view for the app's window (UIScene lifecycle). Kept in this file so no
-/// Xcode project change is needed; referenced from Info.plist as $(PRODUCT_MODULE_NAME).SceneDelegate.
-class SceneDelegate: FlutterSceneDelegate {}
+/// Hosts the app's window (UIScene lifecycle) on the engine AppDelegate started at launch. Kept in
+/// this file so no Xcode project change is needed; referenced from Info.plist as
+/// $(PRODUCT_MODULE_NAME).SceneDelegate.
+class SceneDelegate: FlutterSceneDelegate {
+  override func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    if let windowScene = scene as? UIWindowScene, let app = UIApplication.shared.delegate as? AppDelegate {
+      let window = UIWindow(windowScene: windowScene)
+      window.rootViewController = FlutterViewController(engine: app.flutterEngine, nibName: nil, bundle: nil)
+      self.window = window
+      window.makeKeyAndVisible()
+    }
+    super.scene(scene, willConnectTo: session, options: connectionOptions)
+  }
+
+  override func sceneDidDisconnect(_ scene: UIScene) {
+    super.sceneDidDisconnect(scene)
+    // Release the view so the engine can be shown again if iOS reconnects the scene later
+    window?.rootViewController = nil
+    window = nil
+  }
+}

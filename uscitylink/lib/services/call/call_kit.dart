@@ -73,7 +73,9 @@ class CallKit {
   static Future<bool> isShowing(String callId) async {
     try {
       final calls = await FlutterCallkitIncoming.activeCalls();
-      return calls.any((c) => c.id == callId);
+      // After a relaunch iOS reports ids in upper case; the server's are lower case
+      final id = callId.toLowerCase();
+      return calls.any((c) => '${c.id}'.toLowerCase() == id);
     } catch (_) {
       return false;
     }
@@ -85,8 +87,11 @@ class CallKit {
     await FlutterCallkitIncoming.showCallkitIncoming(params(info));
   }
 
+  /// Closes the native call screen. Skipped for calls it never showed (outgoing calls, calls
+  /// answered in the app): asking CallKit to end an unknown call fails with
+  /// "requesttransaction Code=2".
   static Future<void> end(String callId) async {
-    if (!available) return;
+    if (!available || callId.isEmpty || !await isShowing(callId)) return;
     try {
       await FlutterCallkitIncoming.endCall(callId);
     } catch (_) {}
