@@ -127,6 +127,21 @@ mountApi("/api/v1", authRoutes);
 mountApi("/api/v2", authRoutesV2);
 
 
+// Manage Relations — before the server accepts connections. They used to be set up after the
+// database sync inside listen(), so for the first seconds after every restart each reconnecting
+// app failed socket login ("Role is not associated to UserProfile") and Role lookups failed.
+User.associate({ UserProfile });
+UserProfile.associate({ User, Role, UserChannel, Channel, GroupUser, MessageStaff });
+Role.associate({ UserProfile });
+Channel.associate({ UserChannel, GroupChannel });
+UserChannel.associate({ UserProfile, Channel });
+Group.associate({ GroupChannel, GroupUser });
+GroupUser.associate({ UserProfile, Group });
+GroupChannel.associate({ Group, Channel });
+MessageStaff.associate({ UserProfile });
+// UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
+// Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
+
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
@@ -145,21 +160,6 @@ server.listen(PORT, async () => {
 
   await secondarySequelize.sync(); // Use { force: false } to avoid dropping tables
 
-  //Manage Relations
-
-
-  User.associate({ UserProfile });
-  UserProfile.associate({ User, Role,UserChannel,Channel,GroupUser,MessageStaff });
-  Role.associate({ UserProfile });
-  Channel.associate({ UserChannel,GroupChannel });
-  UserChannel.associate({ UserProfile, Channel });
-
-  Group.associate({ GroupChannel,GroupUser });
-  GroupUser.associate({ UserProfile, Group });
-  GroupChannel.associate({ Group, Channel });
-  MessageStaff.associate({UserProfile})
-  // UserChannel.belongsTo(Message, { foreignKey: 'lastMessageId', as: 'lastMessage' });
-  // Message.hasMany(UserChannel, { foreignKey: 'lastMessageId', as: 'userChannels' });
 
   
   console.log("Secondary database & tables synced!");
