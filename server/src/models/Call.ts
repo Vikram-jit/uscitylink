@@ -97,6 +97,10 @@ export class CallRecording extends Model {
   public size_bytes?: number | null;
   public sha256?: string | null;
   public tracks?: { userId: string; segments: number; startedOffsetMs: number }[] | null;
+  /** Video calls with "Record video" on: the camera grid (.mp4) */
+  public video_s3_key?: string | null;
+  public video_size_bytes?: number | null;
+  public video_sha256?: string | null;
   public error?: string | null;
   public started_at?: Date | null;
   public completed_at?: Date | null;
@@ -116,6 +120,9 @@ CallRecording.init(
     size_bytes: { type: DataTypes.BIGINT, allowNull: true },
     sha256: { type: DataTypes.STRING(64), allowNull: true },
     tracks: { type: DataTypes.JSON, allowNull: true },
+    video_s3_key: { type: DataTypes.STRING(512), allowNull: true },
+    video_size_bytes: { type: DataTypes.BIGINT, allowNull: true },
+    video_sha256: { type: DataTypes.STRING(64), allowNull: true },
     error: { type: DataTypes.TEXT, allowNull: true },
     started_at: { type: DataTypes.DATE, allowNull: true },
     completed_at: { type: DataTypes.DATE, allowNull: true },

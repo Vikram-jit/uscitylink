@@ -5,7 +5,14 @@ import { Call, CallParticipant, CallRecording } from "../models/Call";
 import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
-import { isCallRecordingEnabled, isCallsEnabled, setCallRecordingEnabled, setCallsEnabled } from "../services/documentAi/settings";
+import {
+  isCallRecordingEnabled,
+  isCallVideoRecordingEnabled,
+  isCallsEnabled,
+  setCallRecordingEnabled,
+  setCallVideoRecordingEnabled,
+  setCallsEnabled,
+} from "../services/documentAi/settings";
 import { recordingUrl } from "./callRecorder";
 import { iceServersFor } from "./iceServers";
 import { availableStaff, callService } from "./callSocket";
@@ -59,7 +66,15 @@ async function recordingsFor(callIds: string[]) {
 }
 
 const recordingSummary = (r?: CallRecording) =>
-  r ? { status: r.status, duration_sec: r.duration_sec ?? null, size_bytes: r.size_bytes ?? null } : null;
+  r
+    ? {
+        status: r.status,
+        duration_sec: r.duration_sec ?? null,
+        size_bytes: r.size_bytes ?? null,
+        has_video: !!r.video_s3_key,
+        video_size_bytes: r.video_size_bytes ?? null,
+      }
+    : null;
 
 // GET /calls?driverId=&channelId=&status=&page=&pageSize= — staff see all, drivers their own
 export async function listCalls(req: Request, res: Response): Promise<any> {
@@ -204,14 +219,22 @@ export async function saveCallQuality(req: Request, res: Response): Promise<any>
 
 // GET/PUT /calls/settings — admin switches for calling and call recording
 export async function getCallSettings(_req: Request, res: Response): Promise<any> {
-  return res.json({ status: true, data: { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled() } });
+  return res.json({
+    status: true,
+    data: { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled(), videoRecording: await isCallVideoRecordingEnabled() },
+  });
 }
 
 export async function updateCallSettings(req: Request, res: Response): Promise<any> {
   try {
     if (req.body?.enabled !== undefined) await setCallsEnabled(req.body.enabled !== false, req.user?.id);
     if (req.body?.recording !== undefined) await setCallRecordingEnabled(req.body.recording !== false, req.user?.id);
-    const data = { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled() };
+    if (req.body?.videoRecording !== undefined) await setCallVideoRecordingEnabled(req.body.videoRecording === true, req.user?.id);
+    const data = {
+      enabled: await isCallsEnabled(),
+      recording: await isCallRecordingEnabled(),
+      videoRecording: await isCallVideoRecordingEnabled(),
+    };
     return res.json({ status: true, message: "Call settings saved", data });
   } catch (err) {
     return fail(res, err);
@@ -229,11 +252,24 @@ export async function getCallRecording(req: Request, res: Response): Promise<any
       return res.status(409).json({ status: false, message: recording.status === "failed" ? "The recording failed" : "The recording is still being saved", data: recordingSummary(recording) });
     }
     console.log(`[recording] ${user?.username} (${user?.id}) opened the recording of call ${recording.call_id}`);
-    const link = recordingUrl(recording.s3_key);
-    const url = typeof link === "string" ? link : `${req.protocol}://${req.get("host")}${req.baseUrl}/${recording.call_id}/recording/file`;
+    const toUrl = (key: string, kind: "audio" | "video") => {
+      const link = recordingUrl(key);
+      return typeof link === "string" ? link : `${req.protocol}://${req.get("host")}${req.baseUrl}/${recording.call_id}/recording/file?kind=${kind}`;
+    };
     return res.json({
       status: true,
-      data: { url, mime: recording.mime, duration_sec: recording.duration_sec, size_bytes: recording.size_bytes, sha256: recording.sha256, expires_in_sec: 900 },
+      data: {
+        url: toUrl(recording.s3_key, "audio"),
+        mime: recording.mime,
+        duration_sec: recording.duration_sec,
+        size_bytes: recording.size_bytes,
+        sha256: recording.sha256,
+        // Video calls with "Record video" on: everyone's camera in a grid, with the audio
+        video_url: recording.video_s3_key ? toUrl(recording.video_s3_key, "video") : null,
+        video_size_bytes: recording.video_size_bytes ?? null,
+        video_sha256: recording.video_sha256 ?? null,
+        expires_in_sec: 900,
+      },
     });
   } catch (err) {
     return fail(res, err, 500);
@@ -243,9 +279,11 @@ export async function getCallRecording(req: Request, res: Response): Promise<any
 // GET /calls/:id/recording/file — development only (RECORDING_LOCAL_DIR): streams the local file
 export async function getCallRecordingFile(req: Request, res: Response): Promise<any> {
   const recording = (await recordingsFor([String(req.params.id)])).get(String(req.params.id));
-  const link = recording?.s3_key ? recordingUrl(recording.s3_key) : null;
+  const video = req.query.kind === "video";
+  const key = video ? recording?.video_s3_key : recording?.s3_key;
+  const link = key ? recordingUrl(key) : null;
   if (!link || typeof link === "string" || !fs.existsSync(link.localPath)) return res.status(404).end();
-  res.setHeader("Content-Type", recording!.mime || "audio/mp4");
+  res.setHeader("Content-Type", video ? "video/mp4" : recording!.mime || "audio/mp4");
   fs.createReadStream(link.localPath).pipe(res);
 }
 

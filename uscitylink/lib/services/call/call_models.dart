@@ -43,6 +43,10 @@ class CallInfo {
   /// That request is a transfer: whoever asked hands the call over and leaves.
   final bool transfer;
 
+  /// Video: whose camera is on, and whether the recording keeps video.
+  final List<String> camera;
+  final bool recordVideo;
+
   const CallInfo({
     required this.callId,
     required this.type,
@@ -57,6 +61,8 @@ class CallInfo {
     this.pending = const [],
     this.invitedBy,
     this.transfer = false,
+    this.camera = const [],
+    this.recordVideo = false,
   });
 
   factory CallInfo.fromJson(Map<String, dynamic> json) => CallInfo(
@@ -75,6 +81,10 @@ class CallInfo {
             ? CallPeer.fromJson(Map<String, dynamic>.from(json['invitedBy']))
             : null,
         transfer: json['transfer'] == true,
+        camera: json['camera'] is Map
+            ? Map<String, dynamic>.from(json['camera']).entries.where((e) => e.value == true).map((e) => e.key).toList()
+            : const [],
+        recordVideo: json['recordVideo'] == true,
       );
 
   static List<CallPeer> peerList(dynamic list) =>

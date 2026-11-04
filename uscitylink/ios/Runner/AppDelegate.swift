@@ -106,11 +106,12 @@ import flutter_callkit_incoming
     let title = callerRole == "staff" ? (channelName.isEmpty ? "Dispatch" : channelName) : callerName
     let subtitle = callerRole == "staff" ? "Dispatch · \(callerName)" : "Driver · \(channelName)"
 
-    let data = flutter_callkit_incoming.Data(id: callId, nameCaller: title, handle: subtitle, type: 0)
+    let isVideo = (p["callType"] as? String) == "video"
+    let data = flutter_callkit_incoming.Data(id: callId, nameCaller: title, handle: subtitle, type: isVideo ? 1 : 0)
     data.appName = "USCityLink"
     data.duration = 45000
     data.handleType = "generic"
-    data.supportsVideo = false
+    data.supportsVideo = isVideo
     data.maximumCallGroups = 1
     data.maximumCallsPerCallGroup = 1
     data.audioSessionMode = "voiceChat"

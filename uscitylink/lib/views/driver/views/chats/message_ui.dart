@@ -322,6 +322,21 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             ),
                           )
                         : const SizedBox.shrink()),
+                    // Video call to dispatch (camera on)
+                    Obx(() => CallService.to.enabled.value
+                        ? Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: InkWell(
+                              key: const Key('videoCallDispatchButton'),
+                              onTap: () => CallService.to.startCall(
+                                  channelId: messageController.channelId.value,
+                                  name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
+                                  subtitle: 'Dispatch',
+                                  video: true),
+                              child: const Icon(Icons.videocam_rounded, color: Colors.white),
+                            ),
+                          )
+                        : const SizedBox.shrink()),
                     InkWell(
                       onTap: () {
                         imagePickerController.pickImageFromCameraMultiple(

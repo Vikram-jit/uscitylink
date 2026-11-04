@@ -176,6 +176,78 @@ void main() {
     expect(find.byKey(const Key('transferButton')), findsNothing);
   });
 
+  testWidgets('video call (driver): video layout, camera can\'t be turned off, flip + end shown', (tester) async {
+    const staff = CallPeer(id: 's1', name: 'Navjot', role: 'staff');
+    final s = await show(tester, (s) {
+      s.peerName.value = 'Dispatch';
+      s.isVideoCall.value = true;
+      s.cameraOn.value = true;
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+      s.members.assignAll(const [staff]);
+      s.remoteCamera.add('s1');
+    });
+    expect(find.byKey(const Key('videoLayout')), findsOneWidget);
+    expect(find.byKey(const Key('tile-s1')), findsOneWidget);
+    expect(find.byKey(const Key('selfView')), findsOneWidget);
+    expect(find.byKey(const Key('videoCameraButton')), findsNothing, reason: 'drivers must keep the camera on');
+    expect(find.byKey(const Key('flipCameraButton')), findsOneWidget);
+    expect(find.byKey(const Key('videoHangupButton')), findsOneWidget);
+    expect(find.byKey(const Key('videoAddButton')), findsNothing);
+    // Staff on the same call: camera toggle + add/transfer
+    s.isStaffUser.value = true;
+    s.members.assignAll(const [CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver')]);
+    await tester.pump();
+    expect(find.byKey(const Key('videoCameraButton')), findsOneWidget);
+    expect(find.byKey(const Key('videoAddButton')), findsOneWidget);
+    expect(find.byKey(const Key('videoTransferButton')), findsOneWidget);
+  });
+
+  testWidgets('group video call shows a grid tile per person', (tester) async {
+    await show(tester, (s) {
+      s.isStaffUser.value = true;
+      s.isVideoCall.value = true;
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+      s.members.assignAll(const [
+        CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver'),
+        CallPeer(id: 's2', name: 'Navjot', role: 'staff'),
+        CallPeer(id: 's3', name: 'Kashish', role: 'staff'),
+      ]);
+      s.remoteCamera.addAll(['d1', 's2']);
+    });
+    expect(find.byKey(const Key('videoGrid')), findsOneWidget);
+    for (final id in ['d1', 's2', 's3']) {
+      expect(find.byKey(Key('tile-$id')), findsOneWidget);
+    }
+  });
+
+  testWidgets('incoming video call: staff choose Voice or Video; drivers just answer (camera on)', (tester) async {
+    const from = CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver');
+    const video = CallInfo(callId: 'c1', type: 'video', channelId: 'ch', channelName: 'X', driverId: 'd1', from: from);
+    final s = await show(tester, (s) {
+      s.isStaffUser.value = true;
+      s.info.value = video;
+      s.phase.value = CallPhase.incoming;
+    });
+    expect(find.byKey(const Key('acceptVoiceButton')), findsOneWidget);
+    expect(find.text('Video'), findsOneWidget);
+    s.isStaffUser.value = false;
+    await tester.pump();
+    expect(find.byKey(const Key('acceptVoiceButton')), findsNothing);
+    expect(find.byKey(const Key('acceptButton')), findsOneWidget);
+  });
+
+  testWidgets('voice call: Camera button turns it into video', (tester) async {
+    await show(tester, (s) {
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+      s.members.assignAll(const [CallPeer(id: 's1', name: 'Dispatch', role: 'staff')]);
+    });
+    expect(find.byKey(const Key('cameraButton')), findsOneWidget);
+    expect(find.byKey(const Key('videoLayout')), findsNothing);
+  });
+
   testWidgets('call that is not recorded shows no recording badge', (tester) async {
     await show(tester, (s) {
       s.phase.value = CallPhase.active;

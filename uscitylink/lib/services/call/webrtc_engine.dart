@@ -8,6 +8,10 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 ///     the callee answers, or asks for a restart with {type: 'restart-request'};
 ///   * ICE candidates that arrive before the remote description are queued.
 /// Group calls use one engine per other person (CallService), all sharing the microphone.
+///
+/// Video without renegotiation (same as the web): the caller's offer carries a video slot; the
+/// callee switches the offered slot to send+receive before answering. Camera on/off = swap the track
+/// in that slot (setCamera). An older app offering audio only simply has no video slot.
 enum EngineState { connecting, connected, reconnecting, failed, closed }
 
 class WebRtcEngine {
@@ -17,6 +21,7 @@ class WebRtcEngine {
     required this.sendSignal,
     required this.onState,
     this.ownsStream = true,
+    this.onRemoteStream,
   });
 
   final List<Map<String, dynamic>> iceServers;
@@ -28,7 +33,14 @@ class WebRtcEngine {
   final void Function(Map<String, dynamic> data) sendSignal;
   final void Function(EngineState state) onState;
 
+  /// The other person's audio + video in one stream (it gains a video track when theirs arrives).
+  final void Function(MediaStream stream)? onRemoteStream;
+
   static const _maxRestarts = 6;
+  MediaStreamTrack? _camera;
+  ({int maxBitrate, int maxFramerate, double scale})? _videoLimit;
+  final Map<String, MediaStreamTrack> _remoteTracks = {}; // by kind
+  int _remoteVersion = 0;
 
   RTCPeerConnection? _pc;
   MediaStream? _local;
@@ -52,6 +64,17 @@ class WebRtcEngine {
         'video': false,
       });
 
+  /// The camera for video calls (640×360, 15 fps — faces, light on mobile data).
+  static Future<MediaStream> openCamera({bool front = true}) => navigator.mediaDevices.getUserMedia({
+        'audio': false,
+        'video': {
+          'facingMode': front ? 'user' : 'environment',
+          'width': {'ideal': 640},
+          'height': {'ideal': 360},
+          'frameRate': {'ideal': 15, 'max': 24},
+        },
+      });
+
   Future<void> start(MediaStream localStream) async {
     _local = localStream;
     final pc = await createPeerConnection({
@@ -63,6 +86,29 @@ class WebRtcEngine {
     for (final track in localStream.getAudioTracks()) {
       await pc.addTrack(track, localStream);
     }
+    // The caller's offer carries the video slot (the callee gets it from the offer)
+    if (isCaller) {
+      await pc.addTransceiver(
+        kind: RTCRtpMediaType.RTCRtpMediaTypeVideo,
+        init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendRecv),
+      );
+    }
+    // Remote audio plays through the call audio route by itself; video needs the stream for a renderer
+    pc.onTrack = (event) async {
+      try {
+        // A fresh stream with all of their tracks each time: a renderer already showing a stream
+        // may not start drawing a video track added to it later
+        _remoteTracks[event.track.kind ?? 'audio'] = event.track;
+        final remote = await createLocalMediaStream('remote-${identityHashCode(this)}-${_remoteVersion++}');
+        for (final t in _remoteTracks.values) {
+          await remote.addTrack(t);
+        }
+        onRemoteStream?.call(remote);
+      } catch (e) {
+        // ignore: avoid_print
+        print('[call] remote track failed: $e');
+      }
+    };
     pc.onIceCandidate = (c) {
       if (c.candidate != null) {
         sendSignal({
@@ -83,6 +129,10 @@ class WebRtcEngine {
       switch (data['type']) {
         case 'offer':
           await pc.setRemoteDescription(RTCSessionDescription(data['sdp'], 'offer'));
+          // Callee: send video back in the slot the caller offered (and attach a camera already on)
+          final video = await _videoTransceiver();
+          if (video != null) await video.setDirection(TransceiverDirection.SendRecv);
+          await _applyCamera();
           await _flush();
           final answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -109,6 +159,51 @@ class WebRtcEngine {
     } catch (e) {
       // ignore: avoid_print
       print('[call] signal ${data['type']} failed: $e');
+    }
+  }
+
+  Future<RTCRtpTransceiver?> _videoTransceiver() async {
+    final pc = _pc;
+    if (pc == null) return null;
+    for (final t in await pc.getTransceivers()) {
+      if (t.receiver.track?.kind == 'video') return t;
+    }
+    return null;
+  }
+
+  /// Camera on (a track) or off (null). No renegotiation: the video slot just changes track.
+  Future<void> setCamera(MediaStreamTrack? track) async {
+    _camera = track;
+    await _applyCamera();
+  }
+
+  /// Lighter video in big group calls (everyone sends to everyone).
+  Future<void> setVideoLimit({required int maxBitrate, required int maxFramerate, required double scale}) async {
+    _videoLimit = (maxBitrate: maxBitrate, maxFramerate: maxFramerate, scale: scale);
+    await _applyCamera();
+  }
+
+  Future<void> _applyCamera() async {
+    if (_closed) return;
+    try {
+      final sender = (await _videoTransceiver())?.sender;
+      if (sender == null) return;
+      await sender.replaceTrack(_camera);
+      final limit = _videoLimit;
+      if (_camera != null && limit != null) {
+        final params = sender.parameters;
+        final encodings = params.encodings ?? [];
+        if (encodings.isEmpty) encodings.add(RTCRtpEncoding());
+        encodings[0]
+          ..maxBitrate = limit.maxBitrate
+          ..maxFramerate = limit.maxFramerate
+          ..scaleResolutionDownBy = limit.scale;
+        params.encodings = encodings;
+        await sender.setParameters(params);
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('[call] camera update failed: $e');
     }
   }
 
@@ -243,10 +338,14 @@ class WebRtcEngine {
 /// server/src/calls/callRecorder.ts). A separate send-only connection, so it can never disturb the
 /// call's own audio. Uses the call's microphone track, so muting is respected.
 class RecordingUplink {
-  RecordingUplink({required this.iceServers, required this.stream, required this.offer});
+  RecordingUplink({required this.iceServers, required this.stream, required this.offer, this.video = false});
 
   final List<Map<String, dynamic>> iceServers;
   final MediaStream stream;
+
+  /// "Record video" is on for this call: also send the camera (when it's on).
+  final bool video;
+  MediaStreamTrack? _camera;
 
   /// Sends the offer to the server (call:rec_offer) and returns its answer, or null.
   final Future<String?> Function(String sdp) offer;
@@ -266,6 +365,14 @@ class RecordingUplink {
         kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
         init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly, streams: [stream]),
       );
+      if (video) {
+        final camera = _camera;
+        if (camera != null) {
+          await pc.addTransceiver(track: camera, kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
+        } else {
+          await pc.addTransceiver(kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
+        }
+      }
       // One round trip: send the offer with the candidates found within a second (local + STUN)
       // instead of trickling them; waiting for every TURN candidate delayed the start of recording
       final gathered = Completer<void>();
@@ -291,6 +398,20 @@ class RecordingUplink {
       print('[call] recording uplink failed: $e');
       return false;
     }
+  }
+
+  /// Camera on/off, for calls that keep video in the recording.
+  Future<void> setCamera(MediaStreamTrack? track) async {
+    _camera = track;
+    final pc = _pc;
+    if (pc == null) return;
+    try {
+      for (final t in await pc.getTransceivers()) {
+        if (t.sender.track?.kind == 'video' || (t.sender.track == null && t.receiver.track?.kind == 'video')) {
+          await t.sender.replaceTrack(track);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> close() async {

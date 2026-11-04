@@ -41,7 +41,7 @@ import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
 import path from "path";
 import { logCallPushSetup } from "./calls/callPush";
-import { recoverRecordings } from "./calls/callRecorder";
+import { logRecordingSetup, recoverRecordings } from "./calls/callRecorder";
 
 
 dotenv.config();
@@ -147,6 +147,7 @@ MessageStaff.associate({ UserProfile });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   logCallPushSetup();
+  logRecordingSetup();
   await primarySequelize.authenticate();
   console.log("Connected to primary database.");
 

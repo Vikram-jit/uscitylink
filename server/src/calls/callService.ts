@@ -82,6 +82,13 @@ export interface ActiveCall {
    * can't (a second person's offer would break their call), so nobody is added while one is on it.
    */
   groupCapable: Set<string>;
+  /**
+   * Video: who can show video (older apps are audio-only), whose camera is on, and whether the
+   * recording keeps video too (admin switch; audio is always recorded).
+   */
+  videoCapable: Set<string>;
+  camera: Map<string, boolean>;
+  recordVideo: boolean;
   phase: "queued" | "ringing" | "active";
   startedAt: number;
   queuedAt: number | null;
@@ -273,6 +280,11 @@ export class CallService {
       members: this.currentMembers(call),
       pending: [...call.joins.values()].filter((j) => j.state === "ringing").map((j) => j.person),
       maxParticipants: MAX_PARTICIPANTS,
+      // Video: whose camera is on / who can show video at all (older apps can't)
+      camera: Object.fromEntries([...call.camera].filter(([, on]) => on)),
+      muted: Object.fromEntries([...call.muted].filter(([, m]) => m)),
+      videoCapable: [...call.videoCapable],
+      recordVideo: call.recordVideo,
     };
   }
 
@@ -291,6 +303,9 @@ export class CallService {
     recording?: boolean;
     /** The caller's app can do group calls. */
     groupCapable?: boolean;
+    /** The caller's app can do video. */
+    videoCapable?: boolean;
+    recordVideo?: boolean;
   }): Promise<InviteResult> {
     if (this.isBusy(input.caller.id)) return { ok: false, error: "already_in_call" };
 
@@ -308,6 +323,10 @@ export class CallService {
       members: new Map(),
       joins: new Map(),
       groupCapable: new Set(input.groupCapable ? [input.caller.id] : []),
+      videoCapable: new Set(input.videoCapable ? [input.caller.id] : []),
+      // A video call starts with the caller's camera on
+      camera: new Map(input.type === "video" ? [[input.caller.id, true]] : []),
+      recordVideo: !!input.recordVideo,
       phase: "ringing",
       startedAt: this.now(),
       queuedAt: null,
@@ -350,10 +369,12 @@ export class CallService {
     return { ok: true, callId: call.id, ringing: free.length, queued: false };
   }
 
-  async accept(callId: string, user: Person, opts: { groupCapable?: boolean } = {}) {
+  async accept(callId: string, user: Person, opts: { groupCapable?: boolean; videoCapable?: boolean; video?: boolean } = {}) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
     if (opts.groupCapable) call.groupCapable.add(user.id);
+    if (opts.videoCapable) call.videoCapable.add(user.id);
+    if (opts.video !== undefined) call.camera.set(user.id, !!opts.video);
     const join = call.joins.get(user.id);
     if (join && call.phase === "active") return this.acceptJoin(call, join, user);
     const invite = call.invited.get(user.id);
@@ -381,7 +402,8 @@ export class CallService {
       callId,
       "answered_elsewhere"
     );
-    this.deps.emit(call.caller.id, "call:accepted", { callId, by: user });
+    const view = this.publicView(call);
+    this.deps.emit(call.caller.id, "call:accepted", { callId, by: user, camera: view.camera, videoCapable: view.videoCapable });
     await this.deps.persistAnswer(call);
     await this.stopRingingElsewhere(user, callId);
     this.deps.onCallsChanged?.();
@@ -520,7 +542,15 @@ export class CallService {
     if (call.phase !== "active") return;
     const view = this.publicView(call);
     for (const p of this.currentMembers(call)) {
-      this.deps.emit(p.id, "call:participants", { callId: call.id, members: view.members, pending: view.pending, max: MAX_PARTICIPANTS });
+      this.deps.emit(p.id, "call:participants", {
+        callId: call.id,
+        members: view.members,
+        pending: view.pending,
+        max: MAX_PARTICIPANTS,
+        camera: view.camera,
+        muted: view.muted,
+        videoCapable: view.videoCapable,
+      });
     }
   }
 
@@ -573,13 +603,16 @@ export class CallService {
     return { ok: true as const };
   }
 
-  media(callId: string, fromId: string, state: { muted?: boolean }) {
+  /** Mute / camera changes, relayed to everyone else on the call (always both, as stored). */
+  media(callId: string, fromId: string, state: { muted?: boolean; video?: boolean }) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
     if (!this.isOnCall(call, fromId) || call.phase !== "active") return { ok: false as const, error: "not_in_call" };
     if (typeof state.muted === "boolean") call.muted.set(fromId, state.muted);
+    if (typeof state.video === "boolean") call.camera.set(fromId, state.video);
+    const payload = { callId, from: fromId, muted: !!call.muted.get(fromId), video: !!call.camera.get(fromId) };
     for (const p of this.currentMembers(call)) {
-      if (p.id !== fromId) this.deps.emit(p.id, "call:media", { callId, from: fromId, muted: !!state.muted });
+      if (p.id !== fromId) this.deps.emit(p.id, "call:media", payload);
     }
     return { ok: true as const };
   }

@@ -21,6 +21,11 @@ import {
 } from '@mui/material';
 import {
   ArrowsLeftRight,
+  CameraRotate,
+  CornersIn,
+  CornersOut,
+  VideoCamera,
+  VideoCameraSlash,
   CaretDown,
   CaretUp,
   Check,
@@ -85,7 +90,13 @@ function IncomingCard(): React.JSX.Element {
             <PhoneIncoming size={18} weight="bold" />
           )}
           <Typography variant="subtitle2">
-            {call.transfer ? 'Transferred call' : call.invitedBy ? 'Request to join a call' : 'Incoming voice call'}
+            {call.transfer
+              ? 'Transferred call'
+              : call.invitedBy
+                ? 'Request to join a call'
+                : call.callType === 'video'
+                  ? 'Incoming video call'
+                  : 'Incoming voice call'}
           </Typography>
         </Stack>
       </Box>
@@ -136,9 +147,20 @@ function IncomingCard(): React.JSX.Element {
         <Button color="error" fullWidth onClick={call.decline} startIcon={<PhoneDisconnect />} variant="outlined">
           Decline
         </Button>
-        <Button color="success" fullWidth onClick={() => void call.accept()} startIcon={<Phone weight="fill" />} variant="contained">
-          Accept
-        </Button>
+        {call.callType === 'video' ? (
+          <>
+            <Button color="success" fullWidth onClick={() => void call.accept()} startIcon={<Phone weight="fill" />} variant="outlined">
+              Voice
+            </Button>
+            <Button color="success" fullWidth onClick={() => void call.accept({ video: true })} startIcon={<VideoCamera weight="fill" />} variant="contained">
+              Video
+            </Button>
+          </>
+        ) : (
+          <Button color="success" fullWidth onClick={() => void call.accept()} startIcon={<Phone weight="fill" />} variant="contained">
+            Accept
+          </Button>
+        )}
       </Stack>
     </Paper>
   );
@@ -264,13 +286,115 @@ function AddPersonMenu({
   );
 }
 
+/** One person's video (or their initials while their camera is off). */
+function VideoTile({
+  stream,
+  on,
+  name,
+  muted,
+  mirror = false,
+}: {
+  stream: MediaStream | null | undefined;
+  on: boolean;
+  name: string;
+  muted?: boolean;
+  mirror?: boolean;
+}): React.JSX.Element {
+  const ref = React.useRef<HTMLVideoElement | null>(null);
+  React.useEffect(() => {
+    if (ref.current && ref.current.srcObject !== (stream || null)) ref.current.srcObject = stream || null;
+  }, [stream, on]);
+  const showVideo = on && !!stream?.getVideoTracks().length;
+  return (
+    <Box sx={{ position: 'relative', bgcolor: '#0B1F3A', borderRadius: 2, overflow: 'hidden', aspectRatio: '16 / 9' }}>
+      {/* Audio plays from the hidden <audio> per person, so the video element stays muted */}
+      <video
+        autoPlay
+        muted
+        playsInline
+        ref={ref}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: showVideo ? 'block' : 'none',
+          transform: mirror ? 'scaleX(-1)' : undefined,
+        }}
+      />
+      {!showVideo ? (
+        <Stack alignItems="center" justifyContent="center" sx={{ position: 'absolute', inset: 0 }}>
+          <Avatar sx={{ width: 48, height: 48, bgcolor: 'success.main', fontWeight: 600 }}>{initials(name)}</Avatar>
+        </Stack>
+      ) : null}
+      <Stack
+        alignItems="center"
+        direction="row"
+        spacing={0.5}
+        sx={{ position: 'absolute', left: 6, bottom: 6, px: 0.75, py: 0.25, borderRadius: 1, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff' }}
+      >
+        {muted ? <MicrophoneSlash size={12} /> : null}
+        <Typography sx={{ fontSize: 11, fontWeight: 600 }} noWrap>
+          {name}
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+/** Shown while anyone's camera is on: everyone's video in a grid, my camera as a small self-view. */
+function VideoPanel(): React.JSX.Element {
+  const call = useCall();
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [full, setFull] = React.useState(false);
+  React.useEffect(() => {
+    const onChange = () => setFull(document.fullscreenElement === ref.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const n = call.members.length;
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
+  return (
+    <Box ref={ref} sx={{ position: 'relative', px: full ? 0 : 1.5, bgcolor: full ? '#000' : undefined, display: full ? 'flex' : 'block', alignItems: 'center' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 0.75, width: '100%' }}>
+        {call.members.map((m) => (
+          <VideoTile
+            key={m.id}
+            muted={call.mutedIds.includes(m.id)}
+            name={call.videoCapable.length && !call.videoCapable.includes(m.id) ? `${m.name} (no video on their app)` : m.name}
+            on={call.remoteCamera.includes(m.id)}
+            stream={call.remoteStreams[m.id]}
+          />
+        ))}
+      </Box>
+      {call.cameraOn ? (
+        <Box sx={{ position: 'absolute', right: full ? 16 : 20, bottom: full ? 16 : 8, width: full ? 220 : 110, boxShadow: 6, borderRadius: 2 }}>
+          <VideoTile mirror name="You" on stream={call.localVideo} />
+        </Box>
+      ) : null}
+      <Tooltip title={full ? 'Exit full screen' : 'Full screen'}>
+        <IconButton
+          aria-label={full ? 'Exit full screen' : 'Full screen'}
+          onClick={() => (full ? void document.exitFullscreen() : void ref.current?.requestFullscreen())}
+          size="small"
+          sx={{ position: 'absolute', top: 6, right: full ? 12 : 18, bgcolor: 'rgba(0,0,0,0.45)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.65)' } }}
+        >
+          {full ? <CornersIn size={16} /> : <CornersOut size={16} />}
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+}
+
 function ActiveBar(): React.JSX.Element {
   const call = useCall();
   const [minimized, setMinimized] = React.useState(false);
   const [micMenu, setMicMenu] = React.useState<HTMLElement | null>(null);
   const [addMenu, setAddMenu] = React.useState<HTMLElement | null>(null);
   const [transferMenu, setTransferMenu] = React.useState<HTMLElement | null>(null);
+  const [cameraMenu, setCameraMenu] = React.useState<HTMLElement | null>(null);
   const group = call.members.length > 1 || call.pending.length > 0;
+  // Video panel: anyone's camera on, or a video call (staff without a camera still see the driver)
+  const video = call.cameraOn || call.remoteCamera.length > 0 || (call.callType === 'video' && call.phase !== 'outgoing');
   const title = call.members.length > 1 ? `Group call · ${call.members.length + 1} people` : call.peer?.name;
   const canAdd = call.phase === 'active' && call.members.length + call.pending.length + 1 < call.maxParticipants;
   const seconds = useTimer(call.answeredAt, call.phase === 'active');
@@ -309,7 +433,7 @@ function ActiveBar(): React.JSX.Element {
   }
 
   return (
-    <Paper elevation={12} aria-label="Call controls" sx={{ ...CARD, bottom: 24 }}>
+    <Paper elevation={12} aria-label="Call controls" sx={{ ...CARD, bottom: 24, ...(video && !ended ? { width: { xs: 'calc(100vw - 24px)', sm: 560 } } : {}) }}>
       <Stack alignItems="center" direction="row" spacing={1.5} sx={{ px: 2, pt: 2, pb: 1.5 }}>
         {call.members.length > 1 ? (
           <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 13 } }}>
@@ -347,7 +471,8 @@ function ActiveBar(): React.JSX.Element {
           </Tooltip>
         ) : null}
       </Stack>
-      {group && !ended ? <Participants /> : null}
+      {video && !ended ? <VideoPanel /> : null}
+      {group && !ended && !video ? <Participants /> : null}
       {!ended ? (
         <Stack alignItems="center" direction="row" justifyContent="center" spacing={2} sx={{ px: 2, pb: 2 }}>
           <Tooltip title={call.muted ? 'Unmute' : 'Mute'}>
@@ -359,6 +484,31 @@ function ActiveBar(): React.JSX.Element {
               {call.muted ? <MicrophoneSlash size={22} /> : <Microphone size={22} />}
             </IconButton>
           </Tooltip>
+          {call.phase === 'active' || call.phase === 'connecting' ? (
+            <Tooltip title={call.cameraOn ? 'Turn camera off' : 'Turn camera on'}>
+              <IconButton
+                aria-label={call.cameraOn ? 'Turn camera off' : 'Turn camera on'}
+                aria-pressed={call.cameraOn}
+                onClick={() => void call.toggleCamera()}
+                sx={{
+                  bgcolor: call.cameraOn ? 'primary.main' : 'action.hover',
+                  color: call.cameraOn ? 'primary.contrastText' : 'text.primary',
+                  width: 48,
+                  height: 48,
+                  '&:hover': { bgcolor: call.cameraOn ? 'primary.dark' : 'action.selected' },
+                }}
+              >
+                {call.cameraOn ? <VideoCamera size={22} weight="fill" /> : <VideoCameraSlash size={22} />}
+              </IconButton>
+            </Tooltip>
+          ) : null}
+          {call.cameraOn && call.cameras.length > 1 ? (
+            <Tooltip title="Switch camera">
+              <IconButton aria-label="Switch camera" onClick={(e) => setCameraMenu(e.currentTarget)} sx={{ bgcolor: 'action.hover', width: 36, height: 36 }}>
+                <CameraRotate size={18} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
           <Tooltip title="Microphone">
             <span>
               <IconButton
@@ -407,6 +557,19 @@ function ActiveBar(): React.JSX.Element {
       ) : null}
       <AddPersonMenu anchor={addMenu} mode="add" onClose={() => setAddMenu(null)} />
       <AddPersonMenu anchor={transferMenu} mode="transfer" onClose={() => setTransferMenu(null)} />
+      <Menu anchorEl={cameraMenu} onClose={() => setCameraMenu(null)} open={!!cameraMenu} sx={{ zIndex: MENU_LAYER }}>
+        {call.cameras.map((c, i) => (
+          <MenuItem
+            key={c.deviceId || i}
+            onClick={() => {
+              setCameraMenu(null);
+              void call.switchCamera(c.deviceId);
+            }}
+          >
+            <ListItemText>{c.label || `Camera ${i + 1}`}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
       <Menu anchorEl={micMenu} onClose={() => setMicMenu(null)} open={!!micMenu} sx={{ zIndex: MENU_LAYER }}>
         {call.microphones.map((m, i) => (
           <MenuItem

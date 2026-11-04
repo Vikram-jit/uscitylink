@@ -69,6 +69,25 @@ class CallService extends GetxService with WidgetsBindingObserver {
   String? _vmPath;
   Timer? _vmTimer;
 
+  // ---------- video ----------
+  /// The call started as a video call. Any call can turn cameras on/off.
+  final isVideoCall = false.obs;
+  final cameraOn = false.obs;
+  final frontCamera = true.obs;
+  /// People on the call whose camera is on, and everyone's audio + video by user id.
+  final remoteCamera = <String>{}.obs;
+  final remoteStreams = <String, MediaStream>{}.obs;
+  /// My camera, for the self-view.
+  final localVideo = Rxn<MediaStream>();
+  MediaStream? _cameraStream;
+  bool _resumeCameraOnReturn = false;
+
+  /// Video is showing (anyone's camera on, or a video call).
+  bool get videoActive => isVideoCall.value || cameraOn.value || remoteCamera.isNotEmpty;
+
+  /// Drivers must show their camera on video calls (dispatch needs to see them); staff may not have one.
+  bool get cameraRequired => !isStaffUser.value && isVideoCall.value;
+
   /// Signed in as staff (not a driver): can add people to a call and transfer it.
   final isStaffUser = false.obs;
   static const maxParticipants = 6;
@@ -132,6 +151,16 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The camera can't run in the background (iOS/Android rules): off when leaving, back on return
+    if (state == AppLifecycleState.paused && cameraOn.value && busy) {
+      _resumeCameraOnReturn = true;
+      setCamera(false);
+    } else if (state == AppLifecycleState.resumed && busy && phase.value != CallPhase.incoming) {
+      if (_resumeCameraOnReturn || (cameraRequired && !cameraOn.value)) {
+        _resumeCameraOnReturn = false;
+        setCamera(true);
+      }
+    }
     final call = info.value;
     if (phase.value != CallPhase.incoming || call == null) return;
     if (state == AppLifecycleState.paused) {
@@ -275,7 +304,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
   // ---------- outgoing ----------
 
   /// Staff: pass [driverId]. Driver: leave it empty to call dispatch on [channelId].
-  Future<void> startCall({String? driverId, String? channelId, required String name, String subtitle = ''}) async {
+  Future<void> startCall({String? driverId, String? channelId, required String name, String subtitle = '', bool video = false}) async {
     if (busy) {
       _toast('Finish the current call first');
       return;
@@ -295,8 +324,23 @@ class CallService extends GetxService with WidgetsBindingObserver {
     peerSubtitle.value = subtitle;
     _openCallScreen();
 
+    isVideoCall.value = video;
+    if (video) {
+      final on = await setCamera(true, announce: false);
+      if (!on && cameraRequired) {
+        // Drivers must show their camera on a video call
+        await _releasePendingMic();
+        _reset();
+        if (Get.currentRoute == '/CallView') Get.back();
+        return;
+      }
+      await Helper.setSpeakerphoneOn(true).catchError((_) {});
+      speaker.value = true;
+    }
     final res = await _emitAck('call:invite', {
       'group': true, // this app version can do group calls (older ones can't)
+      'video': true, // …and video
+      'type': video ? 'video' : 'audio',
       if (driverId != null && driverId.isNotEmpty) 'driverId': driverId,
       if (channelId != null && channelId.isNotEmpty) 'channelId': channelId,
     });
@@ -392,7 +436,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> accept(String id, {bool fromNative = false}) async {
+  Future<void> accept(String id, {bool fromNative = false, bool? video}) async {
     if (_accepting.contains(id) || (callId == id && phase.value != CallPhase.incoming && phase.value != CallPhase.idle)) {
       return;
     }
@@ -411,9 +455,25 @@ class CallService extends GetxService with WidgetsBindingObserver {
         return;
       }
       _isCaller = false;
+      // Video call: drivers always answer with their camera (staff choose Video / Voice). Answered
+      // from the lock screen the camera can't start yet — it starts when the app opens.
+      final videoCall = (info.value?.type ?? '') == 'video';
+      isVideoCall.value = videoCall;
+      final wantCamera = video ?? (videoCall && !isStaffUser.value);
+      if (wantCamera) {
+        if (_inForeground) {
+          await setCamera(true, announce: false);
+        } else {
+          _resumeCameraOnReturn = true;
+        }
+        await Helper.setSpeakerphoneOn(true).catchError((_) {});
+        speaker.value = true;
+      }
       phase.value = CallPhase.connecting;
       _openCallScreen();
-      final res = await _emitAck('call:accept', {'callId': id, 'group': true}, connectFirst: true);
+      final res = await _emitAck(
+          'call:accept', {'callId': id, 'group': true, 'videoCapable': true, 'camera': cameraOn.value},
+          connectFirst: true);
       if (res['ok'] != true) {
         await mic.dispose();
         await _endNative(id);
@@ -427,6 +487,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
       final me = await _myId();
       final others = call.members.where((m) => m.id != me).toList();
       members.assignAll(others.isEmpty ? [call.from] : others);
+      remoteCamera.assignAll(call.camera.where((id) => id != me));
       pending.assignAll(call.pending.where((m) => m.id != me));
       // Answering a call: the caller sends the offer. Joining a group call: I offer to everyone on it.
       final joining = call.answeredBy != null && call.answeredBy!.id != me;
@@ -542,6 +603,11 @@ class CallService extends GetxService with WidgetsBindingObserver {
         mutedIds.remove(from);
       }
       remoteMuted.value = mutedIds.isNotEmpty;
+      if (d['video'] == true) {
+        remoteCamera.add(from);
+      } else if (d['video'] == false) {
+        remoteCamera.remove(from);
+      }
     });
     socket.on('call:peer_reconnecting', (d) {
       if (callId == d['callId']) reconnecting.value = true;
@@ -589,6 +655,12 @@ class CallService extends GetxService with WidgetsBindingObserver {
       final me = await _myId();
       members.assignAll(CallInfo.peerList(d['members']).where((m) => m.id != me));
       pending.assignAll(CallInfo.peerList(d['pending']).where((m) => m.id != me));
+      if (d['camera'] is Map) {
+        remoteCamera.assignAll(Map<String, dynamic>.from(d['camera']).entries.where((e) => e.value == true && e.key != me).map((e) => e.key));
+      }
+      for (final e in _engines.values) {
+        _applyVideoLimit(e);
+      }
       if (isGroup) {
         peerName.value = 'Group call';
         peerSubtitle.value = members.map((m) => m.name).join(', ');
@@ -646,12 +718,19 @@ class CallService extends GetxService with WidgetsBindingObserver {
     final by = CallPeer.fromJson(Map<String, dynamic>.from(d['by']));
     if (by.role == 'staff') peerSubtitle.value = 'Dispatch · ${by.name}';
     members.assignAll([by]);
+    if (d['camera'] is Map && d['camera'][by.id] == true) remoteCamera.add(by.id);
     await _startMedia(mic, d['callId'], [by.id], isCaller: true);
   }
 
   /// The call was answered: keep the microphone, start recording, connect to [peers].
   Future<void> _startMedia(MediaStream mic, String id, List<String> peers, {required bool isCaller}) async {
     _mic = mic;
+    // Android: from the moment the call is answered, keep it (and the microphone) alive in the
+    // background with the ongoing-call notification — even while it's still connecting
+    if (Platform.isAndroid && !_nativeAccepted.contains(id)) {
+      _nativeAccepted.add(id); // its "Hang up" ends the call (see CallEventActionCallEnded)
+      unawaited(CallKit.startOngoing(callId: id, title: peerName.value, subtitle: peerSubtitle.value, video: isVideoCall.value));
+    }
     WakelockPlus.enable().catchError((_) {});
     _startRecording(id);
     for (final peer in peers) {
@@ -668,6 +747,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
       iceServers: _iceServers,
       isCaller: isCaller,
       ownsStream: false,
+      onRemoteStream: (stream) => remoteStreams[peerId] = stream,
       sendSignal: (data) => _boundSocket?.emit('call:signal', {'callId': id, 'data': data, 'to': peerId}),
       onState: (s) {
         switch (s) {
@@ -699,6 +779,9 @@ class CallService extends GetxService with WidgetsBindingObserver {
     );
     _engines[peerId] = engine;
     await engine.start(mic);
+    await _applyVideoLimit(engine);
+    final camera = _cameraTrack;
+    if (camera != null) await engine.setCamera(camera);
     final queued = _pendingSignals.remove(peerId) ?? [];
     for (final s in queued) {
       await engine.handleSignal(s);
@@ -709,6 +792,71 @@ class CallService extends GetxService with WidgetsBindingObserver {
     _engines.remove(peerId)?.close();
     _pendingSignals.remove(peerId);
     mutedIds.remove(peerId);
+    remoteCamera.remove(peerId);
+    remoteStreams.remove(peerId);
+  }
+
+  MediaStreamTrack? get _cameraTrack {
+    final tracks = _cameraStream?.getVideoTracks() ?? const <MediaStreamTrack>[];
+    return tracks.isEmpty ? null : tracks.first;
+  }
+
+  /// Everyone sends video to everyone: lighter once 3+ are on the call.
+  Future<void> _applyVideoLimit(WebRtcEngine engine) => members.length + 1 >= 3
+      ? engine.setVideoLimit(maxBitrate: 200000, maxFramerate: 12, scale: 2)
+      : engine.setVideoLimit(maxBitrate: 500000, maxFramerate: 15, scale: 1);
+
+  /// Camera on/off during the call. Returns whether it's on. [announce] tells the others.
+  Future<bool> setCamera(bool on, {bool announce = true}) async {
+    if (on == cameraOn.value && (on == (_cameraStream != null))) return on;
+    if (on) {
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        _toast(cameraRequired
+            ? 'Allow the camera for USCityLink — it is needed for video calls'
+            : 'Allow the camera for USCityLink to turn video on');
+        if (status.isPermanentlyDenied) await openAppSettings();
+        return false;
+      }
+      try {
+        final stream = await WebRtcEngine.openCamera(front: frontCamera.value);
+        _cameraStream = stream;
+      } catch (e) {
+        debugPrint('[call] camera failed: $e');
+        _toast('Could not turn the camera on');
+        return false;
+      }
+    } else {
+      final stream = _cameraStream;
+      _cameraStream = null;
+      try {
+        for (final t in stream?.getTracks() ?? <MediaStreamTrack>[]) {
+          await t.stop();
+        }
+        await stream?.dispose();
+      } catch (_) {}
+    }
+    final track = _cameraTrack;
+    for (final e in _engines.values) {
+      await e.setCamera(track);
+    }
+    await _uplink?.setCamera(track);
+    localVideo.value = _cameraStream;
+    cameraOn.value = on;
+    final id = callId;
+    if (announce && id != null) _boundSocket?.emit('call:media', {'callId': id, 'video': on});
+    return on;
+  }
+
+  Future<void> toggleCamera() => setCamera(!cameraOn.value);
+
+  Future<void> flipCamera() async {
+    final track = _cameraTrack;
+    if (track == null) return;
+    try {
+      await Helper.switchCamera(track);
+      frontCamera.value = !frontCamera.value;
+    } catch (_) {}
   }
 
   void _applyOnCall(dynamic calls) {
@@ -779,13 +927,14 @@ class CallService extends GetxService with WidgetsBindingObserver {
     final uplink = RecordingUplink(
       iceServers: _iceServers,
       stream: stream,
+      video: info.value?.recordVideo == true,
       offer: (sdp) async {
         final res = await _emitAck('call:rec_offer', {'callId': id, 'sdp': sdp}, connectFirst: false);
         return res['ok'] == true ? '${res['sdp']}' : null;
       },
     );
     _uplink = uplink;
-    uplink.start();
+    uplink.setCamera(_cameraTrack).then((_) => uplink.start());
   }
 
   // ---------- CallKit / native call screen ----------
@@ -912,6 +1061,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
       }
       await mic?.dispose();
     } catch (_) {}
+    if (_cameraStream != null) await setCamera(false, announce: false);
     WakelockPlus.disable().catchError((_) {});
     endedText.value = text;
     phase.value = CallPhase.ended;
@@ -1075,6 +1225,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
     members.clear();
     pending.clear();
     mutedIds.clear();
+    isVideoCall.value = false;
+    remoteCamera.clear();
+    remoteStreams.clear();
+    _resumeCameraOnReturn = false;
   }
 
   List<Map<String, dynamic>> _ice(Map<String, dynamic> res) =>

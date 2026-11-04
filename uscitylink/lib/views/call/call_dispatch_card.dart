@@ -108,6 +108,28 @@ class CallDispatchCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // Video call to dispatch (camera on)
+                  if (!onCall) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    Material(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        key: const Key('videoCallDispatchCard'),
+                        customBorder: const CircleBorder(),
+                        onTap: () => call.startCall(
+                          channelId: channelId,
+                          name: channelName?.isNotEmpty == true ? channelName! : 'Dispatch',
+                          subtitle: 'Dispatch',
+                          video: true,
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(AppSpacing.sm + 2),
+                          child: Icon(Icons.videocam_rounded, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: AppSpacing.md),
                   Container(
                     padding: const EdgeInsets.symmetric(

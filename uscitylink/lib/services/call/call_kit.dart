@@ -70,6 +70,34 @@ class CallKit {
         ),
       );
 
+  /// Android: a call placed or answered inside the app is registered as an ongoing call. That
+  /// starts the plugin's foreground service ("phoneCall|microphone") with the ongoing-call
+  /// notification — without it Android silences the microphone as soon as the user switches apps.
+  static Future<void> startOngoing({required String callId, required String title, required String subtitle, required bool video}) async {
+    if (!Platform.isAndroid || callId.isEmpty) return;
+    try {
+      await FlutterCallkitIncoming.startCall(CallKitParams(
+        id: callId,
+        nameCaller: title,
+        appName: 'USCityLink',
+        handle: subtitle,
+        type: video ? 1 : 0,
+        android: const AndroidParams(
+          isCustomNotification: true,
+          isShowLogo: false,
+          backgroundColor: '#0B1F3A',
+          actionColor: '#22C55E',
+          textColor: '#FFFFFF',
+          incomingCallNotificationChannelName: 'Incoming calls',
+          missedCallNotificationChannelName: 'Missed calls',
+        ),
+      ));
+      await FlutterCallkitIncoming.setCallConnected(callId);
+    } catch (_) {
+      // the call itself never depends on this
+    }
+  }
+
   static Future<bool> isShowing(String callId) async {
     try {
       final calls = await FlutterCallkitIncoming.activeCalls();

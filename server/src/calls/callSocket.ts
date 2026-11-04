@@ -6,7 +6,7 @@ import Role from "../models/Role";
 import Channel from "../models/Channel";
 import UserChannel from "../models/UserChannel";
 import { Call, CallParticipant } from "../models/Call";
-import { isCallRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
+import { isCallRecordingEnabled, isCallVideoRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
 import { CallService, ERRORS, MemoryCallStore, Person } from "./callService";
 import { iceServersFor } from "./iceServers";
 import { pushCallEnded, pushIncomingCall, pushMissedCall } from "./callPush";
@@ -370,6 +370,8 @@ export function registerCallHandlers(socket: CustomSocket) {
         type: payload?.type === "video" ? "video" : "audio",
         recording: await isCallRecordingEnabled(),
         groupCapable: payload?.group === true,
+        videoCapable: payload?.video === true,
+        recordVideo: await isCallVideoRecordingEnabled(),
       });
       if (!result.ok) return fail(ack, result.error, { callId: result.callId });
       bind(result.callId);
@@ -388,10 +390,14 @@ export function registerCallHandlers(socket: CustomSocket) {
     }
   });
 
-  socket.on("call:accept", async ({ callId, group } = {}, ackFn) => {
+  socket.on("call:accept", async ({ callId, group, videoCapable, camera } = {}, ackFn) => {
     const ack = safeAck(ackFn);
     bind(String(callId));
-    const res = await callService.accept(String(callId), await person(), { groupCapable: group === true });
+    const res = await callService.accept(String(callId), await person(), {
+      groupCapable: group === true,
+      videoCapable: videoCapable === true,
+      video: typeof camera === "boolean" ? camera : undefined,
+    });
     if (!res.ok) {
       mediaSockets.delete(`${callId}:${userId}`);
       return fail(ack, res.error);
@@ -418,8 +424,11 @@ export function registerCallHandlers(socket: CustomSocket) {
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
-  socket.on("call:media", ({ callId, muted } = {}, ackFn) => {
-    const res = callService.media(String(callId), me(), { muted: !!muted });
+  socket.on("call:media", ({ callId, muted, video } = {}, ackFn) => {
+    const res = callService.media(String(callId), me(), {
+      muted: typeof muted === "boolean" ? muted : undefined,
+      video: typeof video === "boolean" ? video : undefined,
+    });
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
@@ -487,7 +496,7 @@ export function registerCallHandlers(socket: CustomSocket) {
       if (!live || live.phase !== "active" || !callService.isOnCall(live, me())) return fail(ack, "not_in_call");
       if (!live.recording) return fail(ack, "This call isn't recorded");
       if (typeof sdp !== "string" || !sdp.includes("m=audio")) return fail(ack, "Invalid recording offer");
-      ack({ ok: true, sdp: await answerRecordingOffer(live.id, me(), sdp) });
+      ack({ ok: true, sdp: await answerRecordingOffer(live.id, me(), sdp, { video: live.recordVideo }) });
     } catch (err: any) {
       console.warn("[recording] offer failed:", err?.message || err);
       fail(ack, err?.message || "Recording could not start");
