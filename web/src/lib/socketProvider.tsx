@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { apiSlice } from '@/redux/apiSlice';
 import { scheduleTagRefresh } from '@/lib/badge-refresh';
 import { useDispatch } from 'react-redux';
@@ -13,13 +13,25 @@ type SocketContextType = {
   isConnected: boolean;
   // Increments on every reconnect after the first connect; screens resync once when it changes
   reconnectCount: number;
+  /** Why the last connection attempt failed (null while connected). */
+  connectionError: string | null;
+  /** The server refused this login (token missing/invalid, user gone): reconnecting won't help. */
+  authFailed: boolean;
+  /** Try to connect again right away. */
+  reconnectNow: () => void;
 };
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   isConnected: false,
   reconnectCount: 0,
+  connectionError: null,
+  authFailed: false,
+  reconnectNow: () => undefined,
 });
+
+/** Messages the server's socket login sends when the login itself is bad (server/src/sockets/socket.ts). */
+const isAuthRejection = (message: string) => /token is missing|invalid token|user not found/i.test(message);
 
 
 
@@ -43,6 +55,13 @@ export const SocketProvider = ({
   // const [audioContext, setAudioContext] = useState<any>(null)
   const [newMessage,setNewMessage] = useState<boolean>(false)
   const [reconnectCount, setReconnectCount] = useState(0);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [authFailed, setAuthFailed] = useState(false);
+  const socketRef = useRef<any>(null);
+  const reconnectNow = useCallback(() => {
+    const s = socketRef.current;
+    if (s && !s.connected) s.connect();
+  }, []);
   // Read once in the browser; localStorage does not exist during server rendering
   const [token] = useState<string | null>(() =>
     typeof window === 'undefined' ? null : localStorage.getItem('custom-auth-token')
@@ -59,6 +78,27 @@ export const SocketProvider = ({
       reconnectionDelayMax: 5000, // Maximum delay between attempts
       timeout: 20000, // Timeout for initial connection
     });
+    socketRef.current = socketServer;
+
+    // Socket.IO stops reconnecting for good when the server's login step refuses the connection.
+    // A temporary server failure (restart, database) must not leave this dashboard offline until
+    // someone reloads: retry those with a growing delay. A bad login can't be fixed by retrying.
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let refusedRetries = 0;
+    const onConnectError = (err: any) => {
+      const message = String(err?.message || 'Could not reach the server');
+      setConnectionError(message);
+      if (isAuthRejection(message)) {
+        setAuthFailed(true);
+        return;
+      }
+      if (!socketServer.active) {
+        refusedRetries += 1;
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => socketServer.connect(), Math.min(15000, 1000 * 2 ** Math.min(refusedRetries, 4)));
+      }
+    };
+    socketServer.on('connect_error', onConnectError);
 
     if (socketServer.connected) {
       onConnect();
@@ -80,6 +120,9 @@ export const SocketProvider = ({
 
     function onConnect() {
       setIsConnected(true);
+      setConnectionError(null);
+      setAuthFailed(false);
+      refusedRetries = 0;
       setReconnectAttempts(0); //
       setSocket(socketServer);
       // Anything missed while offline is recovered by the screens on this signal
@@ -203,6 +246,8 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
       socketServer.off('document_analyzed', onDocumentAnalyzed);
       socketServer.off('scale_check_updated', onScaleCheckUpdated);
       socketServer.off('automation_alert', onAutomationAlert);
+      socketServer.off('connect_error', onConnectError);
+      if (retryTimer) clearTimeout(retryTimer);
       socketServer.off('reconnect_attempt', onReconnectAttempt);
       socketServer.off('reconnect_error', onReconnectError);
       socketServer.off('reconnect_failed', onReconnectFailed);
@@ -230,5 +275,10 @@ document.addEventListener('touchstart', createAudioContext, { once: true });
     };
   }, [isConnected, socket]);
 
-  return <SocketContext.Provider value={{ socket, isConnected, reconnectCount }}> {children}</SocketContext.Provider>;
+  return (
+    <SocketContext.Provider value={{ socket, isConnected, reconnectCount, connectionError, authFailed, reconnectNow }}>
+      {' '}
+      {children}
+    </SocketContext.Provider>
+  );
 };

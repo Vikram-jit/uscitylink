@@ -55,8 +55,12 @@ export class CallParticipant extends Model {
   public id!: string;
   public call_id!: string;
   public user_profile_id!: string;
-  public role!: "caller" | "callee";
-  public state!: "invited" | "joined" | "declined" | "missed" | "left";
+  /** callee = rung when the call started; added = asked to join the answered call (group call) */
+  public role!: "caller" | "callee" | "added";
+  public state!: "invited" | "joined" | "declined" | "missed" | "cancelled" | "left";
+  public invited_by?: string | null;
+  /** role 'added': 'add' (asked to join) or 'transfer' (the call was handed to them) */
+  public join_type?: "add" | "transfer" | null;
   public device?: string | null;
   public invited_at!: Date;
   public joined_at?: Date | null;
@@ -74,6 +78,47 @@ CallParticipant.init(
     invited_at: { type: DataTypes.DATE, allowNull: false },
     joined_at: { type: DataTypes.DATE, allowNull: true },
     left_at: { type: DataTypes.DATE, allowNull: true },
+    invited_by: { type: DataTypes.UUID, allowNull: true },
+    join_type: { type: DataTypes.STRING(16), allowNull: true },
   },
   { sequelize: primarySequelize, modelName: "CallParticipant", tableName: "call_participants", timestamps: true }
+);
+
+export type CallRecordingStatus = "recording" | "processing" | "ready" | "failed";
+
+/** Audio recording of an answered call (see migrations/20261102000001-create-call-recordings.js). */
+export class CallRecording extends Model {
+  public id!: string;
+  public call_id!: string;
+  public status!: CallRecordingStatus;
+  public s3_key?: string | null;
+  public mime?: string | null;
+  public duration_sec?: number | null;
+  public size_bytes?: number | null;
+  public sha256?: string | null;
+  public tracks?: { userId: string; segments: number; startedOffsetMs: number }[] | null;
+  public error?: string | null;
+  public started_at?: Date | null;
+  public completed_at?: Date | null;
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+CallRecording.init(
+  {
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    call_id: { type: DataTypes.UUID, allowNull: false },
+    status: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "recording" },
+    s3_key: { type: DataTypes.STRING(512), allowNull: true },
+    mime: { type: DataTypes.STRING(64), allowNull: true },
+    duration_sec: { type: DataTypes.INTEGER, allowNull: true },
+    size_bytes: { type: DataTypes.BIGINT, allowNull: true },
+    sha256: { type: DataTypes.STRING(64), allowNull: true },
+    tracks: { type: DataTypes.JSON, allowNull: true },
+    error: { type: DataTypes.TEXT, allowNull: true },
+    started_at: { type: DataTypes.DATE, allowNull: true },
+    completed_at: { type: DataTypes.DATE, allowNull: true },
+  },
+  { sequelize: primarySequelize, modelName: "CallRecording", tableName: "call_recordings", timestamps: true }
 );

@@ -15,6 +15,16 @@ import type { CallStatus, CallType } from "../models/Call";
 //   ("queued"); the moment one hangs up the oldest waiting call rings everyone who is free.
 //   Nobody online at all ─▶ missed (unavailable). Waiting too long ─▶ missed (queue_timeout).
 //
+// Group call (staff adds staff to an answered call, up to MAX_PARTICIPANTS people):
+//   a member invites another staff member ─▶ their phone/dashboard rings ("join request")
+//      ├─accept ─▶ joins: everyone connects to them directly (mesh; the joiner sends the offers)
+//      ├─decline / no answer / cancelled ─▶ logged, the call carries on
+//   Someone hangs up while 3+ are on the call ─▶ only they leave; with 2 left it ends for both.
+//
+// Transfer (a dispatcher hands the call to another dispatcher; the driver stays connected):
+//   a join request marked transfer ─accept─▶ the new dispatcher joins, then the one who
+//   transferred leaves automatically ("transferred"). Declined / no answer ─▶ they stay on.
+//
 // Socket.IO, the database, push and the chat bubble are injected (CallDeps), so this file has no
 // I/O of its own and can be exercised directly (scripts/calls/stateMachine.check.ts).
 // Calls live in memory; CallStore is the seam for moving them to Redis for several server nodes.
@@ -29,6 +39,27 @@ export interface Person {
 
 export type InviteState = "ringing" | "declined" | "missed" | "left";
 
+/** Most people on one call (everyone connects to everyone, so it stays small). */
+export const MAX_PARTICIPANTS = 6;
+
+/** Someone on the answered call. leftAt is set when they hang up while the others carry on. */
+export interface Member {
+  person: Person;
+  joinedAt: number;
+  leftAt: number | null;
+}
+
+/** A request to join an answered call (group call). */
+export interface JoinRequest {
+  person: Person;
+  by: Person;
+  at: number;
+  /** Transfer: whoever asked leaves once this person joins. */
+  transfer: boolean;
+  state: "ringing" | "joined" | "declined" | "missed" | "cancelled";
+  timer?: NodeJS.Timeout;
+}
+
 export interface ActiveCall {
   id: string;
   type: CallType;
@@ -38,8 +69,19 @@ export interface ActiveCall {
   caller: Person;
   /** Driver → dispatch: rings whoever is free, waits in line when nobody is. */
   dispatch: boolean;
+  /** Both sides send their audio to the server once answered (callRecorder.ts). */
+  recording: boolean;
   invited: Map<string, { person: Person; state: InviteState; at: number }>;
   answeredBy: Person | null;
+  /** Everyone who has been on the answered call (caller, answerer, people added later). */
+  members: Map<string, Member>;
+  /** People asked to join the answered call. */
+  joins: Map<string, JoinRequest>;
+  /**
+   * People on the call whose app/dashboard can do group calls. Driver apps already in the stores
+   * can't (a second person's offer would break their call), so nobody is added while one is on it.
+   */
+  groupCapable: Set<string>;
   phase: "queued" | "ringing" | "active";
   startedAt: number;
   queuedAt: number | null;
@@ -71,6 +113,8 @@ export interface CallSummary {
   queuedSec: number;
   /** Seconds from dialling until someone answered (queue + ringing). */
   waitSec: number | null;
+  members: Member[];
+  joins: { person: Person; by: Person; at: number; transfer: boolean; state: JoinRequest["state"] }[];
 }
 
 export interface CallStore {
@@ -102,6 +146,13 @@ export interface CallDeps {
   persistRinging(call: ActiveCall, people: Person[]): Promise<void>;
   persistAnswer(call: ActiveCall): Promise<void>;
   persistEnd(summary: CallSummary): Promise<void>;
+  /** Group calls: a join request was sent / answered / not answered; a member left early. */
+  pushJoinRequest?(userId: string, call: ActiveCall, by: Person): Promise<void> | void;
+  persistJoinRequest?(call: ActiveCall, request: JoinRequest): Promise<void>;
+  persistJoinOutcome?(call: ActiveCall, request: JoinRequest): Promise<void>;
+  persistLeave?(call: ActiveCall, member: Member): Promise<void>;
+  /** Who is on an answered call changed (started, joined, left, ended): live "on call" marks. */
+  onCallsChanged?(): void;
   ringTimeoutMs?: number;
   queueTimeoutMs?: number;
   reconnectGraceMs?: number;
@@ -120,6 +171,12 @@ export const ERRORS: Record<string, string> = {
   not_invited: "This call isn't for you",
   not_in_call: "You are not on this call",
   already_answered: "Someone else answered",
+  already_member: "They are already on this call",
+  already_ringing: "They are already being asked to join",
+  call_full: `A call can have at most ${MAX_PARTICIPANTS} people`,
+  already_transferring: "You are already transferring this call",
+  staff_only: "Only staff can be added to a call",
+  old_app: "Someone on this call has an older app version that can't do group calls",
 };
 
 export class CallService {
@@ -138,9 +195,21 @@ export class CallService {
 
   // ---------- queries ----------
 
-  /** The call a user is on: placed it (including waiting in line) or answered it. */
+  /** On the call right now: the caller before it's answered, then everyone who joined and hasn't left. */
+  isOnCall(call: ActiveCall, userId: string): boolean {
+    if (call.phase !== "active") return call.caller.id === userId;
+    const m = call.members.get(userId);
+    return !!m && m.leftAt === null;
+  }
+
+  /** People on the answered call right now. */
+  currentMembers(call: ActiveCall): Person[] {
+    return [...call.members.values()].filter((m) => m.leftAt === null).map((m) => m.person);
+  }
+
+  /** The call a user is on: placed it (including waiting in line), answered it, or joined it. */
   activeCallOf(userId: string): ActiveCall | undefined {
-    return this.deps.store.all().find((c) => c.caller.id === userId || c.answeredBy?.id === userId);
+    return this.deps.store.all().find((c) => this.isOnCall(c, userId));
   }
 
   /**
@@ -151,21 +220,32 @@ export class CallService {
     if (this.activeCallOf(userId)) return true;
     return this.deps.store
       .all()
-      .some((c) => !c.dispatch && c.phase === "ringing" && c.invited.get(userId)?.state === "ringing");
+      .some(
+        (c) =>
+          (!c.dispatch && c.phase === "ringing" && c.invited.get(userId)?.state === "ringing") ||
+          c.joins.get(userId)?.state === "ringing"
+      );
   }
 
   /** Calls the user is on (placed, waiting in line, or answered). */
   activeCallsOf(userId: string): ActiveCall[] {
-    return this.deps.store.all().filter((c) => c.caller.id === userId || c.answeredBy?.id === userId);
+    return this.deps.store.all().filter((c) => this.isOnCall(c, userId));
   }
 
   /** Ringing for any call right now (not answered yet). */
   isRinging(userId: string): boolean {
-    return this.deps.store.all().some((c) => c.phase === "ringing" && c.invited.get(userId)?.state === "ringing");
+    return this.deps.store
+      .all()
+      .some((c) => (c.phase === "ringing" && c.invited.get(userId)?.state === "ringing") || c.joins.get(userId)?.state === "ringing");
   }
 
   get(callId: string) {
     return this.deps.store.get(callId);
+  }
+
+  /** Every call in progress (ringing, waiting in line or answered). */
+  all(): ActiveCall[] {
+    return this.deps.store.all();
   }
 
   /** Position in the waiting line (1 = next), or 0 when not waiting. */
@@ -186,9 +266,13 @@ export class CallService {
       answeredBy: call.answeredBy,
       phase: call.phase,
       dispatch: call.dispatch,
+      recording: call.recording,
       position: call.phase === "queued" ? this.queuePosition(call.id) : 0,
       startedAt: call.startedAt,
       answeredAt: call.answeredAt,
+      members: this.currentMembers(call),
+      pending: [...call.joins.values()].filter((j) => j.state === "ringing").map((j) => j.person),
+      maxParticipants: MAX_PARTICIPANTS,
     };
   }
 
@@ -204,6 +288,9 @@ export class CallService {
     /** Driver → dispatch (ring free dispatchers / wait in line). */
     dispatch?: boolean;
     type?: CallType;
+    recording?: boolean;
+    /** The caller's app can do group calls. */
+    groupCapable?: boolean;
   }): Promise<InviteResult> {
     if (this.isBusy(input.caller.id)) return { ok: false, error: "already_in_call" };
 
@@ -215,8 +302,12 @@ export class CallService {
       driverId: input.driverId,
       caller: input.caller,
       dispatch: !!input.dispatch,
+      recording: !!input.recording,
       invited: new Map(),
       answeredBy: null,
+      members: new Map(),
+      joins: new Map(),
+      groupCapable: new Set(input.groupCapable ? [input.caller.id] : []),
       phase: "ringing",
       startedAt: this.now(),
       queuedAt: null,
@@ -259,9 +350,12 @@ export class CallService {
     return { ok: true, callId: call.id, ringing: free.length, queued: false };
   }
 
-  async accept(callId: string, user: Person) {
+  async accept(callId: string, user: Person, opts: { groupCapable?: boolean } = {}) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
+    if (opts.groupCapable) call.groupCapable.add(user.id);
+    const join = call.joins.get(user.id);
+    if (join && call.phase === "active") return this.acceptJoin(call, join, user);
     const invite = call.invited.get(user.id);
     if (!invite) return { ok: false as const, error: "not_invited" };
     if (call.phase !== "ringing" || invite.state !== "ringing") {
@@ -273,6 +367,8 @@ export class CallService {
     call.phase = "active";
     call.answeredBy = user;
     call.answeredAt = this.now();
+    call.members.set(call.caller.id, { person: call.caller, joinedAt: call.answeredAt, leftAt: null });
+    call.members.set(user.id, { person: user, joinedAt: call.answeredAt, leftAt: null });
 
     // Everyone else who was ringing stops
     const others = [...call.invited.values()].filter((i) => i.person.id !== user.id && i.state === "ringing");
@@ -287,12 +383,22 @@ export class CallService {
     );
     this.deps.emit(call.caller.id, "call:accepted", { callId, by: user });
     await this.deps.persistAnswer(call);
+    await this.stopRingingElsewhere(user, callId);
+    this.deps.onCallsChanged?.();
+    return { ok: true as const, call: this.publicView(call) };
+  }
 
-    // They were also ringing for other drivers: stop that. A call left with nobody ringing goes
-    // back into the line (in its original order) instead of being lost.
+  /**
+   * They answered one call while also ringing for others (several drivers, or a join request):
+   * stop those. A call left with nobody ringing goes back into the line (in its original order).
+   */
+  private async stopRingingElsewhere(user: Person, exceptCallId: string) {
     for (const other of this.deps.store.all()) {
+      if (other.id === exceptCallId) continue;
+      const join = other.joins.get(user.id);
+      if (join?.state === "ringing") await this.endJoinRequest(other, join, "missed");
       const inv = other.invited.get(user.id);
-      if (other.id === callId || other.phase !== "ringing" || inv?.state !== "ringing") continue;
+      if (other.phase !== "ringing" || inv?.state !== "ringing") continue;
       inv.state = "left";
       this.deps.emit(user.id, "call:answered_elsewhere", { callId: other.id, by: user });
       if (!this.ringingCount(other)) {
@@ -302,12 +408,130 @@ export class CallService {
         this.deps.emit(other.caller.id, "call:ringing", { callId: other.id, ringing: this.ringingCount(other) });
       }
     }
+  }
+
+  // ---------- group calls ----------
+
+  /**
+   * A member asks another staff member to join the answered call; it rings them. With
+   * [transfer], the one asking hands the call over: they leave as soon as the other joins.
+   */
+  async addParticipant(callId: string, by: Person, target: Person, opts: { transfer?: boolean } = {}) {
+    const transfer = !!opts.transfer;
+    const call = this.deps.store.get(callId);
+    if (!call || call.phase !== "active") return { ok: false as const, error: "not_found" };
+    if (!this.isOnCall(call, by.id)) return { ok: false as const, error: "not_in_call" };
+    if (target.role !== "staff") return { ok: false as const, error: "staff_only" };
+    if (this.isOnCall(call, target.id)) return { ok: false as const, error: "already_member" };
+    if (call.joins.get(target.id)?.state === "ringing") return { ok: false as const, error: "already_ringing" };
+    const ringing = [...call.joins.values()].filter((j) => j.state === "ringing");
+    if (transfer && ringing.some((j) => j.transfer && j.by.id === by.id)) return { ok: false as const, error: "already_transferring" };
+    // A transfer replaces whoever asks, so it fits even when the call is otherwise full
+    if (this.currentMembers(call).length + ringing.length - (transfer ? 1 : 0) >= MAX_PARTICIPANTS) {
+      return { ok: false as const, error: "call_full" };
+    }
+    if (this.isBusy(target.id)) return { ok: false as const, error: "busy" };
+    const oldApp = this.currentMembers(call).find((p) => !call.groupCapable.has(p.id));
+    if (oldApp) return { ok: false as const, error: "old_app", who: oldApp.name };
+
+    const request: JoinRequest = { person: target, by, at: this.now(), state: "ringing", transfer };
+    call.joins.set(target.id, request);
+    request.timer = setTimeout(() => void this.endJoinRequest(call, request, "missed"), this.ringTimeoutMs);
+    this.deps.emit(target.id, "call:incoming", { ...this.publicView(call), joinRequest: true, transfer, invitedBy: by });
+    this.announceRoster(call);
+    await this.deps.persistJoinRequest?.(call, request);
+    await this.deps.pushJoinRequest?.(target.id, call, by);
     return { ok: true as const, call: this.publicView(call) };
+  }
+
+  /** Whoever asked can take a join request back while it still rings. */
+  async cancelJoinRequest(callId: string, byId: string, targetId: string) {
+    const call = this.deps.store.get(callId);
+    const request = call?.joins.get(targetId);
+    if (!call || !request || request.state !== "ringing") return { ok: false as const, error: "not_found" };
+    if (!this.isOnCall(call, byId)) return { ok: false as const, error: "not_in_call" };
+    await this.endJoinRequest(call, request, "cancelled");
+    return { ok: true as const };
+  }
+
+  private async acceptJoin(call: ActiveCall, request: JoinRequest, user: Person) {
+    if (request.state !== "ringing") return { ok: false as const, error: "not_found" };
+    if (this.activeCallOf(user.id)) return { ok: false as const, error: "already_in_call" };
+    // A transfer replaces whoever asked (they leave right after), so it fits a full call
+    const leaving = request.transfer && this.isOnCall(call, request.by.id) ? 1 : 0;
+    if (this.currentMembers(call).length - leaving >= MAX_PARTICIPANTS) {
+      await this.endJoinRequest(call, request, "missed");
+      return { ok: false as const, error: "call_full" };
+    }
+    clearTimeout(request.timer);
+    request.state = "joined";
+    const member: Member = { person: user, joinedAt: this.now(), leftAt: null };
+    call.members.set(user.id, member);
+    // Everyone already on the call gets ready for the joiner's offer
+    for (const p of this.currentMembers(call)) {
+      if (p.id !== user.id) this.deps.emit(p.id, "call:member_joined", { callId: call.id, person: user });
+    }
+    this.announceRoster(call);
+    await this.deps.persistJoinOutcome?.(call, request);
+    await this.stopRingingElsewhere(user, call.id);
+    // Transfer: the dispatcher who handed the call over drops off now that the new one is on
+    if (request.transfer && this.isOnCall(call, request.by.id)) {
+      this.deps.emit(request.by.id, "call:transferred", { callId: call.id, to: user });
+      await this.leave(call, request.by.id, "transferred");
+    }
+    this.deps.onCallsChanged?.();
+    return { ok: true as const, call: this.publicView(call) };
+  }
+
+  /** A join request stopped ringing without them joining. */
+  private async endJoinRequest(call: ActiveCall, request: JoinRequest, state: "declined" | "missed" | "cancelled") {
+    if (request.state !== "ringing") return;
+    clearTimeout(request.timer);
+    request.state = state;
+    // Transfer that didn't go through: whoever asked is still on the call
+    if (request.transfer && state !== "cancelled") {
+      this.deps.emit(request.by.id, "call:transfer_failed", { callId: call.id, person: request.person, reason: state });
+    }
+    if (state !== "declined") {
+      this.deps.emit(request.person.id, "call:ended", { callId: call.id, status: "missed", reason: `join_${state}`, durationSec: 0 });
+      await this.deps.pushStopRinging([request.person.id], call.id, `join_${state}`);
+    }
+    this.announceRoster(call);
+    await this.deps.persistJoinOutcome?.(call, request);
+  }
+
+  /** One person leaves while at least two others carry on talking. */
+  private async leave(call: ActiveCall, userId: string, reason: string) {
+    const member = call.members.get(userId);
+    if (!member || member.leftAt !== null) return;
+    member.leftAt = this.now();
+    clearTimeout(call.graceTimers.get(userId));
+    call.graceTimers.delete(userId);
+    const talked = Math.max(0, Math.round((member.leftAt - member.joinedAt) / 1000));
+    this.deps.emit(userId, "call:ended", { callId: call.id, status: "completed", reason, durationSec: talked });
+    for (const p of this.currentMembers(call)) this.deps.emit(p.id, "call:member_left", { callId: call.id, person: member.person, reason });
+    this.announceRoster(call);
+    await this.deps.persistLeave?.(call, member);
+    this.deps.onCallsChanged?.();
+  }
+
+  /** Who is on the call and who is being asked to join — to everyone on it. */
+  private announceRoster(call: ActiveCall) {
+    if (call.phase !== "active") return;
+    const view = this.publicView(call);
+    for (const p of this.currentMembers(call)) {
+      this.deps.emit(p.id, "call:participants", { callId: call.id, members: view.members, pending: view.pending, max: MAX_PARTICIPANTS });
+    }
   }
 
   async decline(callId: string, userId: string) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
+    const join = call.joins.get(userId);
+    if (join?.state === "ringing") {
+      await this.endJoinRequest(call, join, "declined");
+      return { ok: true as const };
+    }
     const invite = call.invited.get(userId);
     if (!invite || call.phase !== "ringing" || invite.state !== "ringing") return { ok: false as const, error: "not_invited" };
     invite.state = "declined";
@@ -320,33 +544,43 @@ export class CallService {
   async hangup(callId: string, userId: string) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
-    const onCall = call.caller.id === userId || call.answeredBy?.id === userId;
-    if (!onCall) {
-      if (call.invited.has(userId)) return this.decline(callId, userId);
+    if (!this.isOnCall(call, userId)) {
+      if (call.invited.has(userId) || call.joins.get(userId)?.state === "ringing") return this.decline(callId, userId);
       return { ok: false as const, error: "not_in_call" };
+    }
+    // Group call: they leave, the others carry on
+    if (call.phase === "active" && this.currentMembers(call).length > 2) {
+      await this.leave(call, userId, "hung_up");
+      return { ok: true as const };
     }
     if (call.phase !== "active") await this.finish(callId, "cancelled", "caller_cancelled");
     else await this.finish(callId, "completed", call.caller.id === userId ? "caller_hung_up" : "callee_hung_up");
     return { ok: true as const };
   }
 
-  /** WebRTC offer/answer/ICE: relayed only between the two people on an answered call. */
-  signal(callId: string, fromId: string, data: any) {
+  /**
+   * WebRTC offer/answer/ICE between two people on the answered call. [toId] picks who (group
+   * calls); without it — older apps on a 1-to-1 call — it goes to the only other person.
+   */
+  signal(callId: string, fromId: string, data: any, toId?: string) {
     const call = this.deps.store.get(callId);
     if (!call || call.phase !== "active") return { ok: false as const, error: "not_found" };
-    const peer = this.peerOf(call, fromId);
-    if (!peer) return { ok: false as const, error: "not_in_call" };
-    this.deps.emit(peer.id, "call:signal", { callId, from: fromId, data });
+    if (!this.isOnCall(call, fromId)) return { ok: false as const, error: "not_in_call" };
+    const others = this.currentMembers(call).filter((p) => p.id !== fromId);
+    const to = toId ? others.find((p) => p.id === toId) : others.length === 1 ? others[0] : undefined;
+    if (!to) return { ok: false as const, error: "not_in_call" };
+    this.deps.emit(to.id, "call:signal", { callId, from: fromId, data });
     return { ok: true as const };
   }
 
   media(callId: string, fromId: string, state: { muted?: boolean }) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
-    const peer = this.peerOf(call, fromId);
-    if (!peer) return { ok: false as const, error: "not_in_call" };
+    if (!this.isOnCall(call, fromId) || call.phase !== "active") return { ok: false as const, error: "not_in_call" };
     if (typeof state.muted === "boolean") call.muted.set(fromId, state.muted);
-    this.deps.emit(peer.id, "call:media", { callId, from: fromId, muted: !!state.muted });
+    for (const p of this.currentMembers(call)) {
+      if (p.id !== fromId) this.deps.emit(p.id, "call:media", { callId, from: fromId, muted: !!state.muted });
+    }
     return { ok: true as const };
   }
 
@@ -355,14 +589,16 @@ export class CallService {
   /** Socket dropped: keep the call for a short grace period so a network switch doesn't end it. */
   onDisconnected(userId: string) {
     for (const call of this.deps.store.all()) {
-      const onCall = call.caller.id === userId || call.answeredBy?.id === userId;
-      if (!onCall || call.graceTimers.has(userId)) continue;
-      const peer = this.peerOf(call, userId);
-      if (peer) this.deps.emit(peer.id, "call:peer_reconnecting", { callId: call.id });
+      if (!this.isOnCall(call, userId) || call.graceTimers.has(userId)) continue;
+      for (const p of this.currentMembers(call)) {
+        if (p.id !== userId) this.deps.emit(p.id, "call:peer_reconnecting", { callId: call.id, from: userId });
+      }
       call.graceTimers.set(
         userId,
         setTimeout(() => {
-          void this.finish(call.id, call.phase === "active" ? "completed" : "cancelled", "connection_lost");
+          // Group call: only they drop off; otherwise the call ends
+          if (call.phase === "active" && this.currentMembers(call).length > 2) void this.leave(call, userId, "connection_lost");
+          else void this.finish(call.id, call.phase === "active" ? "completed" : "cancelled", "connection_lost");
         }, this.graceMs)
       );
     }
@@ -376,14 +612,19 @@ export class CallService {
         clearTimeout(grace);
         call.graceTimers.delete(userId);
       }
-      const onCall = call.caller.id === userId || call.answeredBy?.id === userId;
-      if (onCall) {
+      if (this.isOnCall(call, userId)) {
         this.deps.emit(userId, "call:resume", this.publicView(call));
-        const peer = this.peerOf(call, userId);
-        if (peer && grace) this.deps.emit(peer.id, "call:peer_reconnected", { callId: call.id });
+        if (grace) {
+          for (const p of this.currentMembers(call)) {
+            if (p.id !== userId) this.deps.emit(p.id, "call:peer_reconnected", { callId: call.id, from: userId });
+          }
+        }
       } else if (call.phase === "ringing" && call.invited.get(userId)?.state === "ringing") {
         // e.g. the app was woken by a push and just connected
         this.deps.emit(userId, "call:incoming", this.publicView(call));
+      } else if (call.joins.get(userId)?.state === "ringing") {
+        const request = call.joins.get(userId)!;
+        this.deps.emit(userId, "call:incoming", { ...this.publicView(call), joinRequest: true, transfer: request.transfer, invitedBy: request.by });
       }
     }
     // A dispatcher just came online: drivers waiting in line can ring them
@@ -457,12 +698,6 @@ export class CallService {
 
   private ringingCount = (call: ActiveCall) => [...call.invited.values()].filter((i) => i.state === "ringing").length;
 
-  private peerOf(call: ActiveCall, userId: string): Person | null {
-    if (call.caller.id === userId) return call.answeredBy;
-    if (call.answeredBy?.id === userId) return call.caller;
-    return null;
-  }
-
   private summarize(call: ActiveCall, status: CallStatus, reason: string): CallSummary {
     const endedAt = this.now();
     const queuedMs = call.queuedMs + (call.phase === "queued" && call.queuedAt ? endedAt - call.queuedAt : 0);
@@ -486,6 +721,14 @@ export class CallService {
       durationSec: call.answeredAt ? Math.max(0, Math.round((endedAt - call.answeredAt) / 1000)) : 0,
       queuedSec: Math.round(queuedMs / 1000),
       waitSec: call.answeredAt ? Math.round((call.answeredAt - call.startedAt) / 1000) : null,
+      members: [...call.members.values()].map((m) => ({ ...m, leftAt: m.leftAt ?? endedAt })),
+      joins: [...call.joins.values()].map((j) => ({
+        person: j.person,
+        by: j.by,
+        at: j.at,
+        transfer: j.transfer,
+        state: j.state === "ringing" ? "missed" : j.state,
+      })),
     };
   }
 
@@ -497,6 +740,7 @@ export class CallService {
     clearTimeout(call.ringTimer);
     clearTimeout(call.queueTimer);
     call.graceTimers.forEach((t) => clearTimeout(t));
+    call.joins.forEach((j) => clearTimeout(j.timer));
 
     const summary = this.summarize(call, status, reason);
     const payload = { callId, status, reason, durationSec: summary.durationSec };
@@ -508,9 +752,14 @@ export class CallService {
     };
     tell(call.caller.id);
     tell(call.answeredBy?.id);
-    const stillRinging = [...call.invited.values()].filter((i) => i.state === "ringing").map((i) => i.person.id);
+    this.currentMembers(call).forEach((p) => tell(p.id));
+    const stillRinging = [
+      ...[...call.invited.values()].filter((i) => i.state === "ringing").map((i) => i.person.id),
+      ...[...call.joins.values()].filter((j) => j.state === "ringing").map((j) => j.person.id),
+    ];
     stillRinging.forEach(tell);
     await this.deps.pushStopRinging(stillRinging, callId, reason);
+    if (call.phase === "active") this.deps.onCallsChanged?.();
     await this.deps.persistEnd(summary);
 
     // A dispatcher may be free now (or a waiting caller left the line)

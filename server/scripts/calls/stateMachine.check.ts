@@ -232,6 +232,168 @@ const dispatchCall = (t: ReturnType<typeof setup>, d: Person) => t.svc.invite({ 
     assert.equal(t.ended.length, 1);
   });
 
+  // ---------- group calls (staff adds staff) ----------
+  const answered = async (t: ReturnType<typeof setup>, driverApp = { groupCapable: true }) => {
+    const r = await t.svc.invite({ ...base(), caller: staff(1), targets: [driver], groupCapable: true });
+    assert(r.ok);
+    assert((await t.svc.accept(r.callId, driver, driverApp)).ok);
+    return r.callId;
+  };
+
+  await test("group: nobody can be added while someone on the call has an old app", async () => {
+    const t = setup();
+    const id = await answered(t, { groupCapable: false });
+    const res = await t.svc.addParticipant(id, staff(1), staff(2));
+    assert.equal(res.error, "old_app");
+    assert.equal((res as any).who, "Driver 1");
+    assert.equal(t.got("staff2", "call:incoming").length, 0, "staff2 never rang");
+  });
+
+  await test("group: dispatcher adds a supervisor → rings them, they join, everyone connects", async () => {
+    const t = setup();
+    const id = await answered(t);
+    const add = await t.svc.addParticipant(id, staff(1), staff(2));
+    assert(add.ok);
+    const ring = t.got("staff2", "call:incoming")[0];
+    assert(ring?.payload.joinRequest && ring.payload.invitedBy.id === "staff1", "join request rings staff2");
+    assert.deepEqual(t.got("driver1", "call:participants").pop()?.payload.pending.map((p: Person) => p.id), ["staff2"]);
+    const joined = await t.svc.accept(id, staff(2), { groupCapable: true });
+    assert(joined.ok && joined.call.members.length === 3);
+    assert(t.got("staff1", "call:member_joined").length === 1 && t.got("driver1", "call:member_joined").length === 1);
+    // Signals go to one chosen person; without a target there's no single "other person" any more
+    assert(t.svc.signal(id, "staff2", { sdp: "offer" }, "driver1").ok);
+    assert.equal(t.got("driver1", "call:signal").pop()?.payload.from, "staff2");
+    assert(!t.svc.signal(id, "staff2", { sdp: "x" }).ok, "group call needs a target");
+    assert(!t.svc.signal(id, "staff2", { sdp: "x" }, "staff9").ok, "outsider is not a target");
+    t.svc.media(id, "staff2", { muted: true });
+    assert(t.got("staff1", "call:media").length === 1 && t.got("driver1", "call:media").length === 1);
+  });
+
+  await test("group: one person hangs up → only they leave; last two → call ends, everyone logged", async () => {
+    const t = setup();
+    const id = await answered(t);
+    await t.svc.addParticipant(id, staff(1), staff(2));
+    await t.svc.accept(id, staff(2), { groupCapable: true });
+    await t.svc.hangup(id, "staff1");
+    assert.equal(t.ended.length, 0, "call carries on");
+    assert.equal(t.got("staff1", "call:ended").pop()?.payload.reason, "hung_up");
+    assert(t.got("driver1", "call:member_left").length === 1 && t.got("staff2", "call:member_left").length === 1);
+    assert.equal(t.svc.activeCallOf("staff1"), undefined, "the one who left is free again");
+    await t.svc.hangup(id, "staff2");
+    assert.equal(t.ended.length, 1);
+    assert.equal(t.ended[0].status, "completed");
+    assert.equal(t.ended[0].members.length, 3);
+    assert.equal(t.ended[0].joins[0].state, "joined");
+    assert(t.got("driver1", "call:ended").length === 1);
+  });
+
+  await test("group: join request declined / not answered / taken back — call carries on", async () => {
+    const t = setup();
+    const id = await answered(t);
+    await t.svc.addParticipant(id, staff(1), staff(2));
+    assert((await t.svc.decline(id, "staff2")).ok);
+    await t.svc.addParticipant(id, staff(1), staff(3));
+    await wait(90); // ring timeout 60 ms
+    await t.svc.addParticipant(id, staff(1), staff(4));
+    assert((await t.svc.cancelJoinRequest(id, "staff1", "staff4")).ok);
+    assert.deepEqual(t.got("staff4", "call:ended").map((e) => e.payload.reason), ["join_cancelled"]);
+    assert(t.stopped.includes("staff3") && t.stopped.includes("staff4"));
+    assert.equal(t.ended.length, 0);
+    await t.svc.hangup(id, "driver1");
+    assert.deepEqual(t.ended[0].joins.map((j) => j.state), ["declined", "missed", "cancelled"]);
+  });
+
+  await test("group: at most 6 people; staff only; busy or already-on-call can't be added", async () => {
+    const t = setup();
+    const id = await answered(t);
+    assert(!(await t.svc.addParticipant(id, staff(1), drv(2))).ok, "drivers can't be added");
+    assert.equal((await t.svc.addParticipant(id, staff(1), driver)).error, "staff_only");
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(1))).error, "already_member");
+    assert((await t.svc.addParticipant(id, staff(1), staff(2))).ok);
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(2))).error, "already_ringing");
+    for (const n of [3, 4, 5]) assert((await t.svc.addParticipant(id, staff(1), staff(n))).ok, `staff${n} can be asked`);
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(6))).error, "call_full", "2 on call + 4 ringing = 6");
+    // staff7 is on another call → busy
+    const other = await t.svc.invite({ ...base(drv(7)), caller: staff(7), targets: [drv(7)] });
+    assert(other.ok);
+    await t.svc.accept(other.callId, drv(7));
+    await t.svc.decline(id, "staff3");
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(7))).error, "busy");
+    assert(!(await t.svc.addParticipant(id, staff(9), staff(6))).ok, "only people on the call can add");
+  });
+
+  await test("transfer: new dispatcher picks up → they join and the first one leaves; driver stays on", async () => {
+    let changes = 0;
+    const t = setup();
+    (t.svc as any).deps.onCallsChanged = () => void changes++;
+    const id = await answered(t);
+    const tr = await t.svc.addParticipant(id, staff(1), staff(2), { transfer: true });
+    assert(tr.ok);
+    assert(t.got("staff2", "call:incoming")[0]?.payload.transfer, "rings as a transfer");
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(3), { transfer: true })).error, "already_transferring");
+    assert((await t.svc.accept(id, staff(2), { groupCapable: true })).ok);
+    assert.equal(t.got("staff1", "call:transferred")[0]?.payload.to.id, "staff2");
+    assert.equal(t.got("staff1", "call:ended").pop()?.payload.reason, "transferred");
+    const call = t.svc.get(id)!;
+    assert.deepEqual(t.svc.currentMembers(call).map((p) => p.id).sort(), ["driver1", "staff2"]);
+    assert.equal(t.svc.activeCallOf("staff1"), undefined, "the first dispatcher is free");
+    assert.equal(t.ended.length, 0, "the driver's call never ended");
+    await t.svc.hangup(id, "driver1");
+    assert.equal(t.ended[0].status, "completed");
+    assert(t.ended[0].joins[0].transfer && t.ended[0].joins[0].state === "joined");
+    assert(changes >= 3, "on-call marks updated (answered, transferred, ended)");
+  });
+
+  await test("transfer: nobody picks up → the first dispatcher is told and stays on the call", async () => {
+    const t = setup();
+    const id = await answered(t);
+    await t.svc.addParticipant(id, staff(1), staff(2), { transfer: true });
+    await t.svc.decline(id, "staff2");
+    assert.equal(t.got("staff1", "call:transfer_failed").pop()?.payload.reason, "declined");
+    await t.svc.addParticipant(id, staff(1), staff(3), { transfer: true });
+    await wait(90);
+    assert.equal(t.got("staff1", "call:transfer_failed").pop()?.payload.reason, "missed");
+    assert(t.svc.isOnCall(t.svc.get(id)!, "staff1"));
+  });
+
+  await test("transfer works even when the call is full (it replaces whoever transfers)", async () => {
+    const t = setup();
+    const id = await answered(t);
+    for (const n of [2, 3, 4, 5]) {
+      await t.svc.addParticipant(id, staff(1), staff(n));
+      await t.svc.accept(id, staff(n), { groupCapable: true });
+    }
+    assert.equal(t.svc.currentMembers(t.svc.get(id)!).length, 6);
+    assert.equal((await t.svc.addParticipant(id, staff(1), staff(6))).error, "call_full");
+    const full = await t.svc.addParticipant(id, staff(1), staff(6), { transfer: true });
+    assert(full.ok, `transfer refused: ${full.error}`);
+    await t.svc.accept(id, staff(6), { groupCapable: true });
+    const now = t.svc.currentMembers(t.svc.get(id)!).map((p) => p.id);
+    assert(now.length === 6 && now.includes("staff6") && !now.includes("staff1"));
+  });
+
+  await test("group: someone's connection drops for good → they leave, the others carry on", async () => {
+    const t = setup();
+    const id = await answered(t);
+    await t.svc.addParticipant(id, staff(1), staff(2));
+    await t.svc.accept(id, staff(2), { groupCapable: true });
+    t.svc.onDisconnected("staff2");
+    assert.equal(t.got("driver1", "call:peer_reconnecting").pop()?.payload.from, "staff2");
+    await wait(90); // grace 60 ms
+    assert.equal(t.ended.length, 0);
+    assert.equal(t.got("driver1", "call:member_left").pop()?.payload.reason, "connection_lost");
+    assert.equal(t.svc.currentMembers(t.svc.get(id)!).length, 2);
+  });
+
+  await test("group: call ends while a join request rings → it stops ringing", async () => {
+    const t = setup();
+    const id = await answered(t);
+    await t.svc.addParticipant(id, staff(1), staff(2));
+    await t.svc.hangup(id, "driver1");
+    assert(t.got("staff2", "call:ended").length === 1 && t.stopped.includes("staff2"));
+    assert.equal(t.ended[0].joins[0].state, "missed");
+  });
+
   console.log(results.join("\n"));
   process.exit(results.some((r) => r.startsWith("FAIL")) ? 1 : 0);
 })();

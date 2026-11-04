@@ -12,6 +12,7 @@ const KEY_AI_MODEL = "ai_model";
 const KEY_PRECHECK_ENABLED = "precheck_enabled";
 const KEY_SCALE_AGENT = "scale_agent_enabled";
 const KEY_CALLS = "calls_enabled";
+const KEY_CALL_RECORDING = "call_recording_enabled";
 const KEY_SCALE_RELEASE_ROLE = "scale_release_role";
 const KEY_SCALE_WEBHOOK = "scale_webhook_url";
 const CACHE_MS = 30_000;
@@ -126,5 +127,16 @@ export const isCallsEnabled = async (): Promise<boolean> => {
 
 export const setCallsEnabled = async (enabled: boolean, userId?: string | null) => {
   await writeSetting(KEY_CALLS, String(enabled), userId);
+  return enabled;
+};
+
+// Call recording (server/src/calls/callRecorder.ts): on by default — every answered call is recorded
+export const isCallRecordingEnabled = async (): Promise<boolean> => {
+  const row = await readSetting(KEY_CALL_RECORDING);
+  return row?.value ? row.value === "true" : true;
+};
+
+export const setCallRecordingEnabled = async (enabled: boolean, userId?: string | null) => {
+  await writeSetting(KEY_CALL_RECORDING, String(enabled), userId);
   return enabled;
 };

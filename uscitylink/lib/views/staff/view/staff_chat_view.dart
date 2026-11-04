@@ -11,6 +11,8 @@ import 'package:uscitylink/utils/utils.dart';
 import 'package:uscitylink/views/staff/drawer/custom_drawer.dart';
 import 'package:uscitylink/views/staff/widgets/driver_dialog.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
+import 'package:uscitylink/services/call/call_service.dart';
+import 'package:uscitylink/services/call/call_models.dart';
 
 class StaffChatView extends StatelessWidget {
   StaffChatView({super.key});
@@ -102,6 +104,11 @@ class StaffChatView extends StatelessWidget {
                 },
                 child: Obx(() {
                   final users = _staffchannelController.channelChatUser.value.userChannels;
+                  // Read here, not in itemBuilder: rows are built lazily outside this Obx, so the
+                  // "On call" marks only refresh if the map is read in this scope
+                  final onCallDrivers = Get.isRegistered<CallService>()
+                      ? Map<String, List<CallPeer>>.of(CallService.to.onCallDrivers)
+                      : const <String, List<CallPeer>>{};
                   if (_staffchannelController.loading.value && users == null) {
                     return const Center(child: CircularProgressIndicator(color: StaffColors.primary));
                   }
@@ -128,6 +135,9 @@ class StaffChatView extends StatelessWidget {
                       final profile = channel.userProfile;
                       final driverNumber = profile?.user?.driverNumber;
                       final trucks = channel.assginTrucks ?? "";
+                      // This driver is on a call right now (with any dispatcher)
+                      final onCall = onCallDrivers[profile?.id];
+                      final withWhom = onCall?.where((m) => m.id != profile?.id).map((m) => m.name).join(', ') ?? '';
                       return StaffListCard(
                         dismissKey: Key('${channel.channelId}-${profile?.id}'),
                         onDismissed: (_) => _staffchannelController.deleteMember(profile!.id!),
@@ -137,6 +147,13 @@ class StaffChatView extends StatelessWidget {
                           if (driverNumber != null && driverNumber.isNotEmpty)
                             StaffPill(label: driverNumber, icon: Icons.badge_outlined, color: StaffColors.textBody),
                           if (trucks.isNotEmpty) StaffPill(label: "Truck $trucks", icon: Icons.local_shipping_rounded),
+                          if (onCall != null)
+                            StaffPill(
+                              key: const Key('onCallPill'),
+                              label: withWhom.isEmpty ? 'On call' : 'On call · $withWhom',
+                              icon: Icons.phone_in_talk_rounded,
+                              color: const Color(0xFF16A34A),
+                            ),
                         ],
                         subtitle: channel.lastMessage?.body ?? "No messages yet",
                         time: Utils.formatUtcTime(channel.lastMessage?.messageTimestampUtc),

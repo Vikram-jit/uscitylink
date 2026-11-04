@@ -22,14 +22,14 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowsClockwise, Phone, PhoneIncoming, PhoneOutgoing, PhoneX, ShareNetwork } from '@phosphor-icons/react';
+import { ArrowsClockwise, Phone, PhoneIncoming, PhoneOutgoing, PhoneX, Record, ShareNetwork, UsersThree } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 import { toast } from 'react-toastify';
 
 import { useCall } from '@/calls/CallProvider';
 import { CallDetailDrawer } from './CallDetailDrawer';
 import { useAutomationAccess } from '@/components/dashboard/automation/AdminGuard';
-import { CallRecord, useGetCallConfigQuery, useGetCallsQuery, useUpdateCallSettingsMutation } from '@/redux/CallApiSlice';
+import { CallRecord, useGetCallConfigQuery, useGetCallSettingsQuery, useGetCallsQuery, useUpdateCallSettingsMutation } from '@/redux/CallApiSlice';
 
 const STATUS: Record<string, { label: string; color: 'success' | 'error' | 'warning' | 'default' }> = {
   completed: { label: 'Answered', color: 'success' },
@@ -77,6 +77,7 @@ export function CallHistory(): React.JSX.Element {
   const [openId, setOpenId] = React.useState<string | null>(null);
   const { data, isFetching, refetch } = useGetCallsQuery({ status: FILTERS[filter], page: page + 1, pageSize });
   const { data: config } = useGetCallConfigQuery();
+  const { data: settings } = useGetCallSettingsQuery();
   const [updateSettings, { isLoading: saving }] = useUpdateCallSettingsMutation();
   const { isAdmin } = useAutomationAccess();
   const call = useCall();
@@ -121,6 +122,27 @@ export function CallHistory(): React.JSX.Element {
               label="Calling on"
             />
           ) : null}
+          {isAdmin ? (
+            <Tooltip title="Every answered call is recorded (both voices) and saved to S3. Both people hear a tone and see “Recorded”.">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={settings?.data?.recording !== false}
+                    disabled={saving || !settings}
+                    onChange={async (e) => {
+                      try {
+                        await updateSettings({ recording: e.target.checked }).unwrap();
+                        toast.success(e.target.checked ? 'Calls will be recorded' : 'Call recording is off');
+                      } catch (err: any) {
+                        toast.error(err?.data?.message || 'Could not save');
+                      }
+                    }}
+                  />
+                }
+                label="Record calls"
+              />
+            </Tooltip>
+          ) : null}
           <Tooltip title="Refresh">
             <IconButton onClick={() => void refetch()}>
               <ArrowsClockwise />
@@ -152,7 +174,18 @@ export function CallHistory(): React.JSX.Element {
                 const st = STATUS[c.status] || { label: c.status, color: 'default' as const };
                 return (
                   <TableRow hover key={c.id} onClick={() => setOpenId(c.id)} sx={{ cursor: 'pointer' }}>
-                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.driver_name || '—'}</TableCell>
+                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {c.driver_name || '—'}
+                      {c.people && c.people > 2 ? (
+                        <Chip
+                          icon={<UsersThree size={14} />}
+                          label={`Group · ${c.people}`}
+                          size="small"
+                          sx={{ ml: 1 }}
+                          variant="outlined"
+                        />
+                      ) : null}
+                    </TableCell>
                     <TableCell>
                       <Stack alignItems="center" direction="row" spacing={1} sx={{ whiteSpace: 'nowrap' }}>
                         <Icon color={missed ? 'var(--mui-palette-error-main)' : undefined} size={16} />
@@ -172,7 +205,26 @@ export function CallHistory(): React.JSX.Element {
                       </Tooltip>
                     </TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {duration(c.duration_sec)}
+                      <Stack alignItems="center" direction="row" justifyContent="flex-end" spacing={0.75}>
+                        {c.recording ? (
+                          <Tooltip
+                            title={
+                              c.recording.status === 'ready'
+                                ? 'Recorded — open the call to play it'
+                                : c.recording.status === 'failed'
+                                  ? 'Recording failed'
+                                  : 'Saving the recording…'
+                            }
+                          >
+                            <Record
+                              color={c.recording.status === 'failed' ? 'var(--mui-palette-text-disabled)' : 'var(--mui-palette-error-main)'}
+                              size={14}
+                              weight="fill"
+                            />
+                          </Tooltip>
+                        ) : null}
+                        <span>{duration(c.duration_sec)}</span>
+                      </Stack>
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       <Tooltip title={dayjs(c.started_at).format('MMM D, YYYY h:mm:ss A')}>

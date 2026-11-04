@@ -11,6 +11,7 @@ import MessageDialog from '@/components/MessageDialog';
 import { ScrollLockReset } from '@/components/dashboard/layout/scroll-lock-reset';
 import { CallProvider } from '@/calls/CallProvider';
 import { CallOverlay } from '@/calls/CallOverlay';
+import { ConnectionBanner } from '@/components/dashboard/layout/ConnectionBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -47,6 +48,8 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         <SideNav />
         <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', pl: { lg: 'var(--SideNav-width)' } }}>
           <MainNav />
+          {/* Red bar while the live connection is down (calls/messages can't reach this dispatcher) */}
+          <ConnectionBanner />
           <main>{children}</main>
         </Box>
       </Box>

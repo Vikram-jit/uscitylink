@@ -59,3 +59,9 @@ export function playEndTone() {
   stopTones();
   tone([480, 620], 0, 0.25, 0.06);
 }
+
+/** Recorded call: two short high beeps when it connects, so both people know it's recorded. */
+export function playRecordingTone() {
+  tone([1400], 0, 0.18, 0.07);
+  tone([1400], 0.35, 0.18, 0.07);
+}

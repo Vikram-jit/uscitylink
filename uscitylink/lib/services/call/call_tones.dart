@@ -22,6 +22,18 @@ class CallTones {
   }
 
   static Future<void> ringtone() => _loop('assets/sounds/call_ringtone.wav');
+
+  /// Recorded call: two short beeps when it connects, so both people know it's recorded.
+  static Future<void> recordingBeep() async {
+    try {
+      final player = AudioPlayer();
+      await player.setAsset('assets/sounds/call_recording.wav');
+      await player.play();
+      await player.dispose();
+    } catch (_) {
+      // a missing sound must never break a call
+    }
+  }
   static Future<void> ringback() => _loop('assets/sounds/call_ringback.wav');
 
   static Future<void> stop() async {

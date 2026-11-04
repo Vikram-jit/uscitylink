@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import type { CustomSocket } from "../sockets/socket";
 import { isStaffRole, STAFF_ROLES } from "../middleware/requireRole";
 import { UserProfile } from "../models/UserProfile";
@@ -5,10 +6,11 @@ import Role from "../models/Role";
 import Channel from "../models/Channel";
 import UserChannel from "../models/UserChannel";
 import { Call, CallParticipant } from "../models/Call";
-import { isCallsEnabled } from "../services/documentAi/settings";
+import { isCallRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
 import { CallService, ERRORS, MemoryCallStore, Person } from "./callService";
 import { iceServersFor } from "./iceServers";
 import { pushCallEnded, pushIncomingCall, pushMissedCall } from "./callPush";
+import { answerRecordingOffer, finishRecording } from "./callRecorder";
 import { writeCallLog } from "./callLog";
 
 // Socket.IO side of calls: who may call whom, and the real dependencies for CallService.
@@ -17,11 +19,15 @@ import { writeCallLog } from "./callLog";
 //   call:invite  { driverId }               staff calls a driver (in the staff member's channel)
 //   call:invite  { channelId? }             driver calls dispatch: rings that channel's staff
 //   call:accept / call:decline / call:end   { callId }
-//   call:signal  { callId, data }           WebRTC offer / answer / ICE candidate
+//   call:signal  { callId, data, to? }      WebRTC offer / answer / ICE to one person on the call
 //   call:media   { callId, muted }
 //   call:status  { callId }                 after a push woke the app: is it still ringing?
-// Server → client: call:incoming, call:ringing, call:accepted, call:answered_elsewhere, call:signal,
-//   call:media, call:peer_reconnecting, call:peer_reconnected, call:resume, call:ended
+//   call:add / call:add_cancel { callId, userId }   group call: ask a staff member to join
+//   call:rec_offer { callId, sdp }          recorded call: this side's microphone to the server
+// Server → client: call:incoming (joinRequest: true for a group-call request), call:ringing,
+//   call:accepted, call:answered_elsewhere, call:signal { from }, call:media { from },
+//   call:peer_reconnecting / call:peer_reconnected { from }, call:resume, call:ended,
+//   call:member_joined / call:member_left { person }, call:participants { members, pending }
 
 const profileWithRole = (id: string) => UserProfile.findByPk(id, { include: [{ model: Role, as: "role" }] });
 
@@ -31,13 +37,50 @@ async function pushTo(ids: string[], fn: (p: UserProfile) => Promise<void>) {
   await Promise.all(profiles.map((p) => fn(p).catch((e) => console.warn("[calls] push:", e?.message || e))));
 }
 
+// Connections of staff (dashboard tabs, staff app): they get the live "who is on a call" list
+const staffSockets = new Set<CustomSocket>();
+
+/** Answered calls right now: which driver, and who is on each — for the "On call" marks in chats. */
+function onCallSnapshot() {
+  return callService
+    .all()
+    .filter((c) => c.phase === "active")
+    .map((c) => ({
+      callId: c.id,
+      driverId: c.driverId,
+      channelId: c.channelId,
+      members: callService.currentMembers(c),
+      answeredAt: c.answeredAt,
+    }));
+}
+
+let broadcastTimer: NodeJS.Timeout | null = null;
+/** Tell every staff connection who is on a call (coalesced: one message per burst of changes). */
+function broadcastOnCall() {
+  if (broadcastTimer) return;
+  broadcastTimer = setTimeout(() => {
+    broadcastTimer = null;
+    const calls = onCallSnapshot();
+    for (const s of staffSockets) if (s.connected) s.emit("calls:on_call", { calls });
+  }, 100);
+}
+
 // Every live connection per user (several dashboard tabs, web + phone). The rest of the app keeps
 // one socket per user (global.userSockets); calls must ring all of them.
 const userSockets = new Map<string, Set<CustomSocket>>();
 // The connection that carries a call's audio for each person on it ("callId:userId")
 const mediaSockets = new Map<string, CustomSocket>();
 // Events that belong to the connection on the call, not every tab
-const CALL_SCOPED = new Set(["call:signal", "call:media", "call:peer_reconnecting", "call:peer_reconnected", "call:accepted"]);
+const CALL_SCOPED = new Set([
+  "call:signal",
+  "call:media",
+  "call:peer_reconnecting",
+  "call:peer_reconnected",
+  "call:accepted",
+  "call:member_joined",
+  "call:member_left",
+  "call:participants",
+]);
 
 const liveSockets = (userId: string) => [...(userSockets.get(userId) || [])].filter((s) => s.connected);
 export const isOnline = (userId: string) => liveSockets(userId).length > 0;
@@ -56,22 +99,30 @@ export const callService = new CallService({
     else sockets.forEach((s) => s.emit(event, payload));
     return true;
   },
-  // Dispatchers working this channel with at least one live connection (dashboard tab or staff app)
+  // Dispatchers working this channel who can be reached: a live connection (dashboard tab, staff app
+  // open) or the staff app installed and logged in (push token) — a closed or backgrounded staff app
+  // rings by push like a driver's phone. Logging out clears the token, so logged-out phones don't ring.
   dispatchers: async (channelId) => {
-    const ids = [...userSockets.keys()].filter(isOnline);
-    if (!ids.length) return [];
+    const online = [...userSockets.keys()].filter(isOnline);
     const staffRoles = await Role.findAll({ where: { name: STAFF_ROLES } });
     const staff = await UserProfile.findAll({
-      where: { id: ids, role_id: staffRoles.map((r) => r.id), channelId },
+      where: {
+        role_id: staffRoles.map((r) => r.id),
+        channelId,
+        [Op.or]: [
+          ...(online.length ? [{ id: online }] : []),
+          { voip_token: { [Op.ne]: null } },
+          { device_token: { [Op.ne]: null }, platform: { [Op.in]: ["ios", "android"] } },
+        ],
+      },
       attributes: ["id", "username"],
     });
     return staff.map((s) => ({ id: s.id, name: s.username || "Dispatch", role: "staff" } as Person));
   },
-  // Phones ring by push only for dispatch → driver calls; dispatchers ring on their live connection
+  // Everyone rung also gets a push: drivers' phones, and dispatchers' staff app (an open dashboard
+  // has no push token, so it rings on its connection only)
   pushIncoming: (ids, call) =>
-    call.dispatch
-      ? undefined
-      : pushTo(ids, (p) =>
+    pushTo(ids, (p) =>
       pushIncomingCall(p, {
         callId: call.id,
         callerId: call.caller.id,
@@ -83,6 +134,42 @@ export const callService = new CallService({
       })
       ),
   pushStopRinging: (ids, callId, reason) => pushTo(ids, (p) => pushCallEnded(p, callId, reason)),
+  // Group call: a staff member asked to join rings like an incoming call from whoever asked
+  pushJoinRequest: (userId, call, by) =>
+    pushTo([userId], (p) =>
+      pushIncomingCall(p, {
+        callId: call.id,
+        callerId: by.id,
+        callerName: by.name,
+        callerRole: "staff",
+        channelId: call.channelId,
+        channelName: call.channelName,
+        type: call.type,
+      })
+    ),
+  persistJoinRequest: async (call, r) => {
+    await CallParticipant.create({
+      call_id: call.id,
+      user_profile_id: r.person.id,
+      role: "added",
+      state: "invited",
+      invited_at: new Date(r.at),
+      invited_by: r.by.id,
+      join_type: r.transfer ? "transfer" : "add",
+    });
+  },
+  persistJoinOutcome: async (call, r) => {
+    const where = { call_id: call.id, user_profile_id: r.person.id, role: "added", state: "invited" };
+    if (r.state === "joined") await CallParticipant.update({ state: "joined", joined_at: new Date() }, { where });
+    else await CallParticipant.update({ state: r.state, left_at: new Date() }, { where });
+  },
+  onCallsChanged: () => broadcastOnCall(),
+  persistLeave: async (call, m) => {
+    await CallParticipant.update(
+      { state: "left", left_at: new Date(m.leftAt || Date.now()) },
+      { where: { call_id: call.id, user_profile_id: m.person.id, state: "joined" } }
+    );
+  },
   persistStart: async (call) => {
     const at = new Date(call.startedAt);
     await Call.create({
@@ -123,6 +210,8 @@ export const callService = new CallService({
   },
   persistEnd: async (s) => {
     forgetCall(s.id);
+    // Recorded call: mix both voices and upload (runs on its own, never delays the call log)
+    void finishRecording(s.id);
     try {
       const endedAt = new Date(s.endedAt);
       await Call.update(
@@ -142,7 +231,15 @@ export const callService = new CallService({
         if (i.person.id === s.answeredBy?.id) continue;
         await CallParticipant.update(
           { state: i.state === "declined" ? "declined" : i.state === "left" ? "left" : "missed", left_at: endedAt },
-          { where: { call_id: s.id, user_profile_id: i.person.id, state: "invited" } }
+          { where: { call_id: s.id, user_profile_id: i.person.id, role: "callee", state: "invited" } }
+        );
+      }
+      // Join requests still ringing when the call ended
+      for (const j of s.joins) {
+        if (j.state === "joined") continue;
+        await CallParticipant.update(
+          { state: j.state, left_at: endedAt },
+          { where: { call_id: s.id, user_profile_id: j.person.id, role: "added", state: "invited" } }
         );
       }
       const message = await writeCallLog(s);
@@ -194,12 +291,13 @@ async function resolveInvite(callerId: string, payload: any) {
   if (callerRole === "driver") {
     const open = global.driverOpenChat?.find((d) => d?.driverId === callerId);
     let channelId = String(payload?.channelId || open?.channelId || "");
-    if (!channelId) {
-      const first = await UserChannel.findOne({ where: { userProfileId: callerId } });
-      channelId = first?.channelId || "";
+    let member = channelId ? await UserChannel.findOne({ where: { userProfileId: callerId, channelId } }) : null;
+    if (!member) {
+      // Asked for a channel they aren't in (e.g. an old app's dashboard channel): use their own
+      member = await UserChannel.findOne({ where: { userProfileId: callerId }, order: [["createdAt", "ASC"]] });
+      channelId = member?.channelId || "";
     }
-    const member = channelId ? await UserChannel.findOne({ where: { userProfileId: callerId, channelId } }) : null;
-    if (!member) throw new Error("You aren't in this channel");
+    if (!member) throw new Error("You aren't in any channel yet — ask dispatch to add you");
 
     // The dispatch line: CallService rings whoever is online and free, or queues the driver
     const channel = await Channel.findByPk(channelId);
@@ -214,6 +312,13 @@ async function resolveInvite(callerId: string, payload: any) {
   throw new Error("Calls are only between dispatch and drivers");
 }
 
+/** Which device a call action came from, for the log ("several devices on one account" issues). */
+const device = (socket: CustomSocket) => {
+  const ua = String(socket.handshake.headers["user-agent"] || "");
+  const kind = /dart/i.test(ua) ? "app" : /mozilla/i.test(ua) ? "browser" : ua.slice(0, 40) || "unknown";
+  return `${kind}, ${socket.handshake.address}`;
+};
+
 export function registerCallHandlers(socket: CustomSocket) {
   const me = () => socket.user?.id || "";
   const userId = me();
@@ -225,7 +330,16 @@ export function registerCallHandlers(socket: CustomSocket) {
   // A call this person is on carries on over this (new) connection
   for (const call of callService.activeCallsOf(userId)) bind(call.id);
 
+  // Staff see who is on a call (chat list "On call" marks): current list now, then live updates
+  void profileWithRole(userId).then((p) => {
+    if (!isStaffRole(p?.role?.name) || !socket.connected) return;
+    staffSockets.add(socket);
+    socket.emit("calls:on_call", { calls: onCallSnapshot() });
+  });
+  socket.on("calls:on_call_get", (_payload: any, ackFn: any) => safeAck(ackFn)({ ok: true, calls: onCallSnapshot() }));
+
   socket.on("disconnect", () => {
+    staffSockets.delete(socket);
     const set = userSockets.get(userId);
     set?.delete(socket);
     if (set && !set.size) userSockets.delete(userId);
@@ -251,7 +365,12 @@ export function registerCallHandlers(socket: CustomSocket) {
       lastInvite.set(me(), Date.now());
 
       const plan = await resolveInvite(me(), payload);
-      const result = await callService.invite({ ...plan, type: payload?.type === "video" ? "video" : "audio" });
+      const result = await callService.invite({
+        ...plan,
+        type: payload?.type === "video" ? "video" : "audio",
+        recording: await isCallRecordingEnabled(),
+        groupCapable: payload?.group === true,
+      });
       if (!result.ok) return fail(ack, result.error, { callId: result.callId });
       bind(result.callId);
       const live = callService.get(result.callId);
@@ -269,10 +388,10 @@ export function registerCallHandlers(socket: CustomSocket) {
     }
   });
 
-  socket.on("call:accept", async ({ callId } = {}, ackFn) => {
+  socket.on("call:accept", async ({ callId, group } = {}, ackFn) => {
     const ack = safeAck(ackFn);
     bind(String(callId));
-    const res = await callService.accept(String(callId), await person());
+    const res = await callService.accept(String(callId), await person(), { groupCapable: group === true });
     if (!res.ok) {
       mediaSockets.delete(`${callId}:${userId}`);
       return fail(ack, res.error);
@@ -283,17 +402,19 @@ export function registerCallHandlers(socket: CustomSocket) {
   });
 
   socket.on("call:decline", async ({ callId } = {}, ackFn) => {
+    console.log(`[calls] ${callId}: declined by ${socket.user?.name || me()} (${device(socket)})`);
     const res = await callService.decline(String(callId), me());
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error, message: ERRORS[res.error] });
   });
 
   socket.on("call:end", async ({ callId } = {}, ackFn) => {
+    console.log(`[calls] ${callId}: hung up by ${socket.user?.name || me()} (${device(socket)})`);
     const res = await callService.hangup(String(callId), me());
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error, message: ERRORS[res.error] });
   });
 
-  socket.on("call:signal", ({ callId, data } = {}, ackFn) => {
-    const res = callService.signal(String(callId), me(), data);
+  socket.on("call:signal", ({ callId, data, to } = {}, ackFn) => {
+    const res = callService.signal(String(callId), me(), data, to ? String(to) : undefined);
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
@@ -302,12 +423,84 @@ export function registerCallHandlers(socket: CustomSocket) {
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
+  // Group call: someone on the call asks another staff member to join (it rings them)
+  socket.on("call:add", async ({ callId, userId: targetId } = {}, ackFn) => {
+    const ack = safeAck(ackFn);
+    try {
+      const by = await person();
+      if (by.role !== "staff") return fail(ack, "staff_only");
+      const target = await profileWithRole(String(targetId || ""));
+      if (!target) return fail(ack, "Choose someone to add");
+      const res = await callService.addParticipant(String(callId), by, {
+        id: target.id,
+        name: target.username || "Staff",
+        role: isStaffRole(target.role?.name) ? "staff" : "driver",
+      });
+      if (!res.ok) {
+        const who = "who" in res && res.who ? res.who : null;
+        return who
+          ? ack({ ok: false, error: res.error, message: `${who} has an older app version that can't do group calls — ask them to update` })
+          : fail(ack, res.error);
+      }
+      ack({ ok: true, call: res.call });
+    } catch (err: any) {
+      fail(ack, err?.message || "Could not add them");
+    }
+  });
+
+  // Transfer: hand the call to another staff member; this person leaves once they pick up
+  socket.on("call:transfer", async ({ callId, userId: targetId } = {}, ackFn) => {
+    const ack = safeAck(ackFn);
+    try {
+      const by = await person();
+      if (by.role !== "staff") return fail(ack, "staff_only");
+      const target = await profileWithRole(String(targetId || ""));
+      if (!target) return fail(ack, "Choose someone to transfer to");
+      const res = await callService.addParticipant(
+        String(callId),
+        by,
+        { id: target.id, name: target.username || "Staff", role: isStaffRole(target.role?.name) ? "staff" : "driver" },
+        { transfer: true }
+      );
+      if (!res.ok) {
+        const who = "who" in res && res.who ? res.who : null;
+        return who
+          ? ack({ ok: false, error: res.error, message: `${who} has an older app version that can't take transferred calls — ask them to update` })
+          : fail(ack, res.error);
+      }
+      ack({ ok: true, call: res.call });
+    } catch (err: any) {
+      fail(ack, err?.message || "Could not transfer the call");
+    }
+  });
+
+  socket.on("call:add_cancel", async ({ callId, userId: targetId } = {}, ackFn) => {
+    const res = await callService.cancelJoinRequest(String(callId), me(), String(targetId || ""));
+    safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error, message: ERRORS[res.error] });
+  });
+
+  // Recorded call, once answered: this side sends its microphone to the server (callRecorder.ts)
+  socket.on("call:rec_offer", async ({ callId, sdp } = {}, ackFn) => {
+    const ack = safeAck(ackFn);
+    try {
+      const live = callService.get(String(callId));
+      if (!live || live.phase !== "active" || !callService.isOnCall(live, me())) return fail(ack, "not_in_call");
+      if (!live.recording) return fail(ack, "This call isn't recorded");
+      if (typeof sdp !== "string" || !sdp.includes("m=audio")) return fail(ack, "Invalid recording offer");
+      ack({ ok: true, sdp: await answerRecordingOffer(live.id, me(), sdp) });
+    } catch (err: any) {
+      console.warn("[recording] offer failed:", err?.message || err);
+      fail(ack, err?.message || "Recording could not start");
+    }
+  });
+
   socket.on("call:status", async ({ callId } = {}, ackFn) => {
     const ack = safeAck(ackFn);
     const live = callService.get(String(callId));
     if (live) {
-      const mine = live.caller.id === me() || live.answeredBy?.id === me();
-      const ringingMe = live.phase === "ringing" && live.invited.get(me())?.state === "ringing";
+      const mine = callService.isOnCall(live, me());
+      const ringingMe =
+        (live.phase === "ringing" && live.invited.get(me())?.state === "ringing") || live.joins.get(me())?.state === "ringing";
       return ack({ ok: true, live: true, ringing: ringingMe, onCall: mine, call: callService.publicView(live), ...iceServersFor(me()) });
     }
     const row = await Call.findByPk(String(callId));
@@ -318,4 +511,20 @@ export function registerCallHandlers(socket: CustomSocket) {
 /** Kept for socket.ts; disconnects are handled per connection in registerCallHandlers. */
 export function callsOnDisconnect(_userId: string) {
   // no-op
+}
+
+/**
+ * Staff who can be asked to join a call: online (live connection) and not on or ringing for
+ * another call. For the "Add to call" list.
+ */
+export async function availableStaff(exceptId: string) {
+  const ids = [...userSockets.keys()].filter((id) => id !== exceptId && isOnline(id));
+  if (!ids.length) return [];
+  const staffRoles = await Role.findAll({ where: { name: STAFF_ROLES } });
+  const staff = await UserProfile.findAll({
+    where: { id: ids, role_id: staffRoles.map((r) => r.id) },
+    attributes: ["id", "username"],
+    order: [["username", "ASC"]],
+  });
+  return staff.map((s) => ({ id: s.id, name: s.username || "Staff", busy: callService.isBusy(s.id) }));
 }

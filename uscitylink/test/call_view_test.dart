@@ -51,6 +51,139 @@ void main() {
     expect(find.byKey(const Key('queueBanner')), findsNothing);
   });
 
+  testWidgets('recorded call: "Recorded" badge once connected, notice while it rings', (tester) async {
+    const peer = CallPeer(id: 's1', name: 'Super Admin', role: 'staff');
+    const recorded = CallInfo(
+        callId: 'c1', type: 'audio', channelId: 'ch', channelName: 'U S CITYLINK INC', driverId: 'd1', from: peer, recording: true);
+    final s = await show(tester, (s) {
+      s.info.value = recorded;
+      s.phase.value = CallPhase.incoming;
+    });
+    expect(find.byKey(const Key('recordedNotice')), findsOneWidget);
+    expect(find.byKey(const Key('recordedBadge')), findsNothing);
+
+    s.phase.value = CallPhase.active;
+    s.recording.value = true;
+    s.answeredAt.value = DateTime.now();
+    await tester.pump();
+    expect(find.byKey(const Key('recordedBadge')), findsOneWidget);
+    expect(find.text('Recorded'), findsOneWidget);
+    expect(find.byKey(const Key('recordedNotice')), findsNothing);
+  });
+
+  testWidgets('group call: everyone on it listed, muted marked, people being asked shown ringing', (tester) async {
+    final s = await show(tester, (s) {
+      s.peerName.value = 'Group call';
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+      s.members.assignAll(const [
+        CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver'),
+        CallPeer(id: 's2', name: 'Navneet', role: 'staff'),
+      ]);
+      s.pending.assignAll(const [CallPeer(id: 's3', name: 'Kashish', role: 'staff')]);
+      s.mutedIds.add('s2');
+    });
+    expect(find.byKey(const Key('participants')), findsOneWidget);
+    expect(find.text('Sukhdev Singh'), findsOneWidget);
+    expect(find.text('Navneet'), findsOneWidget);
+    expect(find.text('Kashish · ringing…'), findsOneWidget);
+    expect(find.byIcon(Icons.mic_off_rounded), findsOneWidget);
+    // Someone left: back to a normal 1-to-1 screen
+    s.members.removeWhere((m) => m.id == 's2');
+    s.pending.clear();
+    await tester.pump();
+    expect(find.byKey(const Key('participants')), findsNothing);
+  });
+
+  testWidgets('unanswered call: offers a voice message, then recording, then sent', (tester) async {
+    final s = await show(tester, (s) {
+      s.phase.value = CallPhase.ended;
+      s.endedText.value = 'Nobody is available right now';
+      s.voicemail.value = VoicemailState.offered;
+    });
+    expect(status(tester), 'Nobody is available right now');
+    expect(find.text('Leave a message after the tone'), findsOneWidget);
+    expect(find.byKey(const Key('voicemailRecord')), findsOneWidget);
+    expect(find.byKey(const Key('voicemailClose')), findsOneWidget);
+
+    // Recording (starts by itself after the beep): big seconds counter, hang up to send, delete link
+    s.voicemail.value = VoicemailState.recording;
+    s.voicemailSeconds.value = 7;
+    await tester.pump();
+    expect(tester.widget<Text>(find.byKey(const Key('voicemailSeconds'))).data, '0:07');
+    expect(find.text('Recording · up to 2:00'), findsOneWidget);
+    expect(find.byKey(const Key('voicemailEnd')), findsOneWidget);
+    expect(find.byKey(const Key('voicemailCancel')), findsOneWidget);
+    s.voicemailSeconds.value = 110;
+    await tester.pump();
+    expect(find.text('10s left'), findsOneWidget);
+
+
+    s.voicemail.value = VoicemailState.sending;
+    await tester.pump();
+    expect(find.text('Sending voice message…'), findsOneWidget);
+
+    s.voicemail.value = VoicemailState.sent;
+    await tester.pump();
+    expect(find.text('Voice message sent'), findsWidgets);
+  });
+
+  testWidgets('hanging up sends the voice message', (tester) async {
+    final s = await show(tester, (s) {
+      s.phase.value = CallPhase.ended;
+      s.voicemail.value = VoicemailState.recording;
+      s.voicemailSeconds.value = 5;
+    });
+    await tester.tap(find.byKey(const Key('voicemailEnd')));
+    await tester.pump(const Duration(milliseconds: 100));
+    // No recorder in tests: sending is attempted, the recording is stopped and the screen leaves "recording"
+    expect(s.voicemail.value, isNot(VoicemailState.recording));
+    // No recorder in tests → "too short" snackbar; close it before the test tears the tree down
+    await Get.closeCurrentSnackbar();
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('a call that simply ended offers no voice message', (tester) async {
+    await show(tester, (s) {
+      s.phase.value = CallPhase.ended;
+      s.endedText.value = 'Call ended · 1:02';
+    });
+    expect(find.byKey(const Key('voicemailRecord')), findsNothing);
+  });
+
+  testWidgets('staff on a call with a driver get Add and Transfer; drivers never do', (tester) async {
+    const driver = CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver');
+    final s = await show(tester, (s) {
+      s.isStaffUser.value = true;
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+      s.members.assignAll(const [driver]);
+    });
+    expect(find.byKey(const Key('addPersonButton')), findsOneWidget);
+    expect(find.byKey(const Key('transferButton')), findsOneWidget);
+
+    // Full (6 people): Add is disabled
+    s.members.assignAll([driver, for (var i = 2; i <= 6; i++) CallPeer(id: 's$i', name: 'Staff $i', role: 'staff')]);
+    await tester.pump();
+    final add = tester.widget<Opacity>(find.ancestor(of: find.text('Add'), matching: find.byType(Opacity)).first);
+    expect(add.opacity, lessThan(1));
+
+    // A driver's own app: no Add / Transfer
+    s.isStaffUser.value = false;
+    s.members.assignAll(const [CallPeer(id: 's1', name: 'Dispatch', role: 'staff')]);
+    await tester.pump();
+    expect(find.byKey(const Key('addPersonButton')), findsNothing);
+    expect(find.byKey(const Key('transferButton')), findsNothing);
+  });
+
+  testWidgets('call that is not recorded shows no recording badge', (tester) async {
+    await show(tester, (s) {
+      s.phase.value = CallPhase.active;
+      s.answeredAt.value = DateTime.now();
+    });
+    expect(find.byKey(const Key('recordedBadge')), findsNothing);
+  });
+
   testWidgets('incoming while the app is open: Accept and Decline, no call controls yet', (tester) async {
     await show(tester, (s) {
       s.peerName.value = 'U S CITYLINK INC';

@@ -34,6 +34,7 @@ import 'package:uscitylink/views/driver/views/live_location_webview.dart';
 import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 import 'package:uscitylink/services/call/call_service.dart';
+import 'package:uscitylink/views/call/call_dispatch_card.dart';
 
 const double _kKpiCardHeight = 112;
 const double _kKpiOverlap = 46;
@@ -274,6 +275,11 @@ class _DriverDashboardState extends State<DriverDashboard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // One tap to talk to dispatch (hidden when calling is off)
+                        CallDispatchCard(
+                          channelId: dashboard.channel?.id,
+                          channelName: dashboard.channel?.name,
+                        ),
                         _SectionHeader(
                           icon: Icons.local_shipping_rounded,
                           accent: TColors.brandGreen,

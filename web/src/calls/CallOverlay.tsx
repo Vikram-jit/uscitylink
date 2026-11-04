@@ -3,8 +3,11 @@
 import * as React from 'react';
 import {
   Avatar,
+  AvatarGroup,
   Box,
   Button,
+  CircularProgress,
+  Divider,
   Fade,
   IconButton,
   ListItemIcon,
@@ -17,6 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  ArrowsLeftRight,
   CaretDown,
   CaretUp,
   Check,
@@ -25,10 +29,15 @@ import {
   Phone,
   PhoneDisconnect,
   PhoneIncoming,
+  UserPlus,
+  UsersThree,
   WifiSlash,
+  X,
 } from '@phosphor-icons/react';
 
-import { formatCallDuration, useCall } from './CallProvider';
+import { useGetAvailableStaffQuery } from '@/redux/CallApiSlice';
+
+import { CallPeer, formatCallDuration, useCall } from './CallProvider';
 
 const initials = (name?: string) =>
   (name || '?')
@@ -48,10 +57,15 @@ function useTimer(from: number | null, running: boolean) {
   return from ? Math.max(0, Math.floor((now - from) / 1000)) : 0;
 }
 
+// The call card floats above the dashboard (and its dialogs); its own menus must open above it,
+// or they render underneath the card and clicking Add / the microphone arrow seems to do nothing.
+const CALL_LAYER = 1400;
+const MENU_LAYER = CALL_LAYER + 100;
+
 const CARD = {
   position: 'fixed' as const,
   right: { xs: 12, sm: 24 },
-  zIndex: 1400,
+  zIndex: CALL_LAYER,
   width: { xs: 'calc(100vw - 24px)', sm: 340 },
   borderRadius: 3,
   overflow: 'hidden',
@@ -63,8 +77,16 @@ function IncomingCard(): React.JSX.Element {
     <Paper elevation={12} role="alertdialog" aria-label="Incoming call" sx={{ ...CARD, top: { xs: 12, sm: 80 } }}>
       <Box sx={{ px: 2.5, py: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Stack alignItems="center" direction="row" spacing={1}>
-          <PhoneIncoming size={18} weight="bold" />
-          <Typography variant="subtitle2">Incoming voice call</Typography>
+          {call.transfer ? (
+            <ArrowsLeftRight size={18} weight="bold" />
+          ) : call.invitedBy ? (
+            <UsersThree size={18} weight="bold" />
+          ) : (
+            <PhoneIncoming size={18} weight="bold" />
+          )}
+          <Typography variant="subtitle2">
+            {call.transfer ? 'Transferred call' : call.invitedBy ? 'Request to join a call' : 'Incoming voice call'}
+          </Typography>
         </Stack>
       </Box>
       <Stack alignItems="center" direction="row" spacing={2} sx={{ px: 2.5, py: 2 }}>
@@ -87,11 +109,22 @@ function IncomingCard(): React.JSX.Element {
             {call.peer?.name}
           </Typography>
           <Typography color="text.secondary" noWrap variant="body2">
-            {call.peer?.role === 'driver' ? 'Driver' : 'Staff'}
-            {call.channelName ? ` · ${call.channelName}` : ''}
+            {call.transfer
+              ? `is transferring a call to you${call.members.length ? ` · ${call.members.filter((m) => m.id !== call.invitedBy?.id).map((m) => m.name).join(', ')}` : ''}`
+              : call.invitedBy
+              ? `asks you to join${call.members.length ? ` · with ${call.members.map((m) => m.name).join(', ')}` : ''}`
+              : `${call.peer?.role === 'driver' ? 'Driver' : 'Staff'}${call.channelName ? ` · ${call.channelName}` : ''}`}
           </Typography>
         </Box>
       </Stack>
+      {call.recording ? (
+        <Stack alignItems="center" direction="row" spacing={1} sx={{ mx: 2.5, mb: 1.5 }}>
+          <RecordedBadge compact={false} />
+          <Typography color="text.secondary" variant="caption">
+            This call will be recorded
+          </Typography>
+        </Stack>
+      ) : null}
       {call.moreIncoming ? (
         <Box sx={{ mx: 2.5, mb: 1.5, px: 1.5, py: 0.75, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
           <Typography variant="caption" sx={{ fontWeight: 600 }}>
@@ -111,10 +144,135 @@ function IncomingCard(): React.JSX.Element {
   );
 }
 
+/** Red "Recorded" mark: the call is recorded and both people are told so. */
+function RecordedBadge({ compact = false }: { compact?: boolean }): React.JSX.Element {
+  return (
+    <Stack alignItems="center" aria-label="This call is recorded" direction="row" spacing={0.5} sx={{ color: 'error.main', flexShrink: 0 }}>
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          bgcolor: compact ? '#fff' : 'error.main',
+          animation: 'recBlink 1.6s ease-in-out infinite',
+          '@keyframes recBlink': { '50%': { opacity: 0.35 } },
+        }}
+      />
+      {compact ? null : (
+        <Typography sx={{ fontWeight: 600 }} variant="caption">
+          Recorded
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+/** Group call: who is on it (muted ones marked) and who is still being asked to join. */
+function Participants(): React.JSX.Element {
+  const call = useCall();
+  return (
+    <Box sx={{ px: 2, pb: 1.5 }}>
+      <Stack spacing={0.75}>
+        {call.members.map((m) => (
+          <Stack alignItems="center" direction="row" key={m.id} spacing={1}>
+            <Avatar sx={{ width: 26, height: 26, fontSize: 12, bgcolor: m.role === 'driver' ? 'primary.main' : 'success.main' }}>
+              {initials(m.name)}
+            </Avatar>
+            <Typography noWrap sx={{ flex: 1 }} variant="body2">
+              {m.name}
+              <Typography color="text.secondary" component="span" variant="caption">
+                {m.role === 'driver' ? ' · Driver' : ''}
+              </Typography>
+            </Typography>
+            {call.mutedIds.includes(m.id) ? <MicrophoneSlash aria-label="Muted" color="var(--mui-palette-warning-main)" size={16} /> : null}
+          </Stack>
+        ))}
+        {call.pending.map((p) => (
+          <Stack alignItems="center" direction="row" key={p.id} spacing={1} sx={{ opacity: 0.75 }}>
+            <Avatar sx={{ width: 26, height: 26, fontSize: 12, bgcolor: 'grey.400' }}>{initials(p.name)}</Avatar>
+            <Typography noWrap sx={{ flex: 1 }} variant="body2">
+              {p.name}
+              <Typography color="text.secondary" component="span" variant="caption">
+                {' · ringing…'}
+              </Typography>
+            </Typography>
+            <Tooltip title="Stop asking">
+              <IconButton aria-label={`Stop asking ${p.name}`} onClick={() => call.cancelAdd(p.id)} size="small">
+                <X size={14} />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+/** Staff who are online: ask one of them to join this call, or transfer the call to them. */
+function AddPersonMenu({
+  anchor,
+  onClose,
+  mode,
+}: {
+  anchor: HTMLElement | null;
+  onClose: () => void;
+  mode: 'add' | 'transfer';
+}): React.JSX.Element {
+  const call = useCall();
+  const { data, isFetching } = useGetAvailableStaffQuery(undefined, { skip: !anchor });
+  const onCall = new Set([...call.members, ...call.pending].map((p) => p.id));
+  const staff = (data?.data || []).filter((s) => !onCall.has(s.id));
+  return (
+    <Menu
+      anchorEl={anchor}
+      onClose={onClose}
+      open={!!anchor}
+      PaperProps={{ sx: { maxHeight: 320, minWidth: 240 } }}
+      sx={{ zIndex: MENU_LAYER }}
+    >
+      <Typography color="text.secondary" sx={{ px: 2, py: 0.5 }} variant="caption">
+        {mode === 'transfer' ? 'Transfer the call to — you leave when they pick up' : 'Ask a staff member to join'}
+      </Typography>
+      <Divider />
+      {isFetching ? (
+        <Stack alignItems="center" sx={{ py: 2 }}>
+          <CircularProgress size={18} />
+        </Stack>
+      ) : staff.length ? (
+        staff.map((s) => (
+          <MenuItem
+            disabled={s.busy}
+            key={s.id}
+            onClick={() => {
+              onClose();
+              const person: CallPeer = { id: s.id, name: s.name, role: 'staff' };
+              void (mode === 'transfer' ? call.transferTo(person) : call.addPerson(person));
+            }}
+          >
+            <ListItemIcon>
+              <Avatar sx={{ width: 24, height: 24, fontSize: 11 }}>{initials(s.name)}</Avatar>
+            </ListItemIcon>
+            <ListItemText primary={s.name} secondary={s.busy ? 'On a call' : 'Online'} />
+          </MenuItem>
+        ))
+      ) : (
+        <Typography color="text.secondary" sx={{ px: 2, py: 1.5 }} variant="body2">
+          No other staff online right now
+        </Typography>
+      )}
+    </Menu>
+  );
+}
+
 function ActiveBar(): React.JSX.Element {
   const call = useCall();
   const [minimized, setMinimized] = React.useState(false);
   const [micMenu, setMicMenu] = React.useState<HTMLElement | null>(null);
+  const [addMenu, setAddMenu] = React.useState<HTMLElement | null>(null);
+  const [transferMenu, setTransferMenu] = React.useState<HTMLElement | null>(null);
+  const group = call.members.length > 1 || call.pending.length > 0;
+  const title = call.members.length > 1 ? `Group call · ${call.members.length + 1} people` : call.peer?.name;
+  const canAdd = call.phase === 'active' && call.members.length + call.pending.length + 1 < call.maxParticipants;
   const seconds = useTimer(call.answeredAt, call.phase === 'active');
 
   const status =
@@ -138,11 +296,12 @@ function ActiveBar(): React.JSX.Element {
         sx={{ ...CARD, width: 'auto', bottom: 24, px: 2, py: 1, cursor: 'pointer', bgcolor: 'success.main', color: 'success.contrastText' }}
       >
         <Stack alignItems="center" direction="row" spacing={1}>
-          <Phone size={16} weight="fill" />
-          <Typography variant="subtitle2">{call.peer?.name}</Typography>
+          {call.members.length > 1 ? <UsersThree size={16} weight="fill" /> : <Phone size={16} weight="fill" />}
+          <Typography variant="subtitle2">{title}</Typography>
           <Typography sx={{ fontVariantNumeric: 'tabular-nums' }} variant="body2">
             {status}
           </Typography>
+          {call.recording && call.phase === 'active' ? <RecordedBadge compact /> : null}
           <CaretUp size={14} />
         </Stack>
       </Paper>
@@ -152,10 +311,20 @@ function ActiveBar(): React.JSX.Element {
   return (
     <Paper elevation={12} aria-label="Call controls" sx={{ ...CARD, bottom: 24 }}>
       <Stack alignItems="center" direction="row" spacing={1.5} sx={{ px: 2, pt: 2, pb: 1.5 }}>
-        <Avatar sx={{ width: 44, height: 44, bgcolor: ended ? 'grey.400' : 'success.main', color: '#fff', fontWeight: 600 }}>{initials(call.peer?.name)}</Avatar>
+        {call.members.length > 1 ? (
+          <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 32, height: 32, fontSize: 13 } }}>
+            {call.members.map((m) => (
+              <Avatar key={m.id} sx={{ bgcolor: ended ? 'grey.400' : 'success.main' }}>
+                {initials(m.name)}
+              </Avatar>
+            ))}
+          </AvatarGroup>
+        ) : (
+          <Avatar sx={{ width: 44, height: 44, bgcolor: ended ? 'grey.400' : 'success.main', color: '#fff', fontWeight: 600 }}>{initials(call.peer?.name)}</Avatar>
+        )}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography noWrap variant="subtitle1">
-            {call.peer?.name}
+            {title}
           </Typography>
           <Stack alignItems="center" direction="row" spacing={0.75}>
             {call.reconnecting && !ended ? <WifiSlash color="var(--mui-palette-warning-main)" size={14} /> : null}
@@ -165,8 +334,9 @@ function ActiveBar(): React.JSX.Element {
               variant="body2"
             >
               {status}
-              {call.remoteMuted && !ended ? ' · they muted' : ''}
+              {call.remoteMuted && !ended && !group ? ' · they muted' : ''}
             </Typography>
+            {call.recording && call.phase === 'active' ? <RecordedBadge /> : null}
           </Stack>
         </Box>
         {!ended ? (
@@ -177,6 +347,7 @@ function ActiveBar(): React.JSX.Element {
           </Tooltip>
         ) : null}
       </Stack>
+      {group && !ended ? <Participants /> : null}
       {!ended ? (
         <Stack alignItems="center" direction="row" justifyContent="center" spacing={2} sx={{ px: 2, pb: 2 }}>
           <Tooltip title={call.muted ? 'Unmute' : 'Mute'}>
@@ -199,7 +370,32 @@ function ActiveBar(): React.JSX.Element {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={call.phase === 'outgoing' ? 'Cancel' : 'Hang up'}>
+          {call.peer?.role === 'driver' || call.members.length > 1 || call.invitedBy ? (
+            <Tooltip title={canAdd ? 'Add someone to the call' : `A call can have at most ${call.maxParticipants} people`}>
+              <span>
+                <IconButton
+                  aria-label="Add someone to the call"
+                  disabled={!canAdd}
+                  onClick={(e) => setAddMenu(e.currentTarget)}
+                  sx={{ bgcolor: 'action.hover', width: 48, height: 48 }}
+                >
+                  <UserPlus size={22} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          ) : null}
+          {call.phase === 'active' && (call.peer?.role === 'driver' || call.members.some((m) => m.role === 'driver')) ? (
+            <Tooltip title="Transfer the call to another dispatcher">
+              <IconButton
+                aria-label="Transfer the call"
+                onClick={(e) => setTransferMenu(e.currentTarget)}
+                sx={{ bgcolor: 'action.hover', width: 48, height: 48 }}
+              >
+                <ArrowsLeftRight size={22} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+          <Tooltip title={call.phase === 'outgoing' ? 'Cancel' : group ? 'Leave the call' : 'Hang up'}>
             <IconButton
               onClick={call.hangup}
               sx={{ bgcolor: 'error.main', color: 'error.contrastText', width: 56, height: 48, borderRadius: 6, '&:hover': { bgcolor: 'error.dark' } }}
@@ -209,7 +405,9 @@ function ActiveBar(): React.JSX.Element {
           </Tooltip>
         </Stack>
       ) : null}
-      <Menu anchorEl={micMenu} onClose={() => setMicMenu(null)} open={!!micMenu}>
+      <AddPersonMenu anchor={addMenu} mode="add" onClose={() => setAddMenu(null)} />
+      <AddPersonMenu anchor={transferMenu} mode="transfer" onClose={() => setTransferMenu(null)} />
+      <Menu anchorEl={micMenu} onClose={() => setMicMenu(null)} open={!!micMenu} sx={{ zIndex: MENU_LAYER }}>
         {call.microphones.map((m, i) => (
           <MenuItem
             key={m.deviceId || i}

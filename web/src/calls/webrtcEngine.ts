@@ -22,6 +22,11 @@ export interface EngineOptions {
   sendSignal: (data: SignalData) => void;
   onRemoteStream: (stream: MediaStream) => void;
   onState: (state: EngineState) => void;
+  /**
+   * Group calls share one microphone between the connections to each person: closing one of them
+   * must not stop it. Default true (a 1-to-1 engine owns its microphone).
+   */
+  stopTracksOnClose?: boolean;
 }
 
 export interface CallStatsSummary {
@@ -126,6 +131,12 @@ export class WebRtcEngine {
     this.opts.localStream.getAudioTracks().forEach((t) => (t.enabled = !muted));
   }
 
+  /** Send a different microphone track (group calls switch it on every connection at once). */
+  async replaceTrack(track: MediaStreamTrack) {
+    const sender = this.pc.getSenders().find((s) => s.track?.kind === 'audio');
+    await sender?.replaceTrack(track);
+  }
+
   /** Swap the microphone mid-call without renegotiating. */
   async switchMicrophone(deviceId: string, muted: boolean) {
     const stream = await getMicrophone(deviceId);
@@ -190,7 +201,7 @@ export class WebRtcEngine {
     this.pc.ontrack = null;
     this.pc.onconnectionstatechange = null;
     this.pc.close();
-    this.opts.localStream.getTracks().forEach((t) => t.stop());
+    if (this.opts.stopTracksOnClose !== false) this.opts.localStream.getTracks().forEach((t) => t.stop());
     this.setState('closed');
   }
 
@@ -237,5 +248,73 @@ export class WebRtcEngine {
     if (this.state === state) return;
     this.state = state;
     this.opts.onState(state);
+  }
+}
+
+/**
+ * Recorded calls: sends this side's microphone to the server, which records both voices (see
+ * server/src/calls/callRecorder.ts). A separate send-only connection, so it can never disturb the
+ * call's own audio. Uses the call's microphone track, so muting is respected.
+ */
+export class RecordingUplink {
+  private pc: RTCPeerConnection | null = null;
+  private closed = false;
+  private retries = 0;
+
+  constructor(
+    private opts: {
+      iceServers: RTCIceServer[];
+      track: MediaStreamTrack;
+      /** Sends the offer to the server (call:rec_offer) and returns its answer. */
+      offer: (sdp: string) => Promise<string | null>;
+    }
+  ) {}
+
+  async start(): Promise<boolean> {
+    if (this.closed) return false;
+    const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers });
+    this.pc = pc;
+    pc.addTransceiver(this.opts.track, { direction: 'sendonly' });
+    try {
+      await pc.setLocalDescription(await pc.createOffer());
+      // One round trip: send the offer with the candidates found within a second (local + STUN)
+      // instead of trickling them; waiting for every TURN candidate delayed the start of recording
+      await new Promise<void>((resolve) => {
+        if (pc.iceGatheringState === 'complete') return resolve();
+        const done = () => pc.iceGatheringState === 'complete' && resolve();
+        pc.addEventListener('icegatheringstatechange', done);
+        setTimeout(resolve, 1000);
+      });
+      const answer = await this.opts.offer(pc.localDescription?.sdp || '');
+      if (!answer || this.closed) return false;
+      await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'failed' && !this.closed && this.retries < 3) {
+          this.retries += 1;
+          pc.close();
+          setTimeout(() => void this.start(), 1000 * this.retries);
+        }
+      };
+      return true;
+    } catch (err) {
+      console.warn('[call] recording uplink failed', err);
+      return false;
+    }
+  }
+
+  /** The microphone was switched mid-call. */
+  async replaceTrack(track: MediaStreamTrack) {
+    this.opts.track = track;
+    const sender = this.pc?.getSenders().find((s) => s.track?.kind === 'audio');
+    await sender?.replaceTrack(track).catch(() => undefined);
+  }
+
+  close() {
+    this.closed = true;
+    if (this.pc) {
+      this.pc.onconnectionstatechange = null;
+      this.pc.close();
+    }
+    this.pc = null;
   }
 }

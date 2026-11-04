@@ -7,14 +7,18 @@ import { useSocket } from '@/lib/socketProvider';
 import { useSocketEvent } from '@/hooks/use-socket-event';
 import { useSaveCallQualityMutation } from '@/redux/CallApiSlice';
 
-import { playEndTone, playRingback, playRingtone, stopTones } from './sounds';
-import { getMicrophone, microphoneErrorText, SignalData, WebRtcEngine } from './webrtcEngine';
+import { playEndTone, playRecordingTone, playRingback, playRingtone, stopTones } from './sounds';
+import { getMicrophone, microphoneErrorText, RecordingUplink, SignalData, WebRtcEngine } from './webrtcEngine';
 
 // Voice calls on the web dashboard. One call at a time; the server (server/src/calls) decides who
 // rings and when a call ends, this provider runs the WebRTC side and the UI state.
 //
 //   idle ─startCall→ outgoing ─call:accepted→ connecting ─media up→ active ─call:ended→ ended → idle
 //   idle ─call:incoming→ incoming ─accept→ connecting → active …
+//
+// Group calls (staff adds staff): one WebRTC connection per other person, all sharing this tab's
+// microphone. Whoever joins sends the offers to everyone already on the call; signals carry `to`
+// and come back with `from`. A 1-to-1 call is the same thing with one connection.
 
 export type CallPhase = 'idle' | 'outgoing' | 'incoming' | 'connecting' | 'active' | 'ended';
 
@@ -37,6 +41,28 @@ export interface CallState {
   endedText: string | null;
   /** Other drivers ringing this dispatcher at the same time (shown one after another). */
   moreIncoming: number;
+  /** The call is recorded (both people are told: tone + "Recorded" badge). */
+  recording: boolean;
+  /** Everyone on the call except me (1 person on a normal call, more on a group call). */
+  members: CallPeer[];
+  /** People asked to join who haven't answered yet. */
+  pending: CallPeer[];
+  /** People on the call who muted themselves. */
+  mutedIds: string[];
+  maxParticipants: number;
+  /** Incoming request to join someone else's call: who asked. */
+  invitedBy: CallPeer | null;
+  /** That request is a transfer: whoever asked hands the call over and leaves. */
+  transfer: boolean;
+}
+
+/** An answered call somewhere in the company: which driver, and who is on it (chat "On call" marks). */
+export interface OnCallInfo {
+  callId: string;
+  driverId: string;
+  channelId: string;
+  members: CallPeer[];
+  answeredAt: number | null;
 }
 
 interface CallContextValue extends CallState {
@@ -48,6 +74,13 @@ interface CallContextValue extends CallState {
   microphones: MediaDeviceInfo[];
   micId: string | null;
   selectMicrophone: (deviceId: string) => Promise<void>;
+  /** Group call: ask another staff member to join (it rings them). */
+  addPerson: (person: CallPeer) => Promise<boolean>;
+  cancelAdd: (userId: string) => void;
+  /** Hand the call to another staff member; I leave once they pick up. */
+  transferTo: (person: CallPeer) => Promise<boolean>;
+  /** Drivers on a call right now, by driver id. */
+  onCallByDriver: Record<string, OnCallInfo>;
 }
 
 const IDLE: CallState = {
@@ -62,6 +95,13 @@ const IDLE: CallState = {
   reconnecting: false,
   endedText: null,
   moreIncoming: 0,
+  recording: false,
+  members: [],
+  pending: [],
+  mutedIds: [],
+  maxParticipants: 6,
+  invitedBy: null,
+  transfer: false,
 };
 
 const CallContext = React.createContext<CallContextValue | null>(null);
@@ -70,6 +110,12 @@ export function useCall(): CallContextValue {
   const ctx = React.useContext(CallContext);
   if (!ctx) throw new Error('useCall must be used inside <CallProvider>');
   return ctx;
+}
+
+/** The call a driver is on right now (for "On call" marks), or null. Safe outside <CallProvider>. */
+export function useDriverOnCall(driverId?: string | null): OnCallInfo | null {
+  const ctx = React.useContext(CallContext);
+  return (driverId && ctx?.onCallByDriver[driverId]) || null;
 }
 
 const ENDED_TEXT: Record<string, string> = {
@@ -82,6 +128,17 @@ const ENDED_TEXT: Record<string, string> = {
 };
 
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
+/** This dashboard user's profile id — the same id the server reads from the login token. */
+function myUserId(): string {
+  try {
+    const token = localStorage.getItem('custom-auth-token') || '';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return String(payload?.id || '');
+  } catch {
+    return '';
+  }
+}
 
 function notifyBrowser(title: string, body: string) {
   if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -109,27 +166,39 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
   const [state, setState] = React.useState<CallState>(IDLE);
   const [microphones, setMicrophones] = React.useState<MediaDeviceInfo[]>([]);
   const [micId, setMicId] = React.useState<string | null>(null);
+  const [onCallByDriver, setOnCallByDriver] = React.useState<Record<string, OnCallInfo>>({});
 
   const stateRef = React.useRef(state);
   stateRef.current = state;
-  const engineRef = React.useRef<WebRtcEngine | null>(null);
+  // One connection (and one <audio>) per other person on the call, by their user id
+  const enginesRef = React.useRef(new Map<string, WebRtcEngine>());
+  const audioBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const audiosRef = React.useRef(new Map<string, HTMLAudioElement>());
   // Caller's microphone, opened before ringing, handed to the engine once the call is answered
   const pendingMicRef = React.useRef<MediaStream | null>(null);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const iceRef = React.useRef<RTCIceServer[]>([]);
-  const pendingSignals = React.useRef<SignalData[]>([]);
+  // Signals from someone whose connection doesn't exist yet (by sender)
+  const pendingSignals = React.useRef(new Map<string, SignalData[]>());
   const endedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   // Incoming calls waiting behind the one on screen (several drivers can ring a free dispatcher)
   const incomingQueue = React.useRef<any[]>([]);
+  // Recorded call: the connection sending this side's microphone to the server, and that microphone
+  const uplinkRef = React.useRef<RecordingUplink | null>(null);
+  const micStreamRef = React.useRef<MediaStream | null>(null);
+  const recordingRef = React.useRef(false);
 
   const incomingState = (call: any, more: number): CallState => ({
     ...IDLE,
     phase: 'incoming',
     direction: 'in',
     callId: call.callId,
-    peer: call.from,
+    peer: call.joinRequest ? call.invitedBy : call.from,
     channelName: call.channelName || '',
     moreIncoming: more,
+    recording: !!call.recording,
+    invitedBy: call.joinRequest ? call.invitedBy : null,
+    transfer: !!call.transfer,
+    members: call.joinRequest ? (call.members || []) : [],
   });
 
   /** Show the next driver who is still ringing, or go idle. */
@@ -151,6 +220,12 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
   };
 
   const patch = (p: Partial<CallState>) => setState((s) => ({ ...s, ...p }));
+
+  /** Everyone on the call but me, from a server roster. */
+  const others = (people: CallPeer[] | undefined) => {
+    const me = myUserId();
+    return (people || []).filter((p) => p.id !== me);
+  };
 
   const releasePendingMic = () => {
     pendingMicRef.current?.getTracks().forEach((t) => t.stop());
@@ -179,22 +254,36 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     }
   }, []);
 
+  /** Close the connection to one person (they left, or the call ended). */
+  const closePeer = (peerId: string) => {
+    enginesRef.current.get(peerId)?.close();
+    enginesRef.current.delete(peerId);
+    pendingSignals.current.delete(peerId);
+    const audio = audiosRef.current.get(peerId);
+    if (audio) {
+      audio.srcObject = null;
+      audio.remove();
+    }
+    audiosRef.current.delete(peerId);
+  };
+
   const teardown = React.useCallback(
     async (endedText: string | null) => {
       stopTones();
-      const engine = engineRef.current;
       const callId = stateRef.current.callId;
-      engineRef.current = null;
-      pendingSignals.current = [];
-      if (engine) {
-        const stats = await engine.stats();
-        engine.close();
-        if (callId && stateRef.current.answeredAt) void saveQuality({ id: callId, stats }).catch(() => undefined);
-      }
-      if (audioRef.current) audioRef.current.srcObject = null;
+      const first = enginesRef.current.values().next().value as WebRtcEngine | undefined;
+      const stats = first ? await first.stats() : null;
+      Array.from(enginesRef.current.keys()).forEach(closePeer);
+      pendingSignals.current.clear();
+      uplinkRef.current?.close();
+      uplinkRef.current = null;
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+      recordingRef.current = false;
+      if (stats && callId && stateRef.current.answeredAt) void saveQuality({ id: callId, stats }).catch(() => undefined);
       if (endedText) {
         playEndTone();
-        patch({ phase: 'ended', endedText, reconnecting: false });
+        patch({ phase: 'ended', endedText, reconnecting: false, pending: [] });
         if (endedTimer.current) clearTimeout(endedTimer.current);
         endedTimer.current = setTimeout(() => setState(IDLE), 2500);
       } else {
@@ -204,38 +293,89 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     [saveQuality]
   );
 
-  const createEngine = React.useCallback(
-    (isCaller: boolean, localStream: MediaStream, callId: string) => {
+  /**
+   * Recorded call: send this side's microphone to the server as soon as the call is answered, in
+   * parallel with the call connecting (waiting for "connected" lost the first seconds of a call).
+   * The tone and "Recorded" badge come when the call connects.
+   */
+  const startRecording = React.useCallback(
+    (callId: string, localStream: MediaStream) => {
+      if (uplinkRef.current) return;
+      const track = localStream.getAudioTracks()[0];
+      if (!track) return;
+      const uplink = new RecordingUplink({
+        iceServers: iceRef.current,
+        track,
+        offer: async (sdp) => {
+          const res: any = await emit('call:rec_offer', { callId, sdp });
+          return res?.ok ? res.sdp : null;
+        },
+      });
+      uplinkRef.current = uplink;
+      void uplink.start();
+    },
+    [emit]
+  );
+
+  /** The connection to one other person on the call. The microphone is shared by all of them. */
+  const connectTo = React.useCallback(
+    (peerId: string, isCaller: boolean, callId: string) => {
+      const localStream = micStreamRef.current;
+      if (!localStream || enginesRef.current.has(peerId)) return enginesRef.current.get(peerId);
       const engine = new WebRtcEngine({
         iceServers: iceRef.current,
         isCaller,
         localStream,
-        sendSignal: (data) => socket?.emit('call:signal', { callId, data }),
+        stopTracksOnClose: false,
+        sendSignal: (data) => socket?.emit('call:signal', { callId, data, to: peerId }),
         onRemoteStream: (stream) => {
-          if (audioRef.current) {
-            audioRef.current.srcObject = stream;
-            void audioRef.current.play().catch(() => undefined);
+          let audio = audiosRef.current.get(peerId);
+          if (!audio) {
+            audio = document.createElement('audio');
+            audio.autoplay = true;
+            audioBoxRef.current?.appendChild(audio);
+            audiosRef.current.set(peerId, audio);
           }
+          audio.srcObject = stream;
+          void audio.play().catch(() => undefined);
         },
         onState: (s) => {
           if (s === 'connected') {
             stopTones();
+            if (recordingRef.current && stateRef.current.phase !== 'active') playRecordingTone();
             patch({ phase: 'active', reconnecting: false });
           } else if (s === 'reconnecting') {
             patch({ reconnecting: true });
           } else if (s === 'failed') {
-            toast.error('The call connection was lost');
-            socket?.emit('call:end', { callId });
+            if (enginesRef.current.size <= 1) {
+              toast.error('The call connection was lost');
+              socket?.emit('call:end', { callId });
+            } else {
+              // Group call: only the link to this person broke; the server drops them if they're gone
+              closePeer(peerId);
+            }
           }
         },
       });
-      engineRef.current = engine;
-      // Signals that arrived while the microphone was opening
-      const queued = pendingSignals.current.splice(0);
-      queued.forEach((d) => void engine.handleSignal(d));
+      enginesRef.current.set(peerId, engine);
+      // Signals that arrived before this connection existed
+      const queued = pendingSignals.current.get(peerId) || [];
+      pendingSignals.current.delete(peerId);
+      void engine.start().then(() => queued.forEach((d) => void engine.handleSignal(d)));
       return engine;
     },
     [socket]
+  );
+
+  /** The call was answered: keep the microphone, start recording, connect to [peers]. */
+  const beginMedia = React.useCallback(
+    (mic: MediaStream, callId: string, recording: boolean, peers: string[], isCaller: boolean) => {
+      micStreamRef.current = mic;
+      recordingRef.current = recording;
+      if (recording) startRecording(callId, mic);
+      peers.forEach((id) => connectTo(id, isCaller, callId));
+    },
+    [connectTo, startRecording]
   );
 
   // ---------- actions ----------
@@ -255,8 +395,10 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
         return;
       }
       void refreshMicrophones();
-      setState({ ...IDLE, phase: 'outgoing', direction: 'out', peer: { id: driver.id, name: driver.name, role: 'driver' } });
-      const res: any = await emit('call:invite', { driverId: driver.id });
+      const peer: CallPeer = { id: driver.id, name: driver.name, role: 'driver' };
+      setState({ ...IDLE, phase: 'outgoing', direction: 'out', peer, members: [peer] });
+      // group: this dashboard can do group calls (older driver apps can't — see the server)
+      const res: any = await emit('call:invite', { driverId: driver.id, group: true });
       if (!res?.ok) {
         mic.getTracks().forEach((t) => t.stop());
         const text = res?.error === 'busy' ? 'Busy' : res?.error === 'unavailable' ? 'Unavailable' : null;
@@ -271,7 +413,12 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
         return;
       }
       iceRef.current = res.iceServers || [];
-      patch({ callId: res.callId, channelName: res.call?.channelName || '' });
+      patch({
+        callId: res.callId,
+        channelName: res.call?.channelName || '',
+        recording: !!res.call?.recording,
+        maxParticipants: res.call?.maxParticipants || 6,
+      });
       pendingMicRef.current = mic;
       playRingback();
     },
@@ -292,7 +439,7 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       return;
     }
     patch({ phase: 'connecting' });
-    const res: any = await emit('call:accept', { callId });
+    const res: any = await emit('call:accept', { callId, group: true });
     if (!res?.ok) {
       mic.getTracks().forEach((t) => t.stop());
       toast.info(res?.message || 'This call has ended');
@@ -301,11 +448,21 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     }
     iceRef.current = res.iceServers || [];
     incomingQueue.current = [];
-    patch({ answeredAt: res.call?.answeredAt || Date.now(), moreIncoming: 0 });
+    const members = others(res.call?.members);
+    const joining = !!stateRef.current.invitedBy;
+    patch({
+      answeredAt: res.call?.answeredAt || Date.now(),
+      moreIncoming: 0,
+      recording: !!res.call?.recording,
+      members,
+      pending: others(res.call?.pending),
+      maxParticipants: res.call?.maxParticipants || 6,
+      peer: joining ? stateRef.current.peer : res.call?.from || stateRef.current.peer,
+    });
     void refreshMicrophones();
-    const engine = createEngine(false, mic, callId);
-    await engine.start();
-  }, [createEngine, emit, micId, refreshMicrophones, socket]);
+    // Answering a call: the caller sends the offer. Joining a group call: I offer to everyone on it.
+    beginMedia(mic, callId, !!res.call?.recording, members.map((m) => m.id), joining);
+  }, [beginMedia, emit, micId, refreshMicrophones, socket]);
 
   const decline = React.useCallback(() => {
     const { callId } = stateRef.current;
@@ -325,19 +482,68 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
 
   const toggleMute = React.useCallback(() => {
     const muted = !stateRef.current.muted;
-    engineRef.current?.setMuted(muted);
+    micStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !muted));
     patch({ muted });
     if (stateRef.current.callId) socket?.emit('call:media', { callId: stateRef.current.callId, muted });
   }, [socket]);
 
   const selectMicrophone = React.useCallback(async (deviceId: string) => {
     setMicId(deviceId);
+    const stream = micStreamRef.current;
+    if (!stream) return;
     try {
-      await engineRef.current?.switchMicrophone(deviceId, stateRef.current.muted);
+      const fresh = await getMicrophone(deviceId);
+      const track = fresh.getAudioTracks()[0];
+      track.enabled = !stateRef.current.muted;
+      await Promise.all(Array.from(enginesRef.current.values()).map((e) => e.replaceTrack(track)));
+      await uplinkRef.current?.replaceTrack(track);
+      stream.getAudioTracks().forEach((t) => {
+        t.stop();
+        stream.removeTrack(t);
+      });
+      stream.addTrack(track);
     } catch {
       toast.error('Could not switch to that microphone');
     }
   }, []);
+
+  const addPerson = React.useCallback(
+    async (person: CallPeer) => {
+      const { callId } = stateRef.current;
+      if (!callId) return false;
+      const res: any = await emit('call:add', { callId, userId: person.id });
+      if (!res?.ok) {
+        toast.error(res?.message || 'Could not add them');
+        return false;
+      }
+      toast.info(`Calling ${person.name} to join…`);
+      return true;
+    },
+    [emit]
+  );
+
+  const transferTo = React.useCallback(
+    async (person: CallPeer) => {
+      const { callId } = stateRef.current;
+      if (!callId) return false;
+      const res: any = await emit('call:transfer', { callId, userId: person.id });
+      if (!res?.ok) {
+        toast.error(res?.message || 'Could not transfer the call');
+        return false;
+      }
+      toast.info(`Transferring to ${person.name}… you'll leave the call when they pick up`);
+      return true;
+    },
+    [emit]
+  );
+
+  const cancelAdd = React.useCallback(
+    (userId: string) => {
+      const { callId } = stateRef.current;
+      if (callId) socket?.emit('call:add_cancel', { callId, userId });
+    },
+    [socket]
+  );
 
   // ---------- server events ----------
 
@@ -354,22 +560,23 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     if (endedTimer.current) clearTimeout(endedTimer.current);
     setState(incomingState(call, 0));
     playRingtone();
-    notifyBrowser(`Incoming call · ${call.from?.name}`, call.channelName ? `${call.channelName} — open USCityLink to answer` : 'Open USCityLink to answer');
+    const title = call.joinRequest ? `${call.invitedBy?.name} asks you to join a call` : `Incoming call · ${call.from?.name}`;
+    notifyBrowser(title, call.channelName ? `${call.channelName} — open USCityLink to answer` : 'Open USCityLink to answer');
   });
 
-  useSocketEvent('call:accepted', async ({ callId, by }: any) => {
+  useSocketEvent('call:accepted', ({ callId, by }: any) => {
     const s = stateRef.current;
     if (s.callId !== callId || s.phase !== 'outgoing') return;
     stopTones();
     const mic = pendingMicRef.current;
     pendingMicRef.current = null;
-    patch({ phase: 'connecting', answeredAt: Date.now(), peer: by ? { ...by } : s.peer });
+    const peer: CallPeer = by ? { ...by } : s.peer!;
+    patch({ phase: 'connecting', answeredAt: Date.now(), peer, members: [peer] });
     if (!mic) {
       socket?.emit('call:end', { callId });
       return;
     }
-    const engine = createEngine(true, mic, callId);
-    await engine.start();
+    beginMedia(mic, callId, s.recording, [peer.id], true);
   });
 
   useSocketEvent('call:ringing', () => undefined);
@@ -382,50 +589,115 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     showNextIncoming();
   });
 
-  useSocketEvent('call:signal', ({ callId, data }: any) => {
-    if (stateRef.current.callId !== callId) return;
-    if (engineRef.current) void engineRef.current.handleSignal(data);
-    else pendingSignals.current.push(data);
+  // Group call: someone joined (they send me the offer) or left
+  useSocketEvent('call:member_joined', ({ callId, person }: any) => {
+    if (stateRef.current.callId !== callId || !person?.id) return;
+    connectTo(person.id, false, callId);
+    toast.info(`${person.name} joined the call`);
   });
 
-  useSocketEvent('call:media', ({ callId, muted }: any) => {
-    if (stateRef.current.callId === callId) patch({ remoteMuted: !!muted });
+  useSocketEvent('call:member_left', ({ callId, person }: any) => {
+    if (stateRef.current.callId !== callId || !person?.id) return;
+    closePeer(person.id);
+    patch({ mutedIds: stateRef.current.mutedIds.filter((id) => id !== person.id) });
+    toast.info(`${person.name} left the call`);
+  });
+
+  useSocketEvent('call:participants', ({ callId, members, pending, max }: any) => {
+    if (stateRef.current.callId !== callId) return;
+    patch({ members: others(members), pending: others(pending), maxParticipants: max || 6 });
+  });
+
+  // Transfer: the other dispatcher picked up (call:ended follows for me), or didn't
+  useSocketEvent('call:transferred', ({ callId, to }: any) => {
+    if (stateRef.current.callId === callId) toast.success(`Call transferred to ${to?.name || 'them'}`);
+  });
+
+  useSocketEvent('call:transfer_failed', ({ callId, person, reason }: any) => {
+    if (stateRef.current.callId !== callId) return;
+    toast.warning(`${person?.name || 'They'} ${reason === 'declined' ? 'declined' : "didn't answer"} — you're still on the call`);
+  });
+
+  // Who is on a call across the company (server sends the list on connect, then on every change)
+  const applyOnCall = React.useCallback((calls: OnCallInfo[] | undefined) => {
+    const byDriver: Record<string, OnCallInfo> = {};
+    (calls || []).forEach((c) => (byDriver[c.driverId] = c));
+    setOnCallByDriver(byDriver);
+  }, []);
+  useSocketEvent('calls:on_call', ({ calls }: { calls: OnCallInfo[] }) => applyOnCall(calls));
+
+  // Ask for the current list too: the one sent on connect can arrive before this page listens
+  React.useEffect(() => {
+    if (!socket) return undefined;
+    const fetchList = () => socket.emit('calls:on_call_get', {}, (res: any) => res?.ok && applyOnCall(res.calls));
+    if (socket.connected) fetchList();
+    socket.on('connect', fetchList);
+    return () => {
+      socket.off('connect', fetchList);
+    };
+  }, [socket, applyOnCall]);
+
+  useSocketEvent('call:signal', ({ callId, from, data }: any) => {
+    if (stateRef.current.callId !== callId) return;
+    // Older servers don't say who sent it: on a 1-to-1 call it's the only other person
+    const sender = from || Array.from(enginesRef.current.keys())[0] || stateRef.current.peer?.id;
+    if (!sender) return;
+    const engine = enginesRef.current.get(sender);
+    if (engine) void engine.handleSignal(data);
+    else pendingSignals.current.set(sender, [...(pendingSignals.current.get(sender) || []), data]);
+  });
+
+  useSocketEvent('call:media', ({ callId, from, muted }: any) => {
+    const s = stateRef.current;
+    if (s.callId !== callId) return;
+    const id = from || s.peer?.id || '';
+    const mutedIds = muted ? Array.from(new Set([...s.mutedIds, id])) : s.mutedIds.filter((m) => m !== id);
+    patch({ mutedIds, remoteMuted: mutedIds.length > 0 });
   });
 
   useSocketEvent('call:peer_reconnecting', ({ callId }: any) => {
     if (stateRef.current.callId === callId) patch({ reconnecting: true });
   });
 
-  useSocketEvent('call:peer_reconnected', ({ callId }: any) => {
-    if (stateRef.current.callId === callId) engineRef.current?.restartIce();
+  useSocketEvent('call:peer_reconnected', ({ callId, from }: any) => {
+    if (stateRef.current.callId !== callId) return;
+    const engine = from ? enginesRef.current.get(from) : undefined;
+    if (engine) engine.restartIce();
+    else enginesRef.current.forEach((e) => e.restartIce());
   });
 
-  // Our own socket came back: the server still has the call — renegotiate the network path.
+  // Our own socket came back: the server still has the call — renegotiate the network paths.
   // After a page reload there is no audio connection left to resume, so end it cleanly.
   useSocketEvent('call:resume', ({ callId }: any) => {
-    if (engineRef.current && stateRef.current.callId === callId) engineRef.current.restartIce();
+    if (enginesRef.current.size && stateRef.current.callId === callId) enginesRef.current.forEach((e) => e.restartIce());
     else socket?.emit('call:end', { callId });
   });
 
-  useSocketEvent('call:ended', ({ callId, status, durationSec }: any) => {
+  useSocketEvent('call:ended', ({ callId, status, reason, durationSec }: any) => {
     dropQueued(callId);
     const s = stateRef.current;
     if (s.callId !== callId || s.phase === 'ended') return;
     if (s.phase === 'incoming') {
-      // The driver hung up or nobody answered in time
+      // The driver hung up, nobody answered in time, or a join request was taken back
       showNextIncoming();
       return;
     }
     releasePendingMic();
     const text =
-      status === 'completed' && durationSec ? `Call ended · ${fmt(durationSec)}` : ENDED_TEXT[status] || 'Call ended';
+      reason === 'transferred'
+        ? 'Call transferred'
+        : status === 'completed' && durationSec
+          ? `Call ended · ${fmt(durationSec)}`
+          : ENDED_TEXT[status] || 'Call ended';
     void teardown(text);
   });
 
   React.useEffect(
     () => () => {
       stopTones();
-      engineRef.current?.close();
+      uplinkRef.current?.close();
+      enginesRef.current.forEach((e) => e.close());
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
     },
     []
   );
@@ -440,13 +712,17 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     microphones,
     micId,
     selectMicrophone,
+    addPerson,
+    cancelAdd,
+    transferTo,
+    onCallByDriver,
   };
 
   return (
     <CallContext.Provider value={value}>
       {children}
-      {/* Remote audio; autoplay is allowed because answering/calling was a click */}
-      <audio autoPlay ref={audioRef} style={{ display: 'none' }} />
+      {/* Remote audio, one element per person; autoplay is allowed because answering/calling was a click */}
+      <div ref={audioBoxRef} style={{ display: 'none' }} />
     </CallContext.Provider>
   );
 }

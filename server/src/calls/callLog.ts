@@ -21,8 +21,11 @@ export const formatDuration = (sec: number) => {
 export const callLogText = (s: CallSummary) => {
   const kind = s.type === "video" ? "video call" : "voice call";
   switch (s.status) {
-    case "completed":
-      return `${kind[0].toUpperCase()}${kind.slice(1)} · ${formatDuration(s.durationSec)}`;
+    case "completed": {
+      const people = s.members?.length || 2;
+      const group = people > 2 ? ` · ${people} people` : "";
+      return `${kind[0].toUpperCase()}${kind.slice(1)} · ${formatDuration(s.durationSec)}${group}`;
+    }
     case "declined":
       return `Declined ${kind}`;
     case "failed":

@@ -104,8 +104,77 @@ Everything is free/open source. The only cost is AWS bandwidth for relayed calls
 ## Switching calls off
 `PUT /api/v1/calls/settings {"enabled": false}` (admin) — the call buttons hide and invites are refused.
 
+## Group calls (staff adds staff)
+During an answered call, anyone on it who is staff can ask another **staff member** to join, from the
+**Add** button on the dashboard call bar. Drivers can't be added. A call holds at most **6 people**
+(`MAX_PARTICIPANTS` in `callService.ts`).
+
+- The person asked gets a ringing "Request to join a call" card on the dashboard, or a call on the
+  staff app. It times out after 45 s. Whoever asked can take it back while it rings.
+- Everyone connects directly to everyone else (mesh). The person joining sends the offers. Signals
+  carry `to` / `from`, so each pair has its own connection.
+- When someone hangs up while 3 or more are on the call, only they leave. With 2 left, a hang-up ends
+  the call for both. A dropped connection that doesn't come back within 15 s counts as leaving.
+- **Older driver apps** (builds before group calls) can't take part. The server refuses to add anyone
+  while such an app is on the call, and says who needs to update. New apps and the dashboard send
+  `group: true` with `call:invite` / `call:accept`.
+- **Logged:** `call_participants` has a row per person asked, with `role = 'added'`, `invited_by`, and
+  `state` set to joined / declined / missed / cancelled, plus `joined_at` / `left_at`. The chat bubble
+  says "Voice call · 3:42 · 3 people". The Calls page marks group calls, and the call details list who
+  added whom.
+- **Recorded:** every person on the call sends their own voice to the recorder, so the recording has
+  everyone, lined up in time.
+
+## Transfer (hand a call to another dispatcher)
+The dashboard call bar has a **Transfer** button (⇄) for calls with a driver. The chosen dispatcher
+gets a ringing **Transferred call** card. When they pick up, they join, and the one who transferred
+leaves automatically (`call:transferred`, then `call:ended` with reason `transferred`). The driver
+never hears a disconnect: they just see someone join and someone leave. If the new dispatcher
+declines or doesn't answer, the first one is told (`call:transfer_failed`) and stays on the call. A
+transfer still works when the call is full, because it replaces whoever transferred. It's logged as
+`call_participants.join_type = 'transfer'` with `invited_by`. The rules for older driver apps are
+the same as for group calls.
+
+## "On call" marks
+Every staff connection gets `calls:on_call` with the answered calls: the driver, and everyone on
+each call. It's sent on connect, and then whenever someone answers, joins, leaves or a call ends;
+`calls:on_call_get` asks for it on demand. Drivers in the chat list (dashboard and staff app) are
+highlighted with **On call · <who>**.
+
+## Call recording
+Every answered call is recorded (admin switch: **Record calls** on the Calls page, or
+`PUT /api/v1/calls/settings {"recording": false}`). The decision is made when the call starts.
+
+How it works (`src/calls/callRecorder.ts`):
+1. The call itself stays peer-to-peer. Once it connects, each side opens a second, send-only WebRTC
+   connection to this server with its own microphone (`call:rec_offer`), using the `werift` library.
+2. The server writes each voice to its own file while the call runs. If an app or tab dies mid-call,
+   the audio up to that moment is already on disk.
+3. When the call ends, ffmpeg (`ffmpeg-static`, installed by `npm install`) mixes the voices, lined up
+   by when each started, into one mono AAC `.m4a`. The file's SHA-256 is saved, and the file goes to
+   S3 at `call-recordings/YYYY/MM/<callId>.m4a` with server-side encryption.
+4. The `call_recordings` row records the status (`recording → processing → ready | failed`), the S3 key,
+   length, size, SHA-256 and whose audio is in it.
+5. Staff play or download a recording from the call's details (Calls page). The link is a presigned
+   S3 URL valid for 15 minutes, and every opening is logged.
+
+If the server restarts mid-call, or an upload fails, the files stay in `RECORDING_DIR`, and the next
+start finishes them (`recoverRecordings`).
+
+**Consent:** both people hear two short beeps when a recorded call connects, and see a red
+**Recorded** badge. An incoming call also says "This call will be recorded". California and several
+other states require every party to know a call is recorded, so keep these.
+
+**AWS setup (once):**
+1. Security group: allow **inbound UDP 40000–40200**, the `RECORDING_UDP_PORTS` range.
+2. In `.env`, set `RECORDING_UDP_PORTS=40000-40200` and `RECORDING_PUBLIC_IP=<public IP>`.
+3. Run `npx sequelize-cli db:migrate` to create the `call_recordings` table, then restart.
+
+Storage: about 0.35 MB per minute of call (48 kbps AAC). To delete old recordings automatically, add
+an S3 lifecycle rule on the `call-recordings/` prefix. There's no expiry by default.
+
 ## Adding later
 - **Video:** `type: "video"` already flows through invite/DB; add a video track in the clients.
 - **Staff ↔ staff:** extend `resolveInvite` in `callSocket.ts`.
-- **Group calls / recording:** replace the peer-to-peer engine in the clients with a self-hosted SFU
-  (mediasoup or LiveKit OSS); `call_participants` already models multiple people.
+- **Bigger group calls (5+):** move from the mesh to a server that forwards audio (an SFU, such as
+  mediasoup or LiveKit OSS). The recorder already receives everyone's audio.

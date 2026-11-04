@@ -3,6 +3,9 @@
 /// queued = driver called dispatch while every dispatcher was on a call; waiting in line.
 enum CallPhase { idle, outgoing, queued, incoming, connecting, active, ended }
 
+/// Voicemail after my call wasn't answered: offered → recording → sending → sent.
+enum VoicemailState { none, offered, recording, sending, sent }
+
 class CallPeer {
   final String id;
   final String name;
@@ -27,6 +30,18 @@ class CallInfo {
   final CallPeer from;
   final CallPeer? answeredBy;
   final int? answeredAt;
+  /// The call is recorded: both people are told (beep + "Recorded" badge).
+  final bool recording;
+
+  /// Group call: everyone on the answered call, and people being asked to join.
+  final List<CallPeer> members;
+  final List<CallPeer> pending;
+
+  /// A request to join someone else's call: who asked.
+  final CallPeer? invitedBy;
+
+  /// That request is a transfer: whoever asked hands the call over and leaves.
+  final bool transfer;
 
   const CallInfo({
     required this.callId,
@@ -37,6 +52,11 @@ class CallInfo {
     required this.from,
     this.answeredBy,
     this.answeredAt,
+    this.recording = false,
+    this.members = const [],
+    this.pending = const [],
+    this.invitedBy,
+    this.transfer = false,
   });
 
   factory CallInfo.fromJson(Map<String, dynamic> json) => CallInfo(
@@ -48,7 +68,17 @@ class CallInfo {
         from: CallPeer.fromJson(Map<String, dynamic>.from(json['from'] ?? {})),
         answeredBy: json['answeredBy'] is Map ? CallPeer.fromJson(Map<String, dynamic>.from(json['answeredBy'])) : null,
         answeredAt: (json['answeredAt'] as num?)?.toInt(),
+        recording: json['recording'] == true,
+        members: peerList(json['members']),
+        pending: peerList(json['pending']),
+        invitedBy: json['joinRequest'] == true && json['invitedBy'] is Map
+            ? CallPeer.fromJson(Map<String, dynamic>.from(json['invitedBy']))
+            : null,
+        transfer: json['transfer'] == true,
       );
+
+  static List<CallPeer> peerList(dynamic list) =>
+      (list is List ? list : const []).whereType<Map>().map((m) => CallPeer.fromJson(Map<String, dynamic>.from(m))).toList();
 
   /// From a push (FCM data / VoIP payload / CallKit extra): flat string map.
   factory CallInfo.fromPush(Map<String, dynamic> data) => CallInfo(

@@ -347,8 +347,10 @@ export const initSocket = (httpServer: any) => {
 
       next();
     } catch (error) {
-      console.error("Authentication error:", error);
-      return next(new Error("Authentication error: Invalid token"));
+      // A bad token is handled above (verifyToken returns null); anything here is the server's own
+      // failure (database, startup). Say so, so clients retry instead of treating the login as bad.
+      console.error("Socket login failed (server error):", error);
+      return next(new Error("Server error: please retry"));
     }
   });
 

@@ -552,6 +552,20 @@ export async function changePassword(
   }
 }
 
+/** The channel a driver's dashboard opens (and calls dispatch on). */
+async function driverHomeChannel(driverId?: string) {
+  if (!driverId) return Channel.findOne();
+  const profile = await UserProfile.findByPk(driverId, { attributes: ["id", "channelId"] });
+  const memberships = await UserChannel.findAll({
+    where: { userProfileId: driverId },
+    attributes: ["channelId"],
+    order: [["createdAt", "ASC"]],
+  });
+  const ids = memberships.map((m) => m.channelId);
+  const id = profile?.channelId && ids.includes(profile.channelId) ? profile.channelId : ids[0];
+  return id ? Channel.findByPk(id) : Channel.findOne({ order: [["createdAt", "ASC"]] });
+}
+
 export async function dashboard(req: Request, res: Response): Promise<any> {
   try {
     const driverId = req.user?.id;
@@ -786,7 +800,10 @@ export async function dashboard(req: Request, res: Response): Promise<any> {
         })
       );
     }
-    const channel = await Channel.findOne();
+    // The driver's own channel: their active one if they're in it, else the first they joined.
+    // (Was Channel.findOne(): with no order MySQL returned the lowest id — e.g. a test channel the
+    // driver isn't in — so "Unread Messages" opened the wrong chat and calling dispatch failed.)
+    const channel = await driverHomeChannel(driverId);
 
     const driverDocuments = await secondarySequelize.query<any>(
       `SELECT * FROM documents

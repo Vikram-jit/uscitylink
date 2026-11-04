@@ -7,7 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 ///   * only the CALLER sends offers (first offer after "call:accepted", and ICE restarts);
 ///     the callee answers, or asks for a restart with {type: 'restart-request'};
 ///   * ICE candidates that arrive before the remote description are queued.
-/// For group calls / recording this is the piece to replace with an SFU client.
+/// Group calls use one engine per other person (CallService), all sharing the microphone.
 enum EngineState { connecting, connected, reconnecting, failed, closed }
 
 class WebRtcEngine {
@@ -16,10 +16,15 @@ class WebRtcEngine {
     required this.isCaller,
     required this.sendSignal,
     required this.onState,
+    this.ownsStream = true,
   });
 
   final List<Map<String, dynamic>> iceServers;
   final bool isCaller;
+
+  /// Group calls share one microphone between the connections to each person: closing one of them
+  /// must not stop it.
+  final bool ownsStream;
   final void Function(Map<String, dynamic> data) sendSignal;
   final void Function(EngineState state) onState;
 
@@ -34,6 +39,9 @@ class WebRtcEngine {
   EngineState _state = EngineState.connecting;
 
   int get iceRestarts => _restarts;
+
+  /// This side's microphone (what the call recording sends to the server).
+  MediaStream? get localStream => _local;
 
   static Future<MediaStream> openMicrophone() => navigator.mediaDevices.getUserMedia({
         'audio': {
@@ -169,10 +177,12 @@ class WebRtcEngine {
     final pc = _pc;
     _pc = null;
     try {
-      for (final t in _local?.getTracks() ?? <MediaStreamTrack>[]) {
-        await t.stop();
+      if (ownsStream) {
+        for (final t in _local?.getTracks() ?? <MediaStreamTrack>[]) {
+          await t.stop();
+        }
+        await _local?.dispose();
       }
-      await _local?.dispose();
       await pc?.close();
     } catch (_) {}
     _setState(EngineState.closed);
@@ -226,5 +236,69 @@ class WebRtcEngine {
     if (_state == s) return;
     _state = s;
     onState(s);
+  }
+}
+
+/// Recorded calls: sends this side's microphone to the server, which records both voices (see
+/// server/src/calls/callRecorder.ts). A separate send-only connection, so it can never disturb the
+/// call's own audio. Uses the call's microphone track, so muting is respected.
+class RecordingUplink {
+  RecordingUplink({required this.iceServers, required this.stream, required this.offer});
+
+  final List<Map<String, dynamic>> iceServers;
+  final MediaStream stream;
+
+  /// Sends the offer to the server (call:rec_offer) and returns its answer, or null.
+  final Future<String?> Function(String sdp) offer;
+
+  RTCPeerConnection? _pc;
+  bool _closed = false;
+  int _retries = 0;
+
+  Future<bool> start() async {
+    final track = stream.getAudioTracks().isEmpty ? null : stream.getAudioTracks().first;
+    if (_closed || track == null) return false;
+    try {
+      final pc = await createPeerConnection({'iceServers': iceServers, 'sdpSemantics': 'unified-plan'});
+      _pc = pc;
+      await pc.addTransceiver(
+        track: track,
+        kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
+        init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly, streams: [stream]),
+      );
+      // One round trip: send the offer with the candidates found within a second (local + STUN)
+      // instead of trickling them; waiting for every TURN candidate delayed the start of recording
+      final gathered = Completer<void>();
+      pc.onIceGatheringState = (state) {
+        if (state == RTCIceGatheringState.RTCIceGatheringStateComplete && !gathered.isCompleted) gathered.complete();
+      };
+      await pc.setLocalDescription(await pc.createOffer());
+      await gathered.future.timeout(const Duration(seconds: 1), onTimeout: () {});
+      final local = await pc.getLocalDescription();
+      final answer = await offer(local?.sdp ?? '');
+      if (answer == null || _closed) return false;
+      await pc.setRemoteDescription(RTCSessionDescription(answer, 'answer'));
+      pc.onConnectionState = (state) {
+        if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed && !_closed && _retries < 3) {
+          _retries++;
+          pc.close();
+          Future.delayed(Duration(seconds: _retries), start);
+        }
+      };
+      return true;
+    } catch (e) {
+      // ignore: avoid_print
+      print('[call] recording uplink failed: $e');
+      return false;
+    }
+  }
+
+  Future<void> close() async {
+    _closed = true;
+    final pc = _pc;
+    _pc = null;
+    try {
+      await pc?.close();
+    } catch (_) {}
   }
 }

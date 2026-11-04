@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import GoogleMaps
+import Intents
 import PushKit
 import flutter_callkit_incoming
 
@@ -39,6 +40,42 @@ import flutter_callkit_incoming
     voipRegistry = registry
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // MARK: - Calling back from the Phone app's Recents
+
+  // Our calls are listed in Recents (CallKit includesCallsInRecents). Tapping one opens the app with
+  // a start-call intent whose handle is the text shown for that call ("Dispatch · …" / "Driver · …").
+  // It's saved where Dart reads it at startup (cold launch: Dart isn't listening yet) and also sent
+  // straight to Dart when the app is running. lib/services/call/call_service.dart places the call.
+  @discardableResult
+  func handleRecentsCall(_ activity: NSUserActivity) -> Bool {
+    let intent = activity.interaction?.intent
+    var handle: String?
+    if let start = intent as? INStartCallIntent {
+      handle = start.contacts?.first?.personHandle?.value
+    } else if let audio = intent as? INStartAudioCallIntent {
+      handle = audio.contacts?.first?.personHandle?.value
+    }
+    guard let value = handle, !value.isEmpty else { return false }
+    // shared_preferences on iOS reads UserDefaults keys with the "flutter." prefix
+    let defaults = UserDefaults.standard
+    defaults.set(value, forKey: "flutter.recents_call_handle")
+    defaults.set(Int(Date().timeIntervalSince1970 * 1000), forKey: "flutter.recents_call_at")
+    SwiftFlutterCallkitIncomingPlugin.sharedInstance?.sendEventCustom(
+      "com.hiennv.flutter_callkit_incoming.ACTION_CALL_CUSTOM",
+      body: ["action": "recents_call", "handle": value]
+    )
+    return true
+  }
+
+  override func application(
+    _ application: UIApplication,
+    continue userActivity: NSUserActivity,
+    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+  ) -> Bool {
+    if handleRecentsCall(userActivity) { return true }
+    return super.application(application, continue: userActivity, restorationHandler: restorationHandler)
   }
 
   // MARK: - PushKit (VoIP) — server/src/calls/callPush.ts sends these
@@ -117,8 +154,16 @@ class SceneDelegate: FlutterSceneDelegate {
       window.rootViewController = FlutterViewController(engine: app.flutterEngine, nibName: nil, bundle: nil)
       self.window = window
       window.makeKeyAndVisible()
+      // Opened by tapping one of our calls in the Phone app's Recents
+      for activity in connectionOptions.userActivities { app.handleRecentsCall(activity) }
     }
     super.scene(scene, willConnectTo: session, options: connectionOptions)
+  }
+
+  // Recents tap while the app is already running
+  override func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+    if let app = UIApplication.shared.delegate as? AppDelegate, app.handleRecentsCall(userActivity) { return }
+    super.scene(scene, continue: userActivity)
   }
 
   override func sceneDidDisconnect(_ scene: UIScene) {

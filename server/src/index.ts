@@ -41,6 +41,7 @@ import GroupUser from "./models/GroupUser";
 import { MessageStaff } from "./models/MessageStaff";
 import path from "path";
 import { logCallPushSetup } from "./calls/callPush";
+import { recoverRecordings } from "./calls/callRecorder";
 
 
 dotenv.config();
@@ -159,6 +160,9 @@ server.listen(PORT, async () => {
 
 
   await secondarySequelize.sync(); // Use { force: false } to avoid dropping tables
+
+  // Call recordings a restart interrupted: finish them from the audio already on disk
+  void recoverRecordings();
 
 
   

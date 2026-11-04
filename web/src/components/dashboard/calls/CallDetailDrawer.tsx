@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Box, Chip, Divider, Drawer, IconButton, Skeleton, Stack, Typography } from '@mui/material';
-import { Clock, PhoneDisconnect, PhoneIncoming, PhoneOutgoing, Queue, ShareNetwork, X } from '@phosphor-icons/react';
+import { Alert, Box, Button, Chip, CircularProgress, Divider, Drawer, IconButton, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
+import { Clock, DownloadSimple, PhoneDisconnect, PhoneIncoming, PhoneOutgoing, Play, Queue, Record, ShareNetwork, UsersThree, X } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 
-import { CallParticipantLog, useGetCallQuery } from '@/redux/CallApiSlice';
+import { CallDetail, CallParticipantLog, useGetCallQuery, useLazyGetCallRecordingQuery } from '@/redux/CallApiSlice';
 
 const dur = (s?: number | null) => (s === null || s === undefined ? '—' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 
@@ -39,6 +39,8 @@ const OUTCOME: Record<string, { label: string; color: 'success' | 'warning' | 'e
   missed: { label: 'Didn’t answer', color: 'error' },
   left: { label: 'Answered by someone else', color: 'default' },
   invited: { label: 'Rang', color: 'default' },
+  joined: { label: 'Joined', color: 'success' },
+  cancelled: { label: 'Request taken back', color: 'default' },
 };
 
 function Row({ label, value }: { label: string; value: React.ReactNode }): React.JSX.Element {
@@ -54,11 +56,78 @@ function Row({ label, value }: { label: string; value: React.ReactNode }): React
   );
 }
 
+const fileSize = (b?: number | null) => (!b ? '—' : b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
+
+/** The call's recording: play it here or download it. Links are fetched on demand and expire after 15 min. */
+function RecordingSection({ call }: { call: CallDetail }): React.JSX.Element | null {
+  const [load, { data, isFetching, error }] = useLazyGetCallRecordingQuery();
+  const r = call.recording;
+  if (!r) {
+    return call.status === 'completed' ? (
+      <Typography color="text.secondary" variant="body2">
+        This call wasn&apos;t recorded.
+      </Typography>
+    ) : null;
+  }
+  if (r.status === 'recording' || r.status === 'processing') {
+    return (
+      <Stack alignItems="center" direction="row" spacing={1}>
+        <CircularProgress size={14} />
+        <Typography color="text.secondary" variant="body2">
+          {r.status === 'recording' ? 'Recording…' : 'Saving the recording…'}
+        </Typography>
+      </Stack>
+    );
+  }
+  if (r.status === 'failed') {
+    return <Alert severity="error">The recording failed{r.error ? `: ${r.error}` : ''}</Alert>;
+  }
+  const link = data?.data;
+  return (
+    <Stack spacing={1}>
+      {r.error ? <Alert severity="warning">{r.error} — only the other voice is in the recording.</Alert> : null}
+      {link ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption -- phone-call audio, no captions exist
+        <audio autoPlay controls src={link.url} style={{ width: '100%' }} />
+      ) : (
+        <Button
+          disabled={isFetching}
+          onClick={() => void load(call.id)}
+          startIcon={isFetching ? <CircularProgress size={14} /> : <Play weight="fill" />}
+          variant="outlined"
+        >
+          Play recording
+        </Button>
+      )}
+      {error ? <Alert severity="error">{(error as any)?.data?.message || 'Could not open the recording'}</Alert> : null}
+      <Row label="Length" value={dur(r.duration_sec)} />
+      <Row label="Size" value={fileSize(r.size_bytes)} />
+      {r.sha256 ? (
+        <Row
+          label="SHA-256"
+          value={
+            <Tooltip title={`${r.sha256} — fingerprint of the stored file: if anything in the recording changed, this would change`}>
+              <span style={{ fontFamily: 'monospace' }}>{r.sha256.slice(0, 16)}…</span>
+            </Tooltip>
+          }
+        />
+      ) : null}
+      {link ? (
+        <Button component="a" download href={link.url} size="small" startIcon={<DownloadSimple />} target="_blank">
+          Download
+        </Button>
+      ) : null}
+    </Stack>
+  );
+}
+
 /** One call's full log: timeline, who it rang and what each dispatcher did, wait/talk times, quality. */
 export function CallDetailDrawer({ callId, onClose }: { callId: string | null; onClose: () => void }): React.JSX.Element {
   const { data, isFetching } = useGetCallQuery(callId!, { skip: !callId });
   const c = data?.data;
   const rang = (c?.participants || []).filter((p) => p.role === 'callee');
+  // Group call: people asked to join the answered call
+  const added = (c?.participants || []).filter((p) => p.role === 'added');
   // Only devices that actually measured the connection (a call that never connected has none)
   const quality = (Object.values(c?.quality || {}) as any[]).filter((q) => q && (q.rttMs !== undefined || q.codec || q.localCandidate));
 
@@ -109,6 +178,17 @@ export function CallDetailDrawer({ callId, onClose }: { callId: string | null; o
           <Row label="Ended" value={c.ended_at ? dayjs(c.ended_at).format('h:mm:ss A') : '—'} />
           <Row label="How it ended" value={REASON[c.end_reason || ''] || c.end_reason || '—'} />
 
+          {c.recording || c.status === 'completed' ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Stack alignItems="center" direction="row" spacing={1} sx={{ mb: 1 }}>
+                <Record color="var(--mui-palette-error-main)" size={18} weight="fill" />
+                <Typography variant="subtitle2">Recording</Typography>
+              </Stack>
+              <RecordingSection call={c} />
+            </>
+          ) : null}
+
           <Divider sx={{ my: 2 }} />
           <Stack alignItems="center" direction="row" spacing={1} sx={{ mb: 1 }}>
             <Queue size={18} />
@@ -139,6 +219,42 @@ export function CallDetailDrawer({ callId, onClose }: { callId: string | null; o
               {c.end_reason === 'no_dispatcher_online' ? 'No dispatcher was online to ring.' : 'Nobody was rung.'}
             </Typography>
           )}
+
+          {added.length ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Stack alignItems="center" direction="row" spacing={1} sx={{ mb: 1 }}>
+                <UsersThree size={18} />
+                <Typography variant="subtitle2">
+                  {added.every((p) => p.join_type === 'transfer') ? 'Transferred' : 'Added to the call / transferred'}
+                </Typography>
+              </Stack>
+              <Stack spacing={1}>
+                {added.map((p: CallParticipantLog) => {
+                  const o = OUTCOME[p.outcome] || { label: p.outcome, color: 'default' as const };
+                  return (
+                    <Stack alignItems="center" direction="row" key={p.user_profile_id + p.invited_at} spacing={1.5}>
+                      <Clock size={14} />
+                      <Typography sx={{ minWidth: 70, fontVariantNumeric: 'tabular-nums' }} variant="caption">
+                        {dayjs(p.invited_at).format('h:mm:ss A')}
+                      </Typography>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography noWrap variant="body2">
+                          {p.name || 'Unknown'}
+                        </Typography>
+                        <Typography color="text.secondary" noWrap variant="caption">
+                          {p.join_type === 'transfer' ? 'Transferred by' : 'Added by'} {p.invited_by_name || 'staff'}
+                          {p.joined_at ? ` · joined ${dayjs(p.joined_at).format('h:mm:ss A')}` : ''}
+                          {p.joined_at && p.left_at ? ` · left ${dayjs(p.left_at).format('h:mm:ss A')}` : ''}
+                        </Typography>
+                      </Box>
+                      <Chip color={o.color} label={o.label} size="small" variant={p.outcome === 'joined' ? 'filled' : 'outlined'} />
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            </>
+          ) : null}
 
           {quality.length ? (
             <>
