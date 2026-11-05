@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { changePassword, dashboard, dashboardNew, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getHosStatus,  getLiveLocation,  getProfile,  getUserProfile,  getUserProfileById,  getUsers, getUserWithoutChannel, searchResult, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel } from '../controllers/userController';
+import { changePassword, dashboard, dashboardNew, dashboardWeb, gernateNewPassword, getChannelList,  getGroupList,  getHosStatus,  getLiveLocation,  getProfile,  getUserProfile,  getUserProfileById, getDriverProfileById,  getUsers, getUserWithoutChannel, searchResult, updateDeviceToken, updateProfile, updateProfileByWeb, updateUserActiveChannel , getDriverDocumentUrl} from '../controllers/userController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { getNotificationMute, setNotificationMute } from '../services/staffNotifications';
 
@@ -9,6 +9,7 @@ router.get('/', getUsers);
 
 router.get('/driver-profile',authMiddleware,getProfile)
 router.get('/profile/:id',authMiddleware, getUserProfileById);
+router.get("/driver-profile/:id",authMiddleware, getDriverProfileById);
 router.post('/genrate-password/:id',authMiddleware, gernateNewPassword);
 router.put('/update-profile/:id/:role', updateProfile);
 router.put('/update-profile-web/:id',authMiddleware, updateProfileByWeb);
@@ -30,6 +31,12 @@ router.get('/search',authMiddleware, searchResult);
 // Staff app → Settings: mute push notifications for a while
 router.get('/notification-mute', authMiddleware, getNotificationMute);
 router.put('/notification-mute', authMiddleware, setNotificationMute);
+
+router.get(
+    '/driver-profile/:id/document/:documentId',
+    authMiddleware,
+    getDriverDocumentUrl
+  );
 
 
 

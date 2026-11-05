@@ -1,17 +1,42 @@
 // /src/services/fcmService.ts
 import * as admin from "firebase-admin";
 import * as path from "path";
+import * as fs from "fs";
 import { UserProfile } from "../models/UserProfile";
 
 // Initialize Firebase Admin SDK with a service account
-const serviceAccount = require(path.resolve(
+// const serviceAccount = require(path.resolve(
+//   __dirname,
+//   "../../config/firebase.json"
+// ));
+
+const serviceAccountPath = path.resolve(
   __dirname,
   "../../config/firebase.json"
-));
+);
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
+if (admin.apps.length === 0) {
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = require(serviceAccountPath);
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+
+    console.log("Firebase Admin initialized successfully.");
+  } else {
+    console.warn(
+      "Firebase credentials not found. Push notifications are disabled."
+    );
+  }
+}
+
+const isFirebaseInitialized = (): boolean => {
+  return admin.apps.length > 0;
+};
 interface NotificationMessage {
   title: string;
   body: string;
@@ -28,6 +53,11 @@ export const sendNotificationToDevice = async (
   deviceToken: string,
   message: NotificationMessage
 ) => {
+
+  if (!isFirebaseInitialized()) {
+    console.warn("FCM unavailable: Firebase is not configured.");
+    return null;
+  }
   const { title, body, data, badge } = message;
 
   const payload = {

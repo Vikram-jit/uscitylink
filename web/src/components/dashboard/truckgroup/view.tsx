@@ -322,7 +322,7 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   useEffect(() => {
     if (groupList?.status && groupList?.data) {
-      const newChannelId = groupList?.data?.channel.id;
+      const newChannelId = groupList?.data?.channel?.id;
 
       // Check if the channel ID has changed
       if (newChannelId !== currentChannelId) {

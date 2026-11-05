@@ -18,6 +18,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { Circle } from '@phosphor-icons/react';
 import { pagination } from '@/redux/models/ChannelModel';
+import Link from 'next/link';
 
 function noop(): void {
   // do nothing
@@ -80,11 +81,24 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage,
                     />
                   </TableCell>
                   <TableCell>
-                    <Tooltip title="Edit Information">
-                      <IconButton LinkComponent={"a"} href={`/dashboard/users/edit/${row.role.name}/${row.id}`}>
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
+                    <Stack direction="row" spacing={1}>
+                    {row.role?.name?.toLowerCase() === 'driver' && (
+                        <Tooltip title="View Driver Profile">
+                            <IconButton
+                                component={Link}
+                                href={`/dashboard/users/driver-profile/${row.id}`}
+                                color="primary"
+                            >
+                                <RemoveRedEye />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                        <Tooltip title="Edit Information">
+                          <IconButton LinkComponent={"a"} href={`/dashboard/users/edit/${row.role.name}/${row.id}`}>
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     {/* <Tooltip title="View">
                       <IconButton>
                         <RemoveRedEye />

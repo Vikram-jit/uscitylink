@@ -34,6 +34,57 @@ export const UserApiSlice = apiSlice.injectEndpoints({
         method: 'GET',
       }),
     }),
+    getDriverProfileById: builder.query<
+    {
+      status: boolean;
+      message: string;
+      data: {
+        profile: UserModel;
+        driver: any;
+        documents: any[];
+        incomeSummary: {
+          totalTrips: number;
+          totalIncome: number;
+          totalDeductions: number;
+          totalMileage: number;
+        };
+        trips: any[];
+        pagination: {
+          currentPage: number;
+          pageSize: number;
+          totalItems: number;
+          totalPages: number;
+        };
+      };
+    },
+    { id: string; page?: number; pageSize?: number }
+  >({
+    providesTags: ['users'],
+    query: ({ id, page = 1, pageSize = 10 }) => ({
+      url: `user/driver-profile/${id}`,
+      method: 'GET',
+      params: { page, pageSize },
+    }),
+  }),
+
+  getDriverDocumentUrl: builder.query<
+  {
+    status: boolean;
+    message?: string;
+    data: {
+      url: string;
+    };
+  },
+  {
+    id: string;
+    documentId: number;
+  }
+>({
+  query: ({ id, documentId }) => ({
+    url: `user/driver-profile/${id}/document/${documentId}`,
+    method: 'GET',
+  }),
+}),
     getProfile: builder.query<
       {
         status: boolean;
@@ -147,11 +198,14 @@ export const {
   useUpdateUserMutation,
   useAddUserMutation,
   useGetUserByIdQuery,
+  useGetDriverProfileByIdQuery,
+  useLazyGetDriverDocumentUrlQuery,
   useUpdateActiveChannelMutation,
   useGetUserWithoutChannelQuery,
   useSyncDriverMutation,
   useSyncUserMutation,
   useUpdateDeviceTokenMutation,
   useGetProfileQuery,
-  useDashbaordQuery
+  useDashbaordQuery,
+  
 } = UserApiSlice;

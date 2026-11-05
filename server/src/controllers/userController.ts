@@ -20,6 +20,126 @@ import moment from "moment-timezone";
 import { MessageStaff } from "../models/MessageStaff";
 import PrivateChatMember from "../models/PrivateChatMember";
 
+import * as path from "path";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || "us-west-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  },
+});
+
+export const getDriverDocumentUrl = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { id, documentId } = req.params;
+
+    // 1. Find the driver profile and associated Yard Management driver
+    const userProfile = await UserProfile.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "yard_id"],
+        },
+      ],
+    });
+
+    if (!userProfile) {
+      return res.status(404).json({
+        status: false,
+        message: "Driver profile not found.",
+      });
+    }
+
+    const user: any = (userProfile as any).user;
+
+    if (!user?.yard_id) {
+      return res.status(404).json({
+        status: false,
+        message: "Driver mapping not found.",
+      });
+    }
+
+    // 2. Verify that the requested document belongs to this driver
+    const documents = await secondarySequelize.query<any>(
+      `
+        SELECT id, item_id, type, title, file
+        FROM documents
+        WHERE id = :documentId
+          AND item_id = :driverId
+          AND type = 'driver'
+        LIMIT 1
+      `,
+      {
+        replacements: {
+          documentId,
+          driverId: user.yard_id,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (!documents.length || !documents[0].file) {
+      return res.status(404).json({
+        status: false,
+        message: "Document not found.",
+      });
+    }
+
+    // 3. Get the original filename
+    const fileName = path.basename(documents[0].file);
+
+    const extension = path.extname(fileName).toLowerCase();
+
+    // 4. Determine content type
+    const contentTypes: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+
+    const contentType =
+      contentTypes[extension] || "application/octet-stream";
+
+    // 5. Generate temporary S3 signed URL
+    const command = new GetObjectCommand({
+      Bucket: "msyard",
+      Key: `images/${fileName}`,
+      ResponseContentType: contentType,
+      ResponseContentDisposition: `inline; filename="${fileName}"`,
+    });
+
+    const signedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 300,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Document URL generated successfully.",
+      data: {
+        url: signedUrl,
+      },
+    });
+
+  } catch (error: any) {
+    console.error("getDriverDocumentUrl error:", error);
+
+    return res.status(500).json({
+      status: false,
+      message: "Unable to generate document URL.",
+    });
+  }
+};
+
 export async function getUsers(req: Request, res: Response): Promise<any> {
   try {
     const role = req.query.role as string;
@@ -331,6 +451,321 @@ export async function getUserProfileById(
     return res
       .status(400)
       .json({ status: false, message: err.message || "Internal Server Error" });
+  }
+}
+
+export async function getDriverProfileById(
+  req: Request,
+  res: Response
+): Promise<any> {
+  try {
+    // Pagination
+    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+    const pageSize = Math.min(
+      Math.max(parseInt(req.query.pageSize as string) || 10, 1),
+      100
+    );
+    const offset = (page - 1) * pageSize;
+
+    // 1. Get the USCityLink profile and associated user
+    const userProfile = await UserProfile.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: [
+            "id",
+            "email",
+            "phone_number",
+            "status",
+            "yard_id",
+            "user_type",
+            "driver_number",
+          ],
+        },
+      ],
+    });
+
+    if (!userProfile) {
+      return res.status(404).json({
+        status: false,
+        message: "Driver profile not found.",
+      });
+    }
+
+    const user: any = (userProfile as any).user;
+
+    if (!user?.yard_id) {
+      return res.status(404).json({
+        status: false,
+        message: "Yard Management driver mapping not found.",
+      });
+    }
+
+    const driverId = user.yard_id;
+
+    // 2. Get driver information from Yard Management
+    const driverRows = await secondarySequelize.query<any>(
+      `SELECT * FROM drivers WHERE id = :driverId LIMIT 1`,
+      {
+        replacements: { driverId },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (!driverRows.length) {
+      return res.status(404).json({
+        status: false,
+        message: "Driver not found in Yard Management.",
+      });
+    }
+
+    const driver = driverRows[0];
+
+    // 3. Get driver documents
+    const documents = await secondarySequelize.query<any>(
+      `
+      SELECT *
+      FROM documents
+      WHERE type = 'driver'
+        AND item_id = :driverId
+        AND title NOT LIKE '%MVR%'
+        AND title NOT LIKE '%PSP%'
+        AND title NOT LIKE '%PULL NOTICE%'
+      ORDER BY created_at DESC
+      `,
+      {
+        replacements: { driverId },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const now = moment();
+    const oneMonthLater = moment().add(1, "month");
+
+    const formattedDocuments = documents.map((doc: any) => {
+      let expiredStatus = "Valid";
+
+      if (doc.expire_date) {
+        const expiryDate = moment(doc.expire_date);
+
+        if (expiryDate.isValid() && expiryDate.isBefore(now, "day")) {
+          expiredStatus = "Expired";
+        } else if (
+          expiryDate.isValid() &&
+          expiryDate.isBefore(oneMonthLater, "day")
+        ) {
+          expiredStatus = "Expire Soon";
+        }
+      }
+
+      return {
+        ...doc,
+        expired_status: expiredStatus,
+      };
+    });
+
+    // 4. Get total income and deductions for this driver
+    const incomeSummaryRows = await secondarySequelize.query<any>(
+      `
+      SELECT
+        COUNT(*) AS totalTrips,
+        COALESCE(SUM(amount), 0) AS totalIncome,
+        COALESCE(SUM(total_deductible), 0) AS totalDeductions,
+        COALESCE(SUM(mileage), 0) AS totalMileage
+      FROM driver_pays
+      WHERE driver_id = :driverId
+      `,
+      {
+        replacements: { driverId },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const incomeSummary = incomeSummaryRows[0] || {};
+
+    // 5. Get paginated trip/payment records
+    const tripRows = await secondarySequelize.query<any>(
+      `
+      SELECT
+        dp.id AS driver_pay_id,
+        dp.driver_pay_details_id,
+        dp.driver_expenses_id,
+        dp.driver_id,
+        dp.tripId,
+        dp.start_date,
+        dp.end_date,
+        dp.mileage AS driver_mileage,
+        dp.amount AS driver_income,
+        dp.total_deductible,
+        dp.adjustment_sign,
+        dp.adjustment,
+        dp.driver_addv,
+        dp.other_pay,
+        dp.layover,
+        dp.pay_rate,
+        dp.payment_status,
+        dp.document AS payment_document,
+        dp.note,
+    
+        dpd.id AS pay_detail_id,
+        dpd.trip_id,
+        dpd.load_id,
+        dpd.trip_start_date,
+        dpd.trip_end_date,
+        dpd.driver_type,
+    
+        dpd.truck_id,
+        t.number AS truck_number,
+    
+        dpd.trailer_id,
+    
+        (
+          SELECT GROUP_CONCAT(
+            DISTINCT tr.number
+            ORDER BY tr.id
+            SEPARATOR ', '
+          )
+          FROM trailers tr
+          WHERE FIND_IN_SET(
+            CAST(tr.id AS CHAR),
+            REPLACE(dpd.trailer_id, ' ', '')
+          )
+        ) AS trailer_numbers,
+    
+        dpd.total_mileage,
+        dpd.average,
+        dpd.fuel_amount,
+        dpd.fuel_expense,
+        dpd.road_service_expense,
+        dpd.lumper,
+        dpd.reefer_fuel_amount,
+        dpd.reefer_fuel_expense,
+        dpd.def_fuel_amount,
+        dpd.def_fuel_expense,
+        dpd.route_grand_total,
+        dpd.total_profit_loss
+    
+      FROM driver_pays dp
+    
+      LEFT JOIN driver_pay_details dpd
+        ON dpd.id = dp.driver_pay_details_id
+    
+      LEFT JOIN trucks t
+        ON t.id = dpd.truck_id
+    
+      WHERE dp.driver_id = :driverId
+    
+      ORDER BY
+        COALESCE(dpd.trip_start_date, dp.start_date) DESC,
+        dp.id DESC
+    
+      LIMIT :limit OFFSET :offset
+      `,
+      {
+        replacements: {
+          driverId,
+          limit: pageSize,
+          offset,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    // 6. Get all pickup/delivery locations in one query
+    const detailIds = tripRows
+      .map((trip: any) => trip.driver_pay_details_id)
+      .filter((id: any) => id !== null && id !== undefined);
+
+    let mileageRows: any[] = [];
+
+    if (detailIds.length > 0) {
+      mileageRows = await secondarySequelize.query<any>(
+        `
+        SELECT
+          id,
+          driver_pay_details_id,
+          pickup_location,
+          delivery_location,
+          mileage,
+          status
+        FROM driver_pay_mileages
+        WHERE driver_pay_details_id IN (:detailIds)
+        ORDER BY id ASC
+        `,
+        {
+          replacements: { detailIds },
+          type: QueryTypes.SELECT,
+        }
+      );
+    }
+
+    // Group location rows by trip detail ID
+    const locationsByTrip: Record<string, any[]> = {};
+
+    mileageRows.forEach((location: any) => {
+      const key = String(location.driver_pay_details_id);
+
+      if (!locationsByTrip[key]) {
+        locationsByTrip[key] = [];
+      }
+
+      locationsByTrip[key].push(location);
+    });
+
+    // Attach locations to their respective trip
+    const trips = tripRows.map((trip: any) => ({
+      ...trip,
+      locations: trip.driver_pay_details_id
+        ? locationsByTrip[String(trip.driver_pay_details_id)] || []
+        : [],
+    }));
+
+    // 7. Get total count for pagination
+    const countRows = await secondarySequelize.query<any>(
+      `
+      SELECT COUNT(*) AS total
+      FROM driver_pays
+      WHERE driver_id = :driverId
+      `,
+      {
+        replacements: { driverId },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    const totalItems = Number(countRows[0]?.total || 0);
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    return res.status(200).json({
+      status: true,
+      message: "Driver profile retrieved successfully.",
+      data: {
+        profile: userProfile,
+        driver,
+        documents: formattedDocuments,
+        incomeSummary: {
+          totalTrips: Number(incomeSummary.totalTrips || 0),
+          totalIncome: Number(incomeSummary.totalIncome || 0),
+          totalDeductions: Number(incomeSummary.totalDeductions || 0),
+          totalMileage: Number(incomeSummary.totalMileage || 0),
+        },
+        trips,
+        pagination: {
+          currentPage: page,
+          pageSize,
+          totalItems,
+          totalPages,
+        },
+      },
+    });
+  } catch (err: any) {
+    console.error("getDriverProfileById error:", err);
+
+    return res.status(500).json({
+      status: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 }
 
@@ -1892,4 +2327,8 @@ export async function getUnrepliedMessages(channelId: string): Promise<any[]> {
     console.error("Error fetching unreplied messages:", error);
     throw new Error("Internal server error");
   }
+
+ 
 }
+
+
