@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +34,12 @@ void main() async {
     }
     return previousOnError?.call(error, stack) ?? false;
   };
-  await pdfrxFlutterInitialize(); // Required when using engine APIs before widgets
+  // Warm up the PDF engine without blocking startup: PDF widgets initialize it again on use. If
+  // the PDFium library is missing from the build, the init future never completes (the error
+  // stays in pdfrx's worker isolate), so awaiting it here left the app stuck on the splash.
+  unawaited(pdfrxFlutterInitialize().catchError((Object e) {
+    debugPrint('⚠️ PDF engine unavailable: $e');
+  }));
   await Hive.initFlutter();
 
   Hive
