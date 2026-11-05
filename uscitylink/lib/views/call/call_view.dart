@@ -328,8 +328,9 @@ class _CallViewState extends State<CallView>
                                   if (call.recording.value &&
                                       phase == CallPhase.active) ...[
                                     const SizedBox(height: 10),
-                                    const _RecordedBadge(
-                                        key: Key('recordedBadge')),
+                                    _RecordedBadge(
+                                        key: const Key('recordedBadge'),
+                                        video: call.recordingVideo.value),
                                   ] else if (phase == CallPhase.incoming &&
                                       call.info.value?.recording == true) ...[
                                     const SizedBox(height: 10),
@@ -501,6 +502,18 @@ class _CallViewState extends State<CallView>
                                                   onTap: () => _pickStaff(
                                                       context,
                                                       transfer: true),
+                                                ),
+                                              if (call.recording.value &&
+                                                  !call.recordingVideo.value)
+                                                _RoundButton(
+                                                  key: const Key(
+                                                      'recordVideoButton'),
+                                                  icon: Icons
+                                                      .fiber_smart_record_rounded,
+                                                  label: 'Rec video',
+                                                  active: false,
+                                                  onTap: call
+                                                      .startVideoRecording,
                                                 ),
                                             ],
                                           ],
@@ -697,9 +710,11 @@ class _RoundButton extends StatelessWidget {
   }
 }
 
-/// Red "Recorded" mark: the call is recorded and both people are told so.
+/// Red "Recorded" mark: the call is recorded and both people are told so (and when video is too).
 class _RecordedBadge extends StatelessWidget {
-  const _RecordedBadge({super.key});
+  const _RecordedBadge({super.key, this.video = false});
+
+  final bool video;
 
   @override
   Widget build(BuildContext context) {
@@ -709,13 +724,13 @@ class _RecordedBadge extends StatelessWidget {
         color: const Color(0xFFEF4444).withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.fiber_manual_record, size: 12, color: Color(0xFFEF4444)),
-          SizedBox(width: 6),
-          Text('Recorded',
-              style: TextStyle(
+          const Icon(Icons.fiber_manual_record, size: 12, color: Color(0xFFEF4444)),
+          const SizedBox(width: 6),
+          Text(video ? 'Recording video' : 'Recorded',
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w600)),
@@ -1193,7 +1208,7 @@ class _VideoCallLayoutState extends State<_VideoCallLayout> {
                         if (call.recording.value &&
                             call.phase.value == CallPhase.active) ...[
                           const SizedBox(height: 6),
-                          const _RecordedBadge(),
+                          _RecordedBadge(video: call.recordingVideo.value),
                         ],
                       ],
                     ),
@@ -1274,6 +1289,15 @@ class _VideoCallLayoutState extends State<_VideoCallLayout> {
                               label: 'Transfer',
                               active: false,
                               onTap: widget.onTransfer,
+                            ),
+                          if (call.recording.value &&
+                              !call.recordingVideo.value)
+                            _RoundButton(
+                              key: const Key('videoRecordVideoButton'),
+                              icon: Icons.fiber_smart_record_rounded,
+                              label: 'Rec video',
+                              active: false,
+                              onTap: call.startVideoRecording,
                             ),
                         ],
                         Material(

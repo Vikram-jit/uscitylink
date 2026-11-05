@@ -5,6 +5,7 @@ import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/utils/theme/app_text.dart';
 import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/staff/view/calls/staff_call_log_view.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 import 'package:uscitylink/views/staff/view/staff_trainings_view.dart';
 import 'package:uscitylink/controller/staff/compliance_controller.dart';
@@ -114,6 +115,7 @@ class _CustomDrawerState extends State<CustomDrawer>
                 _buildDrawerItem(context, Icons.groups_2_rounded, 'Channel members',
                     () => _navigateToHome(context, customDrawerController)),
                 _buildDrawerItem(context, Icons.badge_rounded, 'Drivers', () => _navigateToDrivers(context)),
+                _buildDrawerItem(context, Icons.call_rounded, 'Call log', () => _open(const StaffCallLogView())),
                 _buildDrawerItem(context, Icons.description_rounded, 'Templates', () => _navigateToTemplates(context)),
                 _buildDrawerItem(context, Icons.play_circle_rounded, 'Trainings', () => _navigateToTainings(context)),
                 Obx(() => _buildDrawerItem(

@@ -21,6 +21,7 @@ import 'package:uscitylink/services/call/call_models.dart';
 import 'package:uscitylink/services/call/call_tones.dart';
 import 'package:uscitylink/services/call/webrtc_engine.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/services/staff/notification_settings_service.dart';
 import 'package:uscitylink/views/call/call_view.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -53,6 +54,8 @@ class CallService extends GetxService with WidgetsBindingObserver {
   final enabled = true.obs;
   /// This call is recorded (shown on the call screen; both sides hear a beep when it connects).
   final recording = false.obs;
+  /// Video is recorded too (admin setting, or staff turned it on mid-call). Shown to everyone.
+  final recordingVideo = false.obs;
 
   /// Everyone on the call except me (more than one = group call), and people asked to join.
   final members = <CallPeer>[].obs;
@@ -90,6 +93,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   /// Signed in as staff (not a driver): can add people to a call and transfer it.
   final isStaffUser = false.obs;
+
+  /// Staff → Settings → "Mute call alerts": calls don't ring this phone (the server also stops the
+  /// push; this covers calls that still reach the open app, e.g. while their dashboard is open).
+  NotificationMute callMute = const NotificationMute();
   static const maxParticipants = 6;
 
   /// Staff: drivers on a call right now (driver id → everyone on that call), for "On call" marks.
@@ -182,6 +189,9 @@ class CallService extends GetxService with WidgetsBindingObserver {
   Future<void> _afterLaunch() async {
     final role = '${await UserPreferenceController().getRole() ?? ''}';
     isStaffUser.value = role.isNotEmpty && role != 'driver';
+    if (isStaffUser.value) {
+      unawaited(NotificationSettingsService().get().then((s) => callMute = s.calls, onError: (_) => callMute));
+    }
     await refreshConfig();
     await registerVoipToken();
     if (Platform.isAndroid) {
@@ -220,6 +230,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
         'role': call.from.role,
         'channelId': call.channelId,
         'channelName': call.channelName,
+        'phone': call.driverPhone,
       };
       while (targets.length > 50) {
         targets.remove(targets.keys.first);
@@ -261,7 +272,15 @@ class CallService extends GetxService with WidgetsBindingObserver {
           subtitle: 'Dispatch',
         );
       } else {
-        _toast("Open the driver's chat to call them");
+        // Not remembered on this phone (call rang while the app was closed, or an older Recents
+        // entry): ask the server which driver this entry is
+        final res = await _rest('GET', 'calls/callback-target?handle=${Uri.encodeQueryComponent(handle)}');
+        final d = res?['data'] is Map ? Map<String, dynamic>.from(res!['data']) : null;
+        if (d != null && '${d['id'] ?? ''}'.isNotEmpty) {
+          await startCall(driverId: '${d['id']}', name: '${d['name'] ?? 'Driver'}', subtitle: 'Driver');
+        } else {
+          _toast("Couldn't find that driver — call them from their chat");
+        }
       }
     } catch (e) {
       debugPrint('[call] calling back from Recents failed: $e');
@@ -297,7 +316,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   /// Before the saved login is removed: stop ringing this phone for that account.
   Future<void> onLogout() async {
-    if (busy) await hangup();
+    if (busy) await hangup(reason: 'logout');
     if (Platform.isIOS) await _rest('PUT', 'calls/voip-token', {'token': null});
   }
 
@@ -358,6 +377,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
     }
     _iceServers = _ice(res);
     if (res['call'] is Map) info.value = CallInfo.fromJson(Map<String, dynamic>.from(res['call']));
+    final phone = info.value?.driverPhone ?? '';
+    if (driverId != null && driverId.isNotEmpty && phone.isNotEmpty && !name.contains(phone)) {
+      peerName.value = driverLabel(name, phone);
+    }
     if (res['queued'] == true) {
       phase.value = CallPhase.queued;
       queuePosition.value = (res['position'] as num?)?.toInt() ?? 1;
@@ -373,6 +396,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
   Future<void> _onIncoming(CallInfo call) async {
     if (call.callId.isEmpty || callId == call.callId) return;
     if (busy) return; // the server already avoids ringing someone who is on a call
+    if (isStaffUser.value && callMute.active) return;
     _reset();
     _isCaller = false;
     info.value = call;
@@ -522,13 +546,15 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   // ---------- in call ----------
 
-  Future<void> hangup() async {
+  /// [reason] is logged by the server, so a call that ends by itself can be traced.
+  Future<void> hangup({String reason = 'end_button'}) async {
     final id = callId;
+    debugPrint('[call] hanging up $id ($reason, phase ${phase.value})');
     if (id == null) {
       await _releasePendingMic();
       return _finish('Call cancelled');
     }
-    final res = await _emitAck('call:end', {'callId': id}, connectFirst: false);
+    final res = await _emitAck('call:end', {'callId': id, 'reason': reason}, connectFirst: false);
     if (res['ok'] != true) await _rest('POST', 'calls/$id/end');
     await _endNative(id);
     final talked = answeredAt.value == null ? 0 : DateTime.now().difference(answeredAt.value!).inSeconds;
@@ -608,6 +634,13 @@ class CallService extends GetxService with WidgetsBindingObserver {
       } else if (d['video'] == false) {
         remoteCamera.remove(from);
       }
+    });
+    // Staff on the call turned on video recording
+    socket.on('call:record_video', (d) {
+      if (callId != d['callId'] || recordingVideo.value) return;
+      _onVideoRecording();
+      final by = d['by'] is Map ? d['by']['name'] : null;
+      if (by != null && by != '') _toast('$by started recording video');
     });
     socket.on('call:peer_reconnecting', (d) {
       if (callId == d['callId']) reconnecting.value = true;
@@ -766,7 +799,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
           case EngineState.failed:
             if (_engines.length <= 1) {
               _toast('The call connection was lost');
-              hangup();
+              hangup(reason: 'connection_failed');
             } else {
               // Group call: only the link to this person broke; the server drops them if they're gone
               _closePeer(peerId);
@@ -850,6 +883,24 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   Future<void> toggleCamera() => setCamera(!cameraOn.value);
 
+  /// Staff: record video too, for the rest of this call (audio is always recorded).
+  Future<void> startVideoRecording() async {
+    final id = callId;
+    if (id == null || !isStaffUser.value || !recording.value || recordingVideo.value) return;
+    final res = await _emitAck('call:record_video', {'callId': id});
+    if (res['ok'] != true) {
+      _toast('${res['message'] ?? 'Could not start video recording'}');
+      return;
+    }
+    _onVideoRecording();
+    if (!cameraOn.value) _toast('Video recording is on — turn your camera on to be in it');
+  }
+
+  void _onVideoRecording() {
+    recordingVideo.value = true;
+    _uplink?.setRecordVideo(true);
+  }
+
   Future<void> flipCamera() async {
     final track = _cameraTrack;
     if (track == null) return;
@@ -924,10 +975,11 @@ class CallService extends GetxService with WidgetsBindingObserver {
   void _startRecording(String id) {
     final stream = _mic;
     if (info.value?.recording != true || _uplink != null || stream == null) return;
+    recordingVideo.value = recordingVideo.value || info.value?.recordVideo == true;
     final uplink = RecordingUplink(
       iceServers: _iceServers,
       stream: stream,
-      video: info.value?.recordVideo == true,
+      video: recordingVideo.value,
       offer: (sdp) async {
         final res = await _emitAck('call:rec_offer', {'callId': id, 'sdp': sdp}, connectFirst: false);
         return res['ok'] == true ? '${res['sdp']}' : null;
@@ -962,7 +1014,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
       final id = event.callKitParams.id;
       if (_selfEnded.contains(id.toLowerCase())) return;
       if (_nativeAccepted.contains(id) && callId == id && phase.value != CallPhase.ended && phase.value != CallPhase.idle) {
-        await hangup();
+        await hangup(reason: 'native_call_ended');
       }
     } else if (event is CallEventActionCallToggleMute) {
       if (callId == event.id && muted.value != event.isMuted) setMuted(event.isMuted);
@@ -1220,6 +1272,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
     endedText.value = '';
     queuePosition.value = 0;
     recording.value = false;
+    recordingVideo.value = false;
     voicemail.value = VoicemailState.none;
     voicemailSeconds.value = 0;
     members.clear();

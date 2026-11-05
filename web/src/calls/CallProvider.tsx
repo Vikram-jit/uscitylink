@@ -65,8 +65,11 @@ export interface CallState {
   remoteCamera: string[];
   /** People whose app can show video (older driver apps are audio-only). */
   videoCapable: string[];
-  /** The recording keeps video too (admin "Record video"). */
+  /** The recording keeps video too (admin "Record video", or a staff member turned it on mid-call). */
   recordVideo: boolean;
+  /** The driver on the call and their phone number (shown as "Name (phone)"). */
+  driverId: string;
+  driverPhone: string;
 }
 
 /** An answered call somewhere in the company: which driver, and who is on it (chat "On call" marks). */
@@ -83,6 +86,8 @@ interface CallContextValue extends CallState {
   accept: (opts?: { video?: boolean }) => Promise<void>;
   /** Camera on/off during the call. */
   toggleCamera: () => Promise<void>;
+  /** Record video too, for the rest of this call (audio is always recorded). */
+  startVideoRecording: () => Promise<void>;
   cameras: MediaDeviceInfo[];
   switchCamera: (deviceId: string) => Promise<void>;
   /** My camera, for the self-view. */
@@ -119,6 +124,8 @@ const IDLE: CallState = {
   recording: false,
   members: [],
   pending: [],
+  driverId: '',
+  driverPhone: '',
   mutedIds: [],
   maxParticipants: 6,
   invitedBy: null,
@@ -157,6 +164,14 @@ export function useCall(): CallContextValue {
 }
 
 /** The call a driver is on right now (for "On call" marks), or null. Safe outside <CallProvider>. */
+/** A person's name as the call shows it: the driver gets their phone number, "Name (+1 …)". */
+export function callName(call: Pick<CallState, 'driverId' | 'driverPhone'>, person?: CallPeer | null): string {
+  if (!person) return '';
+  return person.role === 'driver' && person.id === call.driverId && call.driverPhone
+    ? `${person.name} (${call.driverPhone})`
+    : person.name;
+}
+
 export function useDriverOnCall(driverId?: string | null): OnCallInfo | null {
   const ctx = React.useContext(CallContext);
   return (driverId && ctx?.onCallByDriver[driverId]) || null;
@@ -244,6 +259,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     callId: call.callId,
     peer: call.joinRequest ? call.invitedBy : call.from,
     channelName: call.channelName || '',
+    driverId: call.driverId || '',
+    driverPhone: call.driverPhone || '',
     moreIncoming: more,
     recording: !!call.recording,
     invitedBy: call.joinRequest ? call.invitedBy : null,
@@ -511,6 +528,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       patch({
         callId: res.callId,
         channelName: res.call?.channelName || '',
+        driverId: res.call?.driverId || driver.id,
+        driverPhone: res.call?.driverPhone || '',
         recording: !!res.call?.recording,
         recordVideo: !!res.call?.recordVideo,
         maxParticipants: res.call?.maxParticipants || 6,
@@ -566,6 +585,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       remoteCamera: cameraIds(res.call?.camera).filter((id) => id !== myUserId()),
       videoCapable: res.call?.videoCapable || [],
       recordVideo: !!res.call?.recordVideo,
+      driverId: res.call?.driverId || stateRef.current.driverId,
+      driverPhone: res.call?.driverPhone || stateRef.current.driverPhone,
     });
     if (camera) applyCamera(camera, false);
     void refreshMicrophones();
@@ -595,6 +616,19 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     patch({ muted });
     if (stateRef.current.callId) socket?.emit('call:media', { callId: stateRef.current.callId, muted });
   }, [socket]);
+
+  const startVideoRecording = React.useCallback(async () => {
+    const s = stateRef.current;
+    if (!s.callId || !s.recording || s.recordVideo) return;
+    const res: any = await emit('call:record_video', { callId: s.callId });
+    if (!res?.ok) {
+      toast.error(res?.message || 'Could not start video recording');
+      return;
+    }
+    patch({ recordVideo: true });
+    void uplinkRef.current?.setRecordVideo(true);
+    if (!cameraRef.current) toast.info('Video recording is on — turn your camera on to be in it');
+  }, [emit]);
 
   const toggleCamera = React.useCallback(async () => {
     if (!stateRef.current.callId) return;
@@ -802,6 +836,15 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     else pendingSignals.current.set(sender, [...(pendingSignals.current.get(sender) || []), data]);
   });
 
+  // Someone on the call (staff) turned on video recording
+  useSocketEvent('call:record_video', ({ callId, by }: any) => {
+    const s = stateRef.current;
+    if (s.callId !== callId || s.recordVideo) return;
+    patch({ recordVideo: true });
+    void uplinkRef.current?.setRecordVideo(true);
+    if (by?.name) toast.info(`${by.name} started recording video`);
+  });
+
   useSocketEvent('call:media', ({ callId, from, muted, video }: any) => {
     const s = stateRef.current;
     if (s.callId !== callId) return;
@@ -878,6 +921,7 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     transferTo,
     onCallByDriver,
     toggleCamera,
+    startVideoRecording,
     cameras,
     switchCamera,
     localVideo,

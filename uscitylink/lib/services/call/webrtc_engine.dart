@@ -343,8 +343,9 @@ class RecordingUplink {
   final List<Map<String, dynamic>> iceServers;
   final MediaStream stream;
 
-  /// "Record video" is on for this call: also send the camera (when it's on).
-  final bool video;
+  /// The call's video is recorded (admin "Record video", or staff turned it on mid-call): send the
+  /// camera too (when it's on).
+  bool video;
   MediaStreamTrack? _camera;
 
   /// Sends the offer to the server (call:rec_offer) and returns its answer, or null.
@@ -365,13 +366,13 @@ class RecordingUplink {
         kind: RTCRtpMediaType.RTCRtpMediaTypeAudio,
         init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly, streams: [stream]),
       );
-      if (video) {
-        final camera = _camera;
-        if (camera != null) {
-          await pc.addTransceiver(track: camera, kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
-        } else {
-          await pc.addTransceiver(kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
-        }
+      // Always negotiated so video recording can be turned on mid-call; the camera is only sent
+      // while the call's video is recorded
+      final camera = video ? _camera : null;
+      if (camera != null) {
+        await pc.addTransceiver(track: camera, kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
+      } else {
+        await pc.addTransceiver(kind: RTCRtpMediaType.RTCRtpMediaTypeVideo, init: RTCRtpTransceiverInit(direction: TransceiverDirection.SendOnly));
       }
       // One round trip: send the offer with the candidates found within a second (local + STUN)
       // instead of trickling them; waiting for every TURN candidate delayed the start of recording
@@ -400,7 +401,7 @@ class RecordingUplink {
     }
   }
 
-  /// Camera on/off, for calls that keep video in the recording.
+  /// Camera on/off; sent to the recorder only while video is recorded.
   Future<void> setCamera(MediaStreamTrack? track) async {
     _camera = track;
     final pc = _pc;
@@ -408,10 +409,16 @@ class RecordingUplink {
     try {
       for (final t in await pc.getTransceivers()) {
         if (t.sender.track?.kind == 'video' || (t.sender.track == null && t.receiver.track?.kind == 'video')) {
-          await t.sender.replaceTrack(track);
+          await t.sender.replaceTrack(video ? track : null);
         }
       }
     } catch (_) {}
+  }
+
+  /// Staff turned on video recording mid-call: start sending the camera.
+  Future<void> setRecordVideo(bool on) async {
+    video = on;
+    await setCamera(_camera);
   }
 
   Future<void> close() async {

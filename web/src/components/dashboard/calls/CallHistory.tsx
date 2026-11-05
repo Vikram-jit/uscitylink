@@ -207,6 +207,7 @@ export function CallHistory(): React.JSX.Element {
                   <TableRow hover key={c.id} onClick={() => setOpenId(c.id)} sx={{ cursor: 'pointer' }}>
                     <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {c.driver_name || '—'}
+                      {c.driver_name && c.driver_phone ? ` (${c.driver_phone})` : ''}
                       {c.type === 'video' ? (
                         <Tooltip title="Video call">
                           <VideoCamera size={15} style={{ marginLeft: 6, verticalAlign: 'middle' }} weight="fill" />
@@ -225,7 +226,7 @@ export function CallHistory(): React.JSX.Element {
                     <TableCell>
                       <Stack alignItems="center" direction="row" spacing={1} sx={{ whiteSpace: 'nowrap' }}>
                         <Icon color={missed ? 'var(--mui-palette-error-main)' : undefined} size={16} />
-                        <span>{out ? `${c.initiator_name || 'Dispatch'} → driver` : 'Dispatch line'}</span>
+                        <span>{out ? `${c.initiator_name || 'Dispatch'} → driver` : 'driver → dispatch'}</span>
                       </Stack>
                     </TableCell>
                     <TableCell>

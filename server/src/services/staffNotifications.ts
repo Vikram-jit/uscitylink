@@ -10,6 +10,12 @@ export function isNotificationMuted(profile?: Pick<UserProfile, "notifications_m
   return !!until && new Date(until).getTime() > Date.now();
 }
 
+/** Staff muted call alerts on their phone (separate from message notifications). */
+export function isCallMuted(profile?: Pick<UserProfile, "calls_muted_until"> | null): boolean {
+  const until = profile?.calls_muted_until;
+  return !!until && new Date(until).getTime() > Date.now();
+}
+
 function muteState(until?: Date | null) {
   const active = !!until && new Date(until).getTime() > Date.now();
   return {
@@ -19,21 +25,27 @@ function muteState(until?: Date | null) {
   };
 }
 
-// GET /user/notification-mute
+// GET /user/notification-mute — message mute (top level, as older apps read it) + `calls`
 export async function getNotificationMute(req: Request, res: Response): Promise<any> {
   try {
-    const profile = await UserProfile.findByPk(req.user?.id, { attributes: ["id", "notifications_muted_until"] });
+    const profile = await UserProfile.findByPk(req.user?.id, { attributes: ["id", "notifications_muted_until", "calls_muted_until"] });
     if (!profile) return res.status(404).json({ status: false, message: "Profile not found" });
-    return res.status(200).json({ status: true, message: "Notification settings", data: muteState(profile.notifications_muted_until) });
+    return res.status(200).json({
+      status: true,
+      message: "Notification settings",
+      data: { ...muteState(profile.notifications_muted_until), calls: muteState(profile.calls_muted_until) },
+    });
   } catch (err: any) {
     return res.status(500).json({ status: false, message: err.message || "Internal Server Error" });
   }
 }
 
 // PUT /user/notification-mute  { minutes: 60 } | { forever: true } | { minutes: null } (unmute)
+//   kind: "messages" (default — what older apps send) | "calls" (calls don't ring this phone)
 export async function setNotificationMute(req: Request, res: Response): Promise<any> {
   try {
     const { minutes, forever } = req.body || {};
+    const calls = req.body?.kind === "calls";
     let until: Date | null = null;
     if (forever) until = FOREVER;
     else if (minutes !== null && minutes !== undefined) {
@@ -41,12 +53,13 @@ export async function setNotificationMute(req: Request, res: Response): Promise<
       if (!Number.isFinite(m) || m <= 0 || m > 60 * 24 * 365) throw new Error("minutes must be between 1 and 525600");
       until = new Date(Date.now() + m * 60 * 1000);
     }
-    await UserProfile.update({ notifications_muted_until: until }, { where: { id: req.user?.id } });
-    const state = muteState(until);
+    await UserProfile.update(calls ? { calls_muted_until: until } : { notifications_muted_until: until }, { where: { id: req.user?.id } });
+    const profile = await UserProfile.findByPk(req.user?.id, { attributes: ["id", "notifications_muted_until", "calls_muted_until"] });
+    const state = muteState(calls ? until : profile?.notifications_muted_until);
     return res.status(200).json({
       status: true,
-      message: state.muted ? "Notifications muted" : "Notifications on",
-      data: state,
+      message: calls ? (state.muted ? "Call alerts muted" : "Call alerts on") : state.muted ? "Notifications muted" : "Notifications on",
+      data: { ...muteState(profile?.notifications_muted_until), calls: muteState(profile?.calls_muted_until), changed: state },
     });
   } catch (err: any) {
     return res.status(400).json({ status: false, message: err.message || "Could not update" });

@@ -10,6 +10,7 @@ import 'package:uscitylink/data/network/base_api_services.dart';
 import 'package:http/http.dart' as http;
 import 'package:uscitylink/data/response/api_response.dart';
 import 'package:uscitylink/model/file_model.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/utils/utils.dart';
 
 class NetworkApiService extends BaseApiServices {
@@ -415,7 +416,18 @@ class NetworkApiService extends BaseApiServices {
         if (!_isLoggingOut) {
           _isLoggingOut = true;
 
-          print("🔒 Session expired. Logging out...");
+          print("🔒 Session expired (${response.statusCode} from ${response.request?.url.path}). Logging out...");
+
+          if (CallService.inCall) {
+            // Never cut off a call (logging out ends it): log out once the call is over
+            print("🔒 On a call: logging out after it ends");
+            final calls = Get.find<CallService>();
+            unawaited(calls.phase.stream.firstWhere((_) => !calls.busy).then((_) async {
+              if (Get.isRegistered<LoginController>()) await Get.find<LoginController>().logOut();
+              _isLoggingOut = false;
+            }));
+            return;
+          }
 
           if (Get.isRegistered<LoginController>()) {
             await Get.find<LoginController>().logOut();

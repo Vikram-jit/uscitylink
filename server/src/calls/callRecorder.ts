@@ -54,6 +54,9 @@ interface Segment {
   videoFile?: string;
   videoFirstAt?: number | null;
   videoRecorder?: WeriftMediaRecorder;
+  /** The camera track as received, kept so video recording can start mid-call (staff on demand). */
+  videoTrack?: any;
+  index?: number;
   keyframeTimer?: NodeJS.Timeout;
   closed?: Promise<void>;
 }
@@ -64,10 +67,14 @@ interface Session {
   dir: string;
   startedAt: number;
   segments: Segment[];
+  /** Camera tracks are written to files (admin "Record video", or a staff member turned it on). */
+  recordVideo?: boolean;
   finishing?: Promise<void>;
 }
 
 const sessions = new Map<string, Session>();
+/** Video recording was turned on before this call's first upload reached the server. */
+const videoWanted = new Set<string>();
 
 const metaPath = (dir: string) => path.join(dir, "meta.json");
 
@@ -98,7 +105,7 @@ async function openSession(callId: string): Promise<Session> {
   const dir = path.join(ROOT, callId);
   fs.mkdirSync(dir, { recursive: true });
   const row = await CallRecording.create({ call_id: callId, status: "recording", started_at: new Date() });
-  const session: Session = { callId, rowId: row.id, dir, startedAt: Date.now(), segments: [] };
+  const session: Session = { callId, rowId: row.id, dir, startedAt: Date.now(), segments: [], recordVideo: videoWanted.delete(callId) };
   sessions.set(callId, session);
   saveMeta(session);
   return session;
@@ -172,28 +179,26 @@ export async function answerRecordingOffer(
   if (session.finishing) throw new Error("This call has ended");
   for (const s of session.segments) if (s.userId === userId) await closeSegment(s);
 
+  if (opts.video) session.recordVideo = true;
   const index = session.segments.filter((s) => s.userId === userId).length;
   const seg: Segment = {
     userId,
+    index,
     file: path.join(session.dir, `${userId}-${index}.webm`),
     firstPacketAt: null,
-    ...(opts.video ? { videoFile: path.join(session.dir, `${userId}-${index}-video.webm`), videoFirstAt: null } : {}),
   };
   const pc = new RTCPeerConnection({
     codecs: {
       audio: [new RTCRtpCodecParameters({ mimeType: "audio/opus", clockRate: 48000, channels: 2 })],
-      // Only when the call keeps video: otherwise the camera's m-line is refused and no video is sent
-      ...(opts.video
-        ? {
-            video: [
-              new RTCRtpCodecParameters({
-                mimeType: "video/VP8",
-                clockRate: 90000,
-                rtcpFeedback: [{ type: "nack" }, { type: "nack", parameter: "pli" }, { type: "goog-remb" }],
-              }),
-            ],
-          }
-        : {}),
+      // Always accepted, so video recording can be turned on mid-call; the apps only send the camera
+      // here while the call's video is being recorded
+      video: [
+        new RTCRtpCodecParameters({
+          mimeType: "video/VP8",
+          clockRate: 90000,
+          rtcpFeedback: [{ type: "nack" }, { type: "nack", parameter: "pli" }, { type: "goog-remb" }],
+        }),
+      ],
     },
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     icePortRange: portRange(),
@@ -207,22 +212,9 @@ export async function answerRecordingOffer(
 
   pc.onTrack.subscribe((track) => {
     if (track.kind === "video") {
-      if (!seg.videoFile || seg.videoRecorder) return;
-      const recorder = new MediaRecorder({ path: seg.videoFile, numOfTracks: 1 });
-      recorder.onError.subscribe((err) => console.warn("[recording] video writer error:", err?.message || err));
-      seg.videoRecorder = recorder;
-      // Ask for a keyframe now and every few seconds: the file must start on one, and a camera that
-      // was off and comes back on needs one too
-      const receiver = pc.getTransceivers().find((t) => t.receiver.track?.id === track.id)?.receiver;
-      const askKeyframe = () => track.ssrc && receiver?.sendRtcpPLI(track.ssrc).catch(() => undefined);
-      track.onReceiveRtp.once(() => {
-        seg.videoFirstAt = Date.now();
-        saveMeta(session);
-        askKeyframe();
-        console.log(`[recording] ${callId}: video arriving from ${userId}`);
-      });
-      seg.keyframeTimer = setInterval(askKeyframe, 4000);
-      recorder.addTrack(track).catch((err) => console.warn("[recording] video start failed:", err?.message || err));
+      if (seg.videoTrack) return;
+      seg.videoTrack = track;
+      if (session.recordVideo) startVideoWriter(session, seg);
       return;
     }
     if (track.kind !== "audio" || seg.recorder) return;
@@ -253,6 +245,50 @@ export async function answerRecordingOffer(
   const where = [...answer.matchAll(/a=candidate:\S+ \d (\S+) \d+ (\S+) (\d+) typ (\w+)/g)].map((m) => `${m[2]}:${m[3]}/${m[1]} ${m[4]}`);
   console.log(`[recording] ${callId}: ${userId} offered ${where.join(", ") || "no addresses"}`);
   return answer;
+}
+
+/** Write this side's camera to its own file, from now on. */
+function startVideoWriter(session: Session, seg: Segment) {
+  const track = seg.videoTrack;
+  if (!track || seg.videoRecorder || seg.closed || !seg.pc) return;
+  const pc = seg.pc;
+  seg.videoFile = path.join(session.dir, `${seg.userId}-${seg.index ?? 0}-video.webm`);
+  seg.videoFirstAt = null;
+  const recorder = new MediaRecorder({ path: seg.videoFile, numOfTracks: 1 });
+  recorder.onError.subscribe((err) => console.warn("[recording] video writer error:", err?.message || err));
+  seg.videoRecorder = recorder;
+  // Ask for a keyframe now and every few seconds: the file must start on one, and a camera that
+  // was off and comes back on needs one too
+  const receiver = pc.getTransceivers().find((t) => t.receiver.track?.id === track.id)?.receiver;
+  const askKeyframe = () => track.ssrc && receiver?.sendRtcpPLI(track.ssrc).catch(() => undefined);
+  track.onReceiveRtp.once(() => {
+    seg.videoFirstAt = Date.now();
+    saveMeta(session);
+    askKeyframe();
+    console.log(`[recording] ${session.callId}: video arriving from ${seg.userId}`);
+  });
+  seg.keyframeTimer = setInterval(askKeyframe, 4000);
+  saveMeta(session);
+  recorder.addTrack(track).catch((err: any) => console.warn("[recording] video start failed:", err?.message || err));
+}
+
+/**
+ * A staff member turned on video recording mid-call: start writing every camera already arriving
+ * (and any that arrive later). Audio recording is not touched.
+ */
+export function startVideoRecording(callId: string): boolean {
+  const session = sessions.get(callId);
+  if (!session) {
+    videoWanted.add(callId);
+    setTimeout(() => videoWanted.delete(callId), 6 * 60 * 60 * 1000).unref?.();
+    console.log(`[recording] ${callId}: video recording turned on (before upload started)`);
+    return true;
+  }
+  if (session.finishing) return false;
+  session.recordVideo = true;
+  for (const seg of session.segments) startVideoWriter(session, seg);
+  console.log(`[recording] ${callId}: video recording turned on`);
+  return true;
 }
 
 /** The call ended: stop recording and turn the voices into the stored file. Never throws. */

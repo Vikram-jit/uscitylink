@@ -101,10 +101,16 @@ import flutter_callkit_incoming
     let callerRole = p["callerRole"] as? String ?? "staff"
     let callerName = p["callerName"] as? String ?? "Dispatch"
     let channelName = p["channelName"] as? String ?? ""
+    let driverPhone = (p["driverPhone"] as? String ?? "").trimmingCharacters(in: .whitespaces)
 
-    // Same wording as lib/services/call/call_kit.dart
-    let title = callerRole == "staff" ? (channelName.isEmpty ? "Dispatch" : channelName) : callerName
-    let subtitle = callerRole == "staff" ? "Dispatch · \(callerName)" : "Driver · \(channelName)"
+    // Same wording as lib/services/call/call_kit.dart. A driver's handle is their phone number: it is
+    // what Recents gives back when the call is tapped there, so it must be unique per driver.
+    let title = callerRole == "staff"
+      ? (channelName.isEmpty ? "Dispatch" : channelName)
+      : (driverPhone.isEmpty ? callerName : "\(callerName) (\(driverPhone))")
+    let subtitle = callerRole == "staff"
+      ? "Dispatch · \(callerName)"
+      : "Driver · \(driverPhone.isEmpty ? channelName : driverPhone)"
 
     let isVideo = (p["callType"] as? String) == "video"
     let data = flutter_callkit_incoming.Data(id: callId, nameCaller: title, handle: subtitle, type: isVideo ? 1 : 0)
@@ -123,6 +129,7 @@ import flutter_callkit_incoming
       "channelId": p["channelId"] as? String ?? "",
       "channelName": channelName,
       "callType": p["callType"] as? String ?? "audio",
+      "driverPhone": driverPhone,
     ] as NSDictionary
     // iOS requires every VoIP push to be reported to CallKit right away
     if let plugin = SwiftFlutterCallkitIncomingPlugin.sharedInstance {

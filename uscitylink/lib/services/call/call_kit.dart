@@ -16,11 +16,16 @@ class CallKit {
   static bool get available => !(Platform.isIOS && Platform.environment.containsKey('SIMULATOR_DEVICE_NAME'));
 
   /// Who is calling, as the phone should show it.
-  static String callerTitle(CallInfo info) =>
-      info.from.role == 'staff' ? (info.channelName.isNotEmpty ? info.channelName : 'Dispatch') : info.from.name;
+  static String callerTitle(CallInfo info) => info.from.role == 'staff'
+      ? (info.channelName.isNotEmpty ? info.channelName : 'Dispatch')
+      : driverLabel(info.from.name, info.driverPhone);
 
-  static String callerSubtitle(CallInfo info) =>
-      info.from.role == 'staff' ? 'Dispatch · ${info.from.name}' : 'Driver · ${info.channelName}';
+  /// Also the handle the iPhone's Recents gives back when the call is tapped there, so a driver's is
+  /// their phone number: unique per driver (the channel name is shared by every driver on it).
+  /// Same wording as ios/Runner/AppDelegate.swift.
+  static String callerSubtitle(CallInfo info) => info.from.role == 'staff'
+      ? 'Dispatch · ${info.from.name}'
+      : 'Driver · ${info.driverPhone.trim().isNotEmpty ? info.driverPhone.trim() : info.channelName}';
 
   static CallKitParams params(CallInfo info, {bool outgoing = false}) => CallKitParams(
         id: info.callId,
@@ -42,6 +47,7 @@ class CallKit {
           'channelId': info.channelId,
           'channelName': info.channelName,
           'callType': info.type,
+          'driverPhone': info.driverPhone,
         },
         android: const AndroidParams(
           isCustomNotification: true,

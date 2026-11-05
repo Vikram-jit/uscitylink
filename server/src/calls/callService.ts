@@ -66,6 +66,8 @@ export interface ActiveCall {
   channelId: string;
   channelName: string;
   driverId: string; // whose conversation the call belongs to
+  /** The driver's phone number, shown next to their name ("Name (+1 …)"). */
+  driverPhone?: string;
   caller: Person;
   /** Driver → dispatch: rings whoever is free, waits in line when nobody is. */
   dispatch: boolean;
@@ -269,6 +271,7 @@ export class CallService {
       channelId: call.channelId,
       channelName: call.channelName,
       driverId: call.driverId,
+      driverPhone: call.driverPhone || "",
       from: call.caller,
       answeredBy: call.answeredBy,
       phase: call.phase,
@@ -295,6 +298,7 @@ export class CallService {
     channelId: string;
     channelName: string;
     driverId: string;
+    driverPhone?: string;
     /** Direct call: who to ring. Ignored for dispatch calls. */
     targets?: Person[];
     /** Driver → dispatch (ring free dispatchers / wait in line). */
@@ -315,6 +319,7 @@ export class CallService {
       channelId: input.channelId,
       channelName: input.channelName,
       driverId: input.driverId,
+      driverPhone: input.driverPhone || undefined,
       caller: input.caller,
       dispatch: !!input.dispatch,
       recording: !!input.recording,
@@ -601,6 +606,24 @@ export class CallService {
     if (!to) return { ok: false as const, error: "not_in_call" };
     this.deps.emit(to.id, "call:signal", { callId, from: fromId, data });
     return { ok: true as const };
+  }
+
+  /**
+   * Staff on the call turn on video recording ("Record video" on demand). Audio is already recorded;
+   * from now on cameras are recorded too, for the rest of the call. Everyone on the call is told.
+   */
+  startVideoRecording(callId: string, by: Person) {
+    const call = this.deps.store.get(callId);
+    if (!call) return { ok: false as const, error: "not_found" };
+    if (!this.isOnCall(call, by.id) || call.phase !== "active") return { ok: false as const, error: "not_in_call" };
+    if (by.role !== "staff") return { ok: false as const, error: "staff_only" };
+    if (!call.recording) return { ok: false as const, error: "not_recorded" };
+    if (call.recordVideo) return { ok: true as const, already: true };
+    call.recordVideo = true;
+    for (const p of this.currentMembers(call)) {
+      this.deps.emit(p.id, "call:record_video", { callId, on: true, by: { id: by.id, name: by.name } });
+    }
+    return { ok: true as const, already: false };
   }
 
   /** Mute / camera changes, relayed to everyone else on the call (always both, as stored). */

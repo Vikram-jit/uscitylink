@@ -34,6 +34,7 @@ import {
   Phone,
   PhoneDisconnect,
   PhoneIncoming,
+  Record,
   UserPlus,
   UsersThree,
   WifiSlash,
@@ -42,7 +43,7 @@ import {
 
 import { useGetAvailableStaffQuery } from '@/redux/CallApiSlice';
 
-import { CallPeer, formatCallDuration, useCall } from './CallProvider';
+import { CallPeer, callName, formatCallDuration, useCall } from './CallProvider';
 
 const initials = (name?: string) =>
   (name || '?')
@@ -117,7 +118,7 @@ function IncomingCard(): React.JSX.Element {
         </Box>
         <Box sx={{ minWidth: 0 }}>
           <Typography noWrap variant="h6">
-            {call.peer?.name}
+            {callName(call, call.peer)}
           </Typography>
           <Typography color="text.secondary" noWrap variant="body2">
             {call.transfer
@@ -167,9 +168,15 @@ function IncomingCard(): React.JSX.Element {
 }
 
 /** Red "Recorded" mark: the call is recorded and both people are told so. */
-function RecordedBadge({ compact = false }: { compact?: boolean }): React.JSX.Element {
+function RecordedBadge({ compact = false, video = false }: { compact?: boolean; video?: boolean }): React.JSX.Element {
   return (
-    <Stack alignItems="center" aria-label="This call is recorded" direction="row" spacing={0.5} sx={{ color: 'error.main', flexShrink: 0 }}>
+    <Stack
+      alignItems="center"
+      aria-label={video ? 'This call is recorded with video' : 'This call is recorded'}
+      direction="row"
+      spacing={0.5}
+      sx={{ color: 'error.main', flexShrink: 0 }}
+    >
       <Box
         sx={{
           width: 8,
@@ -182,7 +189,7 @@ function RecordedBadge({ compact = false }: { compact?: boolean }): React.JSX.El
       />
       {compact ? null : (
         <Typography sx={{ fontWeight: 600 }} variant="caption">
-          Recorded
+          {video ? 'Recording video' : 'Recorded'}
         </Typography>
       )}
     </Stack>
@@ -201,7 +208,7 @@ function Participants(): React.JSX.Element {
               {initials(m.name)}
             </Avatar>
             <Typography noWrap sx={{ flex: 1 }} variant="body2">
-              {m.name}
+              {callName(call, m)}
               <Typography color="text.secondary" component="span" variant="caption">
                 {m.role === 'driver' ? ' · Driver' : ''}
               </Typography>
@@ -395,7 +402,7 @@ function ActiveBar(): React.JSX.Element {
   const group = call.members.length > 1 || call.pending.length > 0;
   // Video panel: anyone's camera on, or a video call (staff without a camera still see the driver)
   const video = call.cameraOn || call.remoteCamera.length > 0 || (call.callType === 'video' && call.phase !== 'outgoing');
-  const title = call.members.length > 1 ? `Group call · ${call.members.length + 1} people` : call.peer?.name;
+  const title = call.members.length > 1 ? `Group call · ${call.members.length + 1} people` : callName(call, call.peer);
   const canAdd = call.phase === 'active' && call.members.length + call.pending.length + 1 < call.maxParticipants;
   const seconds = useTimer(call.answeredAt, call.phase === 'active');
 
@@ -425,7 +432,7 @@ function ActiveBar(): React.JSX.Element {
           <Typography sx={{ fontVariantNumeric: 'tabular-nums' }} variant="body2">
             {status}
           </Typography>
-          {call.recording && call.phase === 'active' ? <RecordedBadge compact /> : null}
+          {call.recording && call.phase === 'active' ? <RecordedBadge compact video={call.recordVideo} /> : null}
           <CaretUp size={14} />
         </Stack>
       </Paper>
@@ -460,7 +467,7 @@ function ActiveBar(): React.JSX.Element {
               {status}
               {call.remoteMuted && !ended && !group ? ' · they muted' : ''}
             </Typography>
-            {call.recording && call.phase === 'active' ? <RecordedBadge /> : null}
+            {call.recording && call.phase === 'active' ? <RecordedBadge video={call.recordVideo} /> : null}
           </Stack>
         </Box>
         {!ended ? (
@@ -499,6 +506,17 @@ function ActiveBar(): React.JSX.Element {
                 }}
               >
                 {call.cameraOn ? <VideoCamera size={22} weight="fill" /> : <VideoCameraSlash size={22} />}
+              </IconButton>
+            </Tooltip>
+          ) : null}
+          {call.phase === 'active' && call.recording && !call.recordVideo ? (
+            <Tooltip title="Record video too, for the rest of this call (audio is already recorded)">
+              <IconButton
+                aria-label="Record video"
+                onClick={() => void call.startVideoRecording()}
+                sx={{ bgcolor: 'action.hover', color: 'error.main', width: 48, height: 48 }}
+              >
+                <Record size={22} weight="fill" />
               </IconButton>
             </Tooltip>
           ) : null}

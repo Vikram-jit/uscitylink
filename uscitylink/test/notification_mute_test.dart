@@ -17,11 +17,13 @@ extension NotificationMuteForTest on NotificationMute {
 
 /// A fake /user/notification-mute that behaves like the server.
 MockClient fakeServer(List<Map<String, dynamic>> calls) {
-  DateTime? until;
-  bool forever = false;
+  final until = <String, DateTime?>{'messages': null, 'calls': null};
+  final forever = <String, bool>{'messages': false, 'calls': false};
+  Map<String, dynamic> one(String k) =>
+      {'muted': until[k] != null, 'mutedUntil': until[k]?.toUtc().toIso8601String(), 'forever': forever[k]};
   Map<String, dynamic> state() => {
         'status': true,
-        'data': {'muted': until != null, 'mutedUntil': until?.toUtc().toIso8601String(), 'forever': forever},
+        'data': {...one('messages'), 'calls': one('calls')},
       };
   return MockClient((req) async {
     expect(req.url.path, endsWith('/user/notification-mute'));
@@ -29,8 +31,9 @@ MockClient fakeServer(List<Map<String, dynamic>> calls) {
     if (req.method == 'PUT') {
       final body = jsonDecode(req.body) as Map<String, dynamic>;
       calls.add(body);
-      forever = body['forever'] == true;
-      until = forever ? DateTime.utc(2099, 12, 31) : (body['minutes'] == null ? null : DateTime.now().add(Duration(minutes: body['minutes'])));
+      final k = body['kind'] == 'calls' ? 'calls' : 'messages';
+      forever[k] = body['forever'] == true;
+      until[k] = forever[k]! ? DateTime.utc(2099, 12, 31) : (body['minutes'] == null ? null : DateTime.now().add(Duration(minutes: body['minutes'])));
     }
     return http.Response(jsonEncode(state()), 200);
   });
@@ -44,6 +47,7 @@ void main() {
 
   test('mute for a while, forever, and back on', () async {
     final calls = <Map<String, dynamic>>[];
+    final server = fakeServer(calls);
     await http.runWithClient(() async {
       final c = NotificationSettingsController();
       await c.load();
@@ -61,7 +65,40 @@ void main() {
       await c.unmute();
       expect(calls.last, {'minutes': null, 'forever': false});
       expect(c.isMuted, isFalse);
-    }, () => fakeServer(calls));
+    }, () => server);
+  });
+
+  test('call alerts mute separately from messages', () async {
+    final calls = <Map<String, dynamic>>[];
+    final server = fakeServer(calls);
+    await http.runWithClient(() async {
+      final c = NotificationSettingsController();
+      await c.load();
+      await c.muteFor(minutes: 60);
+      expect(c.isMuted, isTrue);
+      expect(c.isCallMuted, isFalse, reason: 'muting messages must not stop calls');
+
+      await c.muteFor(kind: MuteKind.calls, forever: true);
+      expect(calls.last, {'minutes': null, 'forever': true, 'kind': 'calls'});
+      expect(c.isCallMuted, isTrue);
+      expect(c.isMuted, isTrue);
+
+      await c.unmute();
+      expect(c.isMuted, isFalse);
+      expect(c.isCallMuted, isTrue, reason: 'turning messages on leaves calls muted');
+
+      await c.unmute(kind: MuteKind.calls);
+      expect(calls.last, {'minutes': null, 'forever': false, 'kind': 'calls'});
+      expect(c.isCallMuted, isFalse);
+    }, () => server);
+  });
+
+  test('older server without call mute: calls stay on', () async {
+    await http.runWithClient(() async {
+      final c = NotificationSettingsController();
+      await c.load();
+      expect(c.isCallMuted, isFalse);
+    }, () => MockClient((_) async => http.Response(jsonEncode({'status': true, 'data': {'muted': true, 'forever': true}}), 200)));
   });
 
   test('a timed mute that has run out counts as on', () {
@@ -75,11 +112,12 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final calls = <Map<String, dynamic>>[];
+    final server = fakeServer(calls);
     await http.runWithClient(() async {
       await tester.pumpWidget(const GetMaterialApp(home: StaffSettingsView()));
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pumpAndSettle();
-      expect(find.text('On'), findsOneWidget);
+      expect(find.text('On'), findsNWidgets(2));
       expect(find.text('Driver and group messages alert this phone'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('muteSwitch')));
@@ -95,7 +133,40 @@ void main() {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pumpAndSettle();
       expect(calls.last, {'minutes': null, 'forever': false});
-      expect(find.text('On'), findsOneWidget);
-    }, () => fakeServer(calls));
+      expect(find.text('On'), findsNWidgets(2));
+    }, () => server);
+  });
+
+  testWidgets('settings screen: mute call alerts on its own card', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final calls = <Map<String, dynamic>>[];
+    final server = fakeServer(calls);
+    await http.runWithClient(() async {
+      await tester.pumpWidget(const GetMaterialApp(home: StaffSettingsView()));
+      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
+      await tester.pumpAndSettle();
+      expect(find.text('Call alerts'), findsOneWidget);
+      expect(find.text('Incoming calls ring this phone'), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('callMuteSwitch')));
+      await tester.tap(find.byKey(const Key('callMuteSwitch')));
+      await tester.pumpAndSettle();
+      expect(find.text('Mute call alerts'), findsNWidgets(2)); // card row + sheet title
+      await tester.tap(find.text('For 1 hour'));
+      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
+      await tester.pumpAndSettle();
+      expect(calls.last, {'minutes': 60, 'forever': false, 'kind': 'calls'});
+      expect(find.text('Muted'), findsOneWidget);
+      expect(find.text('Driver and group messages alert this phone'), findsOneWidget, reason: 'messages still on');
+
+      await tester.ensureVisible(find.byKey(const Key('callUnmute')));
+      await tester.tap(find.byKey(const Key('callUnmute')));
+      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
+      await tester.pumpAndSettle();
+      expect(calls.last, {'minutes': null, 'forever': false, 'kind': 'calls'});
+      expect(find.text('Muted'), findsNothing);
+    }, () => server);
   });
 }

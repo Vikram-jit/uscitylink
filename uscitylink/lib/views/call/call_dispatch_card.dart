@@ -4,8 +4,10 @@ import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/utils/theme/app_text.dart';
 import 'package:uscitylink/utils/theme/app_tokens.dart';
 
-/// Driver dashboard: call dispatch in one tap (rings the free dispatchers of the driver's channel,
-/// or waits in line when they're all busy). While a call is on, it turns into a way back to it.
+/// Driver dashboard: call dispatch (rings the free dispatchers of the driver's channel, or waits in
+/// line when they're all busy). Only the Call and video buttons place a call: tapping the rest of
+/// the banner does nothing, so a stray tap never rings dispatch. While a call is on, the whole
+/// banner is a way back to it.
 /// Hidden when calling is switched off for everyone.
 class CallDispatchCard extends StatelessWidget {
   const CallDispatchCard(
@@ -37,22 +39,21 @@ class CallDispatchCard extends StatelessWidget {
           : (channelName?.isNotEmpty == true
               ? '$channelName · talk to your dispatcher'
               : 'Talk to your dispatcher');
+      void callDispatch({bool video = false}) => call.startCall(
+            channelId: channelId,
+            name: channelName?.isNotEmpty == true ? channelName! : 'Dispatch',
+            subtitle: 'Dispatch',
+            video: video,
+          );
       return Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
         child: Material(
           key: const Key('callDispatchCard'),
           color: Colors.transparent,
           child: InkWell(
+            key: const Key('callDispatchBanner'),
             borderRadius: BorderRadius.circular(AppRadii.lg),
-            onTap: () => onCall
-                ? call.openCallScreen()
-                : call.startCall(
-                    channelId: channelId,
-                    name: channelName?.isNotEmpty == true
-                        ? channelName!
-                        : 'Dispatch',
-                    subtitle: 'Dispatch',
-                  ),
+            onTap: onCall ? call.openCallScreen : null,
             child: Ink(
               padding: const EdgeInsets.all(AppSpacing.base),
               decoration: BoxDecoration(
@@ -117,43 +118,45 @@ class CallDispatchCard extends StatelessWidget {
                       child: InkWell(
                         key: const Key('videoCallDispatchCard'),
                         customBorder: const CircleBorder(),
-                        onTap: () => call.startCall(
-                          channelId: channelId,
-                          name: channelName?.isNotEmpty == true ? channelName! : 'Dispatch',
-                          subtitle: 'Dispatch',
-                          video: true,
-                        ),
+                        onTap: () => callDispatch(video: true),
                         child: const Padding(
                           padding: EdgeInsets.all(AppSpacing.sm + 2),
-                          child: Icon(Icons.videocam_rounded, color: Colors.white, size: 20),
+                          child: Icon(Icons.videocam_rounded,
+                              color: Colors.white, size: 20),
                         ),
                       ),
                     ),
                   ],
                   const SizedBox(width: AppSpacing.md),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.base,
-                        vertical: AppSpacing.sm + 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    child: InkWell(
+                      key: const Key('callDispatchButton'),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                            onCall
-                                ? Icons.open_in_new_rounded
-                                : Icons.call_rounded,
-                            size: 16,
-                            color: _greenDeep),
-                        const SizedBox(width: 6),
-                        Text(
-                          onCall ? 'Open' : 'Call',
-                          style: AppText.labelLg.copyWith(color: _greenDeep),
+                      onTap: onCall ? call.openCallScreen : callDispatch,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.base,
+                            vertical: AppSpacing.sm + 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                                onCall
+                                    ? Icons.open_in_new_rounded
+                                    : Icons.call_rounded,
+                                size: 16,
+                                color: _greenDeep),
+                            const SizedBox(width: 6),
+                            Text(
+                              onCall ? 'Open' : 'Call',
+                              style:
+                                  AppText.labelLg.copyWith(color: _greenDeep),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],

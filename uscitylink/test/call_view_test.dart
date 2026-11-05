@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/services/call/call_kit.dart';
 import 'package:uscitylink/services/call/call_models.dart';
 import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/views/call/call_log_bubble.dart';
@@ -23,6 +24,25 @@ void main() {
   }
 
   String status(WidgetTester tester) => tester.widget<Text>(find.byKey(const Key('callStatus'))).data ?? '';
+
+  test('a driver is shown with their phone number; Recents handle is unique per driver', () {
+    const driver = CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver');
+    const withPhone = CallInfo(
+        callId: 'c1', type: 'audio', channelId: 'ch', channelName: 'U S CITYLINK INC', driverId: 'd1', driverPhone: '+1 555 123 4567', from: driver);
+    expect(CallKit.callerTitle(withPhone), 'Sukhdev Singh (+1 555 123 4567)');
+    expect(CallKit.callerSubtitle(withPhone), 'Driver · +1 555 123 4567');
+    // No phone on file: name only, and the old handle
+    const noPhone = CallInfo(callId: 'c2', type: 'audio', channelId: 'ch', channelName: 'U S CITYLINK INC', driverId: 'd1', from: driver);
+    expect(CallKit.callerTitle(noPhone), 'Sukhdev Singh');
+    expect(CallKit.callerSubtitle(noPhone), 'Driver · U S CITYLINK INC');
+    // From a push (FCM data / VoIP payload)
+    final pushed = CallInfo.fromPush({'callId': 'c3', 'callerName': 'Sukhdev Singh', 'callerRole': 'driver', 'driverPhone': '5551234567'});
+    expect(CallKit.callerTitle(pushed), 'Sukhdev Singh (5551234567)');
+    // Dispatch callers are unchanged
+    const staff = CallInfo(callId: 'c4', type: 'audio', channelId: 'ch', channelName: 'U S CITYLINK INC', driverId: 'd1',
+        driverPhone: '5551234567', from: CallPeer(id: 's1', name: 'Navjot', role: 'staff'));
+    expect(CallKit.callerTitle(staff), 'U S CITYLINK INC');
+  });
 
   testWidgets('outgoing: "Calling…", mute disabled until answered, hang up shown', (tester) async {
     await show(tester, (s) => s.phase.value = CallPhase.outgoing);
@@ -69,6 +89,33 @@ void main() {
     expect(find.byKey(const Key('recordedBadge')), findsOneWidget);
     expect(find.text('Recorded'), findsOneWidget);
     expect(find.byKey(const Key('recordedNotice')), findsNothing);
+  });
+
+  testWidgets('record video on demand: staff see "Rec video" on a recorded call; drivers don\'t', (tester) async {
+    const peer = CallPeer(id: 'd1', name: 'Sukhdev Singh', role: 'driver');
+    const recorded = CallInfo(
+        callId: 'c1', type: 'audio', channelId: 'ch', channelName: 'U S CITYLINK INC', driverId: 'd1', from: peer, recording: true);
+    final s = await show(tester, (s) {
+      s.isStaffUser.value = true;
+      s.info.value = recorded;
+      s.members.add(peer);
+      s.phase.value = CallPhase.active;
+      s.recording.value = true;
+      s.answeredAt.value = DateTime.now();
+    });
+    expect(find.byKey(const Key('recordVideoButton')), findsOneWidget);
+    expect(find.text('Recorded'), findsOneWidget);
+
+    // Turned on (by this dispatcher, or someone else on the call): button goes, everyone sees it
+    s.recordingVideo.value = true;
+    await tester.pump();
+    expect(find.byKey(const Key('recordVideoButton')), findsNothing);
+    expect(find.text('Recording video'), findsOneWidget);
+
+    s.isStaffUser.value = false;
+    s.recordingVideo.value = false;
+    await tester.pump();
+    expect(find.byKey(const Key('recordVideoButton')), findsNothing, reason: 'drivers can\'t start it');
   });
 
   testWidgets('group call: everyone on it listed, muted marked, people being asked shown ringing', (tester) async {

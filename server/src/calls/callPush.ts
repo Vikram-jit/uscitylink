@@ -5,6 +5,7 @@ import * as admin from "firebase-admin";
 import "../utils/fcmService"; // initialises firebase-admin
 import { UserProfile } from "../models/UserProfile";
 import { sendNotificationToDevice } from "../utils/fcmService";
+import { isCallMuted } from "../services/staffNotifications";
 
 // Rings a phone whose app is closed / in the background.
 //   Android: FCM data-only, high priority → the app shows the full-screen incoming-call UI itself.
@@ -21,6 +22,8 @@ export interface IncomingCallPush {
   channelId: string;
   channelName: string;
   type: string;
+  /** The driver on the call: shown as "Name (phone)" and used to call them back from Recents. */
+  driverPhone?: string;
 }
 
 const RING_TTL_MS = 45_000;
@@ -164,10 +167,9 @@ function apnsSend(host: string, deviceToken: string, payload: Record<string, any
   });
 }
 
-/** Ring one person's phone. Respects the staff "mute notifications" setting. */
+/** Ring one person's phone. Respects the staff "mute call alerts" setting (message mute doesn't apply). */
 export async function pushIncomingCall(profile: UserProfile, call: IncomingCallPush): Promise<void> {
-  const muted = profile.notifications_muted_until && new Date(profile.notifications_muted_until).getTime() > Date.now();
-  if (muted) return;
+  if (isCallMuted(profile)) return;
 
   const data: Record<string, string> = {
     type: "CALL_INCOMING",
@@ -178,6 +180,7 @@ export async function pushIncomingCall(profile: UserProfile, call: IncomingCallP
     channelId: call.channelId,
     channelName: call.channelName,
     callType: call.type,
+    driverPhone: call.driverPhone || "",
     expiresAt: String(Date.now() + RING_TTL_MS),
   };
 
@@ -206,8 +209,7 @@ export async function pushCallEnded(profile: UserProfile, callId: string, reason
 
 /** "Missed call" notification after the ringing stops. */
 export async function pushMissedCall(profile: UserProfile, callerName: string, channelId: string): Promise<void> {
-  const muted = profile.notifications_muted_until && new Date(profile.notifications_muted_until).getTime() > Date.now();
-  if (muted || !profile.device_token) return;
+  if (isCallMuted(profile) || !profile.device_token) return;
   await sendNotificationToDevice(profile.device_token, {
     title: "Missed call",
     body: `${callerName} tried to call you`,

@@ -343,7 +343,9 @@ export class RecordingUplink {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers });
     this.pc = pc;
     pc.addTransceiver(this.opts.track, { direction: 'sendonly' });
-    if (this.opts.video) pc.addTransceiver(this.camera || 'video', { direction: 'sendonly' });
+    // Always negotiated so video recording can be turned on mid-call; the camera is only sent while
+    // the call's video is being recorded
+    pc.addTransceiver((this.opts.video && this.camera) || 'video', { direction: 'sendonly' });
     try {
       await pc.setLocalDescription(await pc.createOffer());
       // One round trip: send the offer with the candidates found within a second (local + STUN)
@@ -373,11 +375,17 @@ export class RecordingUplink {
 
   private camera: MediaStreamTrack | null = null;
 
-  /** Camera on/off, for calls that keep video in the recording. */
+  /** Camera on/off; sent to the recorder only while video is recorded. */
   async setCamera(track: MediaStreamTrack | null) {
     this.camera = track;
     const sender = this.pc?.getTransceivers().find((t) => t.receiver.track?.kind === 'video')?.sender;
-    await sender?.replaceTrack(track).catch(() => undefined);
+    await sender?.replaceTrack(this.opts.video ? track : null).catch(() => undefined);
+  }
+
+  /** Staff turned on video recording mid-call: start sending the camera. */
+  async setRecordVideo(on: boolean) {
+    this.opts.video = on;
+    await this.setCamera(this.camera);
   }
 
   /** The microphone was switched mid-call. */

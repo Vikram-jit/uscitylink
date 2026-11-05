@@ -1,25 +1,27 @@
 import 'package:get/get.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/services/staff/notification_settings_service.dart';
 import 'package:uscitylink/utils/staff_feedback.dart';
 
 class NotificationSettingsController extends GetxController {
   final _service = NotificationSettingsService();
 
+  /// Message notifications
   final mute = const NotificationMute().obs;
+  /// Incoming call alerts (separate from messages)
+  final callMute = const NotificationMute().obs;
   final loading = false.obs;
   final saving = false.obs;
+  /// Which setting is being saved (spinner on that card only)
+  final savingKind = Rxn<MuteKind>();
 
-  /// A timed mute that has run out counts as on, even before the next refresh.
-  bool get isMuted {
-    final m = mute.value;
-    if (!m.muted) return false;
-    return m.forever || m.until == null || m.until!.isAfter(DateTime.now());
-  }
+  bool get isMuted => mute.value.active;
+  bool get isCallMuted => callMute.value.active;
 
   Future<void> load() async {
     loading.value = true;
     try {
-      mute.value = await _service.get();
+      _apply(await _service.get());
     } catch (e) {
       staffSnackBar('Error', e.toString());
     } finally {
@@ -27,19 +29,29 @@ class NotificationSettingsController extends GetxController {
     }
   }
 
-  Future<void> muteFor({int? minutes, bool forever = false}) => _save(minutes: minutes, forever: forever);
+  Future<void> muteFor({MuteKind kind = MuteKind.messages, int? minutes, bool forever = false}) =>
+      _save(kind: kind, minutes: minutes, forever: forever);
 
-  Future<void> unmute() => _save();
+  Future<void> unmute({MuteKind kind = MuteKind.messages}) => _save(kind: kind);
 
-  Future<void> _save({int? minutes, bool forever = false}) async {
+  void _apply(NotificationSettings s) {
+    mute.value = s.messages;
+    callMute.value = s.calls;
+    // Calls that reach the open app are ignored while call alerts are muted
+    if (Get.isRegistered<CallService>()) Get.find<CallService>().callMute = s.calls;
+  }
+
+  Future<void> _save({MuteKind kind = MuteKind.messages, int? minutes, bool forever = false}) async {
     if (saving.value) return;
     saving.value = true;
+    savingKind.value = kind;
     try {
-      mute.value = await _service.set(minutes: minutes, forever: forever);
+      _apply(await _service.set(kind: kind, minutes: minutes, forever: forever));
     } catch (e) {
       staffSnackBar('Could not update', e.toString());
     } finally {
       saving.value = false;
+      savingKind.value = null;
     }
   }
 }

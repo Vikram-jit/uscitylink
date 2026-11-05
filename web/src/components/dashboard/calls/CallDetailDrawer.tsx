@@ -163,7 +163,9 @@ export function CallDetailDrawer({ callId, onClose }: { callId: string | null; o
           <Stack alignItems="center" direction="row" spacing={1.5} sx={{ mb: 2 }}>
             {c.direction === 'driver_to_dispatch' ? <PhoneIncoming size={22} /> : <PhoneOutgoing size={22} />}
             <Box>
-              <Typography variant="subtitle1">{c.driver_name || 'Driver'}</Typography>
+              <Typography variant="subtitle1">{c.driver_name || 'Driver'}
+                {c.driver_phone ? ` (${c.driver_phone})` : ''}
+              </Typography>
               <Typography color="text.secondary" variant="body2">
                 {c.direction === 'driver_to_dispatch' ? 'Called the dispatch line' : `${c.initiator_name || 'Dispatch'} called the driver`}
               </Typography>

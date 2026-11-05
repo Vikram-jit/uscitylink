@@ -47,6 +47,7 @@ export interface CallRecord {
   duration_sec: number;
   quality: Record<string, any> | null;
   driver_name: string | null;
+  driver_phone?: string | null;
   initiator_name: string | null;
   answered_by_name: string | null;
   direction: 'driver_to_dispatch' | 'dispatch_to_driver';
