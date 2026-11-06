@@ -210,6 +210,35 @@ const dispatchCall = (t: ReturnType<typeof setup>, d: Person) => t.svc.invite({ 
     assert.equal(t.got("staff1", "call:peer_reconnected").length, 1);
   });
 
+  await test("answering device hears back before the caller (its offer can't arrive first)", async () => {
+    const t = setup([staff(1)]);
+    const r = await dispatchCall(t, drv(1));
+    assert(r.ok);
+    let callerToldFirst = false;
+    const res = await t.svc.accept(r.callId, staff(1), {
+      onAnswered: (call) => {
+        callerToldFirst = t.got(drv(1).id, "call:accepted").length > 0;
+        assert.equal(call.answeredBy?.id, "staff1");
+      },
+    });
+    assert(res.ok);
+    assert.equal(callerToldFirst, false);
+    assert.equal(t.got(drv(1).id, "call:accepted").length, 1);
+  });
+
+  await test("same account opens another device mid-call: the call isn't resumed there or kept alive by it", async () => {
+    const t = setup([staff(1)]);
+    const r = await dispatchCall(t, drv(1));
+    assert(r.ok); await t.svc.accept(r.callId, staff(1));
+    t.svc.onConnected("staff1", () => false); // dashboard tab opened while the phone carries the call
+    assert.equal(t.got("staff1", "call:resume").length, 0);
+    t.svc.onDisconnected("staff1"); // then the phone drops: the other device must not cancel the wait
+    await wait(20);
+    t.svc.onConnected("staff1", () => false);
+    await wait(80);
+    assert.equal(t.ended[0]?.reason, "connection_lost");
+  });
+
   await test("network drop: no reconnect → completed/connection_lost; waiting caller then served", async () => {
     const t = setup([staff(1)]);
     const a = await dispatchCall(t, drv(1));

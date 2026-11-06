@@ -86,6 +86,7 @@ const CALL_SCOPED = new Set([
   "call:peer_reconnecting",
   "call:peer_reconnected",
   "call:accepted",
+  "call:resume",
   "call:member_joined",
   "call:member_left",
   "call:participants",
@@ -359,8 +360,16 @@ export function registerCallHandlers(socket: CustomSocket) {
   userSockets.get(userId)!.add(socket);
   const bind = (callId: string) => mediaSockets.set(`${callId}:${userId}`, socket);
 
-  // A call this person is on carries on over this (new) connection
-  for (const call of callService.activeCallsOf(userId)) bind(call.id);
+  // A call this person is on carries on over this (new) connection — unless the connection carrying
+  // it is still up: then this is another tab or device of the same account (the dashboard opening
+  // while the phone is on the call), and taking the call over would leave the phone with no audio
+  const carried = new Set<string>();
+  for (const call of callService.activeCallsOf(userId)) {
+    const carrier = mediaSockets.get(`${call.id}:${userId}`);
+    if (carrier && carrier !== socket && carrier.connected) continue;
+    bind(call.id);
+    carried.add(call.id);
+  }
 
   // Staff see who is on a call (chat list "On call" marks): current list now, then live updates
   void profileWithRole(userId).then((p) => {
@@ -375,9 +384,10 @@ export function registerCallHandlers(socket: CustomSocket) {
     const set = userSockets.get(userId);
     set?.delete(socket);
     if (set && !set.size) userSockets.delete(userId);
-    // The call only waits for a reconnect when this was the connection carrying it
+    // The call waits for a reconnect when this was the connection carrying it, even if the same
+    // account is still open elsewhere (that other tab or device isn't on the call)
     for (const call of callService.activeCallsOf(userId)) {
-      if (mediaSockets.get(`${call.id}:${userId}`) === socket && !isOnline(userId)) callService.onDisconnected(userId);
+      if (mediaSockets.get(`${call.id}:${userId}`) === socket) callService.onDisconnected(userId);
     }
   });
   const person = async (): Promise<Person> => {
@@ -386,7 +396,7 @@ export function registerCallHandlers(socket: CustomSocket) {
   };
 
   // A reconnect resumes the call; an app woken by a push gets the ringing invite again
-  callService.onConnected(me());
+  callService.onConnected(me(), (callId) => carried.has(callId));
 
   socket.on("call:invite", async (payload, ackFn) => {
     const ack = safeAck(ackFn);
@@ -425,10 +435,17 @@ export function registerCallHandlers(socket: CustomSocket) {
   socket.on("call:accept", async ({ callId, group, videoCapable, camera } = {}, ackFn) => {
     const ack = safeAck(ackFn);
     bind(String(callId));
+    // Answered before the caller is told (see CallService.accept): the caller's offer follows on
+    // this same connection, so it can't overtake the answer and get dropped as an unknown call
+    let answered = false;
     const res = await callService.accept(String(callId), await person(), {
       groupCapable: group === true,
       videoCapable: videoCapable === true,
       video: typeof camera === "boolean" ? camera : undefined,
+      onAnswered: (call) => {
+        answered = true;
+        ack({ ok: true, call, ...iceServersFor(me()) });
+      },
     });
     if (!res.ok) {
       mediaSockets.delete(`${callId}:${userId}`);
@@ -436,7 +453,7 @@ export function registerCallHandlers(socket: CustomSocket) {
     }
     // The same person's other tabs/devices stop ringing
     for (const other of liveSockets(userId)) if (other !== socket) other.emit("call:answered_elsewhere", { callId, by: res.call.answeredBy });
-    ack({ ok: true, call: res.call, ...iceServersFor(me()) });
+    if (!answered) ack({ ok: true, call: res.call, ...iceServersFor(me()) });
   });
 
   socket.on("call:decline", async ({ callId } = {}, ackFn) => {

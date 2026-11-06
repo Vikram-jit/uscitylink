@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:uscitylink/controller/hive_controller.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/services/socket_service.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 enum UConnectivityResult { none, wifi, mobile }
 
@@ -51,7 +52,9 @@ class NetworkService extends GetxController {
       } else {
         userPreferenceController.getToken().then((value) {
           if (value != null) {
-            if (socketService.socket.connected) {
+            // Not during a call: "no network" also flickers on a Wi-Fi ↔ mobile data hand-over, and
+            // the call needs the socket to reconnect itself (a manual disconnect stops that)
+            if (socketService.socket.connected && !CallService.inCall) {
               socketService.socket.disconnect();
             }
           }

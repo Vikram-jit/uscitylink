@@ -327,7 +327,12 @@ class LoginController extends GetxController {
     } else {
       route = AppRoutes.login;
     }
-    Timer(const Duration(seconds: 1), () => Get.offAllNamed(route));
+    Timer(const Duration(seconds: 1), () {
+      Get.offAllNamed(route);
+      // A call answered from the lock screen while the app was starting opened its call screen
+      // already; replacing every screen with the dashboard would leave the call running unseen
+      if (CallService.inCall) CallService.to.openCallScreen();
+    });
   }
 
   void getProfile() {

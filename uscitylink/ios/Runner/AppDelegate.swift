@@ -3,6 +3,9 @@ import UIKit
 import GoogleMaps
 import Intents
 import PushKit
+import AVFAudio
+import CallKit
+import WebRTC
 import flutter_callkit_incoming
 
 // import flutter_local_notifications
@@ -146,6 +149,34 @@ import flutter_callkit_incoming
       completion()
     }
   }
+}
+
+// MARK: - CallKit ↔ WebRTC audio
+
+// A call answered on the CallKit screen (locked phone, app closed) gets its audio session from iOS:
+// CallKit activates it, not the app. WebRTC must be told, or its audio never starts — the call
+// "connects" with no sound either way. Implementing this protocol also means fulfilling CallKit's
+// actions here (the plugin no longer does it once the app delegate takes them).
+extension AppDelegate: CallkitIncomingAppDelegate {
+  func onAccept(_ call: flutter_callkit_incoming.Call, _ action: CXAnswerCallAction) { action.fulfill() }
+
+  func onDecline(_ call: flutter_callkit_incoming.Call, _ action: CXEndCallAction) { action.fulfill() }
+
+  func onEnd(_ call: flutter_callkit_incoming.Call, _ action: CXEndCallAction) { action.fulfill() }
+
+  func onTimeOut(_ call: flutter_callkit_incoming.Call) {}
+
+  func didActivateAudioSession(_ audioSession: AVAudioSession) {
+    let rtc = RTCAudioSession.sharedInstance()
+    rtc.audioSessionDidActivate(audioSession)
+    rtc.isAudioEnabled = true
+  }
+
+  func didDeactivateAudioSession(_ audioSession: AVAudioSession) {
+    RTCAudioSession.sharedInstance().audioSessionDidDeactivate(audioSession)
+  }
+
+  func providerDidReset() {}
 }
 
 /// Hosts the app's window (UIScene lifecycle) on the engine AppDelegate started at launch. Kept in

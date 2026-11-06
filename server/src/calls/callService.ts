@@ -374,7 +374,21 @@ export class CallService {
     return { ok: true, callId: call.id, ringing: free.length, queued: false };
   }
 
-  async accept(callId: string, user: Person, opts: { groupCapable?: boolean; videoCapable?: boolean; video?: boolean } = {}) {
+  /**
+   * [onAnswered] runs once the call is theirs, before the caller hears about it: the socket layer
+   * answers the device that picked up there. The caller sends its offer as soon as it hears, so
+   * the answering device must already know the call by then (it ignores signals for unknown calls).
+   */
+  async accept(
+    callId: string,
+    user: Person,
+    opts: {
+      groupCapable?: boolean;
+      videoCapable?: boolean;
+      video?: boolean;
+      onAnswered?: (call: ReturnType<CallService["publicView"]>) => void;
+    } = {}
+  ) {
     const call = this.deps.store.get(callId);
     if (!call) return { ok: false as const, error: "not_found" };
     if (opts.groupCapable) call.groupCapable.add(user.id);
@@ -408,6 +422,7 @@ export class CallService {
       "answered_elsewhere"
     );
     const view = this.publicView(call);
+    opts.onAnswered?.(view);
     this.deps.emit(call.caller.id, "call:accepted", { callId, by: user, camera: view.camera, videoCapable: view.videoCapable });
     await this.deps.persistAnswer(call);
     await this.stopRingingElsewhere(user, callId);
@@ -660,9 +675,14 @@ export class CallService {
     }
   }
 
-  /** Socket (re)connected: resume the user's call, re-deliver ringing invites, serve the line. */
-  onConnected(userId: string) {
+  /**
+   * Socket (re)connected: resume the user's call, re-deliver ringing invites, serve the line.
+   * [carries] says which of their calls this connection takes over; another device of the same
+   * account opening (e.g. the dashboard while the phone is on the call) must leave the call alone.
+   */
+  onConnected(userId: string, carries: (callId: string) => boolean = () => true) {
     for (const call of this.deps.store.all()) {
+      if (this.isOnCall(call, userId) && !carries(call.id)) continue;
       const grace = call.graceTimers.get(userId);
       if (grace) {
         clearTimeout(grace);

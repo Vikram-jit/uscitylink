@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:http/http.dart' as http;
+import 'package:uscitylink/constant.dart';
+import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/services/call/call_models.dart';
 
 /// Native call UI (iOS CallKit / Android full-screen incoming call) for voice calls.
-/// Kept free of GetX/controllers: the FCM background handler runs it in a separate isolate when
-/// the app is closed.
+/// Kept free of registered GetX services: the FCM background handler runs it in a separate isolate
+/// when the app is closed (UserPreferenceController is only used to read the saved login).
 class CallKit {
   static const ringSeconds = 45;
 
@@ -121,6 +125,57 @@ class CallKit {
     await FlutterCallkitIncoming.showCallkitIncoming(params(info));
   }
 
+  /// Android runs the push handler as background work and may freeze or kill the app's process as
+  /// soon as it returns. The ringtone plays inside that process, so returning right after showing
+  /// the call left the phone silent (app closed, minimised or phone locked). Waits until the call
+  /// stops ringing here instead. Pushes are handled one at a time, so a "call ended" push queues
+  /// behind this: the server is asked directly whether the call is still the same.
+  static Future<void> holdWhileRinging(String callId, int expiresAt) async {
+    final until = expiresAt > 0 ? expiresAt : DateTime.now().millisecondsSinceEpoch + ringSeconds * 1000;
+    String? firstStatus;
+    var tick = 0;
+    while (DateTime.now().millisecondsSinceEpoch < until) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!await _ringingNatively(callId)) return; // answered, declined or timed out on the phone
+      if (++tick % 3 != 0) continue;
+      final status = await _serverStatus(callId);
+      if (status == null) continue; // offline: the ring timeout still ends it
+      // A request to join a group call rings while the call is already "ongoing": only a change
+      // means the caller hung up or someone else answered
+      firstStatus ??= status;
+      if (status != firstStatus) {
+        await end(callId);
+        return;
+      }
+    }
+  }
+
+  static Future<bool> _ringingNatively(String callId) async {
+    try {
+      final id = callId.toLowerCase();
+      final calls = await FlutterCallkitIncoming.activeCalls();
+      return calls.any((c) => '${c.id}'.toLowerCase() == id && c.isAccepted != true);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<String?> _serverStatus(String callId) async {
+    try {
+      final token = await UserPreferenceController().getToken();
+      if (token == null || token.isEmpty) return null;
+      final res = await http
+          .get(Uri.parse('${Constant.url}/calls/$callId'), headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return null;
+      final body = jsonDecode(res.body);
+      final status = body is Map && body['data'] is Map ? body['data']['status'] : null;
+      return status is String ? status : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Closes the native call screen. Skipped for calls it never showed (outgoing calls, calls
   /// answered in the app): asking CallKit to end an unknown call fails with
   /// "requesttransaction Code=2".
@@ -141,7 +196,9 @@ Future<void> callFirebaseBackgroundHandler(RemoteMessage message) async {
     case 'CALL_INCOMING':
       final expiresAt = int.tryParse('${data['expiresAt'] ?? ''}') ?? 0;
       if (expiresAt > 0 && DateTime.now().millisecondsSinceEpoch > expiresAt) return;
-      await CallKit.showIncoming(CallInfo.fromPush(Map<String, dynamic>.from(data)));
+      final call = CallInfo.fromPush(Map<String, dynamic>.from(data));
+      await CallKit.showIncoming(call);
+      if (Platform.isAndroid) await CallKit.holdWhileRinging(call.callId, expiresAt);
       break;
     case 'CALL_ENDED':
       await CallKit.end('${data['callId'] ?? ''}');

@@ -38,12 +38,30 @@ class SocketService extends GetxController {
   }
 
   // Method to connect to the socket server
-  Future<void> connectSocket() async {
+  Future<void>? _connecting;
+  bool _hasSocket = false;
+
+  /// One connection at a time. Several callers often ask together (the app coming back to the front
+  /// and a call being answered); each used to create its own socket, and the extra one stayed
+  /// connected unseen and could flip [isConnected] — calls then lost their signalling.
+  Future<void> connectSocket() => _connecting ??= _connectSocket().whenComplete(() => _connecting = null);
+
+  Future<void> _connectSocket() async {
     String? accessToken = await userPreferenceController.getToken();
 
     if (isConnected.value) {
       print("Already connected to socket.");
       return; // If already connected, don't try to connect again
+    }
+    if (_hasSocket) {
+      if (socket.connected) {
+        isConnected.value = true;
+        return;
+      }
+      // The previous socket (disconnected, maybe still retrying) is replaced, never kept alongside
+      try {
+        socket.dispose();
+      } catch (_) {}
     }
     String customUrl = generateSocketUrl(accessToken ?? "");
 
@@ -59,6 +77,7 @@ class SocketService extends GetxController {
           .setReconnectionDelayMax(5000)
           .build(),
     );
+    _hasSocket = true;
 
     socket.on('connect', (_) async {
       print('Connected to socket server');

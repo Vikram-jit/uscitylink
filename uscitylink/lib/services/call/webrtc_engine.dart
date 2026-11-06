@@ -49,6 +49,12 @@ class WebRtcEngine {
   Timer? _restartTimer;
   bool _closed = false;
   EngineState _state = EngineState.connecting;
+  // Signals can arrive while start() is still creating the connection (the other side sends its
+  // offer the moment the call is answered). Handled in order once it's ready, never dropped.
+  bool _started = false;
+  final List<Map<String, dynamic>> _early = [];
+  Future<void> _signals = Future.value();
+  Timer? _watchdog;
 
   int get iceRestarts => _restarts;
 
@@ -119,10 +125,47 @@ class WebRtcEngine {
     };
     // Remote audio plays through the call audio route automatically (no renderer needed)
     pc.onConnectionState = _onConnectionState;
+    _started = true;
+    for (final s in _early) {
+      _signals = _signals.then((_) => _handleSignal(s));
+    }
+    _early.clear();
+    _startWatchdog();
     if (isCaller) await _offer(false);
   }
 
-  Future<void> handleSignal(Map<String, dynamic> data) async {
+  /// A call that never gets connected must not sit on "Connecting…" forever. The answering side
+  /// asks for the offer again if it hasn't arrived (it can be lost while the app was waking up);
+  /// after [_connectTimeout] the call is given up as failed so the user gets a clear message.
+  static const _connectTimeout = Duration(seconds: 30);
+
+  void _startWatchdog() {
+    final started = DateTime.now();
+    var asked = 0;
+    _watchdog = Timer.periodic(const Duration(seconds: 5), (t) async {
+      if (_closed || _state == EngineState.connected) return t.cancel();
+      if (DateTime.now().difference(started) >= _connectTimeout) {
+        t.cancel();
+        return _setState(EngineState.failed);
+      }
+      final pc = _pc;
+      if (!isCaller && asked < 3 && pc != null && await pc.getRemoteDescription() == null) {
+        asked++;
+        sendSignal({'type': 'restart-request'});
+      }
+    });
+  }
+
+  /// Signals are handled one at a time in arrival order (an ICE candidate must never race the offer).
+  Future<void> handleSignal(Map<String, dynamic> data) {
+    if (!_started) {
+      _early.add(data);
+      return Future.value();
+    }
+    return _signals = _signals.then((_) => _handleSignal(data));
+  }
+
+  Future<void> _handleSignal(Map<String, dynamic> data) async {
     final pc = _pc;
     if (_closed || pc == null) return;
     try {
@@ -269,6 +312,7 @@ class WebRtcEngine {
     if (_closed) return;
     _closed = true;
     _restartTimer?.cancel();
+    _watchdog?.cancel();
     final pc = _pc;
     _pc = null;
     try {

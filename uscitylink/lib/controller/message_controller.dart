@@ -9,6 +9,7 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/message_service.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/utils.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 class MessageController extends GetxController {
   SocketService socketService = Get.find<SocketService>();
@@ -44,7 +45,7 @@ class MessageController extends GetxController {
 
   @override
   void dispose() {
-    if (socketService.isConnected.value) {
+    if (socketService.isConnected.value && !CallService.inCall) {
       socketService.socket.disconnect();
       socketService.isConnected.value = false;
     }

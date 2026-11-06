@@ -19,6 +19,7 @@ import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/services/call/call_kit.dart';
 import 'package:uscitylink/services/call/call_models.dart';
 import 'package:uscitylink/services/call/call_tones.dart';
+import 'package:uscitylink/services/call/lock_screen.dart';
 import 'package:uscitylink/services/call/webrtc_engine.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/staff/notification_settings_service.dart';
@@ -122,6 +123,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
   StreamSubscription? _callkitSub;
   Timer? _endedTimer;
   bool _isCaller = false;
+  bool _showCallOnOpen = false;
 
   String? get callId => info.value?.callId;
   bool get busy => phase.value != CallPhase.idle && phase.value != CallPhase.ended;
@@ -137,6 +139,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
     _callkitSub = FlutterCallkitIncoming.onEvent.listen(_onCallKitEvent);
+    ever<CallPhase>(phase, (_) => syncLockScreen());
     final socketService = Get.isRegistered<SocketService>() ? Get.find<SocketService>() : null;
     if (socketService != null) {
       ever<bool>(socketService.isConnected, (connected) {
@@ -167,6 +170,14 @@ class CallService extends GetxService with WidgetsBindingObserver {
         _resumeCameraOnReturn = false;
         setCamera(true);
       }
+      // Answered on the phone's call screen while the app was closed or in the background: opening
+      // the app goes straight to the call (the screens weren't there to show it when it was answered)
+      if (_showCallOnOpen) {
+        _showCallOnOpen = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (busy) _openCallScreen();
+        });
+      }
     }
     final call = info.value;
     if (phase.value != CallPhase.incoming || call == null) return;
@@ -185,31 +196,50 @@ class CallService extends GetxService with WidgetsBindingObserver {
     }
   }
 
-  /// Answered from the lock screen while the app was closed: pick the call up now.
+  /// Answered from the lock screen while the app was closed: pick the call up now — first, before
+  /// any setup that waits on the network (the caller is already waiting).
   Future<void> _afterLaunch() async {
     final role = '${await UserPreferenceController().getRole() ?? ''}';
     isStaffUser.value = role.isNotEmpty && role != 'driver';
+    try {
+      final calls = await FlutterCallkitIncoming.activeCalls();
+      for (final c in calls) {
+        if (c.isAccepted && !busy) unawaited(accept(c.id, fromNative: true, native: _extra(c)));
+      }
+    } catch (_) {}
     if (isStaffUser.value) {
       unawaited(NotificationSettingsService().get().then((s) => callMute = s.calls, onError: (_) => callMute));
     }
     await refreshConfig();
     await registerVoipToken();
-    if (Platform.isAndroid) {
+    if (busy) return; // no permission screens over a call being answered
+    await _askMicrophoneOnce();
+    if (Platform.isAndroid && _inForeground) {
       try {
-        // Full-screen incoming call over the lock screen (Android 14+ asks once)
-        if (!await FlutterCallkitIncoming.canUseFullScreenIntent()) {
+        // Full-screen incoming call over the lock screen (Android 14+). Asked once: it opens a
+        // settings page, which must not come back on every launch for someone who said no
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.getBool('call_fullscreen_asked') != true && !await FlutterCallkitIncoming.canUseFullScreenIntent()) {
+          await prefs.setBool('call_fullscreen_asked', true);
           await FlutterCallkitIncoming.requestFullIntentPermission();
         }
       } catch (_) {}
     }
-    try {
-      final calls = await FlutterCallkitIncoming.activeCalls();
-      for (final c in calls) {
-        if (c.isAccepted && !busy) unawaited(accept(c.id, fromNative: true));
-      }
-    } catch (_) {}
     // Opened by tapping one of our calls in the Phone app's Recents (app wasn't running)
     unawaited(_callBackFromRecents());
+  }
+
+  /// Microphone access before the first call, while the app is open: a call answered on a locked
+  /// phone can't show the permission question, and would sit there without sound.
+  Future<void> _askMicrophoneOnce() async {
+    if (!enabled.value || !_inForeground) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('call_mic_asked') == true) return;
+      if (await Permission.microphone.isGranted) return;
+      await prefs.setBool('call_mic_asked', true);
+      await Permission.microphone.request();
+    } catch (_) {}
   }
 
   // ---------- calling back from the Phone app's Recents (iOS) ----------
@@ -460,14 +490,24 @@ class CallService extends GetxService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> accept(String id, {bool fromNative = false, bool? video}) async {
+  /// [native] is the phone's call screen data (the caller, channel…) when it was answered there.
+  Future<void> accept(String id, {bool fromNative = false, bool? video, Map<String, dynamic>? native}) async {
     if (_accepting.contains(id) || (callId == id && phase.value != CallPhase.incoming && phase.value != CallPhase.idle)) {
       return;
     }
     _accepting.add(id);
+    if (callId != id && !busy) {
+      // Rang by push (app closed, or in the background with the socket off), so this side has no
+      // call yet. Know it before answering: the caller's offer is dropped for an unknown call, which
+      // left the screen empty, no sound, stuck on "Connecting…".
+      info.value = CallInfo.fromPush({...?native, 'callId': id});
+      peerName.value = CallKit.callerTitle(info.value!);
+      peerSubtitle.value = CallKit.callerSubtitle(info.value!);
+    }
     await CallTones.stop();
     if (fromNative) {
       _nativeAccepted.add(id);
+      if (!_inForeground) _showCallOnOpen = true;
     } else {
       // Answered in the app: dismiss the native screen if a push also showed it
       await _endNative(id);
@@ -706,6 +746,8 @@ class CallService extends GetxService with WidgetsBindingObserver {
         for (final e in _engines.values) {
           e.restartIce();
         }
+      } else if (callId == d['callId'] && (phase.value == CallPhase.connecting || _accepting.contains(callId))) {
+        // Just answered (e.g. from the lock screen) and the connection is still being set up
       } else {
         socket.emit('call:end', {'callId': d['callId']});
       }
@@ -996,7 +1038,7 @@ class CallService extends GetxService with WidgetsBindingObserver {
     if (event is CallEventActionCallIncoming) {
       await _onNativeIncoming(event.callKitParams);
     } else if (event is CallEventActionCallAccept) {
-      await accept(event.callKitParams.id, fromNative: true);
+      await accept(event.callKitParams.id, fromNative: true, native: _extra(event.callKitParams));
     } else if (event is CallEventActionCallDecline) {
       // Declined on the native ringing screen. Ignore it for a call that isn't ringing here any more
       // (answered in the app, or a native failure reported as a decline).
@@ -1028,6 +1070,14 @@ class CallService extends GetxService with WidgetsBindingObserver {
     }
   }
 
+  static Map<String, dynamic> _extra(CallKitParams p) {
+    try {
+      return Map<String, dynamic>.from(p.extra ?? {});
+    } catch (_) {
+      return {};
+    }
+  }
+
   /// iOS showed a call from a VoIP push (AppDelegate.swift), possibly with the app closed. Track it
   /// and connect the socket, so a caller who hangs up — or a dispatcher answering elsewhere — stops
   /// the phone ringing right away instead of after the ring timeout.
@@ -1055,6 +1105,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   /// Back to the call screen (e.g. from the dashboard's "On a call" card).
   void openCallScreen() => _openCallScreen();
+
+  /// The call screen may show over the lock screen only while it's open during a call (main.dart
+  /// also calls this on every screen change).
+  void syncLockScreen() => LockScreen.showCallOverLock(busy && Get.currentRoute == '/CallView');
 
   void _openCallScreen() {
     if (Get.currentRoute != '/CallView') Get.to(() => const CallView(), routeName: '/CallView');

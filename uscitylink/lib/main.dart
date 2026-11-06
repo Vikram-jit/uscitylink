@@ -119,6 +119,10 @@ class MyApp extends StatelessWidget {
       initialRoute: AppRoutes.splashView,
       getPages: AppRoutes.routes,
       navigatorObservers: [routeObserver],
+      // Call screen over the lock screen only while it's the screen showing (call_service.dart)
+      routingCallback: (_) {
+        if (Get.isRegistered<CallService>()) Get.find<CallService>().syncLockScreen();
+      },
     );
   }
 }
