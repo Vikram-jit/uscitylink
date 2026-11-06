@@ -32,6 +32,29 @@ const s3Client = new S3Client({
   },
 });
 
+const removeSensitiveFields = (data: any): any => {
+  if (Array.isArray(data)) {
+    return data.map(removeSensitiveFields);
+  }
+
+  if (data !== null && typeof data === "object") {
+    const plainData =
+      typeof data.toJSON === "function" ? data.toJSON() : data;
+
+    return Object.fromEntries(
+      Object.entries(plainData)
+        .filter(
+          ([key]) =>
+            !/password/i.test(key) &&
+            !["device_token", "voip_token"].includes(key.toLowerCase())
+        )
+        .map(([key, value]) => [key, removeSensitiveFields(value)])
+    );
+  }
+
+  return data;
+};
+
 export const getDriverDocumentUrl = async (
   req: Request,
   res: Response
@@ -469,6 +492,17 @@ export async function getDriverProfileById(
 
     // 1. Get the USCityLink profile and associated user
     const userProfile = await UserProfile.findByPk(req.params.id, {
+      attributes: {
+        exclude: [
+          "password",
+          "password_confirmation",
+          "current_password",
+          "new_password",
+          "eld_password",
+          "device_token",
+          "voip_token",
+        ],
+      },
       include: [
         {
           model: User,
@@ -506,7 +540,39 @@ export async function getDriverProfileById(
 
     // 2. Get driver information from Yard Management
     const driverRows = await secondarySequelize.query<any>(
-      `SELECT * FROM drivers WHERE id = :driverId LIMIT 1`,
+      `
+      SELECT
+        id,
+        company_id,
+        company_uuid,
+        driver_number,
+        driver_role,
+        phone_number,
+        name,
+        assgin_status,
+        email,
+        pre_pass_id,
+        driver_fuel_id,
+        fuel_card_number,
+        status,
+        current_position,
+        ready_status,
+        assgin_vehicle_entry_id,
+        deleted_at,
+        created_at,
+        updated_at,
+        samsara_id,
+        hourly_rate,
+        profile_url,
+        licenseNumber,
+        address,
+        city,
+        state,
+        zip
+      FROM drivers
+      WHERE id = :driverId
+      LIMIT 1
+      `,
       {
         replacements: { driverId },
         type: QueryTypes.SELECT,
@@ -737,10 +803,33 @@ export async function getDriverProfileById(
     const totalItems = Number(countRows[0]?.total || 0);
     const totalPages = Math.ceil(totalItems / pageSize);
 
+    // return res.status(200).json({
+    //   status: true,
+    //   message: "Driver profile retrieved successfully.",
+    //   data: {
+    //     profile: userProfile,
+    //     driver,
+    //     documents: formattedDocuments,
+    //     incomeSummary: {
+    //       totalTrips: Number(incomeSummary.totalTrips || 0),
+    //       totalIncome: Number(incomeSummary.totalIncome || 0),
+    //       totalDeductions: Number(incomeSummary.totalDeductions || 0),
+    //       totalMileage: Number(incomeSummary.totalMileage || 0),
+    //     },
+    //     trips,
+    //     pagination: {
+    //       currentPage: page,
+    //       pageSize,
+    //       totalItems,
+    //       totalPages,
+    //     },
+    //   },
+    // });
+
     return res.status(200).json({
       status: true,
       message: "Driver profile retrieved successfully.",
-      data: {
+      data: removeSensitiveFields({
         profile: userProfile,
         driver,
         documents: formattedDocuments,
@@ -757,7 +846,7 @@ export async function getDriverProfileById(
           totalItems,
           totalPages,
         },
-      },
+      }),
     });
   } catch (err: any) {
     console.error("getDriverProfileById error:", err);

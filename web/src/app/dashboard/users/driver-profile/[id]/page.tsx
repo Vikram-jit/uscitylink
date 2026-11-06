@@ -222,14 +222,14 @@ export default function DriverProfilePage() {
               </Typography>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            {/* <Grid item xs={12} md={4}>
               <Typography color="text.secondary" variant="body2">
                 Yard Management Driver ID
               </Typography>
               <Typography fontWeight={600}>
                 {user?.yard_id || '-'}
               </Typography>
-            </Grid>
+            </Grid> */}
 
             <Grid item xs={12} md={4}>
               <Typography color="text.secondary" variant="body2">
@@ -538,7 +538,7 @@ export default function DriverProfilePage() {
                             <TableCell>Pickup Location</TableCell>
                             <TableCell>Delivery Location</TableCell>
                             <TableCell>Mileage</TableCell>
-                            <TableCell>Status</TableCell>
+                           
                           </TableRow>
                         </TableHead>
 
@@ -559,9 +559,7 @@ export default function DriverProfilePage() {
                                 {formatValue(location.mileage)}
                               </TableCell>
 
-                              <TableCell>
-                                {formatValue(location.status)}
-                              </TableCell>
+                             
                             </TableRow>
                           ))}
                         </TableBody>
