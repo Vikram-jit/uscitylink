@@ -33,4 +33,5 @@ export interface User {
   updatedAt:    Date;
   profiles? : UserModel[]
   driver_number:    null | string
+  yard_id?:         null | number
 }
