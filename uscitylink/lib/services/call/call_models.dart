@@ -27,6 +27,8 @@ class CallInfo {
   final String channelId;
   final String channelName;
   final String driverId;
+  /// The driver's phone number, shown next to their name ("Name (+1 …)"); empty if unknown.
+  final String driverPhone;
   final CallPeer from;
   final CallPeer? answeredBy;
   final int? answeredAt;
@@ -43,12 +45,17 @@ class CallInfo {
   /// That request is a transfer: whoever asked hands the call over and leaves.
   final bool transfer;
 
+  /// Video: whose camera is on, and whether the recording keeps video.
+  final List<String> camera;
+  final bool recordVideo;
+
   const CallInfo({
     required this.callId,
     required this.type,
     required this.channelId,
     required this.channelName,
     required this.driverId,
+    this.driverPhone = '',
     required this.from,
     this.answeredBy,
     this.answeredAt,
@@ -57,6 +64,8 @@ class CallInfo {
     this.pending = const [],
     this.invitedBy,
     this.transfer = false,
+    this.camera = const [],
+    this.recordVideo = false,
   });
 
   factory CallInfo.fromJson(Map<String, dynamic> json) => CallInfo(
@@ -65,6 +74,7 @@ class CallInfo {
         channelId: '${json['channelId'] ?? ''}',
         channelName: '${json['channelName'] ?? ''}',
         driverId: '${json['driverId'] ?? ''}',
+        driverPhone: '${json['driverPhone'] ?? ''}',
         from: CallPeer.fromJson(Map<String, dynamic>.from(json['from'] ?? {})),
         answeredBy: json['answeredBy'] is Map ? CallPeer.fromJson(Map<String, dynamic>.from(json['answeredBy'])) : null,
         answeredAt: (json['answeredAt'] as num?)?.toInt(),
@@ -75,6 +85,10 @@ class CallInfo {
             ? CallPeer.fromJson(Map<String, dynamic>.from(json['invitedBy']))
             : null,
         transfer: json['transfer'] == true,
+        camera: json['camera'] is Map
+            ? Map<String, dynamic>.from(json['camera']).entries.where((e) => e.value == true).map((e) => e.key).toList()
+            : const [],
+        recordVideo: json['recordVideo'] == true,
       );
 
   static List<CallPeer> peerList(dynamic list) =>
@@ -87,6 +101,7 @@ class CallInfo {
         channelId: '${data['channelId'] ?? ''}',
         channelName: '${data['channelName'] ?? ''}',
         driverId: '',
+        driverPhone: '${data['driverPhone'] ?? ''}',
         from: CallPeer(
           id: '${data['callerId'] ?? ''}',
           name: '${data['callerName'] ?? 'Dispatch'}',
@@ -94,6 +109,9 @@ class CallInfo {
         ),
       );
 }
+
+/// A driver's name as calls show it: "Sukhdev Singh (+1 555 123 4567)", or just the name.
+String driverLabel(String name, String phone) => phone.trim().isEmpty ? name : '$name (${phone.trim()})';
 
 String formatCallDuration(int seconds) {
   final h = seconds ~/ 3600;

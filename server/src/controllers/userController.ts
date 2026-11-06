@@ -774,6 +774,14 @@ export async function updateDeviceToken(
   res: Response
 ): Promise<any> {
   try {
+    // A phone's token belongs to whoever is logged in on it now. Without this, an account used
+    // earlier on the same phone (e.g. a staff login before a driver login) keeps ringing it.
+    if (req.body.device_token) {
+      await UserProfile.update(
+        { device_token: null },
+        { where: { device_token: req.body.device_token, id: { [Op.ne]: req.user?.id } } }
+      );
+    }
     await UserProfile.update(
       {
         device_token: req.body.device_token,

@@ -113,6 +113,7 @@ export default function MessagesPaneHeader(props: MessagesPaneHeaderProps) {
       </Stack>
       <Stack spacing={1} direction="row" sx={{ alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
         <CallButton driver={sender} />
+        <CallButton driver={sender} video />
 
         <Button
           onClick={()=>setMediaPanel((prev) => !prev)}

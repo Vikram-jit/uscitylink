@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { requireRole } from "../middleware/requireRole";
 import {
+  callbackTarget,
   callConfig,
   declineCallRest,
   endCallRest,
@@ -24,6 +25,7 @@ router.put("/voip-token", authMiddleware, saveVoipToken);
 router.get("/settings", authMiddleware, getCallSettings);
 router.put("/settings", authMiddleware, requireRole("admin"), updateCallSettings);
 router.get("/available-staff", authMiddleware, listAvailableStaff);
+router.get("/callback-target", authMiddleware, callbackTarget);
 router.get("/", authMiddleware, listCalls);
 router.get("/:id", authMiddleware, getCall);
 router.get("/:id/recording", authMiddleware, getCallRecording);

@@ -22,7 +22,17 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowsClockwise, Phone, PhoneIncoming, PhoneOutgoing, PhoneX, Record, ShareNetwork, UsersThree } from '@phosphor-icons/react';
+import {
+  ArrowsClockwise,
+  Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneX,
+  Record,
+  ShareNetwork,
+  UsersThree,
+  VideoCamera,
+} from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 import { toast } from 'react-toastify';
 
@@ -143,6 +153,27 @@ export function CallHistory(): React.JSX.Element {
               />
             </Tooltip>
           ) : null}
+          {isAdmin ? (
+            <Tooltip title="Video calls: also keep everyone's camera in the recording (a grid video). Audio is always recorded. Bigger files.">
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={settings?.data?.videoRecording === true}
+                    disabled={saving || !settings || settings?.data?.recording === false}
+                    onChange={async (e) => {
+                      try {
+                        await updateSettings({ videoRecording: e.target.checked }).unwrap();
+                        toast.success(e.target.checked ? 'Video calls will keep video in the recording' : 'Video calls record audio only');
+                      } catch (err: any) {
+                        toast.error(err?.data?.message || 'Could not save');
+                      }
+                    }}
+                  />
+                }
+                label="Record video"
+              />
+            </Tooltip>
+          ) : null}
           <Tooltip title="Refresh">
             <IconButton onClick={() => void refetch()}>
               <ArrowsClockwise />
@@ -176,6 +207,12 @@ export function CallHistory(): React.JSX.Element {
                   <TableRow hover key={c.id} onClick={() => setOpenId(c.id)} sx={{ cursor: 'pointer' }}>
                     <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {c.driver_name || '—'}
+                      {c.driver_name && c.driver_phone ? ` (${c.driver_phone})` : ''}
+                      {c.type === 'video' ? (
+                        <Tooltip title="Video call">
+                          <VideoCamera size={15} style={{ marginLeft: 6, verticalAlign: 'middle' }} weight="fill" />
+                        </Tooltip>
+                      ) : null}
                       {c.people && c.people > 2 ? (
                         <Chip
                           icon={<UsersThree size={14} />}
@@ -189,7 +226,7 @@ export function CallHistory(): React.JSX.Element {
                     <TableCell>
                       <Stack alignItems="center" direction="row" spacing={1} sx={{ whiteSpace: 'nowrap' }}>
                         <Icon color={missed ? 'var(--mui-palette-error-main)' : undefined} size={16} />
-                        <span>{out ? `${c.initiator_name || 'Dispatch'} → driver` : 'Dispatch line'}</span>
+                        <span>{out ? `${c.initiator_name || 'Dispatch'} → driver` : 'driver → dispatch'}</span>
                       </Stack>
                     </TableCell>
                     <TableCell>

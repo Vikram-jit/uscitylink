@@ -242,6 +242,21 @@ class _StaffMessageViewState extends State<StaffMessageView>
                   ),
                 )
               : const SizedBox.shrink()),
+          // Video call to this driver
+          Obx(() => CallService.to.enabled.value
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: InkWell(
+                    key: const Key('videoCallDriverButton'),
+                    onTap: () => CallService.to.startCall(
+                        driverId: _staffchatController.userId.value,
+                        name: _staffchatController.userName.value,
+                        subtitle: 'Driver',
+                        video: true),
+                    child: const Icon(Icons.videocam_rounded, color: Colors.white),
+                  ),
+                )
+              : const SizedBox.shrink()),
           InkWell(
             onTap: () {
               setState(() {

@@ -86,7 +86,10 @@ function RecordingSection({ call }: { call: CallDetail }): React.JSX.Element | n
   return (
     <Stack spacing={1}>
       {r.error ? <Alert severity="warning">{r.error} — only the other voice is in the recording.</Alert> : null}
-      {link ? (
+      {link?.video_url ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption -- call video, no captions exist
+        <video autoPlay controls playsInline src={link.video_url} style={{ width: '100%', borderRadius: 8, background: '#0B1F3A' }} />
+      ) : link ? (
         // eslint-disable-next-line jsx-a11y/media-has-caption -- phone-call audio, no captions exist
         <audio autoPlay controls src={link.url} style={{ width: '100%' }} />
       ) : (
@@ -96,7 +99,7 @@ function RecordingSection({ call }: { call: CallDetail }): React.JSX.Element | n
           startIcon={isFetching ? <CircularProgress size={14} /> : <Play weight="fill" />}
           variant="outlined"
         >
-          Play recording
+          {r.has_video ? 'Play video recording' : 'Play recording'}
         </Button>
       )}
       {error ? <Alert severity="error">{(error as any)?.data?.message || 'Could not open the recording'}</Alert> : null}
@@ -113,9 +116,16 @@ function RecordingSection({ call }: { call: CallDetail }): React.JSX.Element | n
         />
       ) : null}
       {link ? (
-        <Button component="a" download href={link.url} size="small" startIcon={<DownloadSimple />} target="_blank">
-          Download
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button component="a" download href={link.url} size="small" startIcon={<DownloadSimple />} target="_blank">
+            {link.video_url ? 'Download audio' : 'Download'}
+          </Button>
+          {link.video_url ? (
+            <Button component="a" download href={link.video_url} size="small" startIcon={<DownloadSimple />} target="_blank">
+              Download video
+            </Button>
+          ) : null}
+        </Stack>
       ) : null}
     </Stack>
   );
@@ -153,7 +163,9 @@ export function CallDetailDrawer({ callId, onClose }: { callId: string | null; o
           <Stack alignItems="center" direction="row" spacing={1.5} sx={{ mb: 2 }}>
             {c.direction === 'driver_to_dispatch' ? <PhoneIncoming size={22} /> : <PhoneOutgoing size={22} />}
             <Box>
-              <Typography variant="subtitle1">{c.driver_name || 'Driver'}</Typography>
+              <Typography variant="subtitle1">{c.driver_name || 'Driver'}
+                {c.driver_phone ? ` (${c.driver_phone})` : ''}
+              </Typography>
               <Typography color="text.secondary" variant="body2">
                 {c.direction === 'driver_to_dispatch' ? 'Called the dispatch line' : `${c.initiator_name || 'Dispatch'} called the driver`}
               </Typography>

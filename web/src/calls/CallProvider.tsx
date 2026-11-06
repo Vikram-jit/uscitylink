@@ -8,7 +8,7 @@ import { useSocketEvent } from '@/hooks/use-socket-event';
 import { useSaveCallQualityMutation } from '@/redux/CallApiSlice';
 
 import { playEndTone, playRecordingTone, playRingback, playRingtone, stopTones } from './sounds';
-import { getMicrophone, microphoneErrorText, RecordingUplink, SignalData, WebRtcEngine } from './webrtcEngine';
+import { getCamera, getMicrophone, microphoneErrorText, RecordingUplink, SignalData, WebRtcEngine } from './webrtcEngine';
 
 // Voice calls on the web dashboard. One call at a time; the server (server/src/calls) decides who
 // rings and when a call ends, this provider runs the WebRTC side and the UI state.
@@ -19,6 +19,9 @@ import { getMicrophone, microphoneErrorText, RecordingUplink, SignalData, WebRtc
 // Group calls (staff adds staff): one WebRTC connection per other person, all sharing this tab's
 // microphone. Whoever joins sends the offers to everyone already on the call; signals carry `to`
 // and come back with `from`. A 1-to-1 call is the same thing with one connection.
+//
+// Video: any call can turn its camera on/off (webrtcEngine.setCamera — no renegotiation); camera
+// state travels with call:media { video }. A "video call" just starts with the camera on.
 
 export type CallPhase = 'idle' | 'outgoing' | 'incoming' | 'connecting' | 'active' | 'ended';
 
@@ -54,6 +57,19 @@ export interface CallState {
   invitedBy: CallPeer | null;
   /** That request is a transfer: whoever asked hands the call over and leaves. */
   transfer: boolean;
+  /** Started as a video call (the caller's camera on). Any call can turn cameras on/off. */
+  callType: 'audio' | 'video';
+  /** My camera is on. */
+  cameraOn: boolean;
+  /** People on the call whose camera is on. */
+  remoteCamera: string[];
+  /** People whose app can show video (older driver apps are audio-only). */
+  videoCapable: string[];
+  /** The recording keeps video too (admin "Record video", or a staff member turned it on mid-call). */
+  recordVideo: boolean;
+  /** The driver on the call and their phone number (shown as "Name (phone)"). */
+  driverId: string;
+  driverPhone: string;
 }
 
 /** An answered call somewhere in the company: which driver, and who is on it (chat "On call" marks). */
@@ -66,8 +82,18 @@ export interface OnCallInfo {
 }
 
 interface CallContextValue extends CallState {
-  startCall: (driver: { id: string; name: string }) => Promise<void>;
-  accept: () => Promise<void>;
+  startCall: (driver: { id: string; name: string }, opts?: { video?: boolean }) => Promise<void>;
+  accept: (opts?: { video?: boolean }) => Promise<void>;
+  /** Camera on/off during the call. */
+  toggleCamera: () => Promise<void>;
+  /** Record video too, for the rest of this call (audio is always recorded). */
+  startVideoRecording: () => Promise<void>;
+  cameras: MediaDeviceInfo[];
+  switchCamera: (deviceId: string) => Promise<void>;
+  /** My camera, for the self-view. */
+  localVideo: MediaStream | null;
+  /** Everyone else's audio + video, by user id. */
+  remoteStreams: Record<string, MediaStream>;
   decline: () => void;
   hangup: () => void;
   toggleMute: () => void;
@@ -98,11 +124,36 @@ const IDLE: CallState = {
   recording: false,
   members: [],
   pending: [],
+  driverId: '',
+  driverPhone: '',
   mutedIds: [],
   maxParticipants: 6,
   invitedBy: null,
   transfer: false,
+  callType: 'audio',
+  cameraOn: false,
+  remoteCamera: [],
+  videoCapable: [],
+  recordVideo: false,
 };
+
+/** Video quality per person: lighter when several people send to everyone (mesh). */
+const videoLimitFor = (people: number) =>
+  people >= 3 ? { maxBitrate: 200_000, maxFramerate: 12, scale: 2 } : { maxBitrate: 500_000, maxFramerate: 15, scale: 1 };
+
+const cameraErrorText = (err: unknown) => {
+  const name = (err as { name?: string })?.name;
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Camera is blocked — allow it in the browser (lock icon next to the address)';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera found';
+  if (name === 'NotReadableError') return 'The camera is in use by another app';
+  return 'Could not turn the camera on';
+};
+
+/** Camera state from a server roster/view: ids whose camera is on. */
+const cameraIds = (camera: Record<string, boolean> | undefined) =>
+  Object.entries(camera || {})
+    .filter(([, on]) => on)
+    .map(([id]) => id);
 
 const CallContext = React.createContext<CallContextValue | null>(null);
 
@@ -113,6 +164,14 @@ export function useCall(): CallContextValue {
 }
 
 /** The call a driver is on right now (for "On call" marks), or null. Safe outside <CallProvider>. */
+/** A person's name as the call shows it: the driver gets their phone number, "Name (+1 …)". */
+export function callName(call: Pick<CallState, 'driverId' | 'driverPhone'>, person?: CallPeer | null): string {
+  if (!person) return '';
+  return person.role === 'driver' && person.id === call.driverId && call.driverPhone
+    ? `${person.name} (${call.driverPhone})`
+    : person.name;
+}
+
 export function useDriverOnCall(driverId?: string | null): OnCallInfo | null {
   const ctx = React.useContext(CallContext);
   return (driverId && ctx?.onCallByDriver[driverId]) || null;
@@ -167,6 +226,12 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
   const [microphones, setMicrophones] = React.useState<MediaDeviceInfo[]>([]);
   const [micId, setMicId] = React.useState<string | null>(null);
   const [onCallByDriver, setOnCallByDriver] = React.useState<Record<string, OnCallInfo>>({});
+  const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([]);
+  const [localVideo, setLocalVideo] = React.useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = React.useState<Record<string, MediaStream>>({});
+  // My camera track (shared by every connection, like the microphone)
+  const cameraRef = React.useRef<MediaStreamTrack | null>(null);
+  const cameraIdRef = React.useRef<string | null>(null);
 
   const stateRef = React.useRef(state);
   stateRef.current = state;
@@ -194,11 +259,14 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     callId: call.callId,
     peer: call.joinRequest ? call.invitedBy : call.from,
     channelName: call.channelName || '',
+    driverId: call.driverId || '',
+    driverPhone: call.driverPhone || '',
     moreIncoming: more,
     recording: !!call.recording,
     invitedBy: call.joinRequest ? call.invitedBy : null,
     transfer: !!call.transfer,
     members: call.joinRequest ? (call.members || []) : [],
+    callType: call.type === 'video' ? 'video' : 'audio',
   });
 
   /** Show the next driver who is still ringing, or go idle. */
@@ -249,6 +317,7 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       setMicrophones(devices.filter((d) => d.kind === 'audioinput'));
+      setCameras(devices.filter((d) => d.kind === 'videoinput'));
     } catch {
       setMicrophones([]);
     }
@@ -265,6 +334,24 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       audio.remove();
     }
     audiosRef.current.delete(peerId);
+    setRemoteStreams(({ [peerId]: _gone, ...rest }) => rest);
+  };
+
+  /** Use [track] as my camera on every connection (null = camera off) and tell the others. */
+  const applyCamera = (track: MediaStreamTrack | null, announce: boolean) => {
+    cameraRef.current = track;
+    setLocalVideo(track ? new MediaStream([track]) : null);
+    enginesRef.current.forEach((e) => void e.setCamera(track));
+    void uplinkRef.current?.setCamera(track);
+    patch({ cameraOn: !!track });
+    const { callId } = stateRef.current;
+    if (announce && callId) socket?.emit('call:media', { callId, video: !!track });
+  };
+
+  const stopCamera = () => {
+    cameraRef.current?.stop();
+    cameraRef.current = null;
+    setLocalVideo(null);
   };
 
   const teardown = React.useCallback(
@@ -279,6 +366,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       uplinkRef.current = null;
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
       micStreamRef.current = null;
+      stopCamera();
+      setRemoteStreams({});
       recordingRef.current = false;
       if (stats && callId && stateRef.current.answeredAt) void saveQuality({ id: callId, stats }).catch(() => undefined);
       if (endedText) {
@@ -306,13 +395,14 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       const uplink = new RecordingUplink({
         iceServers: iceRef.current,
         track,
+        video: stateRef.current.recordVideo,
         offer: async (sdp) => {
           const res: any = await emit('call:rec_offer', { callId, sdp });
           return res?.ok ? res.sdp : null;
         },
       });
       uplinkRef.current = uplink;
-      void uplink.start();
+      void uplink.start().then(() => uplink.setCamera(cameraRef.current));
     },
     [emit]
   );
@@ -338,6 +428,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
           }
           audio.srcObject = stream;
           void audio.play().catch(() => undefined);
+          // New object each time so the video tiles re-render when their video track arrives
+          setRemoteStreams((all) => ({ ...all, [peerId]: stream }));
         },
         onState: (s) => {
           if (s === 'connected') {
@@ -358,6 +450,8 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
         },
       });
       enginesRef.current.set(peerId, engine);
+      void engine.setVideoLimit(videoLimitFor(stateRef.current.members.length + 1));
+      if (cameraRef.current) void engine.setCamera(cameraRef.current);
       // Signals that arrived before this connection existed
       const queued = pendingSignals.current.get(peerId) || [];
       pendingSignals.current.delete(peerId);
@@ -381,7 +475,7 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
   // ---------- actions ----------
 
   const startCall = React.useCallback(
-    async (driver: { id: string; name: string }) => {
+    async (driver: { id: string; name: string }, opts: { video?: boolean } = {}) => {
       if (stateRef.current.phase !== 'idle' && stateRef.current.phase !== 'ended') {
         toast.info('Finish the current call first');
         return;
@@ -394,13 +488,31 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
         toast.error(microphoneErrorText(err, 'make calls'));
         return;
       }
+      let camera: MediaStreamTrack | null = null;
+      if (opts.video) {
+        try {
+          camera = await getCamera(cameraIdRef.current || undefined);
+        } catch (err) {
+          // Staff without a camera still make video calls: the driver's camera is what matters,
+          // and they see a blank tile for this side
+          toast.info(`${cameraErrorText(err)} — you'll see the driver; they'll see a blank screen for you`);
+        }
+      }
       void refreshMicrophones();
       const peer: CallPeer = { id: driver.id, name: driver.name, role: 'driver' };
-      setState({ ...IDLE, phase: 'outgoing', direction: 'out', peer, members: [peer] });
-      // group: this dashboard can do group calls (older driver apps can't — see the server)
-      const res: any = await emit('call:invite', { driverId: driver.id, group: true });
+      const callType = opts.video ? 'video' : 'audio';
+      setState({ ...IDLE, phase: 'outgoing', direction: 'out', peer, members: [peer], callType });
+      if (camera) applyCamera(camera, false);
+      // group / video: what this dashboard can do (older driver apps can't — see the server)
+      const res: any = await emit('call:invite', {
+        driverId: driver.id,
+        group: true,
+        video: true,
+        type: callType,
+      });
       if (!res?.ok) {
         mic.getTracks().forEach((t) => t.stop());
+        stopCamera();
         const text = res?.error === 'busy' ? 'Busy' : res?.error === 'unavailable' ? 'Unavailable' : null;
         if (text) {
           patch({ phase: 'ended', endedText: `${driver.name} is ${text.toLowerCase()}`, callId: res?.callId || null });
@@ -416,7 +528,10 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       patch({
         callId: res.callId,
         channelName: res.call?.channelName || '',
+        driverId: res.call?.driverId || driver.id,
+        driverPhone: res.call?.driverPhone || '',
         recording: !!res.call?.recording,
+        recordVideo: !!res.call?.recordVideo,
         maxParticipants: res.call?.maxParticipants || 6,
       });
       pendingMicRef.current = mic;
@@ -425,7 +540,7 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     [emit, micId, refreshMicrophones]
   );
 
-  const accept = React.useCallback(async () => {
+  const accept = React.useCallback(async (opts: { video?: boolean } = {}) => {
     const { callId, phase } = stateRef.current;
     if (!callId || phase !== 'incoming') return;
     stopTones();
@@ -438,10 +553,19 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       setState(IDLE);
       return;
     }
+    let camera: MediaStreamTrack | null = null;
+    if (opts.video) {
+      try {
+        camera = await getCamera(cameraIdRef.current || undefined);
+      } catch (err) {
+        toast.info(`${cameraErrorText(err)} — you'll see them; they'll see a blank screen for you`);
+      }
+    }
     patch({ phase: 'connecting' });
-    const res: any = await emit('call:accept', { callId, group: true });
+    const res: any = await emit('call:accept', { callId, group: true, videoCapable: true, camera: !!camera });
     if (!res?.ok) {
       mic.getTracks().forEach((t) => t.stop());
+      camera?.stop();
       toast.info(res?.message || 'This call has ended');
       setState(IDLE);
       return;
@@ -458,7 +582,13 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
       pending: others(res.call?.pending),
       maxParticipants: res.call?.maxParticipants || 6,
       peer: joining ? stateRef.current.peer : res.call?.from || stateRef.current.peer,
+      remoteCamera: cameraIds(res.call?.camera).filter((id) => id !== myUserId()),
+      videoCapable: res.call?.videoCapable || [],
+      recordVideo: !!res.call?.recordVideo,
+      driverId: res.call?.driverId || stateRef.current.driverId,
+      driverPhone: res.call?.driverPhone || stateRef.current.driverPhone,
     });
+    if (camera) applyCamera(camera, false);
     void refreshMicrophones();
     // Answering a call: the caller sends the offer. Joining a group call: I offer to everyone on it.
     beginMedia(mic, callId, !!res.call?.recording, members.map((m) => m.id), joining);
@@ -485,6 +615,47 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     micStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !muted));
     patch({ muted });
     if (stateRef.current.callId) socket?.emit('call:media', { callId: stateRef.current.callId, muted });
+  }, [socket]);
+
+  const startVideoRecording = React.useCallback(async () => {
+    const s = stateRef.current;
+    if (!s.callId || !s.recording || s.recordVideo) return;
+    const res: any = await emit('call:record_video', { callId: s.callId });
+    if (!res?.ok) {
+      toast.error(res?.message || 'Could not start video recording');
+      return;
+    }
+    patch({ recordVideo: true });
+    void uplinkRef.current?.setRecordVideo(true);
+    if (!cameraRef.current) toast.info('Video recording is on — turn your camera on to be in it');
+  }, [emit]);
+
+  const toggleCamera = React.useCallback(async () => {
+    if (!stateRef.current.callId) return;
+    if (cameraRef.current) {
+      stopCamera();
+      applyCamera(null, true);
+      return;
+    }
+    try {
+      const track = await getCamera(cameraIdRef.current || undefined);
+      applyCamera(track, true);
+      void refreshMicrophones();
+    } catch (err) {
+      toast.error(cameraErrorText(err));
+    }
+  }, [refreshMicrophones, socket]);
+
+  const switchCamera = React.useCallback(async (deviceId: string) => {
+    cameraIdRef.current = deviceId;
+    if (!cameraRef.current) return;
+    try {
+      const track = await getCamera(deviceId);
+      cameraRef.current.stop();
+      applyCamera(track, false);
+    } catch (err) {
+      toast.error(cameraErrorText(err));
+    }
   }, [socket]);
 
   const selectMicrophone = React.useCallback(async (deviceId: string) => {
@@ -564,14 +735,21 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     notifyBrowser(title, call.channelName ? `${call.channelName} — open USCityLink to answer` : 'Open USCityLink to answer');
   });
 
-  useSocketEvent('call:accepted', ({ callId, by }: any) => {
+  useSocketEvent('call:accepted', ({ callId, by, camera, videoCapable }: any) => {
     const s = stateRef.current;
     if (s.callId !== callId || s.phase !== 'outgoing') return;
     stopTones();
     const mic = pendingMicRef.current;
     pendingMicRef.current = null;
     const peer: CallPeer = by ? { ...by } : s.peer!;
-    patch({ phase: 'connecting', answeredAt: Date.now(), peer, members: [peer] });
+    patch({
+      phase: 'connecting',
+      answeredAt: Date.now(),
+      peer,
+      members: [peer],
+      remoteCamera: cameraIds(camera).filter((id) => id !== myUserId()),
+      videoCapable: videoCapable || [],
+    });
     if (!mic) {
       socket?.emit('call:end', { callId });
       return;
@@ -603,9 +781,20 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     toast.info(`${person.name} left the call`);
   });
 
-  useSocketEvent('call:participants', ({ callId, members, pending, max }: any) => {
+  useSocketEvent('call:participants', ({ callId, members, pending, max, camera, videoCapable }: any) => {
     if (stateRef.current.callId !== callId) return;
-    patch({ members: others(members), pending: others(pending), maxParticipants: max || 6 });
+    const me = myUserId();
+    const nextMembers = others(members);
+    patch({
+      members: nextMembers,
+      pending: others(pending),
+      maxParticipants: max || 6,
+      ...(camera ? { remoteCamera: cameraIds(camera).filter((id) => id !== me) } : {}),
+      ...(videoCapable ? { videoCapable } : {}),
+    });
+    // Everyone sends video to everyone: lighter video once 3+ are on the call
+    const limit = videoLimitFor(nextMembers.length + 1);
+    enginesRef.current.forEach((e) => void e.setVideoLimit(limit));
   });
 
   // Transfer: the other dispatcher picked up (call:ended follows for me), or didn't
@@ -647,12 +836,27 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     else pendingSignals.current.set(sender, [...(pendingSignals.current.get(sender) || []), data]);
   });
 
-  useSocketEvent('call:media', ({ callId, from, muted }: any) => {
+  // Someone on the call (staff) turned on video recording
+  useSocketEvent('call:record_video', ({ callId, by }: any) => {
+    const s = stateRef.current;
+    if (s.callId !== callId || s.recordVideo) return;
+    patch({ recordVideo: true });
+    void uplinkRef.current?.setRecordVideo(true);
+    if (by?.name) toast.info(`${by.name} started recording video`);
+  });
+
+  useSocketEvent('call:media', ({ callId, from, muted, video }: any) => {
     const s = stateRef.current;
     if (s.callId !== callId) return;
     const id = from || s.peer?.id || '';
     const mutedIds = muted ? Array.from(new Set([...s.mutedIds, id])) : s.mutedIds.filter((m) => m !== id);
-    patch({ mutedIds, remoteMuted: mutedIds.length > 0 });
+    const remoteCamera =
+      typeof video === 'boolean'
+        ? video
+          ? Array.from(new Set([...s.remoteCamera, id]))
+          : s.remoteCamera.filter((m) => m !== id)
+        : s.remoteCamera;
+    patch({ mutedIds, remoteMuted: mutedIds.length > 0, remoteCamera });
   });
 
   useSocketEvent('call:peer_reconnecting', ({ callId }: any) => {
@@ -716,6 +920,12 @@ export function CallProvider({ children }: { children: React.ReactNode }): React
     cancelAdd,
     transferTo,
     onCallByDriver,
+    toggleCamera,
+    startVideoRecording,
+    cameras,
+    switchCamera,
+    localVideo,
+    remoteStreams,
   };
 
   return (

@@ -13,6 +13,7 @@ const KEY_PRECHECK_ENABLED = "precheck_enabled";
 const KEY_SCALE_AGENT = "scale_agent_enabled";
 const KEY_CALLS = "calls_enabled";
 const KEY_CALL_RECORDING = "call_recording_enabled";
+const KEY_CALL_VIDEO_RECORDING = "call_video_recording_enabled";
 const KEY_SCALE_RELEASE_ROLE = "scale_release_role";
 const KEY_SCALE_WEBHOOK = "scale_webhook_url";
 const CACHE_MS = 30_000;
@@ -138,5 +139,16 @@ export const isCallRecordingEnabled = async (): Promise<boolean> => {
 
 export const setCallRecordingEnabled = async (enabled: boolean, userId?: string | null) => {
   await writeSetting(KEY_CALL_RECORDING, String(enabled), userId);
+  return enabled;
+};
+
+// Video calls: also keep the video in the recording (off by default — audio is always recorded)
+export const isCallVideoRecordingEnabled = async (): Promise<boolean> => {
+  const row = await readSetting(KEY_CALL_VIDEO_RECORDING);
+  return row?.value === "true";
+};
+
+export const setCallVideoRecordingEnabled = async (enabled: boolean, userId?: string | null) => {
+  await writeSetting(KEY_CALL_VIDEO_RECORDING, String(enabled), userId);
   return enabled;
 };

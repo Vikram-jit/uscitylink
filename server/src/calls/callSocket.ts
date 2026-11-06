@@ -2,15 +2,17 @@ import { Op } from "sequelize";
 import type { CustomSocket } from "../sockets/socket";
 import { isStaffRole, STAFF_ROLES } from "../middleware/requireRole";
 import { UserProfile } from "../models/UserProfile";
+import User from "../models/User";
 import Role from "../models/Role";
 import Channel from "../models/Channel";
 import UserChannel from "../models/UserChannel";
 import { Call, CallParticipant } from "../models/Call";
-import { isCallRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
+import { isCallMuted } from "../services/staffNotifications";
+import { isCallRecordingEnabled, isCallVideoRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
 import { CallService, ERRORS, MemoryCallStore, Person } from "./callService";
 import { iceServersFor } from "./iceServers";
 import { pushCallEnded, pushIncomingCall, pushMissedCall } from "./callPush";
-import { answerRecordingOffer, finishRecording } from "./callRecorder";
+import { answerRecordingOffer, finishRecording, startVideoRecording } from "./callRecorder";
 import { writeCallLog } from "./callLog";
 
 // Socket.IO side of calls: who may call whom, and the real dependencies for CallService.
@@ -30,6 +32,13 @@ import { writeCallLog } from "./callLog";
 //   call:member_joined / call:member_left { person }, call:participants { members, pending }
 
 const profileWithRole = (id: string) => UserProfile.findByPk(id, { include: [{ model: Role, as: "role" }] });
+
+/** A driver's phone number (users.phone_number), shown next to their name on calls. */
+export async function driverPhoneOf(profile?: UserProfile | null): Promise<string> {
+  if (!profile?.userId) return "";
+  const user = await User.findByPk(profile.userId, { attributes: ["id", "phone_number"] }).catch(() => null);
+  return String(user?.phone_number || "").trim();
+}
 
 async function pushTo(ids: string[], fn: (p: UserProfile) => Promise<void>) {
   if (!ids.length) return;
@@ -83,6 +92,9 @@ const CALL_SCOPED = new Set([
 ]);
 
 const liveSockets = (userId: string) => [...(userSockets.get(userId) || [])].filter((s) => s.connected);
+const isBrowser = (s: CustomSocket) => /mozilla/i.test(String(s.handshake.headers["user-agent"] || ""));
+/** Has the web dashboard open (not just the app). */
+const onDashboard = (userId: string) => liveSockets(userId).some(isBrowser);
 export const isOnline = (userId: string) => liveSockets(userId).length > 0;
 
 const forgetCall = (callId: string) => {
@@ -115,9 +127,13 @@ export const callService = new CallService({
           { device_token: { [Op.ne]: null }, platform: { [Op.in]: ["ios", "android"] } },
         ],
       },
-      attributes: ["id", "username"],
+      attributes: ["id", "username", "calls_muted_until"],
     });
-    return staff.map((s) => ({ id: s.id, name: s.username || "Dispatch", role: "staff" } as Person));
+    // "Mute call alerts" (staff app setting) silences their phone only: they're still rung while
+    // their web dashboard is open
+    return staff
+      .filter((s) => !isCallMuted(s) || onDashboard(s.id))
+      .map((s) => ({ id: s.id, name: s.username || "Dispatch", role: "staff" } as Person));
   },
   // Everyone rung also gets a push: drivers' phones, and dispatchers' staff app (an open dashboard
   // has no push token, so it rings on its connection only)
@@ -131,6 +147,7 @@ export const callService = new CallService({
         channelId: call.channelId,
         channelName: call.channelName,
         type: call.type,
+        driverPhone: call.driverPhone,
       })
       ),
   pushStopRinging: (ids, callId, reason) => pushTo(ids, (p) => pushCallEnded(p, callId, reason)),
@@ -145,6 +162,7 @@ export const callService = new CallService({
         channelId: call.channelId,
         channelName: call.channelName,
         type: call.type,
+        driverPhone: call.driverPhone,
       })
     ),
   persistJoinRequest: async (call, r) => {
@@ -194,11 +212,17 @@ export const callService = new CallService({
   // Everyone the call rang (each dispatcher in the ring group), with the time it reached them
   persistRinging: async (call, people) => {
     const at = new Date(call.ringingAt || Date.now());
+    const how = (id: string) => (liveSockets(id).length ? (onDashboard(id) ? "web" : "app") : "push only");
+    console.log(
+      `[calls] ${call.id}: ${call.caller.name} (${call.caller.role}) ${call.type} call ringing ${people.length}: ` +
+        people.map((p) => `${p.name} [${how(p.id)}]`).join(", ")
+    );
     await CallParticipant.bulkCreate(
       people.map((p) => ({ call_id: call.id, user_profile_id: p.id, role: "callee", state: "invited", invited_at: at }))
     );
   },
   persistAnswer: async (call) => {
+    console.log(`[calls] ${call.id}: answered by ${call.answeredBy?.name} (${call.answeredBy?.id})`);
     await Call.update(
       { status: "ongoing", answered_by: call.answeredBy?.id, answered_at: new Date(call.answeredAt!) },
       { where: { id: call.id } }
@@ -210,6 +234,12 @@ export const callService = new CallService({
   },
   persistEnd: async (s) => {
     forgetCall(s.id);
+    const declined = s.invited.filter((i) => i.state === "declined").map((i) => i.person.name);
+    console.log(
+      `[calls] ${s.id}: ended ${s.status} (${s.reason}) after ${Math.round((s.endedAt - s.startedAt) / 1000)}s` +
+        (s.answeredBy ? `, answered by ${s.answeredBy.name}, talked ${s.durationSec}s` : "") +
+        (declined.length ? `, declined by ${declined.join(", ")}` : "")
+    );
     // Recorded call: mix both voices and upload (runs on its own, never delays the call log)
     void finishRecording(s.id);
     try {
@@ -282,6 +312,7 @@ async function resolveInvite(callerId: string, payload: any) {
     return {
       caller: { id: caller.id, name: caller.username || "Dispatch", role: "staff" } as Person,
       targets: [{ id: driver.id, name: driver.username || "Driver", role: "driver" } as Person],
+      driverPhone: await driverPhoneOf(driver),
       channelId,
       channelName: channel?.name || "",
       driverId: driver.id,
@@ -303,6 +334,7 @@ async function resolveInvite(callerId: string, payload: any) {
     const channel = await Channel.findByPk(channelId);
     return {
       caller: { id: caller.id, name: caller.username || "Driver", role: "driver" } as Person,
+      driverPhone: await driverPhoneOf(caller),
       dispatch: true,
       channelId,
       channelName: channel?.name || "",
@@ -370,6 +402,8 @@ export function registerCallHandlers(socket: CustomSocket) {
         type: payload?.type === "video" ? "video" : "audio",
         recording: await isCallRecordingEnabled(),
         groupCapable: payload?.group === true,
+        videoCapable: payload?.video === true,
+        recordVideo: await isCallVideoRecordingEnabled(),
       });
       if (!result.ok) return fail(ack, result.error, { callId: result.callId });
       bind(result.callId);
@@ -388,10 +422,14 @@ export function registerCallHandlers(socket: CustomSocket) {
     }
   });
 
-  socket.on("call:accept", async ({ callId, group } = {}, ackFn) => {
+  socket.on("call:accept", async ({ callId, group, videoCapable, camera } = {}, ackFn) => {
     const ack = safeAck(ackFn);
     bind(String(callId));
-    const res = await callService.accept(String(callId), await person(), { groupCapable: group === true });
+    const res = await callService.accept(String(callId), await person(), {
+      groupCapable: group === true,
+      videoCapable: videoCapable === true,
+      video: typeof camera === "boolean" ? camera : undefined,
+    });
     if (!res.ok) {
       mediaSockets.delete(`${callId}:${userId}`);
       return fail(ack, res.error);
@@ -407,8 +445,10 @@ export function registerCallHandlers(socket: CustomSocket) {
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error, message: ERRORS[res.error] });
   });
 
-  socket.on("call:end", async ({ callId } = {}, ackFn) => {
-    console.log(`[calls] ${callId}: hung up by ${socket.user?.name || me()} (${device(socket)})`);
+  socket.on("call:end", async ({ callId, reason } = {}, ackFn) => {
+    // reason: newer apps say why (end_button, logout, connection_failed, native_call_ended)
+    const why = typeof reason === "string" ? `, ${reason.slice(0, 40)}` : "";
+    console.log(`[calls] ${callId}: hung up by ${socket.user?.name || me()} (${device(socket)}${why})`);
     const res = await callService.hangup(String(callId), me());
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error, message: ERRORS[res.error] });
   });
@@ -418,8 +458,11 @@ export function registerCallHandlers(socket: CustomSocket) {
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
-  socket.on("call:media", ({ callId, muted } = {}, ackFn) => {
-    const res = callService.media(String(callId), me(), { muted: !!muted });
+  socket.on("call:media", ({ callId, muted, video } = {}, ackFn) => {
+    const res = callService.media(String(callId), me(), {
+      muted: typeof muted === "boolean" ? muted : undefined,
+      video: typeof video === "boolean" ? video : undefined,
+    });
     safeAck(ackFn)(res.ok ? { ok: true } : { ok: false, error: res.error });
   });
 
@@ -487,10 +530,31 @@ export function registerCallHandlers(socket: CustomSocket) {
       if (!live || live.phase !== "active" || !callService.isOnCall(live, me())) return fail(ack, "not_in_call");
       if (!live.recording) return fail(ack, "This call isn't recorded");
       if (typeof sdp !== "string" || !sdp.includes("m=audio")) return fail(ack, "Invalid recording offer");
-      ack({ ok: true, sdp: await answerRecordingOffer(live.id, me(), sdp) });
+      ack({ ok: true, sdp: await answerRecordingOffer(live.id, me(), sdp, { video: live.recordVideo }) });
     } catch (err: any) {
       console.warn("[recording] offer failed:", err?.message || err);
       fail(ack, err?.message || "Recording could not start");
+    }
+  });
+
+  // Staff turn on video recording mid-call (audio is always recorded)
+  socket.on("call:record_video", async ({ callId } = {}, ackFn) => {
+    const ack = safeAck(ackFn);
+    try {
+      const by = await person();
+      const res = callService.startVideoRecording(String(callId), by);
+      if (!res.ok) {
+        if (res.error === "not_recorded") return fail(ack, "This call isn't being recorded");
+        if (res.error === "staff_only") return fail(ack, "Only staff can record video");
+        return fail(ack, res.error);
+      }
+      if (!res.already) {
+        startVideoRecording(String(callId));
+        console.log(`[call] ${callId}: ${by.name} (${by.id}) started video recording`);
+      }
+      ack({ ok: true });
+    } catch (err: any) {
+      fail(ack, err?.message || "Could not start video recording");
     }
   });
 

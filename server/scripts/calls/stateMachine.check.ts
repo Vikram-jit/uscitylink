@@ -394,6 +394,58 @@ const dispatchCall = (t: ReturnType<typeof setup>, d: Person) => t.svc.invite({ 
     assert.equal(t.ended[0].joins[0].state, "missed");
   });
 
+  // ---------- video ----------
+  await test("video: call starts with the caller's camera on; camera changes reach everyone, mute kept", async () => {
+    const t = setup();
+    const r = await t.svc.invite({ ...base(), caller: staff(1), targets: [driver], type: "video", groupCapable: true, videoCapable: true });
+    assert(r.ok);
+    const ans = await t.svc.accept(r.callId, driver, { groupCapable: true, videoCapable: true, video: false });
+    assert(ans.ok);
+    assert.deepEqual(ans.call.camera, { staff1: true }, "caller's camera on, driver answered audio-only");
+    assert.deepEqual(ans.call.videoCapable.sort(), ["driver1", "staff1"]);
+    t.svc.media(r.callId, "driver1", { muted: true });
+    t.svc.media(r.callId, "driver1", { video: true });
+    const last = t.got("staff1", "call:media").pop()!.payload;
+    assert.equal(last.video, true);
+    assert.equal(last.muted, true, "turning the camera on doesn't unmute them");
+    // A third person joins: the roster tells them whose camera is on
+    await t.svc.addParticipant(r.callId, staff(1), staff(2));
+    const joined = await t.svc.accept(r.callId, staff(2), { groupCapable: true, videoCapable: true });
+    assert(joined.ok && joined.call.camera.driver1 === true && joined.call.camera.staff1 === true);
+  });
+
+  await test("video: an old app (no video flag) is listed as not able to show video", async () => {
+    const t = setup();
+    const r = await t.svc.invite({ ...base(), caller: staff(1), targets: [driver], type: "video", videoCapable: true });
+    assert(r.ok);
+    const ans = await t.svc.accept(r.callId, driver, {});
+    assert(ans.ok && !ans.call.videoCapable.includes("driver1"));
+  });
+
+  await test("record video on demand: staff only, recorded calls only, everyone told, once", async () => {
+    const t = setup();
+    const r = await t.svc.invite({ ...base(), caller: staff(1), targets: [driver], recording: true, recordVideo: false, groupCapable: true, videoCapable: true });
+    assert(r.ok);
+    await t.svc.accept(r.callId, driver, { groupCapable: true, videoCapable: true });
+    const rec = (id: string, by: Person): any => t.svc.startVideoRecording(id, by);
+    assert.equal(rec(r.callId, driver).error, "staff_only");
+    assert.equal(rec(r.callId, staff(2)).error, "not_in_call");
+    const on = rec(r.callId, staff(1));
+    assert(on.ok && !on.already);
+    assert.equal(t.got("driver1", "call:record_video")[0]?.payload.by.name, "Staff 1");
+    assert.equal(t.got("staff1", "call:record_video").length, 1);
+    assert(rec(r.callId, staff(1)).already, "second press does nothing");
+    assert.equal(t.got("driver1", "call:record_video").length, 1);
+    // Someone joining later sees that video is being recorded
+    await t.svc.addParticipant(r.callId, staff(1), staff(2));
+    const joined = await t.svc.accept(r.callId, staff(2), { groupCapable: true, videoCapable: true });
+    assert(joined.ok && joined.call.recordVideo === true);
+
+    const r2 = await t.svc.invite({ ...base(drv(2)), caller: staff(3), targets: [drv(2)], recording: false });
+    assert(r2.ok && (await t.svc.accept(r2.callId, drv(2), {})).ok);
+    assert.equal(rec(r2.callId, staff(3)).error, "not_recorded");
+  });
+
   console.log(results.join("\n"));
   process.exit(results.some((r) => r.startsWith("FAIL")) ? 1 : 0);
 })();

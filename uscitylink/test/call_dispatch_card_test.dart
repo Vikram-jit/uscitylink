@@ -41,6 +41,22 @@ void main() {
     expect(find.text('Call Dispatch'), findsOneWidget);
   });
 
+  testWidgets('only the Call and video buttons place a call; tapping the banner does nothing', (tester) async {
+    final s = await show(tester, (_) {});
+    final banner = tester.widget<InkWell>(find.byKey(const Key('callDispatchBanner')));
+    expect(banner.onTap, isNull, reason: 'a stray tap on the banner must not ring dispatch');
+    expect(tester.widget<InkWell>(find.byKey(const Key('callDispatchButton'))).onTap, isNotNull);
+    expect(tester.widget<InkWell>(find.byKey(const Key('videoCallDispatchCard'))).onTap, isNotNull);
+    await tester.tap(find.text('Call Dispatch'));
+    await tester.pump();
+    expect(s.phase.value, CallPhase.idle);
+
+    // On a call the banner just goes back to it
+    s.phase.value = CallPhase.active;
+    await tester.pump();
+    expect(tester.widget<InkWell>(find.byKey(const Key('callDispatchBanner'))).onTap, isNotNull);
+  });
+
   testWidgets('hidden when calling is switched off', (tester) async {
     final s = await show(tester, (s) => s.enabled.value = false);
     expect(find.byKey(const Key('callDispatchCard')), findsNothing);

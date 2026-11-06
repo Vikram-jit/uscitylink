@@ -5,10 +5,19 @@ import { Call, CallParticipant, CallRecording } from "../models/Call";
 import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
-import { isCallRecordingEnabled, isCallsEnabled, setCallRecordingEnabled, setCallsEnabled } from "../services/documentAi/settings";
+import {
+  isCallRecordingEnabled,
+  isCallVideoRecordingEnabled,
+  isCallsEnabled,
+  setCallRecordingEnabled,
+  setCallVideoRecordingEnabled,
+  setCallsEnabled,
+} from "../services/documentAi/settings";
 import { recordingUrl } from "./callRecorder";
 import { iceServersFor } from "./iceServers";
-import { availableStaff, callService } from "./callSocket";
+import { availableStaff, callService, driverPhoneOf } from "./callSocket";
+import User from "../models/User";
+import Channel from "../models/Channel";
 import { ERRORS } from "./callService";
 
 const fail = (res: Response, err: any, code = 400) =>
@@ -38,7 +47,21 @@ export async function saveVoipToken(req: Request, res: Response): Promise<any> {
   }
 }
 
-const NAME_ATTRS = ["id", "username"];
+const NAME_ATTRS = ["id", "username", "userId"];
+
+/** Drivers' phone numbers (users.phone_number) by profile id, shown as "Name (phone)". */
+async function phonesFor(profiles: UserProfile[], ids: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const wanted = profiles.filter((p) => ids.includes(p.id) && p.userId);
+  const users = wanted.length
+    ? await User.findAll({ where: { id: wanted.map((p) => p.userId) }, attributes: ["id", "phone_number"] })
+    : [];
+  const out = new Map<string, string>();
+  for (const p of wanted) {
+    const phone = String(users.find((u) => u.id === p.userId)?.phone_number || "").trim();
+    if (phone) out.set(p.id, phone);
+  }
+  return out;
+}
 
 // GET /calls/available-staff — staff who can be added to a call (online; busy ones flagged)
 export async function listAvailableStaff(req: Request, res: Response): Promise<any> {
@@ -59,7 +82,15 @@ async function recordingsFor(callIds: string[]) {
 }
 
 const recordingSummary = (r?: CallRecording) =>
-  r ? { status: r.status, duration_sec: r.duration_sec ?? null, size_bytes: r.size_bytes ?? null } : null;
+  r
+    ? {
+        status: r.status,
+        duration_sec: r.duration_sec ?? null,
+        size_bytes: r.size_bytes ?? null,
+        has_video: !!r.video_s3_key,
+        video_size_bytes: r.video_size_bytes ?? null,
+      }
+    : null;
 
 // GET /calls?driverId=&channelId=&status=&page=&pageSize= — staff see all, drivers their own
 export async function listCalls(req: Request, res: Response): Promise<any> {
@@ -100,6 +131,7 @@ export async function listCalls(req: Request, res: Response): Promise<any> {
     })) as unknown as { call_id: string; n: number }[];
 
     const recordings = await recordingsFor(rows.map((r) => r.id));
+    const phones = await phonesFor(people, rows.map((r) => r.driver_id));
 
     return res.json({
       status: true,
@@ -110,6 +142,7 @@ export async function listCalls(req: Request, res: Response): Promise<any> {
           rang_count: Number(rang.find((x) => x.call_id === r.id)?.n || 0),
           people: Number(onCall.find((x) => x.call_id === r.id)?.n || 0),
           driver_name: name(r.driver_id),
+          driver_phone: phones.get(r.driver_id) || null,
           initiator_name: name(r.initiator_id),
           answered_by_name: name(r.answered_by),
           direction: r.initiator_id === r.driver_id ? "driver_to_dispatch" : "dispatch_to_driver",
@@ -143,6 +176,7 @@ export async function getCall(req: Request, res: Response): Promise<any> {
     const people = await UserProfile.findAll({ where: { id: ids }, attributes: NAME_ATTRS });
     const name = (id?: string | null) => (id ? people.find((p) => p.id === id)?.username || null : null);
     const recording = (await recordingsFor([call.id])).get(call.id);
+    const phones = await phonesFor(people, [call.driver_id]);
     return res.json({
       status: true,
       data: {
@@ -151,6 +185,7 @@ export async function getCall(req: Request, res: Response): Promise<any> {
           ? { ...recordingSummary(recording), sha256: recording.sha256, error: recording.error ?? null }
           : null,
         driver_name: name(call.driver_id),
+        driver_phone: phones.get(call.driver_id) || null,
         initiator_name: name(call.initiator_id),
         answered_by_name: name(call.answered_by),
         direction: call.initiator_id === call.driver_id ? "driver_to_dispatch" : "dispatch_to_driver",
@@ -204,14 +239,22 @@ export async function saveCallQuality(req: Request, res: Response): Promise<any>
 
 // GET/PUT /calls/settings — admin switches for calling and call recording
 export async function getCallSettings(_req: Request, res: Response): Promise<any> {
-  return res.json({ status: true, data: { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled() } });
+  return res.json({
+    status: true,
+    data: { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled(), videoRecording: await isCallVideoRecordingEnabled() },
+  });
 }
 
 export async function updateCallSettings(req: Request, res: Response): Promise<any> {
   try {
     if (req.body?.enabled !== undefined) await setCallsEnabled(req.body.enabled !== false, req.user?.id);
     if (req.body?.recording !== undefined) await setCallRecordingEnabled(req.body.recording !== false, req.user?.id);
-    const data = { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled() };
+    if (req.body?.videoRecording !== undefined) await setCallVideoRecordingEnabled(req.body.videoRecording === true, req.user?.id);
+    const data = {
+      enabled: await isCallsEnabled(),
+      recording: await isCallRecordingEnabled(),
+      videoRecording: await isCallVideoRecordingEnabled(),
+    };
     return res.json({ status: true, message: "Call settings saved", data });
   } catch (err) {
     return fail(res, err);
@@ -229,11 +272,24 @@ export async function getCallRecording(req: Request, res: Response): Promise<any
       return res.status(409).json({ status: false, message: recording.status === "failed" ? "The recording failed" : "The recording is still being saved", data: recordingSummary(recording) });
     }
     console.log(`[recording] ${user?.username} (${user?.id}) opened the recording of call ${recording.call_id}`);
-    const link = recordingUrl(recording.s3_key);
-    const url = typeof link === "string" ? link : `${req.protocol}://${req.get("host")}${req.baseUrl}/${recording.call_id}/recording/file`;
+    const toUrl = (key: string, kind: "audio" | "video") => {
+      const link = recordingUrl(key);
+      return typeof link === "string" ? link : `${req.protocol}://${req.get("host")}${req.baseUrl}/${recording.call_id}/recording/file?kind=${kind}`;
+    };
     return res.json({
       status: true,
-      data: { url, mime: recording.mime, duration_sec: recording.duration_sec, size_bytes: recording.size_bytes, sha256: recording.sha256, expires_in_sec: 900 },
+      data: {
+        url: toUrl(recording.s3_key, "audio"),
+        mime: recording.mime,
+        duration_sec: recording.duration_sec,
+        size_bytes: recording.size_bytes,
+        sha256: recording.sha256,
+        // Video calls with "Record video" on: everyone's camera in a grid, with the audio
+        video_url: recording.video_s3_key ? toUrl(recording.video_s3_key, "video") : null,
+        video_size_bytes: recording.video_size_bytes ?? null,
+        video_sha256: recording.video_sha256 ?? null,
+        expires_in_sec: 900,
+      },
     });
   } catch (err) {
     return fail(res, err, 500);
@@ -243,9 +299,11 @@ export async function getCallRecording(req: Request, res: Response): Promise<any
 // GET /calls/:id/recording/file — development only (RECORDING_LOCAL_DIR): streams the local file
 export async function getCallRecordingFile(req: Request, res: Response): Promise<any> {
   const recording = (await recordingsFor([String(req.params.id)])).get(String(req.params.id));
-  const link = recording?.s3_key ? recordingUrl(recording.s3_key) : null;
+  const video = req.query.kind === "video";
+  const key = video ? recording?.video_s3_key : recording?.s3_key;
+  const link = key ? recordingUrl(key) : null;
   if (!link || typeof link === "string" || !fs.existsSync(link.localPath)) return res.status(404).end();
-  res.setHeader("Content-Type", recording!.mime || "audio/mp4");
+  res.setHeader("Content-Type", video ? "video/mp4" : recording!.mime || "audio/mp4");
   fs.createReadStream(link.localPath).pipe(res);
 }
 
@@ -262,3 +320,53 @@ export async function endCallRest(req: Request, res: Response): Promise<any> {
   const result = await callService.hangup(req.params.id, String(req.user?.id));
   return result.ok ? res.json({ status: true }) : res.status(409).json({ status: false, message: ERRORS[result.error] || result.error });
 }
+
+/**
+ * GET /calls/callback-target?handle=… — staff app, iPhone Recents: tapping a driver's call there
+ * gives back only its handle text. Newer calls carry the driver's phone ("Driver · +1 555…"); older
+ * ones only the channel ("Driver · US CITYLINK"), which is matched to the latest driver who called
+ * this staff member on that channel.
+ */
+export async function callbackTarget(req: Request, res: Response): Promise<any> {
+  try {
+    const user = await me(req);
+    if (!isStaffRole(user?.role?.name)) return res.status(403).json({ status: false, message: "Staff only" });
+    const handle = String(req.query.handle || "").trim();
+    let driver: UserProfile | null = null;
+
+    const digits = handle.replace(/\D/g, "");
+    if (digits.length >= 7) {
+      const users = await User.findAll({
+        where: { phone_number: { [Op.like]: `%${digits.slice(-10)}%` } },
+        attributes: ["id"],
+        limit: 10,
+      });
+      if (users.length) {
+        driver = await UserProfile.findOne({
+          where: { userId: users.map((u) => u.id) },
+          include: [{ model: Role, as: "role", where: { name: "driver" } }],
+        });
+      }
+    }
+    if (!driver) {
+      const channelName = handle.replace(/^Driver\s*·\s*/i, "").trim();
+      const channel = channelName ? await Channel.findOne({ where: { name: channelName } }) : null;
+      if (channel) {
+        const mine = await CallParticipant.findAll({ where: { user_profile_id: user!.id }, attributes: ["call_id"], order: [["createdAt", "DESC"]], limit: 200 });
+        const last = await Call.findOne({
+          where: { channel_id: channel.id, ...(mine.length ? { id: mine.map((p: any) => p.call_id) } : {}) },
+          order: [["started_at", "DESC"]],
+        });
+        if (last?.driver_id) driver = await UserProfile.findByPk(last.driver_id);
+      }
+    }
+    if (!driver) return res.status(404).json({ status: false, message: "Driver not found" });
+    return res.json({
+      status: true,
+      data: { id: driver.id, name: driver.username || "Driver", phone: await driverPhoneOf(driver) },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ status: false, message: err?.message || "Could not find the driver" });
+  }
+}
+

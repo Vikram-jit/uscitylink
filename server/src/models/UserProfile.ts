@@ -25,6 +25,8 @@ interface UserProfileAttributes {
   buildNumber?:string | null;
   appUpdate?:string | null;
   notifications_muted_until?: Date | null;
+  /** Staff app: calls don't ring this phone until then (messages are muted separately). */
+  calls_muted_until?: Date | null;
   voip_token?: string | null;
   role?:Role
 }
@@ -55,6 +57,7 @@ export class UserProfile
   public buildNumber?: string | null;
   public appUpdate?: string | null;
   public notifications_muted_until?: Date | null;
+  public calls_muted_until?: Date | null;
   public voip_token?: string | null; // iOS PushKit token for incoming calls
   public role?: Role | undefined;
 
@@ -117,6 +120,10 @@ UserProfile.init(
       defaultValue:'0'
     },
     notifications_muted_until: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    calls_muted_until: {
       type: DataTypes.DATE,
       allowNull: true,
     },

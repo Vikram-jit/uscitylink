@@ -265,6 +265,7 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
               iconTheme: const IconThemeData(color: Colors.white),
               elevation: 0,
               centerTitle: false,
+              titleSpacing: 0,
               title: InkWell(
                 onTap: () {
                   Get.toNamed(
@@ -275,6 +276,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 child: Obx(() {
                   return Text(
                     messageController.name.value, // Display the channel name
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 17,
@@ -304,73 +307,85 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                 },
               ),
               actions: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Voice call to dispatch (rings the staff working this channel)
-                    Obx(() => CallService.to.enabled.value
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: InkWell(
-                              key: const Key('callDispatchButton'),
-                              onTap: () => CallService.to.startCall(
-                                  channelId: messageController.channelId.value,
-                                  name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
-                                  subtitle: 'Dispatch'),
-                              child: const Icon(Icons.call_rounded, color: Colors.white),
-                            ),
-                          )
-                        : const SizedBox.shrink()),
-                    InkWell(
-                      onTap: () {
-                        imagePickerController.pickImageFromCameraMultiple(
-                            messageController.channelId.value,
-                            "chat",
-                            "",
-                            "driver_chat",
-                            "",
-                            "driver");
-                      },
-                      child: const Icon(
-                        Icons.add_a_photo_rounded,
-                        color: Colors.white,
+                // Voice call to dispatch (rings the staff working this channel)
+                Obx(() => CallService.to.enabled.value
+                    ? _HeaderAction(
+                        key: const Key('callDispatchButton'),
+                        icon: Icons.call_rounded,
+                        tooltip: 'Call dispatch',
+                        onTap: () => CallService.to.startCall(
+                            channelId: messageController.channelId.value,
+                            name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
+                            subtitle: 'Dispatch'),
+                      )
+                    : const SizedBox.shrink()),
+                // Video call to dispatch (camera on)
+                Obx(() => CallService.to.enabled.value
+                    ? _HeaderAction(
+                        key: const Key('videoCallDispatchButton'),
+                        icon: Icons.videocam_rounded,
+                        tooltip: 'Video call dispatch',
+                        onTap: () => CallService.to.startCall(
+                            channelId: messageController.channelId.value,
+                            name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,
+                            subtitle: 'Dispatch',
+                            video: true),
+                      )
+                    : const SizedBox.shrink()),
+                _HeaderAction(
+                  icon: Icons.add_a_photo_rounded,
+                  tooltip: 'Send a photo',
+                  onTap: () {
+                    imagePickerController.pickImageFromCameraMultiple(
+                        messageController.channelId.value,
+                        "chat",
+                        "",
+                        "driver_chat",
+                        "",
+                        "driver");
+                  },
+                ),
+                // Less used: pinned messages filter and refresh
+                PopupMenuButton<String>(
+                  tooltip: 'More',
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    color: pinMessage == "1" ? Colors.amber : Colors.white,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  onSelected: (value) {
+                    if (value == 'pin') {
+                      setState(() {
+                        pinMessage = pinMessage == "0" ? "1" : "0";
+                      });
+                      messageController.getChannelMessages(
+                          widget.channelId, 1, pinMessage);
+                    } else if (value == 'refresh') {
+                      messageController.getChannelMessages(
+                          widget.channelId, 1, pinMessage, "1");
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'pin',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.push_pin_rounded,
+                            color: pinMessage == "1" ? Colors.amber.shade700 : null),
+                        title: Text(pinMessage == "1" ? 'Show all messages' : 'Pinned messages'),
                       ),
                     ),
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          pinMessage = pinMessage == "0" ? "1" : "0";
-                        });
-                        messageController.getChannelMessages(
-                            widget.channelId, 1, pinMessage);
-                      },
-                      child: Icon(
-                        Icons.push_pin_rounded,
-                        color: pinMessage == "1" ? Colors.amber : Colors.white,
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    InkWell(
-                      onTap: () {
-                        messageController.getChannelMessages(
-                            widget.channelId, 1, pinMessage, "1");
-                      },
-                      child: const Icon(
-                        Icons.restore_page_rounded,
-                        color: Colors.white,
+                    const PopupMenuItem(
+                      value: 'refresh',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.restore_page_rounded),
+                        title: Text('Refresh messages'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(
-                  width: 20,
-                ),
+                const SizedBox(width: 4),
               ],
             ),
           ),
@@ -1573,6 +1588,33 @@ class AttachmentBottomSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Icon(icon, color: color, size: 26),
+    );
+  }
+}
+
+/// A round, evenly sized button in the chat header (call, video, photo).
+class _HeaderAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  const _HeaderAction({super.key, required this.icon, required this.tooltip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.12),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(width: 38, height: 38, child: Icon(icon, color: Colors.white, size: 20)),
+          ),
+        ),
+      ),
     );
   }
 }

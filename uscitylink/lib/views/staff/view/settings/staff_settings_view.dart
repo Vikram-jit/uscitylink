@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/controller/staff/notification_settings_controller.dart';
+import 'package:uscitylink/services/staff/notification_settings_service.dart';
 import 'package:uscitylink/utils/theme/app_text.dart';
 import 'package:uscitylink/utils/theme/app_tokens.dart';
 import 'package:uscitylink/views/staff/view/compliance/compliance_widgets.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
-/// Staff → Settings: mute push notifications for a while, plus account and app details.
+/// Staff → Settings: mute message notifications and call alerts (separately) for a while, plus
+/// account and app details.
 class StaffSettingsView extends StatefulWidget {
   const StaffSettingsView({super.key});
 
@@ -46,7 +48,7 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
     }).catchError((_) {});
   }
 
-  Future<void> _chooseMute() async {
+  Future<void> _chooseMute(MuteKind kind) async {
     final option = await showModalBottomSheet<_MuteOption>(
       context: context,
       backgroundColor: Colors.white,
@@ -59,7 +61,8 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-              child: Text('Mute notifications', style: AppText.titleLg.copyWith(color: StaffColors.textStrong)),
+              child: Text(kind == MuteKind.calls ? 'Mute call alerts' : 'Mute notifications',
+                  style: AppText.titleLg.copyWith(color: StaffColors.textStrong)),
             ),
             for (final o in _muteOptions)
               ListTile(
@@ -72,11 +75,10 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
         ),
       ),
     );
-    if (option != null) await _controller.muteFor(minutes: option.minutes, forever: option.forever);
+    if (option != null) await _controller.muteFor(kind: kind, minutes: option.minutes, forever: option.forever);
   }
 
-  String _mutedLabel() {
-    final m = _controller.mute.value;
+  String _mutedLabel(NotificationMute m) {
     if (m.forever || m.until == null) return 'Muted until you turn them back on';
     final until = m.until!;
     final now = DateTime.now();
@@ -106,7 +108,8 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(AppSpacing.base),
                   children: [
-                    _notificationsCard(),
+                    _muteCard(MuteKind.messages),
+                    _muteCard(MuteKind.calls),
                     _accountCard(),
                   ],
                 ),
@@ -118,13 +121,17 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
     );
   }
 
-  Widget _notificationsCard() {
+  Widget _muteCard(MuteKind kind) {
+    final calls = kind == MuteKind.calls;
     return Obx(() {
-      final muted = _controller.isMuted;
-      final busy = _controller.saving.value || (_controller.loading.value && !muted);
+      final state = calls ? _controller.callMute.value : _controller.mute.value;
+      final muted = state.active;
+      final busy = _controller.savingKind.value == kind || (_controller.loading.value && !muted);
       return StaffSectionCard(
-        title: 'Notifications',
-        icon: muted ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
+        title: calls ? 'Call alerts' : 'Message notifications',
+        icon: calls
+            ? (muted ? Icons.phone_disabled_rounded : Icons.phone_in_talk_rounded)
+            : (muted ? Icons.notifications_off_rounded : Icons.notifications_active_rounded),
         trailing: StaffPill(
           label: muted ? 'Muted' : 'On',
           color: muted ? StaffColors.warning : StaffColors.success,
@@ -138,10 +145,14 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Mute notifications', style: AppText.titleMd.copyWith(color: StaffColors.textStrong)),
+                      Text(calls ? 'Mute call alerts' : 'Mute notifications', style: AppText.titleMd.copyWith(color: StaffColors.textStrong)),
                       const SizedBox(height: 2),
                       Text(
-                        muted ? _mutedLabel() : 'Driver and group messages alert this phone',
+                        muted
+                            ? _mutedLabel(state)
+                            : calls
+                                ? 'Incoming calls ring this phone'
+                                : 'Driver and group messages alert this phone',
                         style: AppText.bodySm.copyWith(color: muted ? StaffColors.warning : StaffColors.textMuted),
                       ),
                     ],
@@ -154,10 +165,10 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
                   )
                 else
                   Switch.adaptive(
-                    key: const Key('muteSwitch'),
+                    key: Key(calls ? 'callMuteSwitch' : 'muteSwitch'),
                     value: muted,
                     activeTrackColor: StaffColors.primary,
-                    onChanged: (on) => on ? _chooseMute() : _controller.unmute(),
+                    onChanged: (on) => on ? _chooseMute(kind) : _controller.unmute(kind: kind),
                   ),
               ],
             ),
@@ -171,13 +182,14 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
                 runSpacing: AppSpacing.xs,
                 children: [
                   TextButton.icon(
-                    onPressed: _chooseMute,
+                    onPressed: () => _chooseMute(kind),
                     icon: const Icon(Icons.schedule_rounded, size: 18),
                     label: const Text('Change'),
                     style: TextButton.styleFrom(foregroundColor: StaffColors.primary, padding: EdgeInsets.zero),
                   ),
                   FilledButton.icon(
-                    onPressed: _controller.unmute,
+                    key: Key(calls ? 'callUnmute' : 'unmute'),
+                    onPressed: () => _controller.unmute(kind: kind),
                     icon: const Icon(Icons.notifications_active_rounded, size: 18),
                     label: const Text('Turn on now'),
                     style: FilledButton.styleFrom(backgroundColor: StaffColors.primary),
@@ -193,7 +205,9 @@ class _StaffSettingsViewState extends State<StaffSettingsView> {
                 borderRadius: BorderRadius.circular(AppRadii.md),
               ),
               child: Text(
-                'While muted, messages still arrive in the app and unread counts keep updating — only the phone alerts stop. This applies to this account on every device.',
+                calls
+                    ? 'While muted, calls from drivers and dispatch don\'t ring this phone and go to other dispatchers. If your web dashboard is open, calls still ring there. Message notifications aren\'t affected.'
+                    : 'While muted, messages still arrive in the app and unread counts keep updating — only the phone alerts stop. Calls still ring (see Call alerts). This applies to this account on every device.',
                 style: AppText.bodySm.copyWith(color: StaffColors.textBody),
               ),
             ),

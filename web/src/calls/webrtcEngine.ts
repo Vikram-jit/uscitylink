@@ -1,4 +1,4 @@
-// One WebRTC audio connection to the other person on a call.
+// One WebRTC connection (voice, plus video when a camera is on) to another person on a call.
 //
 // Signalling rules (same in the Flutter app, lib/services/call/webrtc_engine.dart):
 //   - only the CALLER sends offers (first offer after "call:accepted", and ICE restarts);
@@ -6,7 +6,11 @@
 //     sides never offer at the same time;
 //   - ICE candidates that arrive before the remote description are queued.
 // The class knows nothing about Socket.IO; `sendSignal` carries messages through call:signal.
-// For group calls / recording this is the piece to swap for an SFU client.
+//
+// Video without renegotiation: every connection carries a video slot from the start (the caller adds
+// it to its offer; the callee switches the offered slot to send+receive before answering). Turning a
+// camera on or off only swaps the track in that slot (setCamera), so no new offer/answer is needed.
+// An older app that offers audio only simply has no video slot: audio works, video is skipped.
 
 export type EngineState = 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'closed';
 
@@ -20,6 +24,7 @@ export interface EngineOptions {
   isCaller: boolean;
   localStream: MediaStream;
   sendSignal: (data: SignalData) => void;
+  /** The other person's audio + video (one stream; it gains a video track when theirs arrives). */
   onRemoteStream: (stream: MediaStream) => void;
   onState: (state: EngineState) => void;
   /**
@@ -63,6 +68,21 @@ export function microphoneErrorText(err: unknown, action: string): string {
   return `Could not open the microphone to ${action}`;
 }
 
+/** The camera for video calls (640×360, 15 fps — enough for faces, light on drivers' data). */
+export async function getCamera(deviceId?: string): Promise<MediaStreamTrack> {
+  if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('Insecure context', 'SecurityError');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      width: { ideal: 640 },
+      height: { ideal: 360 },
+      frameRate: { ideal: 15, max: 24 },
+    },
+    audio: false,
+  });
+  return stream.getVideoTracks()[0];
+}
+
 export async function getMicrophone(deviceId?: string): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('Insecure context', 'SecurityError');
   return navigator.mediaDevices.getUserMedia({
@@ -83,17 +103,25 @@ export class WebRtcEngine {
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
   private state: EngineState = 'connecting';
+  private camera: MediaStreamTrack | null = null;
+  private videoLimit: { maxBitrate: number; maxFramerate: number; scale: number } | null = null;
+  private remote = new MediaStream();
 
   constructor(private opts: EngineOptions) {
     this.pc = new RTCPeerConnection({ iceServers: opts.iceServers, bundlePolicy: 'max-bundle' });
-    opts.localStream.getTracks().forEach((t) => this.pc.addTrack(t, opts.localStream));
+    opts.localStream.getAudioTracks().forEach((t) => this.pc.addTrack(t, opts.localStream));
+    // The caller's offer carries the video slot (the callee gets it from the offer)
+    if (opts.isCaller) this.pc.addTransceiver('video', { direction: 'sendrecv' });
 
     this.pc.onicecandidate = (e) => {
       if (e.candidate) opts.sendSignal({ type: 'candidate', candidate: e.candidate.toJSON() });
     };
     this.pc.ontrack = (e) => {
-      const stream = e.streams[0] || new MediaStream([e.track]);
-      opts.onRemoteStream(stream);
+      // Audio and video arrive separately: keep them together in one stream for the UI. A NEW stream
+      // each time: a <video> already showing a stream doesn't start rendering a track added to it later.
+      const keep = this.remote.getTracks().filter((t) => t.kind !== e.track.kind);
+      this.remote = new MediaStream([...keep, e.track]);
+      opts.onRemoteStream(this.remote);
     };
     this.pc.onconnectionstatechange = () => this.onConnectionState();
   }
@@ -108,6 +136,10 @@ export class WebRtcEngine {
     try {
       if (data.type === 'offer') {
         await this.pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
+        // Callee: send video back in the slot the caller offered (and attach a camera already on)
+        const video = this.videoTransceiver();
+        if (video && video.direction !== 'sendrecv' && video.currentDirection !== 'stopped') video.direction = 'sendrecv';
+        await this.applyCamera();
         await this.flushCandidates();
         const answer = await this.pc.createAnswer();
         await this.pc.setLocalDescription(answer);
@@ -131,9 +163,43 @@ export class WebRtcEngine {
     this.opts.localStream.getAudioTracks().forEach((t) => (t.enabled = !muted));
   }
 
+  private videoTransceiver(): RTCRtpTransceiver | undefined {
+    return this.pc.getTransceivers().find((t) => t.receiver.track?.kind === 'video' && t.currentDirection !== 'stopped');
+  }
+
+  /** Camera on (a track) or off (null). No renegotiation: the video slot just changes track. */
+  async setCamera(track: MediaStreamTrack | null) {
+    this.camera = track;
+    await this.applyCamera();
+  }
+
+  /** Lower the video's quality in big group calls (everyone sends to everyone). */
+  async setVideoLimit(limit: { maxBitrate: number; maxFramerate: number; scale: number }) {
+    this.videoLimit = limit;
+    await this.applyCamera();
+  }
+
+  private async applyCamera() {
+    const sender = this.videoTransceiver()?.sender;
+    if (!sender || this.closed) return;
+    try {
+      if (sender.track !== this.camera) await sender.replaceTrack(this.camera);
+      if (this.camera && this.videoLimit) {
+        const params = sender.getParameters();
+        if (!params.encodings?.length) params.encodings = [{}];
+        params.encodings[0].maxBitrate = this.videoLimit.maxBitrate;
+        params.encodings[0].maxFramerate = this.videoLimit.maxFramerate;
+        params.encodings[0].scaleResolutionDownBy = this.videoLimit.scale;
+        await sender.setParameters(params);
+      }
+    } catch (err) {
+      console.warn('[call] camera update failed', err);
+    }
+  }
+
   /** Send a different microphone track (group calls switch it on every connection at once). */
   async replaceTrack(track: MediaStreamTrack) {
-    const sender = this.pc.getSenders().find((s) => s.track?.kind === 'audio');
+    const sender = this.pc.getTransceivers().find((t) => t.receiver.track?.kind === 'audio')?.sender;
     await sender?.replaceTrack(track);
   }
 
@@ -265,6 +331,8 @@ export class RecordingUplink {
     private opts: {
       iceServers: RTCIceServer[];
       track: MediaStreamTrack;
+      /** "Record video" is on for this call: also send the camera (when it's on). */
+      video?: boolean;
       /** Sends the offer to the server (call:rec_offer) and returns its answer. */
       offer: (sdp: string) => Promise<string | null>;
     }
@@ -275,6 +343,9 @@ export class RecordingUplink {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers });
     this.pc = pc;
     pc.addTransceiver(this.opts.track, { direction: 'sendonly' });
+    // Always negotiated so video recording can be turned on mid-call; the camera is only sent while
+    // the call's video is being recorded
+    pc.addTransceiver((this.opts.video && this.camera) || 'video', { direction: 'sendonly' });
     try {
       await pc.setLocalDescription(await pc.createOffer());
       // One round trip: send the offer with the candidates found within a second (local + STUN)
@@ -302,10 +373,25 @@ export class RecordingUplink {
     }
   }
 
+  private camera: MediaStreamTrack | null = null;
+
+  /** Camera on/off; sent to the recorder only while video is recorded. */
+  async setCamera(track: MediaStreamTrack | null) {
+    this.camera = track;
+    const sender = this.pc?.getTransceivers().find((t) => t.receiver.track?.kind === 'video')?.sender;
+    await sender?.replaceTrack(this.opts.video ? track : null).catch(() => undefined);
+  }
+
+  /** Staff turned on video recording mid-call: start sending the camera. */
+  async setRecordVideo(on: boolean) {
+    this.opts.video = on;
+    await this.setCamera(this.camera);
+  }
+
   /** The microphone was switched mid-call. */
   async replaceTrack(track: MediaStreamTrack) {
     this.opts.track = track;
-    const sender = this.pc?.getSenders().find((s) => s.track?.kind === 'audio');
+    const sender = this.pc?.getTransceivers().find((t) => t.receiver.track?.kind === 'audio')?.sender;
     await sender?.replaceTrack(track).catch(() => undefined);
   }
 

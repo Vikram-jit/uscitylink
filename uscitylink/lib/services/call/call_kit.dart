@@ -16,11 +16,16 @@ class CallKit {
   static bool get available => !(Platform.isIOS && Platform.environment.containsKey('SIMULATOR_DEVICE_NAME'));
 
   /// Who is calling, as the phone should show it.
-  static String callerTitle(CallInfo info) =>
-      info.from.role == 'staff' ? (info.channelName.isNotEmpty ? info.channelName : 'Dispatch') : info.from.name;
+  static String callerTitle(CallInfo info) => info.from.role == 'staff'
+      ? (info.channelName.isNotEmpty ? info.channelName : 'Dispatch')
+      : driverLabel(info.from.name, info.driverPhone);
 
-  static String callerSubtitle(CallInfo info) =>
-      info.from.role == 'staff' ? 'Dispatch · ${info.from.name}' : 'Driver · ${info.channelName}';
+  /// Also the handle the iPhone's Recents gives back when the call is tapped there, so a driver's is
+  /// their phone number: unique per driver (the channel name is shared by every driver on it).
+  /// Same wording as ios/Runner/AppDelegate.swift.
+  static String callerSubtitle(CallInfo info) => info.from.role == 'staff'
+      ? 'Dispatch · ${info.from.name}'
+      : 'Driver · ${info.driverPhone.trim().isNotEmpty ? info.driverPhone.trim() : info.channelName}';
 
   static CallKitParams params(CallInfo info, {bool outgoing = false}) => CallKitParams(
         id: info.callId,
@@ -42,6 +47,7 @@ class CallKit {
           'channelId': info.channelId,
           'channelName': info.channelName,
           'callType': info.type,
+          'driverPhone': info.driverPhone,
         },
         android: const AndroidParams(
           isCustomNotification: true,
@@ -69,6 +75,34 @@ class CallKit {
           includesCallsInRecents: true,
         ),
       );
+
+  /// Android: a call placed or answered inside the app is registered as an ongoing call. That
+  /// starts the plugin's foreground service ("phoneCall|microphone") with the ongoing-call
+  /// notification — without it Android silences the microphone as soon as the user switches apps.
+  static Future<void> startOngoing({required String callId, required String title, required String subtitle, required bool video}) async {
+    if (!Platform.isAndroid || callId.isEmpty) return;
+    try {
+      await FlutterCallkitIncoming.startCall(CallKitParams(
+        id: callId,
+        nameCaller: title,
+        appName: 'USCityLink',
+        handle: subtitle,
+        type: video ? 1 : 0,
+        android: const AndroidParams(
+          isCustomNotification: true,
+          isShowLogo: false,
+          backgroundColor: '#0B1F3A',
+          actionColor: '#22C55E',
+          textColor: '#FFFFFF',
+          incomingCallNotificationChannelName: 'Incoming calls',
+          missedCallNotificationChannelName: 'Missed calls',
+        ),
+      ));
+      await FlutterCallkitIncoming.setCallConnected(callId);
+    } catch (_) {
+      // the call itself never depends on this
+    }
+  }
 
   static Future<bool> isShowing(String callId) async {
     try {

@@ -14,6 +14,9 @@ export interface CallRecordingSummary {
   status: 'recording' | 'processing' | 'ready' | 'failed';
   duration_sec: number | null;
   size_bytes: number | null;
+  /** Video call with "Record video" on: a grid video (.mp4) exists too */
+  has_video?: boolean;
+  video_size_bytes?: number | null;
 }
 
 export interface CallRecordingLink {
@@ -23,6 +26,9 @@ export interface CallRecordingLink {
   size_bytes: number | null;
   /** SHA-256 of the stored file — proves it wasn't changed after the call */
   sha256: string | null;
+  /** Everyone's camera in a grid, with the audio (video calls with "Record video" on) */
+  video_url?: string | null;
+  video_size_bytes?: number | null;
   expires_in_sec: number;
 }
 
@@ -41,6 +47,7 @@ export interface CallRecord {
   duration_sec: number;
   quality: Record<string, any> | null;
   driver_name: string | null;
+  driver_phone?: string | null;
   initiator_name: string | null;
   answered_by_name: string | null;
   direction: 'driver_to_dispatch' | 'dispatch_to_driver';
@@ -97,11 +104,14 @@ export const CallApiSlice = apiSlice.injectEndpoints({
       query: (id) => ({ url: `calls/${id}`, method: 'GET' }),
       providesTags: ['calls'],
     }),
-    getCallSettings: builder.query<Res<{ enabled: boolean; recording: boolean }>, void>({
+    getCallSettings: builder.query<Res<{ enabled: boolean; recording: boolean; videoRecording: boolean }>, void>({
       query: () => ({ url: 'calls/settings', method: 'GET' }),
       providesTags: ['callSettings'],
     }),
-    updateCallSettings: builder.mutation<Res<{ enabled: boolean; recording: boolean }>, { enabled?: boolean; recording?: boolean }>({
+    updateCallSettings: builder.mutation<
+      Res<{ enabled: boolean; recording: boolean; videoRecording: boolean }>,
+      { enabled?: boolean; recording?: boolean; videoRecording?: boolean }
+    >({
       query: (body) => ({ url: 'calls/settings', method: 'PUT', body }),
       invalidatesTags: ['callSettings'],
     }),
