@@ -22,6 +22,7 @@ export const paths = {
     automation: '/dashboard/automation',
     app_versions: '/dashboard/app-versions',
     calls: '/dashboard/calls',
+    loads: '/dashboard/loads',
   },
   user:{
     "add":'/dashboard/users/add'

@@ -31,6 +31,8 @@ import staffGroupRoutes from "./routes/staff/groupRoutes";
 import automationRoutes from "./routes/automationRoutes";
 import appVersionRoutes from "./routes/appVersionRoutes";
 import callRoutes from "./routes/callRoutes";
+import tripRoutes from "./routes/tripRoutes";
+import { registerTripHooks } from "./services/trips/tripAssistant";
 import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
 import GroupChannel from "./models/GroupChannel";
@@ -123,6 +125,7 @@ const mountApi = (base: string, auth: typeof authRoutes) => {
   app.use(`${base}/automation`, automationRoutes);
   app.use(`${base}/app-versions`, appVersionRoutes);
   app.use(`${base}/calls`, callRoutes);
+  app.use(`${base}/trips`, tripRoutes);
 };
 mountApi("/api/v1", authRoutes);
 mountApi("/api/v2", authRoutesV2);
@@ -147,6 +150,7 @@ MessageStaff.associate({ UserProfile });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   logCallPushSetup();
+  registerTripHooks();
   logRecordingSetup();
   await primarySequelize.authenticate();
   console.log("Connected to primary database.");

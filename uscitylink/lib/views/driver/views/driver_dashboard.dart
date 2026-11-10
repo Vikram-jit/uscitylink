@@ -35,6 +35,9 @@ import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/views/call/call_dispatch_card.dart';
+import 'package:uscitylink/services/trip/trip_service.dart';
+import 'package:uscitylink/views/trip/current_trip_card.dart';
+import 'package:uscitylink/views/trip/loads_view.dart';
 
 const double _kKpiCardHeight = 112;
 const double _kKpiOverlap = 46;
@@ -156,6 +159,7 @@ class _DriverDashboardState extends State<DriverDashboard>
 
   Future<void> _refresh() async {
     _dashboardController.getDashboard();
+    unawaited(TripService.to.refresh());
     // getDashboard() is fire-and-forget; hold the spinner until the controller
     // flips `loading` back off so the gesture doesn't snap shut instantly.
     await _dashboardController.loading.stream
@@ -275,6 +279,27 @@ class _DriverDashboardState extends State<DriverDashboard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // The load the driver is on: one button for the next step
+                        CurrentTripCard(
+                          onOpenLoads: openLoadsTab,
+                          onOpenChat: () {
+                            final channelId = dashboard.channel?.id;
+                            if (channelId == null) {
+                              Get.to(() => ChatView());
+                              return;
+                            }
+                            socketService.updateActiveChannel(channelId);
+                            Get.toNamed(
+                              AppRoutes.driverMessage,
+                              arguments: {
+                                'channelId': channelId,
+                                'name': dashboard.channel?.name,
+                              },
+                            );
+                          },
+                        ),
+                        // No load right now: the way to past loads
+                        const MyLoadsShortcut(),
                         // One tap to talk to dispatch (hidden when calling is off)
                         CallDispatchCard(
                           channelId: dashboard.channel?.id,

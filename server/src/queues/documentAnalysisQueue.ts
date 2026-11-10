@@ -12,6 +12,7 @@ import { precheckDocument } from "../services/documentAi/precheck";
 import { getPrecheckSettings } from "../services/documentAi/settings";
 import { getLiveFlowDocTypes } from "../services/flowEngine/liveDocTypes";
 import { runScaleAgent } from "../services/scaleAgent/run";
+import { onDocumentRead } from "../services/trips/tripService";
 import { getAnalyzableKind, loadFileForAnalysis } from "../services/documentAi/fileSource";
 import { buildFlowContext } from "../services/flowEngine/context";
 import { runFlows } from "../services/flowEngine/runFlows";
@@ -166,6 +167,11 @@ export const processDocumentAnalysis = async (job: Job<{ messageId: string }>) =
   } catch (err: any) {
     console.error(`[scaleAgent] message ${message.id} failed:`, err?.message || err);
   }
+
+  // A scale ticket for the driver's current trip goes on its record (and stops the reminders)
+  await onDocumentRead(message, doc.corrected_doc_type || doc.doc_type_key).catch((err) =>
+    console.error(`[trips] message ${message.id}:`, err?.message || err)
+  );
 
   const ctx = await buildFlowContext(message, doc);
   await runFlows("document_analyzed", ctx);

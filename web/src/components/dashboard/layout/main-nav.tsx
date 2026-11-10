@@ -22,6 +22,7 @@ import { UserPopover } from './user-popover';
 import { Button } from '@mui/material';
 import { useUnReadMessageAllMutation } from '@/redux/ChannelApiSlice';
 import MarkMessageDialog from './mark-message-dialog';
+import { LoadsButton } from '@/components/dashboard/trips/LoadsButton';
 import { toast } from 'react-toastify';
 import { useGetProfileQuery } from '@/redux/UserApiSlice';
 
@@ -103,6 +104,7 @@ export function MainNav(): React.JSX.Element {
             </Box>
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
+            <LoadsButton />
            <Button variant="outlined" size="small" onClick={(): void => {
                 setOpenDialog(true);
               }}> Mark all messages as read</Button>

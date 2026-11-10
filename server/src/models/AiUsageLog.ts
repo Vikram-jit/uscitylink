@@ -1,7 +1,7 @@
 import { Model, DataTypes } from "sequelize";
 import { primarySequelize } from "../sequelize";
 
-export type UsageSource = "message" | "precheck" | "reread" | "sample" | "test" | "demo";
+export type UsageSource = "message" | "precheck" | "reread" | "sample" | "test" | "demo" | "trip";
 
 export class AiUsageLog extends Model {
   public id!: string;

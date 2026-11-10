@@ -10,6 +10,8 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/driver/views/driver_dashboard.dart';
 import 'package:uscitylink/views/driver/views/setting_view.dart';
+import 'package:uscitylink/services/trip/trip_service.dart';
+import 'package:uscitylink/views/trip/loads_view.dart';
 
 class DashboardView extends StatefulWidget {
   int? currentStep = 0;
@@ -27,21 +29,22 @@ class _DashboardViewState extends State<DashboardView>
   final ChannelController channelController = Get.put(ChannelController());
   final LoginController loginController = Get.put(LoginController());
 
+  // Registers the training controller other screens look up
+  // ignore: unused_field
   TrainingController _trainingController = Get.put(TrainingController());
   void _onItemTapped(int index) {
     setState(() {
       channelController.currentIndex.value = index;
     });
 
-    if (index == 3) {
-      _trainingController.fetchTrainingVideos(page: 1);
-    }
     channelController.setTabIndex(index);
     loginController.setTabIndex(index);
   }
 
+  // Home · Loads · Messages · Settings
   final List<Widget> _screens = [
     const DriverDashboard(),
+    const LoadsView(),
     const ChatView(),
     SettingView(),
   ];
@@ -114,6 +117,11 @@ class _DashboardViewState extends State<DashboardView>
                   title: const Text("Home"),
                 ),
                 SalomonBottomBarItem(
+                  icon: _loadsIcon(Icons.local_shipping_outlined),
+                  activeIcon: _loadsIcon(Icons.local_shipping_rounded),
+                  title: const Text("Loads"),
+                ),
+                SalomonBottomBarItem(
                   icon: _messagesIcon(Icons.chat_bubble_outline_rounded),
                   activeIcon: _messagesIcon(Icons.chat_bubble_rounded),
                   title: const Text("Messages"),
@@ -128,6 +136,17 @@ class _DashboardViewState extends State<DashboardView>
           }),
         ),
       ),
+    );
+  }
+
+  /// A dot while a new load waits for the driver's "Got it"
+  Widget _loadsIcon(IconData icon) {
+    final waiting = TripService.to.current.value?.status == 'planned';
+    if (!waiting) return Icon(icon);
+    return badges.Badge(
+      position: badges.BadgePosition.topEnd(top: -4, end: -6),
+      badgeStyle: const badges.BadgeStyle(badgeColor: Color(0xFFEF4444), padding: EdgeInsets.all(4)),
+      child: Icon(icon),
     );
   }
 

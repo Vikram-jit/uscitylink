@@ -35,6 +35,7 @@ import { useSocket } from '@/lib/socketProvider';
 import { useSocketEvent } from '@/hooks/use-socket-event';
 
 import MediaComponent from './MediaComment';
+import { SendLoadButton } from '@/components/dashboard/trips/SendLoadButton';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -317,6 +318,7 @@ export default function MessageInput(props: MessageInputProps) {
               <IconButton onClick={attachmenPopOver}>
                 <AttachFile />
               </IconButton>
+              <SendLoadButton driverId={props.userId} />
               <Popover
                 id={`attachment-popover`}
                 open={open}

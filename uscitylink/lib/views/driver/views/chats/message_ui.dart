@@ -5,6 +5,8 @@ import 'package:uscitylink/views/call/call_log_bubble.dart';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:uscitylink/views/trip/current_trip_card.dart';
+import 'package:uscitylink/views/trip/loads_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
@@ -332,6 +334,13 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                             video: true),
                       )
                     : const SizedBox.shrink()),
+                // The driver's loads (current one + history), over the chat
+                _HeaderAction(
+                  key: const Key('myLoadsButton'),
+                  icon: Icons.local_shipping_rounded,
+                  tooltip: 'My loads',
+                  onTap: () => Get.to(() => const LoadsView(standalone: true)),
+                ),
                 _HeaderAction(
                   icon: Icons.add_a_photo_rounded,
                   tooltip: 'Send a photo',
@@ -395,6 +404,8 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
             padding: EdgeInsets.all(TDeviceUtils.getAppBarHeight() * 0.4),
             child: Column(
               children: [
+                // The load the driver is on: next step one tap away while chatting with dispatch
+                const CurrentTripCard(compact: true),
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {

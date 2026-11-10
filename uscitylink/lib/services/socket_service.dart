@@ -44,7 +44,8 @@ class SocketService extends GetxController {
   /// One connection at a time. Several callers often ask together (the app coming back to the front
   /// and a call being answered); each used to create its own socket, and the extra one stayed
   /// connected unseen and could flip [isConnected] — calls then lost their signalling.
-  Future<void> connectSocket() => _connecting ??= _connectSocket().whenComplete(() => _connecting = null);
+  Future<void> connectSocket() =>
+      _connecting ??= _connectSocket().whenComplete(() => _connecting = null);
 
   Future<void> _connectSocket() async {
     String? accessToken = await userPreferenceController.getToken();

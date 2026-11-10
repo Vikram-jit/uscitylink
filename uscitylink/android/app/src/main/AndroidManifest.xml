@@ -18,6 +18,9 @@
     <!-- Voice calls are audio only: drop the camera foreground-service permission flutter_callkit_incoming
          adds (Play Console asks to justify every foreground-service type the app ships) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" tools:node="remove"/>
+    <!-- Trips: where the driver started, arrived and delivered (asked on the first "Start trip") -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>

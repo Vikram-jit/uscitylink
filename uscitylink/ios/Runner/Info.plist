@@ -41,11 +41,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>This app requires access to your camera to allow you to take photos or record videos to send in your chat conversations.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app uses your location to show your position on the map and nearby fuel stations.</string>
+	<string>This app uses your location to show your position on the map and nearby fuel stations, and to record where you start, arrive and deliver on a trip.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app uses your location to show your position on the map and nearby fuel stations.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app uses your location to show your position on the map and nearby fuel stations.</string>
+	<string>This app uses your location to show your position on the map and nearby fuel stations, and to record where you start, arrive and deliver on a trip.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>USCityLink uses the microphone for voice calls with dispatch and to record audio or videos for your chat conversations.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
