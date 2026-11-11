@@ -5,6 +5,7 @@
 // Uses a throwaway test driver with no phone token (nothing is pushed to a real phone) and removes
 // everything it created at the end.
 import "dotenv/config";
+process.env.TRIP_ETA_SNAPSHOT = "off"; // no Google / Samsara calls from tests
 import assert from "assert";
 import http from "http";
 import { Op, QueryTypes } from "sequelize";
@@ -20,7 +21,7 @@ import GroupUser from "../../src/models/GroupUser";
 import GroupChannel from "../../src/models/GroupChannel";
 import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
-import { ChatTrip, ChatTripEvent } from "../../src/models/ChatTrip";
+import { ChatLoad, ChatTrip, ChatTripEvent } from "../../src/models/ChatTrip";
 import { act, addProblem, createTrip, getTrip, loadNo, tripsForDriver, offerNextLoad, onDocumentRead, resolveProblem, sendLoad, syncPriced, undo } from "../../src/services/trips/tripService";
 import { MessageDocument } from "../../src/models/MessageDocument";
 import { isPriced, syncRouteRow } from "../../src/services/trips/routeListSync";
@@ -70,7 +71,7 @@ const nextYardTripNo = async () => {
 /** A load through to dispatch's Mark completed (the moment its Route List entry is created). */
 const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any) => {
   for (const a of ["accept", "rolling", "end"] as const) await act(id, a, driverActor);
-  await act(id, "complete", dispatcherActor);
+  await act(id, "complete", dispatcherActor, { invoiceNo: `ZZTEST-INV-${id}` });
   return (await ChatTrip.findByPk(id))!;
 };
 
@@ -115,8 +116,10 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       await offerNextLoad(driver.id, "asked");
       const trip = await ChatTrip.findByPk(tripId);
       assert.equal(trip?.status, "offered");
-      const said = await Message.findOne({ where: { userProfileId: driver.id }, order: [["createdAt", "DESC"]] });
-      assert.match(String(said?.body), /waiting for dispatch/);
+      // Saving it for later already told the driver it's lined up; asking gets "waiting for dispatch"
+      const said = await Message.findAll({ where: { userProfileId: driver.id }, order: [["createdAt", "DESC"]], limit: 5 });
+      assert(said.some((m) => /waiting for dispatch/.test(String(m.body))), "told to wait for dispatch");
+      assert(said.some((m) => /Lined up for you: trip/.test(String(m.body))), "told it's lined up when saved");
     });
 
     await test("only dispatch sends it: the load text goes to the driver's chat", async () => {
@@ -166,10 +169,16 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
     });
 
     await test("Mark completed creates the Route List entry (next yard trip id, real dates, driver, stops, no pay record)", async () => {
+      await assert.rejects(act(tripId, "complete", dispatcher), /invoice number/);
+      await assert.rejects(act(tripId, "complete", dispatcher, { invoiceNo: "   " }), /invoice number/);
+      const blocked = (await ChatTrip.findByPk(tripId))!;
+      assert.equal(blocked.status, "ended", "no invoice, not completed");
+      assert.equal(blocked.driver_pay_details_id, null, "no invoice, no Route List entry");
       const expected = await nextYardTripNo();
-      await act(tripId, "complete", dispatcher);
+      await act(tripId, "complete", dispatcher, { invoiceNo: "  ZZTEST-INV-1 " });
       const trip = (await ChatTrip.findByPk(tripId))!;
       assert.equal(trip.status, "completed");
+      assert.equal(trip.invoice_no, "ZZTEST-INV-1");
       assert(trip.driver_pay_details_id, "no Route List entry");
       assert.equal(trip.route_trip_no, expected);
       const [row] = await yard(`SELECT trip_id, trip_start_date, trip_end_date, driver_type, ready_status FROM driver_pay_details WHERE id = :id`, {
@@ -198,6 +207,7 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       const back = (await ChatTrip.findByPk(tripId))!;
       assert.equal(back.status, "ended");
       assert.equal(back.driver_pay_details_id, null);
+      assert.equal(back.invoice_no, "ZZTEST-INV-1", "undo keeps the invoice number");
       assert.equal((await yard(`SELECT id FROM driver_pay_details WHERE id = :id`, { id: first.driver_pay_details_id })).length, 0);
       await act(tripId, "complete", dispatcher);
       const again = (await ChatTrip.findByPk(tripId))!;
@@ -342,7 +352,9 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       await secondarySequelize.query(`DELETE FROM driver_pay_details WHERE id IN (:ids)`, { replacements: { ids: routeIds } });
     }
     await ChatTripEvent.destroy({ where: { chat_trip_id: tripIds } });
+    const loadIds = trips.map((t) => t.load_id).filter(Boolean) as number[];
     await ChatTrip.destroy({ where: { id: tripIds } });
+    if (loadIds.length) await ChatLoad.destroy({ where: { id: loadIds } });
     const testMessages = await Message.findAll({ where: { userProfileId: [driver.id, other.id] }, attributes: ["id"] });
     await MessageDocument.destroy({ where: { message_id: testMessages.map((m) => m.id) } });
     await Message.destroy({ where: { userProfileId: [driver.id, other.id] } });

@@ -32,6 +32,7 @@ import automationRoutes from "./routes/automationRoutes";
 import appVersionRoutes from "./routes/appVersionRoutes";
 import callRoutes from "./routes/callRoutes";
 import tripRoutes from "./routes/tripRoutes";
+import loadRoutes from "./routes/loadRoutes";
 import { registerTripHooks } from "./services/trips/tripAssistant";
 import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
@@ -126,6 +127,7 @@ const mountApi = (base: string, auth: typeof authRoutes) => {
   app.use(`${base}/app-versions`, appVersionRoutes);
   app.use(`${base}/calls`, callRoutes);
   app.use(`${base}/trips`, tripRoutes);
+  app.use(`${base}/loads`, loadRoutes);
 };
 mountApi("/api/v1", authRoutes);
 mountApi("/api/v2", authRoutesV2);

@@ -1,6 +1,7 @@
 import { QueryTypes } from "sequelize";
 import { secondarySequelize } from "../../sequelize";
 import type { ChatTrip, ChatTripStop } from "../../models/ChatTrip";
+import { elapsedAt, planTrip, truckDriving, type StopKind } from "./hosPlan";
 
 // Where a trip's truck is right now (Samsara) and the road ahead (Google Directions, with traffic):
 // miles, drive time and ETA to every remaining stop against its appointment, the route line for the
@@ -11,14 +12,6 @@ import type { ChatTrip, ChatTripStop } from "../../models/ChatTrip";
 export const MPG = 6.5;
 const SAMSARA_TTL_MS = 30_000;
 
-/**
- * Rest a solo driver must add to [driveMinutes] of driving (hours-of-service): a 10-hour break after
- * every 11 hours driving, and 30 minutes per 8 hours. A team swaps drivers and keeps rolling.
- */
-export function restMinutes(driveMinutes: number, team: boolean): number {
-  if (team) return 0;
-  return Math.floor(driveMinutes / 660) * 600 + Math.floor(driveMinutes / 480) * 30;
-}
 const ROUTE_TTL_MS = 120_000;
 // A truck that moved less than this since the last route keeps that route (no new Google call)
 const REROUTE_MILES = 2;
@@ -50,7 +43,32 @@ export interface StopEta {
   /** Minutes early (negative) or late (positive) against the appointment; null when none */
   lateMinutes: number | null;
 }
-// ETAs include the hours-of-service rest for a solo driver (restMinutes)
+// ETAs include every stop the truck has to make on the way (hosPlan.ts: US hours-of-service + fuel)
+
+/** A stop the driver will have to make on the road ahead */
+export interface RoadStop {
+  kind: StopKind;
+  minutes: number;
+  /** Miles from the truck's position */
+  atMile: number;
+  /** Driving done before it (minutes) */
+  afterDrivingMinutes: number;
+  /** When it starts */
+  at: string;
+}
+
+/** How the ETA is made up: driving + breaks + rests + fuel stops = total */
+export interface EtaPlan {
+  /** Google's drive time with traffic, for cars */
+  googleMinutes: number;
+  /** Truck driving time (never faster than 60 mph average) */
+  drivingMinutes: number;
+  breakMinutes: number;
+  restMinutes: number;
+  fuelMinutes: number;
+  totalMinutes: number;
+  stops: RoadStop[];
+}
 
 export interface LiveTrip {
   truck: TruckNow | null;
@@ -59,8 +77,9 @@ export interface LiveTrip {
   /** Whole remaining route */
   miles: number | null;
   driveMinutes: number | null;
-  /** Rest added to the ETA (solo driver hours-of-service); 0 for a team */
+  /** Breaks, rests and fuel stops added to the ETA (see plan) */
   restMinutes: number | null;
+  plan: EtaPlan | null;
   team: boolean;
   eta: string | null;
   fuelGallons: number | null;
@@ -234,19 +253,28 @@ export async function liveTrip(trip: ChatTrip, stops: ChatTripStop[]): Promise<L
 
   const etas: StopEta[] = [];
   const team = !!trip.driver_id_2;
-  let clock = now;
-  let miles = 0;
-  let minutes = 0;
   const legs: any[] = route.legs || [];
   const targetIds: number[] = route.targets || [];
-  legs.forEach((leg, i) => {
-    const stop = ahead.find((s) => s.id === targetIds[i]);
-    if (!stop) return;
-    const legMiles = (leg.distance?.value || 0) / 1609.344;
-    const legMinutes = ((leg.duration_in_traffic || leg.duration)?.value || 0) / 60;
-    miles += legMiles;
-    minutes += legMinutes;
-    clock = now + (minutes + restMinutes(minutes, team)) * 60_000;
+
+  // Each leg as a truck drives it, then one plan of stops over the whole road ahead
+  const timed = legs
+    .map((leg, i) => {
+      const stop = ahead.find((s) => s.id === targetIds[i]);
+      const legMiles = (leg.distance?.value || 0) / 1609.344;
+      const googleMinutes = ((leg.duration_in_traffic || leg.duration)?.value || 0) / 60;
+      return stop ? { leg, stop, legMiles, googleMinutes, legMinutes: truckDriving(legMiles, googleMinutes) } : null;
+    })
+    .filter(Boolean) as { leg: any; stop: ChatTripStop; legMiles: number; googleMinutes: number; legMinutes: number }[];
+  const miles = timed.reduce((a, t) => a + t.legMiles, 0);
+  const minutes = timed.reduce((a, t) => a + t.legMinutes, 0);
+  const googleMinutes = timed.reduce((a, t) => a + t.googleMinutes, 0);
+  const plan = planTrip(miles, minutes, team);
+
+  let driven = 0;
+  let clock = now;
+  for (const { leg, stop, legMiles, legMinutes } of timed) {
+    driven += legMinutes;
+    clock = now + elapsedAt(plan, driven) * 60_000;
     const appt = stop.appointment_at ? new Date(stop.appointment_at).getTime() : null;
     etas.push({
       stopId: stop.id,
@@ -261,7 +289,7 @@ export async function liveTrip(trip: ChatTrip, stops: ChatTripStop[]): Promise<L
       eta: new Date(clock).toISOString(),
       lateMinutes: appt ? Math.round((clock - appt) / 60_000) : null,
     });
-  });
+  }
 
   const hasRoute = etas.length > 0;
   return {
@@ -270,7 +298,24 @@ export async function liveTrip(trip: ChatTrip, stops: ChatTripStop[]): Promise<L
     stops: etas,
     miles: hasRoute ? Math.round(miles) : null,
     driveMinutes: hasRoute ? Math.round(minutes) : null,
-    restMinutes: hasRoute ? restMinutes(minutes, team) : null,
+    restMinutes: hasRoute ? plan.breakMinutes + plan.restMinutes + plan.fuelMinutes : null,
+    plan: hasRoute
+      ? {
+          googleMinutes: Math.round(googleMinutes),
+          drivingMinutes: plan.drivingMinutes,
+          breakMinutes: plan.breakMinutes,
+          restMinutes: plan.restMinutes,
+          fuelMinutes: plan.fuelMinutes,
+          totalMinutes: plan.totalMinutes,
+          stops: plan.stops.map((p) => ({
+            kind: p.kind,
+            minutes: p.minutes,
+            atMile: p.atMile,
+            afterDrivingMinutes: p.afterDrivingMinutes,
+            at: new Date(now + p.startsAfter * 60_000).toISOString(),
+          })),
+        }
+      : null,
     team,
     eta: hasRoute ? new Date(clock).toISOString() : null,
     fuelGallons: hasRoute ? Math.round(miles / MPG) : null,

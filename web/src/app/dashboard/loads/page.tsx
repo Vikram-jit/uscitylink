@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Container, Stack, Typography } from '@mui/material';
 
 import { StaffGuard } from '@/components/dashboard/automation/AdminGuard';
-import { LoadsBoard } from '@/components/dashboard/trips/LoadsBoard';
+import { LoadsHome } from '@/components/dashboard/trips/LoadsHome';
 
 export default function Page(): React.JSX.Element {
   return (
@@ -14,11 +14,11 @@ export default function Page(): React.JSX.Element {
           <Stack spacing={0.5}>
             <Typography variant="h4">Loads</Typography>
             <Typography color="text.secondary" variant="body2">
-              Line up and send loads to drivers. Each load is a trip the driver runs from the app (Got it → Rolling → Delivered).
-              When you mark it completed, its entry is created in the yard's Route List for pay.
+              Every load is tracked by its invoice #. A load goes direct, through our yard, or by relay — each leg is run by one
+              driver from the app (Got it → Rolling → Delivered). See which trucks, trailers and drivers are free on the second tab.
             </Typography>
           </Stack>
-          <LoadsBoard />
+          <LoadsHome />
         </Stack>
       </StaffGuard>
     </Container>

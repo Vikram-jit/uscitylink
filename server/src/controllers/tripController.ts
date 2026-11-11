@@ -5,6 +5,7 @@ import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
 import { parseLoad } from "../services/trips/parseLoad";
+import { blockingLeg, legsOf } from "../services/trips/legs";
 import { liveTrip } from "../services/trips/liveTrip";
 import { TripAction } from "../services/trips/lifecycle";
 import {
@@ -16,6 +17,7 @@ import {
   createTrip,
   currentTripFor,
   tripsForDriver,
+  upcomingFor,
   declineOffer,
   editTrip,
   getTrip,
@@ -102,7 +104,29 @@ export async function showTrip(req: Request, res: Response): Promise<any> {
     }
     const actor = await actorOf(req);
     if (actor.role === "driver" && trip.driver_profile_id !== actor.id) return res.status(403).json({ status: false, message: "Not your trip" });
-    return ok(res, { trip, driverNames: await namesFor([trip]) });
+    // Which leg of its load, and whether the leg before still has the load (then it can't be sent yet)
+    const siblings = (await legsOf(trip)).filter((l) => l.status !== "cancelled");
+    const blocking = await blockingLeg(trip);
+    const blockingDriver = blocking?.driver_profile_id ? (await UserProfile.findByPk(blocking.driver_profile_id))?.username || null : null;
+    const handover = blocking ? (await ChatTripStop.findAll({ where: { chat_trip_id: blocking.id } })).sort((a, b) => b.seq - a.seq)[0] : null;
+    return ok(res, {
+      trip,
+      driverNames: await namesFor([trip]),
+      leg: {
+        count: siblings.length || 1,
+        isLast: !siblings.some((l) => l.leg_no > trip.leg_no),
+        blockedBy: blocking
+          ? {
+              legNo: blocking.leg_no,
+              tripNo: blocking.trip_no,
+              status: blocking.status,
+              endsAtYard: blocking.ends_at_yard,
+              driverName: blockingDriver,
+              place: handover ? [handover.name, [handover.city, handover.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") : null,
+            }
+          : null,
+      },
+    });
   } catch (err) {
     return fail(res, err);
   }
@@ -163,8 +187,8 @@ export async function tripActionRest(req: Request, res: Response): Promise<any> 
   try {
     const action = String(req.body?.action || "") as TripAction;
     if (!ACTIONS.includes(action)) return res.status(400).json({ status: false, message: "Unknown action" });
-    const { stopId, note, lat, lng, at } = req.body || {};
-    return ok(res, await act(Number(req.params.id), action, await actorOf(req), { stopId, note, lat, lng, at }));
+    const { stopId, note, lat, lng, at, invoiceNo } = req.body || {};
+    return ok(res, await act(Number(req.params.id), action, await actorOf(req), { stopId, note, lat, lng, at, invoiceNo }));
   } catch (err) {
     return fail(res, err);
   }
@@ -231,6 +255,15 @@ export async function myTrips(req: Request, res: Response): Promise<any> {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     return ok(res, await tripsForDriver(String(req.user?.id), page));
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+/** Driver app: loads lined up for me, not sent yet (read-only "Up next"). */
+export async function myUpcoming(req: Request, res: Response): Promise<any> {
+  try {
+    return ok(res, await upcomingFor(String(req.user?.id)));
   } catch (err) {
     return fail(res, err);
   }

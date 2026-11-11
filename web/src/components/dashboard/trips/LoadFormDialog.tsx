@@ -2,237 +2,284 @@
 
 import * as React from 'react';
 import {
+  LoadType,
+  StopInput,
+  Trip,
+  useAddLoadLegMutation,
+  useCreateLoadWithLegsMutation,
+  useEditTripMutation,
+  useLazyGetDriverAssignmentQuery,
+  useLazyGetYardStopQuery,
+  useParseTripTextMutation,
+} from '@/redux/TripApiSlice';
+import type { SvgIconComponent } from '@mui/icons-material';
+import {
+  Add,
+  Close,
+  ContentCopy,
+  ContentPaste,
+  FormatListNumbered,
+  Delete,
+  LocalParking,
+  LocalShipping,
+  RvHookup,
+  Send,
+  SwapHoriz,
+  Warehouse,
+} from '@mui/icons-material';
+import {
   Alert,
-  Autocomplete,
+  alpha,
   Box,
   Button,
+  ButtonBase,
+  Chip,
   Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
+  Divider,
   Grid,
   IconButton,
-  MenuItem,
+  Paper,
   Stack,
-  Switch,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Add, ArrowDownward, ArrowUpward, ContentPaste, Delete } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
-import { useGetUsersQuery } from '@/redux/UserApiSlice';
-import {
-  StopInput,
-  StopType,
-  Trip,
-  TruckAssignment,
-  useCreateTripMutation,
-  useEditTripMutation,
-  useGetTruckAssignmentsQuery,
-  useLazyGetDriverAssignmentQuery,
-  useParseTripTextMutation,
-} from '@/redux/TripApiSlice';
+import { LineupDrawer } from './LineupDrawer';
+import { emptyStop, legBody, LegEditor, LegState, newLeg, Person } from './LegEditor';
+import { LOAD_TYPE } from './tripFormat';
 
-import { STOP_LABEL } from './tripFormat';
-
-// Add a load (Loads screen) or send one from a driver's chat. Truck first: picking a truck fills in
-// the driver(s) its truck group assigns (both for a team); from a driver's chat their truck is
-// already filled in. Then stops with their local appointment times, and either save it for later
-// (it's offered to the driver when they ask / finish the current load) or send it now.
-// A load typed the old way can be pasted in and read into the form.
-
-interface Person {
-  id: string;
-  name: string;
-}
+// Add a load (Loads screen) or send one from a driver's chat. A load is tracked by its invoice # and
+// moved by one or more legs:
+//   Direct        one driver, pickup → delivery
+//   Via our yard  leg 1 drops the trailer at the yard, leg 2 (same or another driver / truck) delivers
+//   Relay         leg 1 meets leg 2's driver on the road, leg 2 delivers
+//   Trailer move  move a trailer from → to
+// Later legs can be saved with "assign later" and get a driver when the load is ready to transfer.
+// Also: edit one leg (trip panel) and add a leg to a load (load panel).
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Editing a trip that isn't closed */
+  /** Editing one leg (a trip) that isn't closed */
   trip?: Trip | null;
   /** Opened from a driver's chat */
   driver?: Person | null;
-  onSaved?: (trip: Trip) => void;
+  /** Adding a leg to this load; it starts where the load's last leg ends */
+  addLegTo?: { loadId: number; startsAt: StopInput | null } | null;
+  onSaved?: () => void;
 }
 
-const emptyStop = (type: StopType): StopInput => ({ type, name: '', street: '', city: '', state: '', zip: '', appointment: '' });
+const TYPE_ICON: Record<LoadType, SvgIconComponent> = {
+  direct: LocalShipping,
+  via_yard: Warehouse,
+  relay: SwapHoriz,
+  trailer_move: RvHookup,
+};
+const TYPE_HINT: Record<LoadType, string> = {
+  direct: 'One driver, pickup to delivery',
+  via_yard: 'Drop at our yard, next driver delivers',
+  relay: 'Swap drivers at a meet point',
+  trailer_move: 'Move a trailer from A to B',
+};
 
-const truckLabel = (t: TruckAssignment) => `${t.truck}${t.drivers.length ? ` · ${t.drivers.map((d) => d.name).join(' + ')}` : ' · no driver assigned'}`;
+const isHandover = (s?: StopInput) => !!s && (s.type === 'yard' || s.type === 'switch');
 
-/** Trucks with their assigned drivers; a number not in the list can still be typed. */
-function TruckPicker({ value, onPick }: { value: string; onPick: (truck: string, assignment: TruckAssignment | null) => void }) {
-  const [search, setSearch] = React.useState('');
-  const { data, isFetching } = useGetTruckAssignmentsQuery(search);
-  const options = data?.data || [];
-  return (
-    <Autocomplete
-      size="small"
-      freeSolo
-      options={options}
-      loading={isFetching}
-      inputValue={value}
-      onInputChange={(_, v, reason) => {
-        if (reason === 'input') {
-          setSearch(v);
-          onPick(v, null);
-        }
-      }}
-      onChange={(_, v) => {
-        if (v && typeof v !== 'string') onPick(v.truck, v);
-      }}
-      getOptionLabel={(o) => (typeof o === 'string' ? o : o.truck)}
-      renderOption={(props, o) => (
-        <li {...props} key={o.truck}>
-          {truckLabel(o)}
-        </li>
-      )}
-      filterOptions={(x) => x}
-      renderInput={(params) => <TextField {...params} label="Truck #" helperText="Picks the truck's assigned driver(s)" />}
-    />
+/** Rebuild the legs for a load type, keeping the people of leg 1 / leg 2 and the customer stops. */
+function legsForType(type: LoadType, legs: LegState[], yard: StopInput | null): LegState[] {
+  const all = legs.flatMap((l) => l.stops);
+  const pickups = all.filter((s) => s.type === 'pickup');
+  const drops = all.filter((s) => s.type === 'drop');
+  const p = pickups.length ? pickups : [emptyStop('pickup')];
+  const d = drops.length ? drops : [emptyStop('drop')];
+  const first = legs[0] || newLeg([]);
+  if (type === 'direct' || type === 'trailer_move') return [{ ...first, stops: [...p, ...d] }];
+  const existing = all.find((s) => s.type === (type === 'via_yard' ? 'yard' : 'switch'));
+  const hand: StopInput =
+    existing ||
+    (type === 'via_yard' ? { ...(yard || emptyStop('yard')), type: 'yard', appointment: '' } : emptyStop('switch'));
+  const second = legs[1] || newLeg([], { loaded: true });
+  return [
+    { ...first, stops: [...p, hand] },
+    { ...second, stops: d },
+  ];
+}
+
+const fromTrip = (trip: Trip, driver?: Person | null): LegState =>
+  newLeg(
+    [...(trip.stops || [])]
+      .sort((a, b) => a.seq - b.seq)
+      .map((s) => ({
+        type: s.type,
+        name: s.name || '',
+        street: s.street || '',
+        city: s.city || '',
+        state: s.state || '',
+        zip: s.zip || '',
+        appointment: s.appointment_local || '',
+        ref: s.ref || '',
+      })),
+    {
+      driver: driver || (trip.driver_profile_id ? { id: trip.driver_profile_id, name: 'Current driver' } : null),
+      truck: trip.truck_number || '',
+      trailers: trip.trailer_numbers ? trip.trailer_numbers.split(/,\s*/).filter(Boolean) : [],
+      temperature: trip.temperature || '',
+      loaded: !!trip.loaded_trailer,
+      notes: trip.notes || '',
+    }
   );
-}
 
-function DriverPicker({ label, value, onChange }: { label: string; value: Person | null; onChange: (p: Person | null) => void }) {
-  const [search, setSearch] = React.useState('');
-  const { data, isFetching } = useGetUsersQuery({ role: 'driver', page: 1, search });
-  const options: Person[] = (data?.data?.users || []).map((u: any) => ({
-    id: u.id,
-    name: `${u.username || 'Driver'}${u.user?.driver_number ? ` (${u.user.driver_number})` : ''}`,
-  }));
-  return (
-    <Autocomplete
-      size="small"
-      options={value && !options.some((o) => o.id === value.id) ? [value, ...options] : options}
-      loading={isFetching}
-      value={value}
-      onChange={(_, v) => onChange(v)}
-      onInputChange={(_, v, reason) => reason === 'input' && setSearch(v)}
-      getOptionLabel={(o) => o.name}
-      isOptionEqualToValue={(a, b) => a.id === b.id}
-      filterOptions={(x) => x}
-      renderInput={(params) => <TextField {...params} label={label} />}
-    />
-  );
-}
-
-export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props): React.JSX.Element {
+export function LoadFormDialog({ open, onClose, trip, driver, addLegTo, onSaved }: Props): React.JSX.Element {
   const editing = !!trip;
-  const [driverPick, setDriverPick] = React.useState<Person | null>(driver || null);
-  const [team, setTeam] = React.useState<Person | null>(null);
-  const [truck, setTruck] = React.useState('');
-  const [trailers, setTrailers] = React.useState('');
-  const [temperature, setTemperature] = React.useState('');
-  const [loaded, setLoaded] = React.useState(false);
-  const [notes, setNotes] = React.useState('');
-  const [stops, setStops] = React.useState<StopInput[]>([emptyStop('pickup'), emptyStop('drop')]);
+  const addingLeg = !!addLegTo;
+  const creating = !editing && !addingLeg;
+  const [type, setType] = React.useState<LoadType>('direct');
+  const [legs, setLegs] = React.useState<LegState[]>([newLeg([emptyStop('pickup'), emptyStop('drop')])]);
+  const [invoice, setInvoice] = React.useState('');
+  /** Adding a load without an invoice #: ask once — add it, or continue without (needed later to complete) */
+  const [askInvoice, setAskInvoice] = React.useState<{ send: boolean } | null>(null);
+  const invoiceRef = React.useRef<HTMLInputElement>(null);
   const [pasteOpen, setPasteOpen] = React.useState(false);
   const [pasted, setPasted] = React.useState('');
   const [readNotes, setReadNotes] = React.useState<string[]>([]);
+  const [yard, setYard] = React.useState<StopInput | null>(null);
+  const [showLineup, setShowLineup] = React.useState(false);
 
-  const [createTrip, { isLoading: creating }] = useCreateTripMutation();
-  const [editTrip, { isLoading: saving }] = useEditTripMutation();
+  const [createLoad, { isLoading: savingLoad }] = useCreateLoadWithLegsMutation();
+  const [addLeg, { isLoading: addingLegNow }] = useAddLoadLegMutation();
+  const [editTrip, { isLoading: savingTrip }] = useEditTripMutation();
   const [parseText, { isLoading: reading }] = useParseTripTextMutation();
   const [lookupDriverTruck] = useLazyGetDriverAssignmentQuery();
+  const [loadYard] = useLazyGetYardStopQuery();
+  const busy = savingLoad || addingLegNow || savingTrip;
 
-  /** A truck was picked: its driver(s) from the truck group. */
-  const pickTruck = (number: string, assignment: TruckAssignment | null) => {
-    setTruck(number);
-    if (!assignment) return;
-    const [first, second] = assignment.drivers;
-    if (first) setDriverPick(first);
-    setTeam(second || null);
-  };
-
-  /** A driver was picked (or the form opened from their chat): their truck and team mate. */
-  const fillFromDriver = async (person: Person | null, onlyIfEmpty: boolean) => {
-    if (!person) return;
-    try {
-      const res = await lookupDriverTruck(person.id, true).unwrap();
-      const a = res.data;
-      if (!a) return;
-      setTruck((current) => (onlyIfEmpty && current.trim() ? current : a.truck));
-      const mate = a.drivers.find((d) => d.id !== person.id);
-      if (mate) setTeam((current) => current || mate);
-    } catch {
-      // no truck group: dispatch types the truck
-    }
-  };
-
-  // Fill from the trip being edited (or reset for a new one)
+  // Fill from the trip being edited (or reset for a new load / leg) — once per opening
   React.useEffect(() => {
     if (!open) return;
     setReadNotes([]);
     setPasted('');
     setPasteOpen(false);
     if (trip) {
-      setDriverPick(driver || (trip.driver_profile_id ? { id: trip.driver_profile_id, name: 'Current driver' } : null));
-      setTeam(null);
-      setTruck(trip.truck_number || '');
-      setTrailers(trip.trailer_numbers || '');
-      setTemperature(trip.temperature || '');
-      setLoaded(!!trip.loaded_trailer);
-      setNotes(trip.notes || '');
-      setStops(
-        [...(trip.stops || [])]
-          .sort((a, b) => a.seq - b.seq)
-          .map((s) => ({
-            type: s.type,
-            name: s.name || '',
-            street: s.street || '',
-            city: s.city || '',
-            state: s.state || '',
-            zip: s.zip || '',
-            appointment: s.appointment_local || '',
-            ref: s.ref || '',
-          }))
-      );
-    } else {
-      setDriverPick(driver || null);
-      setTeam(null);
-      setTruck('');
-      setTrailers('');
-      setTemperature('');
-      setLoaded(false);
-      setNotes('');
-      setStops([emptyStop('pickup'), emptyStop('drop')]);
-      if (driver) void fillFromDriver(driver, false);
+      setType('direct');
+      setLegs([fromTrip(trip, driver)]);
+      setInvoice(trip.invoice_no || '');
+      return;
     }
-    // Once per opening (or a different trip / driver). The parent passes a new `driver` object on
-    // every render and its name arrives a moment later: depending on the object reset the form —
-    // and closed "Paste a typed load" — each time.
+    setInvoice('');
+    setType('direct');
+    if (addLegTo) {
+      setLegs([newLeg([emptyStop('drop')], { loaded: true })]);
+    } else {
+      const first = newLeg([emptyStop('pickup'), emptyStop('drop')], { driver: driver || null });
+      setLegs([first]);
+      // From a driver's chat: their truck and team mate
+      if (driver) {
+        lookupDriverTruck(driver.id, true)
+          .unwrap()
+          .then((res) => {
+            const a = res.data;
+            if (!a) return;
+            const mate = a.drivers.find((d) => d.id !== driver.id) || null;
+            setLegs((all) =>
+              all.map((l, i) => (i === 0 ? { ...l, truck: l.truck || a.truck, team: l.team || mate } : l))
+            );
+          })
+          .catch(() => undefined);
+      }
+    }
+    loadYard()
+      .unwrap()
+      .then((r) => setYard(r.data))
+      .catch(() => undefined);
+    // The parent passes a new `driver` object on every render: depend on ids only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, trip?.id, driver?.id]);
+  }, [open, trip?.id, driver?.id, addLegTo?.loadId]);
 
   // The driver's name loaded after opening: show it without resetting anything
   React.useEffect(() => {
     if (!driver?.name) return;
-    setDriverPick((current) => (current && current.id === driver.id ? { ...current, name: driver.name } : current));
+    setLegs((all) =>
+      all.map((l, i) =>
+        i === 0 && l.driver?.id === driver.id ? { ...l, driver: { ...l.driver, name: driver.name } } : l
+      )
+    );
   }, [driver?.id, driver?.name]);
 
-  const setStop = (i: number, patch: Partial<StopInput>) => setStops((all) => all.map((s, j) => (j === i ? { ...s, ...patch } : s)));
-  const move = (i: number, by: number) =>
-    setStops((all) => {
-      const next = [...all];
-      const [s] = next.splice(i, 1);
-      next.splice(i + by, 0, s);
+  const patchLeg = (i: number) => (patch: Partial<LegState>) =>
+    setLegs((all) => all.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+
+  const changeType = (t: LoadType | null) => {
+    if (!t) return;
+    setType(t);
+    setLegs((all) => legsForType(t, all, yard));
+  };
+
+  const addAnotherLeg = () =>
+    setLegs((all) => {
+      // The leg that was last now hands over at our yard (dispatch can change it to a meet point)
+      const last = all[all.length - 1];
+      const lastStop = last.stops[last.stops.length - 1];
+      const drops = isHandover(lastStop) ? [] : last.stops.filter((s) => s.type === 'drop');
+      const kept = isHandover(lastStop)
+        ? last.stops
+        : [
+            ...last.stops.filter((s) => s.type !== 'drop'),
+            { ...(yard || emptyStop('yard')), type: 'yard' as const, appointment: '' },
+          ];
+      return [
+        ...all.slice(0, -1),
+        { ...last, stops: kept },
+        newLeg(drops.length ? drops : [emptyStop('drop')], { loaded: true }),
+      ];
+    });
+
+  const removeLeg = (i: number) =>
+    setLegs((all) => {
+      const next = all.filter((_, j) => j !== i);
+      if (next.length === 1) setType('direct');
       return next;
     });
+
+  /** Leg 2+ uses leg 1's driver / truck / trailer (via our yard with the same driver). */
+  const sameAsBefore = (i: number) =>
+    setLegs((all) =>
+      all.map((l, j) =>
+        j === i
+          ? {
+              ...l,
+              driver: all[i - 1].driver,
+              team: all[i - 1].team,
+              truck: all[i - 1].truck,
+              trailers: all[i - 1].trailers,
+            }
+          : l
+      )
+    );
 
   const readPasted = async () => {
     try {
       const res = await parseText(pasted).unwrap();
       const l = res.data;
-      setStops(l.stops.map((s) => ({ ...s, appointment: s.appointment || '' })));
-      if (l.truck) setTruck(l.truck);
-      if (l.trailers.length) setTrailers(l.trailers.join(', '));
-      if (l.temperature) setTemperature(l.temperature);
-      setLoaded(l.loadedTrailer);
-      setReadNotes([...l.reasons, ...(l.team.length > 1 ? [`Team in the text: ${l.team.join(' + ')} — pick the second driver above`] : [])]);
+      setType('direct');
+      setLegs((all) => [
+        {
+          ...all[0],
+          stops: l.stops.map((s) => ({ ...s, appointment: s.appointment || '' })),
+          ...(l.truck ? { truck: l.truck } : {}),
+          ...(l.trailers.length ? { trailers: l.trailers } : {}),
+          ...(l.temperature ? { temperature: l.temperature } : {}),
+          loaded: l.loadedTrailer,
+        },
+      ]);
+      setReadNotes([
+        ...l.reasons,
+        ...(l.team.length > 1 ? [`Team in the text: ${l.team.join(' + ')} — pick the second driver below`] : []),
+      ]);
       setPasteOpen(false);
       toast.success('Load read — check the fields');
     } catch (err: any) {
@@ -241,68 +288,125 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
   };
 
   const problems = (): string | null => {
-    if (!driverPick && !truck.trim()) return 'Choose a driver or enter a truck number';
-    if (!stops.length) return 'Add at least one stop';
-    if (stops.some((s) => !s.city?.trim() || !s.state?.trim())) return 'Every stop needs a city and state';
-    if (!stops.some((s) => s.type === 'drop')) return 'Add the delivery';
+    for (let i = 0; i < legs.length; i++) {
+      const leg = legs[i];
+      const name = legs.length > 1 ? `Leg ${i + 1}: ` : '';
+      if (i === 0 && !addingLeg && !leg.driver && !leg.truck.trim())
+        return `${name}choose a driver or enter a truck number`;
+      if (!leg.stops.length) return `${name}add at least one stop`;
+      if (leg.stops.some((s) => !s.city?.trim() || !s.state?.trim())) return `${name}every stop needs a city and state`;
+      if (i < legs.length - 1 && !isHandover(leg.stops[leg.stops.length - 1]))
+        return `${name}must end at our yard or a meet point (the next leg starts there)`;
+    }
+    const last = legs[legs.length - 1];
+    if (!editing && !last.stops.some((s) => s.type === 'drop')) return 'Add the delivery';
     return null;
   };
 
-  const save = async (send: boolean) => {
+  const save = async (send: boolean, withoutInvoice = false) => {
     const problem = problems();
     if (problem) {
       toast.error(problem);
       return;
     }
-    const body = {
-      driverProfileId: driverPick?.id || null,
-      truckNumber: truck.trim() || null,
-      teamDriverProfileId: team?.id || null,
-      trailerNumbers: trailers.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean),
-      temperature: temperature.trim() || null,
-      loadedTrailer: loaded,
-      notes: notes.trim() || null,
-      stops: stops.map((s) => ({ ...s, state: s.state?.toUpperCase(), appointment: s.appointment || null })),
-    };
+    if (creating && !invoice.trim() && !withoutInvoice) {
+      setAskInvoice({ send });
+      return;
+    }
     try {
-      const res = editing
-        ? await editTrip({ id: trip!.id, ...body, needsReview: false }).unwrap()
-        : await createTrip({ ...body, send }).unwrap();
-      toast.success(res.message || (send ? 'Load sent to the driver' : 'Load saved'));
-      onSaved?.(res.data);
+      if (editing) {
+        const res = await editTrip({
+          id: trip!.id,
+          ...legBody(legs[0]),
+          invoiceNo: invoice.trim() || null,
+          needsReview: false,
+        }).unwrap();
+        toast.success(res.message || 'Trip updated');
+      } else if (addingLeg) {
+        const res = await addLeg({ id: addLegTo!.loadId, ...legBody(legs[0]) }).unwrap();
+        toast.success(res.message || 'Leg added');
+      } else {
+        const res = await createLoad({
+          type,
+          invoiceNo: invoice.trim() || null,
+          legs: legs.map(legBody),
+          send,
+        }).unwrap();
+        toast.success(res.message || (send ? 'Load sent to the driver' : 'Load saved'));
+      }
+      onSaved?.();
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message || 'Could not save the load');
     }
   };
 
+  const title = editing
+    ? `Edit ${trip?.leg_no && trip.leg_no > 1 ? `leg ${trip.leg_no} · ` : ''}trip #${trip?.trip_no || trip?.id}`
+    : addingLeg
+      ? 'Add a leg'
+      : driver
+        ? `Send load to ${driver.name}`
+        : 'New load';
+  const stopCount = legs.reduce((n, l) => n + l.stops.length, 0);
+  const summary = creating
+    ? `${LOAD_TYPE[type].label} · ${legs.length} leg${legs.length > 1 ? 's' : ''} · ${stopCount} stop${stopCount === 1 ? '' : 's'}${invoice.trim() ? ` · ${invoice.trim()}` : ''}`
+    : '';
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{editing ? `Edit trip #${trip?.trip_no || trip?.id}` : driver ? `Send load to ${driver.name}` : 'Add load'}</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          {!editing && (
-            <Box>
-              <Button size="small" startIcon={<ContentPaste />} onClick={() => setPasteOpen((v) => !v)}>
-                Paste a typed load
-              </Button>
-              <Collapse in={pasteOpen}>
-                <Stack spacing={1} sx={{ mt: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="lg"
+      PaperProps={{ sx: { bgcolor: 'background.default' } }}
+    >
+      <DialogTitle sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', py: 1.5 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            {title}
+          </Typography>
+          {creating && driver && (
+            <Button size="small" startIcon={<FormatListNumbered />} onClick={() => setShowLineup(true)}>
+              {driver.name.split(' ')[0]}&apos;s lineup
+            </Button>
+          )}
+          {creating && (
+            <Button size="small" startIcon={<ContentPaste />} onClick={() => setPasteOpen((v) => !v)}>
+              Paste a typed load
+            </Button>
+          )}
+          <IconButton onClick={onClose} aria-label="Close">
+            <Close />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ py: 2.5 }}>
+        <Stack spacing={2} sx={{ pt: 2 }}>
+          {creating && (
+            <Collapse in={pasteOpen} unmountOnExit>
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1}>
                   <TextField
                     multiline
-                    minRows={6}
+                    minRows={5}
                     placeholder={'PICK #\nCOLD LINK - ELLISVILLE\n609 DACETOWN RD\nELLISVILLE, MS 39437\n\nDROP #\n…'}
                     value={pasted}
                     onChange={(e) => setPasted(e.target.value)}
                   />
                   <Box>
-                    <Button variant="outlined" size="small" disabled={!pasted.trim() || reading} onClick={() => void readPasted()}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!pasted.trim() || reading}
+                      onClick={() => void readPasted()}
+                    >
                       Read into the form
                     </Button>
                   </Box>
                 </Stack>
-              </Collapse>
-            </Box>
+              </Paper>
+            </Collapse>
           )}
           {readNotes.length > 0 && (
             <Alert severity="warning">
@@ -312,133 +416,213 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
             </Alert>
           )}
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TruckPicker value={truck} onPick={pickTruck} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField size="small" fullWidth label="Trailer #" helperText="Several: 10265, 10266" value={trailers} onChange={(e) => setTrailers(e.target.value)} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <DriverPicker
-                label="Driver"
-                value={driverPick}
-                onChange={(p) => {
-                  setDriverPick(p);
-                  void fillFromDriver(p, true);
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <DriverPicker label="Team driver (optional)" value={team} onChange={setTeam} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField size="small" fullWidth label="Temperature" placeholder="34 CONT. / REFER ON BILLS" value={temperature} onChange={(e) => setTemperature(e.target.value)} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControlLabel control={<Switch checked={loaded} onChange={(e) => setLoaded(e.target.checked)} />} label="Loaded trailer (pick up already loaded)" />
-            </Grid>
-          </Grid>
-
-          <Typography variant="subtitle2">Stops — appointment in the stop's own local time</Typography>
-          {stops.map((s, i) => (
-            <Box key={i} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5 }}>
-              <Grid container spacing={1} alignItems="center">
-                <Grid item xs={6} md={2}>
-                  <TextField select size="small" fullWidth label={`Stop ${i + 1}`} value={s.type} onChange={(e) => setStop(i, { type: e.target.value as StopType })}>
-                    {(Object.keys(STOP_LABEL) as StopType[]).map((t) => (
-                      <MenuItem key={t} value={t}>
-                        {STOP_LABEL[t]}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={6} md={4}>
-                  <TextField size="small" fullWidth label="Name" value={s.name} onChange={(e) => setStop(i, { name: e.target.value })} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField size="small" fullWidth label="Street" value={s.street} onChange={(e) => setStop(i, { street: e.target.value })} />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <TextField size="small" fullWidth label="City" value={s.city} onChange={(e) => setStop(i, { city: e.target.value })} />
-                </Grid>
-                <Grid item xs={3} md={1}>
+          {!addingLeg && (
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Grid container spacing={2} alignItems="flex-start">
+                <Grid item xs={12} md={creating ? 3 : 4}>
                   <TextField
                     size="small"
                     fullWidth
-                    label="ST"
-                    inputProps={{ maxLength: 2, style: { textTransform: 'uppercase' } }}
-                    value={s.state}
-                    onChange={(e) => setStop(i, { state: e.target.value })}
+                    required
+                    inputRef={invoiceRef}
+                    label="Invoice #"
+                    placeholder="INV-10452"
+                    helperText={invoice.trim() ? 'Tracks the load on every leg' : 'Needed to complete the load'}
+                    value={invoice}
+                    onChange={(e) => setInvoice(e.target.value)}
+                    inputProps={{ 'data-testid': 'invoiceInput', maxLength: 64 }}
                   />
                 </Grid>
-                <Grid item xs={3} md={2}>
-                  <TextField size="small" fullWidth label="ZIP" value={s.zip} onChange={(e) => setStop(i, { zip: e.target.value })} />
-                </Grid>
-                <Grid item xs={9} md={4}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    type="datetime-local"
-                    label="Appointment"
-                    InputLabelProps={{ shrink: true }}
-                    value={s.appointment || ''}
-                    onChange={(e) => setStop(i, { appointment: e.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={3} md={2}>
-                  <Stack direction="row" justifyContent="flex-end">
-                    <Tooltip title="Move up">
-                      <span>
-                        <IconButton size="small" disabled={i === 0} onClick={() => move(i, -1)}>
-                          <ArrowUpward fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Move down">
-                      <span>
-                        <IconButton size="small" disabled={i === stops.length - 1} onClick={() => move(i, 1)}>
-                          <ArrowDownward fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Remove stop">
-                      <span>
-                        <IconButton size="small" disabled={stops.length === 1} onClick={() => setStops((all) => all.filter((_, j) => j !== i))}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                </Grid>
+                {creating && (
+                  <Grid item xs={12} md={9}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1 }}>
+                      {(Object.keys(LOAD_TYPE) as LoadType[]).map((k) => {
+                        const Icon = TYPE_ICON[k];
+                        const on = type === k;
+                        return (
+                          <ButtonBase
+                            key={k}
+                            data-testid={`loadType-${k}`}
+                            onClick={() => changeType(k)}
+                            sx={{
+                              p: 1.25,
+                              borderRadius: 2,
+                              border: 1.5,
+                              borderColor: on ? 'primary.main' : 'divider',
+                              bgcolor: on ? (t) => alpha(t.palette.primary.main, 0.06) : 'background.paper',
+                              boxShadow: on ? (t) => `0 0 0 3px ${t.palette.primary.main}22` : 'none',
+                              justifyContent: 'flex-start',
+                              alignItems: 'flex-start',
+                              textAlign: 'left',
+                              gap: 1,
+                              transition: 'all .15s',
+                            }}
+                          >
+                            <Icon sx={{ color: on ? 'primary.main' : 'text.secondary', mt: 0.25 }} />
+                            <Box>
+                              <Typography variant="body2" fontWeight={700} color={on ? 'primary.main' : 'text.primary'}>
+                                {LOAD_TYPE[k].label}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ lineHeight: 1.3, display: 'block' }}
+                              >
+                                {TYPE_HINT[k]}
+                              </Typography>
+                            </Box>
+                          </ButtonBase>
+                        );
+                      })}
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
+            </Paper>
+          )}
+
+          {legs.map((leg, i) => {
+            const prev = legs[i - 1];
+            const prevLast = prev?.stops[prev.stops.length - 1];
+            const startsAt = addingLeg ? addLegTo!.startsAt : isHandover(prevLast) ? prevLast : null;
+            const multi = legs.length > 1;
+            const handover = isHandover(prevLast) ? prevLast : null;
+            return (
+              <React.Fragment key={leg.key}>
+                {i > 0 && handover && (
+                  <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 2 }}>
+                    <Divider sx={{ flexGrow: 1, borderStyle: 'dashed' }} />
+                    <Chip
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      icon={handover.type === 'yard' ? <LocalParking /> : <SwapHoriz />}
+                      label={`${handover.type === 'yard' ? 'Trailer drops at our yard' : 'Hand over at the meet point'}${handover.city ? ` · ${handover.city}, ${handover.state}` : ''} → leg ${i + 1}`}
+                    />
+                    <Divider sx={{ flexGrow: 1, borderStyle: 'dashed' }} />
+                  </Stack>
+                )}
+                <Paper variant="outlined" sx={{ p: 2 }} data-testid={`leg-${i + 1}`}>
+                  {multi && (
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                      <Box
+                        sx={{
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 1,
+                          bgcolor: 'primary.main',
+                          color: 'primary.contrastText',
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        LEG {i + 1}
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
+                        {i === 0 ? 'Pickup' : `From ${handover?.type === 'yard' ? 'our yard' : 'the meet point'}`} →{' '}
+                        {i < legs.length - 1
+                          ? leg.stops[leg.stops.length - 1]?.type === 'yard'
+                            ? 'our yard'
+                            : 'meet point'
+                          : 'delivery'}
+                        {leg.driver ? ` · ${leg.driver.name}` : i > 0 ? ' · driver can be assigned later' : ''}
+                      </Typography>
+                      {i > 0 && (
+                        <Tooltip title="Same driver, truck and trailer as the leg before">
+                          <Button
+                            size="small"
+                            startIcon={<ContentCopy fontSize="small" />}
+                            onClick={() => sameAsBefore(i)}
+                          >
+                            Same as leg {i}
+                          </Button>
+                        </Tooltip>
+                      )}
+                      {i > 0 && creating && (
+                        <Tooltip title="Remove this leg">
+                          <IconButton size="small" onClick={() => removeLeg(i)}>
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Stack>
+                  )}
+                  <LegEditor
+                    leg={leg}
+                    onChange={patchLeg(i)}
+                    startsAt={startsAt}
+                    assignLater={i > 0 || addingLeg}
+                    loadId={trip?.load_id ?? addLegTo?.loadId ?? null}
+                  />
+                </Paper>
+              </React.Fragment>
+            );
+          })}
+          {creating && type !== 'direct' && type !== 'trailer_move' && (
+            <Box>
+              <Button size="small" startIcon={<Add />} onClick={addAnotherLeg}>
+                Add another leg (e.g. through the yard again)
+              </Button>
             </Box>
-          ))}
-          <Box>
-            <Button size="small" startIcon={<Add />} onClick={() => setStops((all) => [...all, emptyStop('drop')])}>
-              Add stop
-            </Button>
-          </Box>
-          <TextField size="small" label="Notes for the driver" multiline minRows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          )}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-        {editing ? (
-          <Button variant="contained" disabled={saving} onClick={() => void save(false)}>
-            Save changes
+      <DialogActions sx={{ bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider', px: 3, py: 1.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }} data-testid="loadFormSummary">
+          {summary}
+        </Typography>
+        <Button onClick={onClose}>Cancel</Button>
+        {editing || addingLeg ? (
+          <Button variant="contained" disabled={busy} onClick={() => void save(false)}>
+            {editing ? 'Save changes' : 'Add leg'}
           </Button>
         ) : (
           <>
-            <Button variant="outlined" disabled={creating} onClick={() => void save(false)}>
+            <Button variant="outlined" disabled={busy} onClick={() => void save(false)}>
               Save for later
             </Button>
-            <Button variant="contained" disabled={creating} onClick={() => void save(true)}>
-              Send now
+            <Button
+              variant="contained"
+              disabled={busy}
+              startIcon={<Send fontSize="small" />}
+              onClick={() => void save(true)}
+            >
+              {legs.length > 1 ? 'Send leg 1 now' : 'Send now'}
             </Button>
           </>
         )}
       </DialogActions>
+
+      <Dialog open={!!askInvoice} onClose={() => setAskInvoice(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>No invoice # yet</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            This load has no invoice number. You can add it now, or continue without it — but the load can&apos;t be
+            marked completed until the invoice # is added.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              const send = askInvoice?.send ?? false;
+              setAskInvoice(null);
+              void save(send, true);
+            }}
+          >
+            Continue without
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setAskInvoice(null);
+              setTimeout(() => invoiceRef.current?.focus(), 150);
+            }}
+          >
+            Add invoice #
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <LineupDrawer profileId={showLineup && driver ? driver.id : null} onClose={() => setShowLineup(false)} />
     </Dialog>
   );
 }

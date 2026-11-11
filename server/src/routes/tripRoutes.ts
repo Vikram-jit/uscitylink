@@ -12,6 +12,7 @@ import {
   listTrips,
   myCurrentTrip,
   myTrips,
+  myUpcoming,
   parseTripText,
   resolveProblemRest,
   sendTripRest,
@@ -27,6 +28,7 @@ const staffOnly = [authMiddleware, requireRole("staff", "admin")];
 
 router.get("/current", authMiddleware, myCurrentTrip);
 router.get("/mine", authMiddleware, myTrips);
+router.get("/upcoming", authMiddleware, myUpcoming);
 router.get("/", ...staffOnly, listTrips);
 router.post("/parse", ...staffOnly, parseTripText);
 router.get("/trucks", ...staffOnly, listTruckAssignments);

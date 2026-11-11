@@ -34,6 +34,9 @@ import {
   useTripActionMutation,
 } from '@/redux/TripApiSlice';
 
+import { CompleteTripButton } from './CompleteTripButton';
+import { HandoverDialog } from './HandoverDialog';
+import { ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { LoadFormDialog } from './LoadFormDialog';
 import { TripLivePanel } from './TripLivePanel';
 import { appointment, atStop, PROBLEM_KINDS, STATUS, STOP_LABEL, tripLabel } from './tripFormat';
@@ -52,6 +55,10 @@ const EVENT_TEXT: Record<string, string> = {
   paperwork: 'Paperwork',
   ai_suggestion: 'Assistant suggestion',
   correction: 'Undone',
+  transfer: 'Handed over',
+  transfer_undone: 'Handover undone',
+  time_correction: 'Times corrected',
+  miles: 'Miles',
   offer: 'Offered to the driver',
   note: 'Note',
 };
@@ -64,14 +71,18 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
   const { data, isFetching } = useGetLoadQuery(tripId as number, { skip: !tripId });
   const trip = data?.data?.trip;
   const driverName = trip?.driver_profile_id ? data?.data?.driverNames?.[trip.driver_profile_id] : null;
+  const legInfo = data?.data?.leg;
+  const blockedBy = legInfo?.blockedBy || null;
 
   const [sendTrip, { isLoading: sending }] = useSendTripMutation();
   const [declineOffer] = useDeclineOfferMutation();
-  const [tripAction, { isLoading: acting }] = useTripActionMutation();
+  const [tripAction] = useTripActionMutation();
   const [addProblem] = useAddTripProblemMutation();
   const [resolveProblem] = useResolveTripProblemMutation();
 
   const [editing, setEditing] = React.useState(false);
+  const [handover, setHandover] = React.useState(false);
+  const [release, setRelease] = React.useState<ReleaseTarget | null>(null);
   const [prompt, setPrompt] = React.useState<ReturnType<typeof ask> | null>(null);
   const [promptText, setPromptText] = React.useState('');
   const [problemOpen, setProblemOpen] = React.useState(false);
@@ -122,9 +133,16 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
             {trip.temperature ? ` · Temp ${trip.temperature}` : ''}
             {trip.loaded_trailer ? ' · Loaded trailer' : ''}
           </Typography>
+          <Typography variant="body2" color={trip.invoice_no ? 'text.secondary' : 'warning.main'} data-testid="tripInvoice">
+            Invoice # {trip.invoice_no || 'not added yet — needed to mark completed'}
+          </Typography>
           <Typography variant="caption" color="text.secondary">
             Added by {trip.created_by_name || '—'} {trip.source === 'typed' ? '(read from a typed load)' : ''} ·{' '}
-            {trip.route_trip_no ? `Route List trip ${trip.route_trip_no}` : 'Route List entry is created when you mark it completed'}
+            {legInfo && legInfo.count > 1
+              ? `Leg ${trip.leg_no} of ${legInfo.count} · Route List: on hold for multi-leg loads`
+              : trip.route_trip_no
+                ? `Route List trip ${trip.route_trip_no}`
+                : 'Route List entry is created when you mark it completed'}
             {trip.total_mileage ? ` · ${trip.total_mileage} mi (Samsara)` : ''}
           </Typography>
 
@@ -136,11 +154,41 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
               ))}
             </Alert>
           )}
-          {s === 'offered' && <Alert severity="info">The driver is waiting for this load. Confirm to send it to their chat.</Alert>}
+          {blockedBy && (s === 'scheduled' || s === 'offered') && (
+            <Alert severity="info" data-testid="legBlocked">
+              Goes out after leg {blockedBy.legNo} (#{blockedBy.tripNo}) is {blockedBy.endsAtYard ? 'dropped at the yard' : 'handed over'} — it&apos;s{' '}
+              {STATUS[blockedBy.status]?.label.toLowerCase() || blockedBy.status} now. The driver is offered this leg then; you confirm before it&apos;s sent.
+              {trip.driver_profile_id && trip.load_id && (
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="warning"
+                    data-testid="tripReleaseBtn"
+                    onClick={() =>
+                      setRelease({
+                        loadId: trip.load_id!,
+                        legId: trip.id,
+                        tripNo: trip.trip_no,
+                        driverName: driverName || 'the driver',
+                        prevLegNo: blockedBy.legNo,
+                        prevTripNo: blockedBy.tripNo,
+                        prevDriver: blockedBy.driverName || 'the driver before',
+                        place: blockedBy.place || '',
+                      })
+                    }
+                  >
+                    Already handed over? Send to {driverName || 'the driver'} now
+                  </Button>
+                </Box>
+              )}
+            </Alert>
+          )}
+          {s === 'offered' && !blockedBy && <Alert severity="info">The driver is waiting for this load. Confirm to send it to their chat.</Alert>}
 
           {/* Dispatch actions for this status */}
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {(s === 'scheduled' || s === 'offered') && (
+            {(s === 'scheduled' || s === 'offered') && !blockedBy && (
               <Button variant="contained" disabled={sending} onClick={() => void run(() => sendTrip(trip.id).unwrap())}>
                 {s === 'offered' ? 'Confirm & send' : 'Send to driver'}
               </Button>
@@ -149,9 +197,7 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
               <Button onClick={() => void run(() => declineOffer(trip.id).unwrap(), 'Driver told you will update them')}>Not yet</Button>
             )}
             {(s === 'ended' || s === 'paperwork') && (
-              <Button variant="contained" color="success" disabled={acting} onClick={() => void doAction('complete')}>
-                Mark completed
-              </Button>
+              <CompleteTripButton trip={trip} requireInvoice={legInfo ? legInfo.isLast : !(trip.ends_at_yard || stops[stops.length - 1]?.type === 'switch')} />
             )}
             {!['completed', 'routed', 'cancelled'].includes(s!) && <Button onClick={() => setEditing(true)}>Edit</Button>}
             {!['scheduled', 'offered', 'cancelled', 'routed'].includes(s!) && <Button onClick={() => setProblemOpen(true)}>Add problem</Button>}
@@ -159,6 +205,11 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
               <Button onClick={() => setPrompt(ask('Put the trip on hold', 'Why?', (t) => void doAction('hold', t), false))}>Hold</Button>
             )}
             {s === 'on_hold' && <Button onClick={() => void doAction('resume')}>Resume</Button>}
+            {trip.load_id && ['started', 'rolling', 'on_hold'].includes(s!) && (
+              <Button color="warning" onClick={() => setHandover(true)}>
+                Change driver / truck
+              </Button>
+            )}
             {!['completed', 'routed', 'cancelled'].includes(s!) && (
               <Button color="error" onClick={() => setPrompt(ask('Cancel this trip', 'Reason (the driver sees it)', (t) => void doAction('cancel', t)))}>
                 Cancel trip
@@ -251,6 +302,10 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
         </Stack>
       )}
 
+      <ReleaseLegDialog target={release} onClose={() => setRelease(null)} />
+      {trip?.load_id && (
+        <HandoverDialog open={handover} onClose={() => setHandover(false)} loadId={trip.load_id} leg={trip} driverName={driverName} />
+      )}
       <LoadFormDialog open={editing} onClose={() => setEditing(false)} trip={trip} driver={trip?.driver_profile_id && driverName ? { id: trip.driver_profile_id, name: driverName } : null} />
 
       <Dialog open={!!prompt} onClose={() => setPrompt(null)} fullWidth maxWidth="xs">

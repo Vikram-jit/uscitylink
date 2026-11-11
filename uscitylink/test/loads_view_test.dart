@@ -75,4 +75,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsNothing);
   });
+
+  testWidgets('Up next: lined-up loads are listed read-only, in order, with what they wait for', (tester) async {
+    final service = TripService();
+    service.upcoming.assignAll([
+      CurrentTrip.fromTrip({...trip(73, 'scheduled'), 'trip_no': 'L0073-2', 'position': 1, 'waits_for': 'Leg 1 (L0073) handing over'}),
+      CurrentTrip.fromTrip({...trip(80, 'offered'), 'position': 2}),
+    ]);
+    await tester.pumpWidget(GetMaterialApp(home: LoadsView(service: service)));
+    expect(find.text('Up next'), findsWidgets);
+    expect(find.byKey(const Key('upNextNote')), findsOneWidget);
+    expect(find.byKey(const Key('upNextPos_73')), findsOneWidget);
+    expect(find.text('#1'), findsOneWidget);
+    expect(find.text('#2'), findsOneWidget);
+    expect(find.text('Starts after: Leg 1 (L0073) handing over'), findsOneWidget);
+    expect(find.text('Waiting for dispatch'), findsOneWidget);
+    // Opening it shows the stops, no trip buttons
+    await tester.tap(find.byKey(const Key('load_73')));
+    await tester.pumpAndSettle();
+    expect(find.text('Trip #L0073-2'), findsOneWidget);
+    expect(find.text('Drop · COSTCO'), findsOneWidget);
+    expect(find.byKey(const Key('upNextNote')), findsOneWidget);
+    expect(find.byKey(const Key('tripNextButton')), findsNothing);
+  });
 }

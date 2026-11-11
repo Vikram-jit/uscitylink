@@ -17,7 +17,7 @@ class TripStop {
   final int id;
   final int seq;
 
-  /// pickup | drop | switch
+  /// pickup | drop | switch (meet another driver) | yard (drop the trailer at our yard)
   final String type;
   final String? name;
   final String? street;
@@ -30,7 +30,13 @@ class TripStop {
   final DateTime? arrivedAt;
   final DateTime? departedAt;
 
-  String get typeLabel => type == 'pickup' ? 'Pickup' : type == 'switch' ? 'Switch' : 'Drop';
+  String get typeLabel => type == 'pickup'
+      ? 'Pickup'
+      : type == 'switch'
+          ? 'Meet point'
+          : type == 'yard'
+              ? 'Yard drop'
+              : 'Drop';
   String get place => [city, state].where((s) => s != null && s.isNotEmpty).join(', ');
 
   /// "11/06 03:15 AM"
@@ -89,6 +95,8 @@ class CurrentTrip {
     this.startedAt,
     this.endedAt,
     this.completedAt,
+    this.position,
+    this.waitsFor,
   });
 
   final int id;
@@ -109,10 +117,17 @@ class CurrentTrip {
   final DateTime? endedAt;
   final DateTime? completedAt;
 
+  /// Lined up, not sent yet ("Up next"): its place in the driver's lineup, and what it waits for
+  final int? position;
+  final String? waitsFor;
+  bool get isUpcoming => status == 'scheduled' || status == 'offered';
+
   TripStop? get firstStop => stops.isEmpty ? null : stops.first;
   TripStop? get lastStop => stops.isEmpty ? null : stops.last;
 
   String get statusLabel => const {
+        'scheduled': 'Up next',
+        'offered': 'Waiting for dispatch',
         'planned': 'New load',
         'accepted': 'Accepted',
         'started': 'Started',
@@ -154,6 +169,8 @@ class CurrentTrip {
       startedAt: TripStop._date(t['started_at']),
       endedAt: TripStop._date(t['ended_at']),
       completedAt: TripStop._date(t['completed_at']),
+      position: (t['position'] as num?)?.toInt(),
+      waitsFor: t['waits_for'] as String?,
     );
   }
 }

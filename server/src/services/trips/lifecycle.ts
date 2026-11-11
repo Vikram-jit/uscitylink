@@ -103,7 +103,7 @@ export const DRIVER_CURRENT: TripStatus[] = ["planned", "accepted", "started", "
 export interface StopProgress {
   id: number;
   seq: number;
-  type: "pickup" | "drop" | "switch";
+  type: "pickup" | "drop" | "switch" | "yard";
   name: string | null;
   arrived_at: Date | string | null;
   departed_at: Date | string | null;
@@ -123,7 +123,11 @@ export function nextStep(status: TripStatus, stops: StopProgress[]): NextStep {
   const last = [...stops].sort((a, b) => a.seq - b.seq).pop();
   if (status === "planned") return { action: "accept", label: "Got it" };
   if (status === "accepted" || status === "started") return { action: "rolling", label: "Loaded — rolling" };
-  if (status === "rolling") return { action: "end", label: "Delivered — end trip", stopId: last?.id };
+  if (status === "rolling") {
+    // A leg that hands the load over (our yard / a meet point) ends there, not at the customer
+    const label = last?.type === "yard" ? "Dropped at yard — end trip" : last?.type === "switch" ? "Handed over — end trip" : "Delivered — end trip";
+    return { action: "end", label, stopId: last?.id };
+  }
   return null;
 }
 

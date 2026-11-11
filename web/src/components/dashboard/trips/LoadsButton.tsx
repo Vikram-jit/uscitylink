@@ -7,12 +7,12 @@ import { Close, LocalShipping } from '@mui/icons-material';
 
 import { useAutomationAccess } from '@/components/dashboard/automation/AdminGuard';
 import { useSocketEvent } from '@/hooks/use-socket-event';
-import { useGetLoadsQuery } from '@/redux/TripApiSlice';
+import { useListLoadBoardQuery } from '@/redux/TripApiSlice';
 
-import { LoadsBoard } from './LoadsBoard';
+import { LoadsHome } from './LoadsHome';
 
 // Top bar: Loads from any page, full screen over it — no leaving the chat you're in. The badge counts
-// drivers waiting for dispatch to confirm their next load.
+// loads that need dispatch: a driver waiting for a confirm, or a load waiting for its next leg.
 
 const SlideUp = React.forwardRef(function SlideUp(props: TransitionProps & { children: React.ReactElement }, ref: React.Ref<unknown>) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -21,12 +21,13 @@ const SlideUp = React.forwardRef(function SlideUp(props: TransitionProps & { chi
 export function LoadsButton(): React.JSX.Element | null {
   const { isStaff } = useAutomationAccess();
   const [open, setOpen] = React.useState(false);
-  const waiting = useGetLoadsQuery({ status: 'offered', limit: 1 }, { skip: !isStaff });
+  const waiting = useListLoadBoardQuery({ status: 'waiting,transfer', limit: 1 }, { skip: !isStaff });
   const refresh = React.useCallback(() => {
     if (isStaff) void waiting.refetch();
   }, [isStaff, waiting]);
   useSocketEvent('trip:offer', refresh, isStaff);
   useSocketEvent('trip:updated', refresh, isStaff);
+  useSocketEvent('load:updated', refresh, isStaff);
 
   if (!isStaff) return null;
   const count = waiting.data?.data?.total || 0;
@@ -50,7 +51,7 @@ export function LoadsButton(): React.JSX.Element | null {
             </IconButton>
           </Toolbar>
         </AppBar>
-        <Box sx={{ p: { xs: 1, md: 3 }, bgcolor: 'background.default', flexGrow: 1 }}>{open && <LoadsBoard />}</Box>
+        <Box sx={{ p: { xs: 1, md: 3 }, bgcolor: 'background.default', flexGrow: 1 }}>{open && <LoadsHome />}</Box>
       </Dialog>
     </>
   );

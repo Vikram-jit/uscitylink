@@ -1,4 +1,4 @@
-import type { Trip, TripStatus, TripStop } from '@/redux/TripApiSlice';
+import type { LoadStatus, LoadType, Trip, TripStatus, TripStop } from '@/redux/TripApiSlice';
 
 // Labels and time formatting shared by the Loads screen, the trip panel and Send load.
 
@@ -40,7 +40,68 @@ export const PROBLEM_KINDS: Record<string, string> = {
   other: 'Other',
 };
 
-export const STOP_LABEL = { pickup: 'Pickup', drop: 'Drop', switch: 'Switch' } as const;
+export const STOP_LABEL = { pickup: 'Pickup', drop: 'Drop', switch: 'Meet point', yard: 'Our yard' } as const;
+
+// ---------- loads with legs ----------
+
+export const LOAD_TYPE: Record<LoadType, { label: string; short: string; help: string }> = {
+  direct: { label: 'Direct', short: 'Direct', help: 'One driver: pickup → delivery' },
+  via_yard: { label: 'Via our yard', short: 'Via yard', help: 'Pickup → drop the trailer at our yard → the same or another driver / truck takes it to the delivery' },
+  relay: { label: 'Relay / transfer', short: 'Relay', help: 'Pickup → meet another driver on the road → they take the load to the delivery' },
+  trailer_move: { label: 'Trailer move', short: 'Trailer move', help: 'Move a trailer (empty or loaded) from one place to another' },
+};
+
+export const LOAD_STATUS: Record<LoadStatus, { label: string; color: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' }> = {
+  scheduled: { label: 'Scheduled', color: 'default' },
+  waiting: { label: 'Driver waiting', color: 'warning' },
+  active: { label: 'On the road', color: 'primary' },
+  transfer: { label: 'Ready to transfer', color: 'warning' },
+  delivered: { label: 'Delivered', color: 'secondary' },
+  completed: { label: 'Completed', color: 'success' },
+  cancelled: { label: 'Cancelled', color: 'default' },
+};
+
+/** Loads screen tabs: the ones that need dispatch first */
+export const LOAD_TABS: { key: string; label: string; status: string }[] = [
+  { key: 'all', label: 'All', status: '' },
+  { key: 'transfer', label: 'Ready to transfer', status: 'transfer' },
+  { key: 'waiting', label: 'Driver waiting', status: 'waiting' },
+  { key: 'scheduled', label: 'Scheduled', status: 'scheduled' },
+  { key: 'active', label: 'On the road', status: 'active' },
+  { key: 'delivered', label: 'Delivered', status: 'delivered' },
+  { key: 'completed', label: 'Completed', status: 'completed' },
+];
+
+export const legsInOrder = (legs?: Trip[]) => [...(legs || [])].sort((a, b) => a.leg_no - b.leg_no);
+
+/** The leg dispatch needs to look at now: waiting for them, on the road, or the next one to go. */
+export function currentLeg(legs?: Trip[]): Trip | undefined {
+  const list = legsInOrder(legs).filter((l) => l.status !== 'cancelled');
+  return (
+    list.find((l) => l.status === 'offered') ||
+    list.find((l) => ['planned', 'accepted', 'started', 'rolling', 'on_hold'].includes(l.status)) ||
+    list.find((l) => ['scheduled'].includes(l.status)) ||
+    list.find((l) => ['ended', 'paperwork'].includes(l.status)) ||
+    list[list.length - 1]
+  );
+}
+
+/** "45 min", "3 h 10 min", "2 d 4 h" */
+export function minutesText(min: number | null | undefined): string {
+  if (min === null || min === undefined) return '—';
+  const m = Math.abs(Math.round(min));
+  const d = Math.floor(m / 1440);
+  const h = Math.floor((m % 1440) / 60);
+  const r = m % 60;
+  return [d ? `${d} d` : '', h ? `${h} h` : '', !d && r ? `${r} min` : ''].filter(Boolean).join(' ') || '0 min';
+}
+
+/** "+40 min late" / "25 min early" / "on time" for a difference in minutes (positive = late). */
+export function lateText(min: number | null | undefined): string {
+  if (min === null || min === undefined) return '—';
+  if (Math.abs(min) <= 15) return 'On time';
+  return `${minutesText(min)} ${min > 0 ? 'late' : 'early'}`;
+}
 
 const sorted = (stops?: TripStop[]) => [...(stops || [])].sort((a, b) => a.seq - b.seq);
 

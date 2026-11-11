@@ -7,9 +7,42 @@ import type { TripStatus } from "../services/trips/lifecycle";
 // own number (L0047). When dispatch marks the trip completed, its yard Route List entry is created:
 // driver_pay_details_id / route_trip_no (services/trips/routeListSync). Times are UTC.
 
+export type LoadType = "direct" | "via_yard" | "relay" | "trailer_move";
+export type LoadStatus = "scheduled" | "waiting" | "active" | "transfer" | "delivered" | "completed" | "cancelled";
+
+/**
+ * A load, tracked by its invoice # (migrations/20261112000001-create-chat-loads.js). Moved by one or
+ * more legs: each leg is a ChatTrip run by one driver with their own truck / trailer / stops.
+ * status is worked out from the legs (services/trips/loadService.loadStatusOf).
+ */
+export class ChatLoad extends Model {
+  public id!: number;
+  public load_no!: string | null;
+  public invoice_no!: string | null;
+  public type!: LoadType;
+  public status!: LoadStatus;
+  public notes!: string | null;
+  public created_by!: string | null;
+  public created_by_name!: string | null;
+  public created_at!: Date;
+  public updated_at!: Date;
+  public legs?: ChatTrip[];
+}
+
 export class ChatTrip extends Model {
   public id!: number;
+  /** The load this leg moves (every trip has one; a plain load has a single leg) */
+  public load_id!: number | null;
+  public leg_no!: number;
+  /** Place in the driver's lineup of lined-up loads (lower goes first) */
+  public queue_pos!: number | null;
+  /** The leg drops the trailer at our yard for the next leg */
+  public ends_at_yard!: boolean;
+  /** ETA when the leg went Rolling — compared with the real delivery */
+  public planned_eta_at!: Date | null;
   public trip_no!: string | null;
+  /** Required before Mark completed */
+  public invoice_no!: string | null;
   public status!: TripStatus;
   public status_before_hold!: TripStatus | null;
   public source!: "form" | "typed";
@@ -34,6 +67,11 @@ export class ChatTrip extends Model {
   public completed_at!: Date | null;
   public completed_by_name!: string | null;
   public total_mileage!: string | null;
+  /** samsara (odometer) | manual (typed by dispatch — Samsara won't overwrite it) */
+  public miles_source!: "samsara" | "manual" | null;
+  public miles_note!: string | null;
+  /** Why this leg was cut and handed to another driver / truck (breakdown, out_of_hours …) */
+  public handover_reason!: string | null;
   public driver_pay_details_id!: number | null;
   public route_trip_no!: string | null;
   public created_by!: string | null;
@@ -49,7 +87,13 @@ export class ChatTrip extends Model {
 ChatTrip.init(
   {
     id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+    load_id: DataTypes.BIGINT.UNSIGNED,
+    leg_no: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    queue_pos: DataTypes.INTEGER,
+    ends_at_yard: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    planned_eta_at: DataTypes.DATE,
     trip_no: DataTypes.STRING,
+    invoice_no: DataTypes.STRING(64),
     status: { type: DataTypes.STRING(20), allowNull: false, defaultValue: "scheduled" },
     status_before_hold: DataTypes.STRING(20),
     source: { type: DataTypes.STRING(10), allowNull: false, defaultValue: "form" },
@@ -74,6 +118,9 @@ ChatTrip.init(
     completed_at: DataTypes.DATE,
     completed_by_name: DataTypes.STRING,
     total_mileage: DataTypes.DECIMAL(10, 2),
+    miles_source: DataTypes.STRING(10),
+    miles_note: DataTypes.STRING(255),
+    handover_reason: DataTypes.STRING(32),
     driver_pay_details_id: DataTypes.BIGINT.UNSIGNED,
     route_trip_no: DataTypes.STRING,
     created_by: DataTypes.STRING(64),
@@ -87,7 +134,8 @@ export class ChatTripStop extends Model {
   public id!: number;
   public chat_trip_id!: number;
   public seq!: number;
-  public type!: "pickup" | "drop" | "switch";
+  /** yard: our yard, where a leg drops the trailer for the next one */
+  public type!: "pickup" | "drop" | "switch" | "yard";
   public name!: string | null;
   public street!: string | null;
   public city!: string | null;
@@ -199,6 +247,22 @@ ChatTripProblem.init(
   { sequelize: primarySequelize, tableName: "chat_trip_problems", modelName: "ChatTripProblem", underscored: true, timestamps: true }
 );
 
+ChatLoad.init(
+  {
+    id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+    load_no: DataTypes.STRING(32),
+    invoice_no: DataTypes.STRING(64),
+    type: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "direct" },
+    status: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "scheduled" },
+    notes: DataTypes.TEXT,
+    created_by: DataTypes.STRING(64),
+    created_by_name: DataTypes.STRING,
+  },
+  { sequelize: primarySequelize, tableName: "chat_loads", modelName: "ChatLoad", underscored: true, timestamps: true }
+);
+
+ChatLoad.hasMany(ChatTrip, { foreignKey: "load_id", as: "legs" });
+ChatTrip.belongsTo(ChatLoad, { foreignKey: "load_id", as: "load" });
 ChatTrip.hasMany(ChatTripStop, { foreignKey: "chat_trip_id", as: "stops" });
 ChatTrip.hasMany(ChatTripEvent, { foreignKey: "chat_trip_id", as: "events" });
 ChatTrip.hasMany(ChatTripProblem, { foreignKey: "chat_trip_id", as: "problems" });

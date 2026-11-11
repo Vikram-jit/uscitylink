@@ -41,6 +41,7 @@ export function formatLoad(trip: ChatTrip, stops: ChatTripStop[], teamNames: str
     lines.push("");
     if (s.type === "pickup") lines.push("PICKUP");
     else if (s.type === "switch") lines.push("GO TO (SWITCH TRAILER)");
+    else if (s.type === "yard") lines.push("DROP AT YARD");
     else lines.push(drops > 1 ? `DROP # ${++dropNo}` : "DROP");
     if (s.name) lines.push(s.name);
     if (s.street) lines.push(s.street);
@@ -93,7 +94,11 @@ export const statusLine = {
   depart: (stop: ChatTripStop, stops: ChatTripStop[], at: Date) =>
     `🛣️ Departed ${place(stop)} · ${clock(at, stop.state)}${towards(nextAfter(stops, stop))}`,
   end: (trip: ChatTrip, stop?: ChatTripStop | null) =>
-    `✅ Trip ${tripNo(trip)} delivered${stop ? ` at ${place(stop)}` : ""} — please send the BOL / POD photos`,
+    stop?.type === "yard"
+      ? `🅿️ Trip ${tripNo(trip)} dropped at the yard${stop ? ` (${place(stop)})` : ""} — thank you, dispatch has the next move`
+      : stop?.type === "switch"
+        ? `🔁 Trip ${tripNo(trip)} handed over at ${place(stop)} — thank you`
+        : `✅ Trip ${tripNo(trip)} delivered${stop ? ` at ${place(stop)}` : ""} — please send the BOL / POD photos`,
   paperwork: (trip: ChatTrip, summary: string) => `📄 Paperwork for trip ${tripNo(trip)}: ${summary} — waiting for dispatch to confirm`,
   complete: (trip: ChatTrip, who: string) => `✅ Trip ${tripNo(trip)} completed — paperwork confirmed by ${who}`,
   hold: (trip: ChatTrip, note?: string | null) => `⏸️ Trip ${tripNo(trip)} on hold${note ? `: ${note}` : ""}`,

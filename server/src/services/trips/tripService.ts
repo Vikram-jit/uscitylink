@@ -1,6 +1,6 @@
 import { Op, QueryTypes } from "sequelize";
 import { primarySequelize, secondarySequelize } from "../../sequelize";
-import { ChatTrip, ChatTripEvent, ChatTripProblem, ChatTripStop } from "../../models/ChatTrip";
+import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripProblem, ChatTripStop } from "../../models/ChatTrip";
 import { DriverTrip } from "../../models/DriverTrip";
 import { UserProfile } from "../../models/UserProfile";
 import User from "../../models/User";
@@ -17,6 +17,9 @@ import { localToDate, stateTimezone } from "./stateTimezone";
 import { createRouteRow, isPriced, removeRouteRow, syncRouteRow } from "./routeListSync";
 import { formatLoad, PROBLEM_KINDS, statusLine } from "./tripMessages";
 import { tripMileage } from "./samsara";
+import { blockingLeg, isLastLeg, legsOf, legTripNo, nextLeg, refreshLoadStatus } from "./legs";
+import { liveTrip } from "./liveTrip";
+import { linedUpLegs, nextPosition } from "./lineup";
 
 // Trips: created by dispatch (Loads screen, Send load in chat, or a typed load read from chat), run
 // by the driver from the app, completed by dispatch, priced by the accountant in the yard's Route
@@ -30,7 +33,8 @@ export interface Actor {
 }
 
 export interface StopInput {
-  type: "pickup" | "drop" | "switch";
+  /** yard: our yard (the leg drops the trailer there for the next leg) · switch: a meet point */
+  type: "pickup" | "drop" | "switch" | "yard";
   name?: string | null;
   street?: string | null;
   city?: string | null;
@@ -50,6 +54,8 @@ export interface TripInput {
   teamNames?: string[];
   trailerNumbers?: string[];
   temperature?: string | null;
+  /** The load's invoice number: can be left empty when adding, required to mark completed */
+  invoiceNo?: string | null;
   loadedTrailer?: boolean;
   notes?: string | null;
   channelId?: string | null;
@@ -60,7 +66,19 @@ export interface TripInput {
   rawText?: string | null;
   /** A typed load: the message it came in (already in the chat, so nothing is sent). */
   messageId?: string | null;
+  /** A later leg of a load can be saved before its driver is known ("assign later") */
+  allowNoDriver?: boolean;
 }
+
+/** Which load a new trip is a leg of (loadService.createLoad); without it the trip is its own load. */
+export interface LegOf {
+  loadId: number;
+  legNo: number;
+  loadNo?: string | null;
+}
+
+/** "  INV-1234 " → "INV-1234"; empty → null */
+export const cleanInvoice = (v?: string | null) => (v == null ? null : String(v).trim().slice(0, 64) || null);
 
 export class TripError extends Error {
   constructor(
@@ -73,7 +91,7 @@ export class TripError extends Error {
 
 // ---------- lookups ----------
 
-const withStops = {
+export const withStops = {
   include: [{ model: ChatTripStop, as: "stops" }],
   order: [[{ model: ChatTripStop, as: "stops" }, "seq", "ASC"]] as any,
 };
@@ -162,7 +180,7 @@ export async function assignmentOfDriver(profileId: string): Promise<TruckAssign
   return group ? { truck: String(group.name), drivers: await driversInGroup(group.id) } : null;
 }
 
-async function yardDriverId(profileId: string): Promise<number | null> {
+export async function yardDriverId(profileId: string): Promise<number | null> {
   const profile = await UserProfile.findByPk(profileId);
   const user = profile ? await User.findByPk(profile.userId) : null;
   return user?.yard_id ? Number(user.yard_id) : null;
@@ -189,6 +207,17 @@ async function driverChannel(profileId: string, preferred?: string | null): Prom
     order: [["createdAt", "ASC"]],
   });
   return (first as any)?.channelId || null;
+}
+
+/**
+ * The driver's chat for this trip. Looked up again when it's missing — a driver added to a channel
+ * after the trip was made (or reassigned) must still get their messages — and saved once found.
+ */
+export async function ensureChannel(trip: ChatTrip): Promise<string | null> {
+  if (trip.channel_id || !trip.driver_profile_id) return trip.channel_id || null;
+  const channelId = await driverChannel(trip.driver_profile_id);
+  if (channelId) await trip.update({ channel_id: channelId });
+  return channelId;
 }
 
 const profileName = async (id?: string | null) => (id ? (await UserProfile.findByPk(id))?.username || null : null);
@@ -220,7 +249,7 @@ function stopRows(stops: StopInput[]) {
     const local = s.appointment && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s.appointment) ? s.appointment : null;
     return {
       seq: i + 1,
-      type: s.type === "pickup" || s.type === "switch" ? s.type : "drop",
+      type: s.type === "pickup" || s.type === "switch" || s.type === "yard" ? s.type : "drop",
       name: s.name?.trim() || null,
       street: s.street?.trim() || null,
       city: s.city?.trim() || null,
@@ -238,10 +267,10 @@ async function resolvePeople(input: TripInput) {
   let profileId = input.driverProfileId || null;
   let truckNumber = input.truckNumber?.trim() || null;
   if (!profileId && truckNumber) profileId = (await driverOfTruck(truckNumber))?.id || null;
-  if (!profileId) throw new TripError(truckNumber ? `No driver found on truck ${truckNumber}` : "Choose a driver or a truck");
-  if (!truckNumber) truckNumber = await truckOfDriver(profileId);
+  if (!profileId && !input.allowNoDriver) throw new TripError(truckNumber ? `No driver found on truck ${truckNumber}` : "Choose a driver or a truck");
+  if (!truckNumber && profileId) truckNumber = await truckOfDriver(profileId);
 
-  const driver1 = await yardDriverId(profileId);
+  const driver1 = profileId ? await yardDriverId(profileId) : null;
   const teamNames: string[] = [];
   let driver2: number | null = null;
   if (input.teamDriverProfileId) {
@@ -250,7 +279,7 @@ async function resolvePeople(input: TripInput) {
     if (n) teamNames.push(n);
   } else if (input.teamNames && input.teamNames.length > 1) {
     // "JOGA SINGH + JAGTAR SINGH": the second one that isn't the chat driver
-    const own = (await profileName(profileId))?.toLowerCase() || "";
+    const own = (profileId ? await profileName(profileId) : null)?.toLowerCase() || "";
     for (const name of input.teamNames) {
       const found = await yardDriverByName(name);
       if (found && found.id !== driver1 && !driver2 && !own.includes(name.toLowerCase())) driver2 = found.id;
@@ -297,20 +326,22 @@ async function resolvePeople(input: TripInput) {
   };
 }
 
-export async function createTrip(input: TripInput, actor: Actor, opts: { send?: boolean } = {}) {
+export async function createTrip(input: TripInput, actor: Actor, opts: { send?: boolean; leg?: LegOf; quiet?: boolean } = {}) {
   const people = await resolvePeople(input);
   const rows = stopRows(input.stops);
   // The channel dispatch is working in, when the driver is in it (drivers can be in several)
   const working = actor.id ? (global as any).staffActiveChannel?.[actor.id]?.channelId : null;
-  const channelId = await driverChannel(people.profileId, input.channelId || working);
+  const channelId = people.profileId ? await driverChannel(people.profileId, input.channelId || working) : null;
   const reviewNotes = [...(input.reviewNotes || [])];
-  if (!people.driver1) reviewNotes.push("The driver isn't linked to a yard driver — the Route List row has no driver yet");
+  if (people.profileId && !people.driver1) reviewNotes.push("The driver isn't linked to a yard driver — the Route List row has no driver yet");
   if (people.truckNumber && !people.truckId) reviewNotes.push(`Truck ${people.truckNumber} isn't in the yard`);
   if (people.trailerNumbers.length > people.trailerIds.length) reviewNotes.push("A trailer number isn't in the yard");
   if (people.notFleet.length) reviewNotes.push(`${people.notFleet.join(", ")}: not an active fleet unit in the yard — the Route List form won't show it selected`);
 
   const firstTime = rows.map((r) => r.appointment_at).filter(Boolean)[0] as Date | undefined;
   const typed = input.source === "typed" && !!input.messageId;
+  // Lined up for a driver: it goes to the end of their lineup
+  const queuePos = people.profileId && !typed ? await nextPosition(people.profileId) : null;
 
   // Nothing goes to the yard yet: the Route List entry is created when dispatch marks the trip
   // completed (completeTrip). Until then the load has its own number.
@@ -321,6 +352,10 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
           source: input.source || "form",
           needs_review: !!input.needsReview || reviewNotes.length > 0,
           review_notes: reviewNotes.join("\n") || null,
+          load_id: opts.leg?.loadId ?? null,
+          leg_no: opts.leg?.legNo ?? 1,
+          queue_pos: queuePos,
+          ends_at_yard: rows[rows.length - 1]?.type === "yard",
           driver_profile_id: people.profileId,
           channel_id: channelId,
           message_id: input.messageId || null,
@@ -331,6 +366,7 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
           truck_number: people.truckNumber,
           trailer_numbers: people.trailerNumbers.join(", ") || null,
           temperature: input.temperature?.trim() || null,
+          invoice_no: cleanInvoice(input.invoiceNo),
           loaded_trailer: !!input.loadedTrailer,
           notes: input.notes?.trim() || null,
           planned_start_at: firstTime || null,
@@ -345,7 +381,25 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
         rows.map((r) => ({ ...r, chat_trip_id: created.id })),
         { transaction: t },
       );
-      await created.update({ trip_no: loadNo(created.id) }, { transaction: t });
+      if (opts.leg) {
+        // A leg: numbered after its load (L0047, L0047-2 …)
+        const number = opts.leg.loadNo ? legTripNo(opts.leg.loadNo, opts.leg.legNo) : loadNo(created.id);
+        await created.update({ trip_no: number }, { transaction: t });
+      } else {
+        // A plain load: one leg, same number and invoice #
+        const load = await ChatLoad.create(
+          {
+            load_no: loadNo(created.id),
+            invoice_no: created.invoice_no,
+            type: "direct",
+            status: created.status === "planned" ? "active" : "scheduled",
+            created_by: actor.id || null,
+            created_by_name: actor.name || null,
+          },
+          { transaction: t },
+        );
+        await created.update({ trip_no: loadNo(created.id), load_id: load.id }, { transaction: t });
+      }
       await ChatTripEvent.create(
         {
           chat_trip_id: created.id,
@@ -364,12 +418,38 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
     });
 
   if (opts.send && !typed) await sendLoad(trip.id, actor);
-  else announce(trip.id);
+  else {
+    // Saved for later on a driver: they see what's coming (it starts when dispatch confirms)
+    if (!typed && !opts.quiet && trip.driver_profile_id) await notifyLinedUp(trip.id).catch((e) => console.warn("[trips] lined up:", e?.message));
+    announce(trip.id);
+  }
   return getTrip(trip.id);
 }
 
+/**
+ * Tell a driver a load is lined up for them, with the whole load (stops, appointments, truck,
+ * trailer) — read-only: dispatch still confirms before it starts. [intro] replaces the first line
+ * (a handover says where they take over).
+ */
+export async function notifyLinedUp(tripId: number, intro?: string) {
+  const trip = await ChatTrip.findByPk(tripId, withStops);
+  if (!trip?.driver_profile_id || !["scheduled", "offered"].includes(trip.status)) return null;
+  const blocking = await blockingLeg(trip);
+  const first =
+    intro ||
+    `📋 Lined up for you: trip ${trip.trip_no}${blocking ? ` (after leg ${blocking.leg_no} is ${blocking.ends_at_yard ? "dropped at the yard" : "handed over"})` : ""}.`;
+  const body = formatLoad(trip, trip.stops || []);
+  const messageId = await postToChat(trip, `${first}
+
+${body}
+
+⏳ Dispatch confirms before you start — it's in your Loads under "Up next".`);
+  if (messageId) await record(trip, { type: "note", actor: { role: "system", name: "Dispatch Assistant" }, note: "Driver told it's lined up", messageId });
+  return messageId;
+}
+
 /** Dispatch fixes a trip (stops, people, notes). Recorded; Route List follows unless priced. */
-export async function editTrip(id: number, input: Partial<TripInput>, actor: Actor) {
+export async function editTrip(id: number, input: Partial<TripInput>, actor: Actor, opts: { quiet?: boolean } = {}) {
   const trip = await ChatTrip.findByPk(id, withStops);
   if (!trip) throw new TripError("Trip not found", 404);
   if (["completed", "routed", "cancelled"].includes(trip.status)) throw new TripError("This trip is closed");
@@ -384,7 +464,12 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
       teamNames: input.teamNames,
       trailerNumbers: input.trailerNumbers ?? (trip.trailer_numbers ? trip.trailer_numbers.split(/,\s*/) : []),
       stops: [],
+      allowNoDriver: trip.leg_no > 1,
     });
+    if (people.profileId && people.profileId !== trip.driver_profile_id) {
+      changes.channel_id = await driverChannel(people.profileId, input.channelId);
+      if (["scheduled", "offered"].includes(trip.status)) changes.queue_pos = await nextPosition(people.profileId, trip.id);
+    }
     Object.assign(changes, {
       driver_profile_id: people.profileId,
       driver_id_1: people.driver1,
@@ -422,7 +507,7 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
         { transaction: t },
       );
       const firstTime = rows.map((r) => r.appointment_at).filter(Boolean)[0] as Date | undefined;
-      await trip.update({ planned_start_at: firstTime || null }, { transaction: t });
+      await trip.update({ planned_start_at: firstTime || null, ends_at_yard: rows[rows.length - 1]?.type === "yard" }, { transaction: t });
     }
     await ChatTripEvent.create(
       {
@@ -441,10 +526,30 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
       { transaction: t },
     );
   });
+  if (input.invoiceNo !== undefined) await setInvoice(trip, input.invoiceNo, actor);
+  // A new driver on a lined-up load: they see what's coming
+  if (!opts.quiet && changes.driver_profile_id && changes.driver_profile_id !== before.driver_profile_id) {
+    await notifyLinedUp(id).catch((e) => console.warn("[trips] lined up:", e?.message));
+  }
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch((e) => console.warn("[trips] route row:", e?.message));
   announce(id);
   return getTrip(id);
+}
+
+/** The invoice # belongs to the load: every leg carries the same one. */
+export async function setInvoice(trip: Pick<ChatTrip, "id" | "load_id" | "invoice_no">, value: string | null | undefined, actor: Actor) {
+  const invoice = cleanInvoice(value);
+  if (trip.load_id) {
+    const load = await ChatLoad.findByPk(trip.load_id);
+    const before = load?.invoice_no ?? trip.invoice_no ?? null;
+    if (before === invoice) return;
+    await load?.update({ invoice_no: invoice });
+    await ChatTrip.update({ invoice_no: invoice }, { where: { load_id: trip.load_id } });
+    await record(trip as ChatTrip, { type: "edit", actor, note: `Invoice # ${invoice || "removed"}`, data: { before: { invoice_no: before }, after: { invoice_no: invoice } } });
+  } else if (trip.invoice_no !== invoice) {
+    await ChatTrip.update({ invoice_no: invoice }, { where: { id: trip.id } });
+  }
 }
 
 const pick = (o: any, keys: string[]) => Object.fromEntries(keys.map((k) => [k, o?.[k] ?? null]));
@@ -457,12 +562,16 @@ export async function sendLoad(id: number, actor: Actor) {
   if (!trip) throw new TripError("Trip not found", 404);
   const ok = check("send", trip.status, actor.role);
   if (!ok.ok) throw new TripError(ok.error);
-  if (!trip.driver_profile_id || !trip.channel_id) throw new TripError("This driver has no chat to send to");
+  if (!trip.driver_profile_id) throw new TripError("Assign a driver to this leg first");
+  const channelId = await ensureChannel(trip);
+  if (!channelId) throw new TripError("This driver isn't in a chat channel yet — add them to one first");
+  const blocking = await blockingLeg(trip);
+  if (blocking) throw new TripError(`Leg ${blocking.leg_no} (${blocking.trip_no}) isn't delivered yet — this leg goes out after it`);
 
   const teamNames = trip.driver_id_2 ? await teamNamesOf(trip) : [];
   const body = formatLoad(trip, trip.stops || [], teamNames);
   const senderId = actor.id || (await getBotProfileId());
-  const message = await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, trip.channel_id, body);
+  const message = await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body);
   const from = trip.status;
   await trip.update({
     status: ok.to,
@@ -499,18 +608,18 @@ async function teamNamesOf(trip: ChatTrip): Promise<string[]> {
 export async function offerNextLoad(profileId: string, reason: "asked" | "rolling" | "ended") {
   const truck = await truckOfDriver(profileId);
   const truckRow = truck ? await yardOne<{ id: number }>(`SELECT id FROM trucks WHERE number = :n LIMIT 1`, { n: truck }) : null;
-  const where: any = {
-    status: { [Op.in]: ["scheduled", "offered"] },
-    [Op.or]: [{ driver_profile_id: profileId }, ...(truckRow ? [{ truck_id: truckRow.id }] : [])],
-  };
-  const next = await ChatTrip.findOne({
-    where,
-    order: [
-      ["planned_start_at", "ASC"],
-      ["id", "ASC"],
-    ],
-  });
+  // The driver's lineup, in the order dispatch set (#1 first)
+  const candidates = await linedUpLegs(profileId, { truckId: truckRow?.id ?? null });
+  // A later leg of a load waits for the leg before it to be delivered
+  let next: ChatTrip | null = null;
+  for (const c of candidates) {
+    if (!(await blockingLeg(c))) {
+      next = c;
+      break;
+    }
+  }
   const channelId = next?.channel_id || (await driverChannel(profileId));
+  if (next && !next.channel_id && channelId && next.driver_profile_id === profileId) await next.update({ channel_id: channelId });
   const bot = await getBotProfileId().catch(() => null);
   const say = async (text: string) => {
     if (bot && channelId) await sendSystemMessageToDriver(getSocketInstance(), bot, profileId, channelId, text).catch(() => undefined);
@@ -592,6 +701,8 @@ export interface ActOptions {
   lng?: number | null;
   /** When it really happened (a tap made offline arrives later). */
   at?: string | Date | null;
+  /** Mark completed: the invoice number, when the trip doesn't have one yet */
+  invoiceNo?: string | null;
 }
 
 const isTripDriver = async (trip: ChatTrip, profileId?: string | null) => {
@@ -635,6 +746,7 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
   // What changes, and what it was (so the person can undo it)
   const tripBefore: Record<string, any> = {};
   const tripChanges: Record<string, any> = { status: ok.to };
+  let invoiceToSet: string | null = null;
   const stopBefore: Record<string, any> = {};
   const stopChanges: Record<string, any> = {};
   const set = (field: string, value: any) => {
@@ -667,10 +779,19 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
       set("ended_at", at);
       setStop("arrived_at", at);
       break;
-    case "complete":
+    case "complete": {
+      // No invoice number, no completion of the load's last leg: dispatch adds it here if the load was
+      // saved without one. Earlier legs (to the yard / a meet point) complete without it.
+      const load = trip.load_id ? await ChatLoad.findByPk(trip.load_id) : null;
+      const current = load?.invoice_no || trip.invoice_no;
+      const invoice = cleanInvoice(opts.invoiceNo) || current;
+      if (!invoice && (await isLastLeg(trip))) throw new TripError("Add the invoice number before marking this trip completed", 422);
+      // Not undone with the completion: the number stays on the load
+      if (invoice && invoice !== current) invoiceToSet = invoice;
       set("completed_at", at);
       set("completed_by_name", actor.name || null);
       break;
+    }
     case "hold":
       set("status_before_hold", trip.status);
       break;
@@ -682,7 +803,9 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
   // Mark completed creates the yard Route List entry, with the trip's final details. If the yard can't
   // take it, the trip stays delivered and dispatch sees why — never "completed" without its entry.
   let newRouteId: number | null = null;
-  if (action === "complete" && !trip.driver_pay_details_id) {
+  // Multi-leg loads: Route List entries are on hold until the pay rule for legs is decided
+  const multiLeg = action === "complete" && (await legsOf(trip)).length > 1;
+  if (action === "complete" && !trip.driver_pay_details_id && !multiLeg) {
     try {
       const route = await secondarySequelize.transaction((yardT) => createRouteRow(trip, stops, yardT));
       newRouteId = route.id;
@@ -702,6 +825,10 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
     // The trip didn't save: take back the Route List entry made for it a moment ago
     if (newRouteId) await removeRouteRow({ driver_pay_details_id: newRouteId }).catch(() => undefined);
     throw err;
+  }
+  if (invoiceToSet) await setInvoice(trip, invoiceToSet, actor);
+  if (multiLeg) {
+    await record(trip, { type: "note", actor: { role: "system", name: "Route List" }, note: "Route List on hold (multi-leg load)" });
   }
 
   // The chat line both sides see
@@ -753,11 +880,12 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
   return getTrip(trip.id);
 }
 
-async function postToChat(trip: ChatTrip, text: string): Promise<string | null> {
-  if (!trip.driver_profile_id || !trip.channel_id) return null;
+export async function postToChat(trip: ChatTrip, text: string): Promise<string | null> {
+  const channelId = trip.driver_profile_id ? await ensureChannel(trip) : null;
+  if (!trip.driver_profile_id || !channelId) return null;
   try {
     const bot = await getBotProfileId();
-    const m = await sendSystemMessageToDriver(getSocketInstance(), bot, trip.driver_profile_id, trip.channel_id, text);
+    const m = await sendSystemMessageToDriver(getSocketInstance(), bot, trip.driver_profile_id, channelId, text);
     return (m as any)?.id || null;
   } catch (e: any) {
     console.warn("[trips] chat message:", e?.message || e);
@@ -777,9 +905,12 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
     console.warn("[trips] route row:", e?.message || e);
   }
   if (action === "rolling") await askForScaleTicket(fresh).catch((e) => console.warn("[trips] scale ticket:", e?.message));
+  if (action === "rolling") void snapshotEta(fresh.id);
+  // A leg that ends at the yard / a meet point hands the load to the next leg
+  const handedTo = action === "end" ? await handOver(fresh).catch((e) => (console.warn("[trips] hand over:", e?.message), null)) : null;
   if (action === "start") await openScaleRoute(fresh, stops).catch(() => undefined);
   if (action === "end" || action === "cancel") await closeScaleRoute(fresh).catch(() => undefined);
-  if ((action === "rolling" || action === "end") && fresh.driver_profile_id) {
+  if ((action === "rolling" || action === "end") && fresh.driver_profile_id && handedTo?.driver_profile_id !== fresh.driver_profile_id) {
     void offerNextLoad(fresh.driver_profile_id, action === "end" ? "ended" : "rolling").catch((e) =>
       console.warn("[trips] next load:", e?.message),
     );
@@ -790,10 +921,62 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
   }
 }
 
+/**
+ * The leg before was delivered to the yard / meet point: the next leg is ready. Its trailer is this
+ * leg's unless dispatch chose another; with a driver already on it, it's offered (dispatch still
+ * confirms before it's sent); without one, dispatch sees it under Ready to transfer.
+ */
+async function handOver(leg: ChatTrip): Promise<ChatTrip | null> {
+  const next = await nextLeg(leg);
+  if (!next || !["scheduled", "offered"].includes(next.status)) return null;
+  if (!next.trailer_numbers && leg.trailer_numbers) {
+    await next.update({ trailer_numbers: leg.trailer_numbers, trailer_ids: leg.trailer_ids, loaded_trailer: true });
+  }
+  const where = leg.ends_at_yard ? "dropped the trailer at the yard" : "handed the load over";
+  await record(next, { type: "note", actor: { role: "system", name: "Dispatch Assistant" }, note: `Leg ${leg.leg_no} ${where} — this leg is ready` });
+  if (next.driver_profile_id && next.status === "scheduled") {
+    await next.update({ status: "offered" });
+    await record(next, {
+      type: "offer",
+      from: "scheduled",
+      to: "offered",
+      actor: { role: "system", name: "Dispatch Assistant" },
+      note: `Leg ${leg.leg_no} ${leg.ends_at_yard ? "at the yard" : "handed over"}`,
+    });
+    await postToChat(next, statusLine.offered());
+    alertStaff("trip:offer", {
+      tripId: next.id,
+      tripNo: next.trip_no,
+      driverProfileId: next.driver_profile_id,
+      driverName: await profileName(next.driver_profile_id),
+      truck: next.truck_number,
+      reason: "handover",
+    });
+  } else if (!next.driver_profile_id) {
+    alertStaff("load:transfer", { loadId: next.load_id, tripId: next.id, tripNo: next.trip_no, atYard: leg.ends_at_yard });
+  }
+  announce(next.id);
+  return next;
+}
+
+/** The ETA when the leg went Rolling, kept to compare with the real delivery. */
+async function snapshotEta(id: number) {
+  if (process.env.TRIP_ETA_SNAPSHOT === "off") return;
+  try {
+    const trip = await ChatTrip.findByPk(id, withStops);
+    if (!trip || trip.planned_eta_at) return;
+    const live = await liveTrip(trip, trip.stops || []);
+    if (live.eta) await trip.update({ planned_eta_at: new Date(live.eta) });
+  } catch (e: any) {
+    console.warn("[trips] eta snapshot:", e?.message || e);
+  }
+}
+
 /** Samsara odometer difference for the trip and each leg, written to the trip and its Route List row. */
-async function addMileage(id: number) {
+export async function addMileage(id: number) {
   const trip = await ChatTrip.findByPk(id, withStops);
-  if (!trip?.truck_id || !trip.started_at || !trip.ended_at) return;
+  // Miles typed by dispatch stay as they are
+  if (!trip?.truck_id || !trip.started_at || !trip.ended_at || trip.miles_source === "manual") return;
   const truck = await yardOne<{ samsara_vehicle_id: string | null }>(`SELECT samsara_vehicle_id FROM trucks WHERE id = :id`, {
     id: trip.truck_id,
   });
@@ -806,7 +989,7 @@ async function addMileage(id: number) {
     stops.map((s) => s.arrived_at),
   );
   if (!result) return;
-  await trip.update({ total_mileage: result.total });
+  await trip.update({ total_mileage: result.total, miles_source: "samsara", miles_note: null });
   for (let i = 0; i < stops.length; i++) {
     const miles = result.legs[i];
     if (miles !== null && miles !== undefined) await stops[i].update({ mileage: miles });
@@ -867,7 +1050,7 @@ export async function onDocumentRead(message: { id: string; userProfileId: strin
 }
 
 /** The Route List row follows the trip, with the lumper reported on it filled in for the accountant. */
-async function syncRoute(trip: ChatTrip) {
+export async function syncRoute(trip: ChatTrip) {
   const lumpers = await ChatTripProblem.findAll({ where: { chat_trip_id: trip.id, kind: "lumper" } });
   const lumper = lumpers.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   return syncRouteRow(trip, trip.stops || [], { lumper: lumper > 0 ? lumper : null });
@@ -895,7 +1078,7 @@ async function openScaleRoute(trip: ChatTrip, stops: ChatTripStop[]) {
   });
 }
 
-async function closeScaleRoute(trip: ChatTrip) {
+export async function closeScaleRoute(trip: ChatTrip) {
   if (!trip.driver_profile_id) return;
   await DriverTrip.update(
     { status: "closed", closed_at: new Date() },
@@ -1036,7 +1219,7 @@ export async function resolveProblem(id: number, problemId: number, actor: Actor
 
 // ---------- the record and live updates ----------
 
-async function record(
+export async function record(
   trip: ChatTrip,
   e: {
     type: string;
@@ -1071,7 +1254,7 @@ async function record(
 }
 
 /** Online staff (dashboard + staff app). */
-function alertStaff(event: string, payload: Record<string, any>) {
+export function alertStaff(event: string, payload: Record<string, any>) {
   try {
     const io = getSocketInstance();
     for (const staffId of Object.keys(global.staffActiveChannel || {})) io.to(userRoom(staffId)).emit(event, payload);
@@ -1081,11 +1264,15 @@ function alertStaff(event: string, payload: Record<string, any>) {
 }
 
 /** trip:updated to the driver(s) and staff, so the app card and the dashboard refresh. */
-function announce(id: number) {
+export function announce(id: number) {
   void (async () => {
     const trip = await ChatTrip.findByPk(id);
     if (!trip) return;
+    const load = await refreshLoadStatus(trip.load_id).catch(() => null);
+    // A load left (or joined) the driver's lineup: number it 1..n again
+    if (trip.driver_profile_id) await nextPosition(trip.driver_profile_id).catch(() => undefined);
     const io = getSocketInstance();
+    if (load) alertStaff("load:updated", { loadId: load.id, status: load.status });
     const payload = {
       tripId: id,
       status: trip.status,
@@ -1154,4 +1341,22 @@ export async function currentTripFor(profileId: string) {
   if (!trip) return null;
   const stops = (trip.stops || []).sort((a, b) => a.seq - b.seq);
   return { trip, next: nextStep(trip.status as TripStatus, stops) };
+}
+
+/**
+ * The driver app's "Up next": loads lined up for this driver (theirs, or on their truck), in lineup
+ * order — read-only until dispatch sends them. waitsFor: the leg before still has the load.
+ */
+export async function upcomingFor(profileId: string) {
+  const legs = await linedUpLegs(profileId);
+  const out = [];
+  for (const [i, leg] of legs.entries()) {
+    const blocking = await blockingLeg(leg);
+    out.push({
+      ...leg.toJSON(),
+      position: i + 1,
+      waits_for: blocking ? `Leg ${blocking.leg_no} (${blocking.trip_no}) ${blocking.ends_at_yard ? "dropping at the yard" : "handing over"}` : null,
+    });
+  }
+  return { trips: out };
 }

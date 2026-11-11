@@ -3,14 +3,14 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { Alert, Box, Chip, IconButton, LinearProgress, Skeleton, Stack, Tooltip, Typography } from '@mui/material';
-import { LocalGasStation, Refresh, Route, Schedule, Speed } from '@mui/icons-material';
+import { Bedtime, Coffee, ExpandLess, ExpandMore, LocalGasStation, Refresh, Route, Schedule, Speed } from '@mui/icons-material';
 
-import { LiveStopEta, LiveTrip, useGetLoadLiveQuery } from '@/redux/TripApiSlice';
+import { EtaPlan, LiveStopEta, LiveTrip, RoadStop, useGetLoadLiveQuery } from '@/redux/TripApiSlice';
 
 import { STOP_LABEL } from './tripFormat';
 
 // Live tracking in the trip panel: where the truck is (Samsara), the road ahead and every ETA
-// (Google, with traffic, plus hours-of-service rest for a solo driver), fuel on board and diesel to
+// (Google, with traffic, at truck pace, plus US hours-of-service breaks/rests and fuel stops), fuel on board and diesel to
 // finish. Refreshes every 30 seconds while open.
 
 const TripMap = dynamic(() => import('./TripMap'), { ssr: false, loading: () => <Skeleton variant="rounded" height={320} /> });
@@ -24,6 +24,14 @@ export const duration = (minutes: number | null | undefined) => {
   const h = Math.floor((m % 1440) / 60);
   const min = m % 60;
   return [d ? `${d} d` : '', h ? `${h} h` : '', !d && min ? `${min} min` : ''].filter(Boolean).join(' ') || '0 min';
+};
+
+/** Hours, never days: "30 h", "51 h 30 min" — how drivers and dispatch talk about trip time. */
+export const hours = (minutes: number) => {
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return [h ? `${h} h` : '', min ? `${min} min` : ''].filter(Boolean).join(' ') || '0 min';
 };
 
 const when = (iso?: string | null) =>
@@ -59,6 +67,97 @@ function Stat({ icon, label, value, caption, children }: { icon: React.ReactNode
         <Typography variant="caption" color="text.secondary" component="div" noWrap title={caption}>
           {caption}
         </Typography>
+      )}
+    </Box>
+  );
+}
+
+const STOP_INFO: Record<RoadStop['kind'], { label: string; why: string; icon: React.ReactNode; color: string }> = {
+  break: { label: '30 min break', why: 'after 8 h driving', icon: <Coffee fontSize="small" />, color: 'info.main' },
+  fuel: { label: '1 h fuel stop', why: 'every 1,000 mi', icon: <LocalGasStation fontSize="small" />, color: 'warning.main' },
+  rest: { label: '10 h rest', why: '11 h driving / 14 h on duty', icon: <Bedtime fontSize="small" />, color: 'secondary.main' },
+};
+
+const count = (plan: EtaPlan, kind: RoadStop['kind']) => plan.stops.filter((s) => s.kind === kind).length;
+
+/** "30 h driving + 3 × 30 min breaks + 2 × 1 h fuel + 2 × 10 h rest = 2 d 1 h" with every stop on the way. */
+export function EtaBreakdown({ plan, team }: { plan: EtaPlan; team: boolean }): React.JSX.Element {
+  const [open, setOpen] = React.useState(false);
+  const parts: { label: string; minutes: number }[] = [{ label: 'driving', minutes: plan.drivingMinutes }];
+  const breaks = count(plan, 'break');
+  const fuel = count(plan, 'fuel');
+  const rests = count(plan, 'rest');
+  if (breaks) parts.push({ label: `${breaks} × 30 min break${breaks > 1 ? 's' : ''}`, minutes: plan.breakMinutes });
+  if (fuel) parts.push({ label: `${fuel} × 1 h fuel stop${fuel > 1 ? 's' : ''}`, minutes: plan.fuelMinutes });
+  if (rests) parts.push({ label: `${rests} × 10 h rest${rests > 1 ? 's' : ''}`, minutes: plan.restMinutes });
+  const truckPace = plan.drivingMinutes > plan.googleMinutes + 5;
+
+  return (
+    <Box data-testid="etaBreakdown" sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider' }}>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
+          How the ETA is worked out
+        </Typography>
+        <Chip size="small" variant="outlined" label={team ? 'Team · fuel stops only' : 'Solo · US hours-of-service'} />
+      </Stack>
+      <Stack direction="row" flexWrap="wrap" alignItems="center" sx={{ mt: 1, gap: 0.75 }}>
+        {parts.map((p, i) => (
+          <React.Fragment key={p.label}>
+            {i > 0 && <Typography color="text.secondary">+</Typography>}
+            <Box sx={{ px: 1, py: 0.5, borderRadius: 1.5, bgcolor: 'action.hover' }}>
+              <Typography variant="body2" fontWeight={700} component="span">
+                {hours(p.minutes)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" component="span">
+                {' '}
+                {p.label}
+              </Typography>
+            </Box>
+          </React.Fragment>
+        ))}
+        <Typography color="text.secondary">=</Typography>
+        <Box sx={{ px: 1, py: 0.5, borderRadius: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+          <Typography variant="body2" fontWeight={700} component="span">
+            {hours(plan.totalMinutes)} total{plan.totalMinutes >= 1440 ? ` (${duration(plan.totalMinutes)})` : ''}
+          </Typography>
+        </Box>
+      </Stack>
+      <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.75 }}>
+        {truckPace ? `Google says ${hours(plan.googleMinutes)} for a car; a loaded truck averages 60 mph at most. ` : 'Drive time from Google with live traffic. '}
+        {team
+          ? 'Team drivers swap at the wheel, so only fuel stops are added (1 h every 1,000 mi).'
+          : 'Rules: 30 min break after 8 h driving · 10 h rest after 11 h driving or 14 h on duty · 1 h fuel every 1,000 mi (counts as the break).'}
+      </Typography>
+      {plan.stops.length > 0 && (
+        <>
+          <Box
+            component="button"
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            sx={{ mt: 1, p: 0, border: 0, bgcolor: 'transparent', color: 'primary.main', cursor: 'pointer', display: 'flex', alignItems: 'center', font: 'inherit', fontSize: 13 }}
+          >
+            {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+            {open ? 'Hide' : 'Show'} the {plan.stops.length} stop{plan.stops.length > 1 ? 's' : ''} on the way
+          </Box>
+          {open && (
+            <Stack spacing={0.5} sx={{ mt: 1 }}>
+              {plan.stops.map((s, i) => {
+                const info = STOP_INFO[s.kind];
+                return (
+                  <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ pl: 0.5 }}>
+                    <Box sx={{ color: info.color, display: 'flex' }}>{info.icon}</Box>
+                    <Typography variant="body2" fontWeight={600} sx={{ minWidth: 110 }}>
+                      {info.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ flexGrow: 1 }}>
+                      {when(s.at)} · mile {s.atMile.toLocaleString()} · after {hours(s.afterDrivingMinutes)} driving · {info.why}
+                    </Typography>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          )}
+        </>
       )}
     </Box>
   );
@@ -139,15 +238,17 @@ export function TripLivePanel({ tripId }: { tripId: number }): React.JSX.Element
           icon={<Route fontSize="small" />}
           label="Remaining"
           value={live.miles !== null ? `${live.miles.toLocaleString()} mi` : '—'}
-          caption={live.driveMinutes !== null ? `${duration(live.driveMinutes)} driving (traffic)` : undefined}
+          caption={live.driveMinutes !== null ? `${hours(live.driveMinutes)} driving (truck pace)` : undefined}
         />
         <Stat
           icon={<Schedule fontSize="small" />}
           label="Final ETA"
           value={whenShort(live.eta)}
-          caption={live.eta ? (live.team ? 'Team — no rest stops' : `Includes ${duration(live.restMinutes)} rest (solo hours)`) : undefined}
+          caption={live.eta ? `Includes ${hours(live.restMinutes || 0)} of stops (breaks, rest, fuel)` : undefined}
         />
       </Box>
+
+      {live.plan && <EtaBreakdown plan={live.plan} team={live.team} />}
 
       <TripMap truck={t} stops={live.stops} path={live.path} fitKey={fitKey} />
 
@@ -170,7 +271,7 @@ export function TripLivePanel({ tripId }: { tripId: number }): React.JSX.Element
         </Stack>
       )}
       <Typography variant="caption" color="text.secondary">
-        Route and drive times: Google Maps (car roads with live traffic — allow extra for truck routing). Truck position, speed and fuel: Samsara.
+        Route: Google Maps with live traffic, at truck pace. ETAs assume the driver starts rested and include the breaks, rests and fuel stops above. Truck position, speed and fuel: Samsara.
       </Typography>
     </Stack>
   );
