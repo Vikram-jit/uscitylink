@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { DataTypes, Model } from "sequelize";
 import { primarySequelize } from "../sequelize";
 import { jsonGetter } from "./jsonColumn";
@@ -19,6 +20,10 @@ export class ChatLoad extends Model {
   public id!: number;
   public load_no!: string | null;
   public invoice_no!: string | null;
+  /** Public tracking link /track/<token> for shippers (works until the load is completed) */
+  public track_token!: string | null;
+  /** Short code for the app's "Track a load" (e.g. K7M2QX) */
+  public track_code!: string | null;
   public type!: LoadType;
   public status!: LoadStatus;
   public notes!: string | null;
@@ -36,6 +41,8 @@ export class ChatTrip extends Model {
   public leg_no!: number;
   /** Place in the driver's lineup of lined-up loads (lower goes first) */
   public queue_pos!: number | null;
+  /** Lined up by dispatch "after the current load": sent by itself when the driver ends that load */
+  public auto_send!: boolean;
   /** The leg drops the trailer at our yard for the next leg */
   public ends_at_yard!: boolean;
   /** ETA when the leg went Rolling — compared with the real delivery */
@@ -90,6 +97,7 @@ ChatTrip.init(
     load_id: DataTypes.BIGINT.UNSIGNED,
     leg_no: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     queue_pos: DataTypes.INTEGER,
+    auto_send: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     ends_at_yard: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     planned_eta_at: DataTypes.DATE,
     trip_no: DataTypes.STRING,
@@ -252,6 +260,8 @@ ChatLoad.init(
     id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
     load_no: DataTypes.STRING(32),
     invoice_no: DataTypes.STRING(64),
+    track_token: DataTypes.STRING(40),
+    track_code: DataTypes.STRING(8),
     type: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "direct" },
     status: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "scheduled" },
     notes: DataTypes.TEXT,
@@ -260,6 +270,24 @@ ChatLoad.init(
   },
   { sequelize: primarySequelize, tableName: "chat_loads", modelName: "ChatLoad", underscored: true, timestamps: true }
 );
+
+/** A fresh public tracking token (24 url-safe chars, not guessable) */
+export const newTrackToken = () => randomBytes(18).toString("base64url");
+// No 0/O, 1/I/L: easy to read out on the phone and type
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const newTrackCode = () => Array.from(randomBytes(6), (b) => CODE_CHARS[b % CODE_CHARS.length]).join("");
+/** A code no other load has */
+export async function uniqueTrackCode(): Promise<string> {
+  for (let i = 0; i < 10; i++) {
+    const code = newTrackCode();
+    if (!(await ChatLoad.count({ where: { track_code: code } }))) return code;
+  }
+  return `${newTrackCode()}${newTrackCode().slice(0, 2)}`;
+}
+ChatLoad.beforeCreate(async (load) => {
+  if (!load.track_token) load.track_token = newTrackToken();
+  if (!load.track_code) load.track_code = await uniqueTrackCode();
+});
 
 ChatLoad.hasMany(ChatTrip, { foreignKey: "load_id", as: "legs" });
 ChatTrip.belongsTo(ChatLoad, { foreignKey: "load_id", as: "load" });

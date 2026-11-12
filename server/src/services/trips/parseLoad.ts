@@ -27,6 +27,8 @@ export interface ParsedStop {
 }
 
 export interface ParsedLoad {
+  /** The load's own number (LOAD # 1011 / INVOICE # 1011) — the same number again is the next leg */
+  loadNo: string | null;
   stops: ParsedStop[];
   truck: string | null;
   trailers: string[];
@@ -45,6 +47,9 @@ const PICK_LABEL = /^pick(?:\s*-?\s*up)?\s*#?\s*\d*\s*:?\s*$/i;
 const DROP_LABEL = /^(?:drop|delivery|deliver|del)\s*#?\s*\d*\s*:?\s*$/i;
 const SWITCH_LABEL = /^go\s+to\b/i;
 // "#" or ":" is required after TRUCK / TRAILER / TEAM, so a company called "TEAM FOODS" stays a name
+// "LOAD # 1011", "LOAD ID: 1011", "LOAD NO 1011", "INVOICE # 1011", "INV# 1011" — never "LOADED TRAILER"
+const LOAD_FIELD =
+  /^(?:load|invoice|inv)(?:\s*(?:no\.?|id|number))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load|invoice|inv)\s+(?:no\.?|id|number)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$/i;
 const FIELD = /^(?:(truck|trailer|team)\s*[#:]|(temp(?:erature)?)\b\s*[#:]?)\s*(.*)$/i;
 
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/[,\s]+$/, "").trim();
@@ -92,6 +97,7 @@ export function parseLoad(text: string): ParsedLoad | null {
     truck: null,
     trailers: [],
     team: [],
+    loadNo: null,
     temperature: null,
     loadedTrailer: /\bloaded\s+trailer\b/i.test(text),
     needsReview: false,
@@ -123,6 +129,12 @@ export function parseLoad(text: string): ParsedLoad | null {
       continue;
     }
 
+    const loadField = LOAD_FIELD.exec(line);
+    if (loadField) {
+      result.loadNo = (loadField[1] || loadField[2]).toUpperCase();
+      continue;
+    }
+
     const field = FIELD.exec(line);
     if (field && !isCityStateZip(line)) {
       const key = (field[1] || field[2]).toLowerCase();
@@ -143,7 +155,7 @@ export function parseLoad(text: string): ParsedLoad | null {
       const j = i - k;
       if (j < 0 || used.has(j)) return null;
       const l = lines[j];
-      if (!l || PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || FIELD.test(l) || parseDateTime(l)) return null;
+      if (!l || PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || FIELD.test(l) || LOAD_FIELD.test(l) || parseDateTime(l)) return null;
       return j;
     };
     const streetAt = above(1);

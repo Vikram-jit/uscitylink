@@ -89,6 +89,7 @@ for (const c of cases) {
   const extra = c.check?.(r);
   if (extra) problems.push(extra);
   const msg = buildDriverMessage(r, c.weights as any, limits);
+  if (process.env.SHOW_MSG) console.log(`      driver: ${msg}`);
   if (/good to go|\blegal\b/i.test(msg)) problems.push("message contains forbidden wording");
   if (problems.length) fails++;
   console.log(`${problems.length ? "FAIL" : "PASS"}  ${c.name}\n      -> ${r.status} [${got.join(", ") || "no moves"}]${problems.length ? `  !! ${problems.join("; ")}` : ""}`);

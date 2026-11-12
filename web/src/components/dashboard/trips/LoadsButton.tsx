@@ -5,11 +5,14 @@ import { AppBar, Badge, Box, Button, Dialog, IconButton, Slide, Toolbar, Typogra
 import type { TransitionProps } from '@mui/material/transitions';
 import { Close, LocalShipping } from '@mui/icons-material';
 
+import { toast } from 'react-toastify';
+
 import { useAutomationAccess } from '@/components/dashboard/automation/AdminGuard';
 import { useSocketEvent } from '@/hooks/use-socket-event';
 import { useListLoadBoardQuery } from '@/redux/TripApiSlice';
 
 import { LoadsHome } from './LoadsHome';
+import { TypedLoadQuestion } from './TypedLoadQuestion';
 
 // Top bar: Loads from any page, full screen over it — no leaving the chat you're in. The badge counts
 // loads that need dispatch: a driver waiting for a confirm, or a load waiting for its next leg.
@@ -28,6 +31,14 @@ export function LoadsButton(): React.JSX.Element | null {
   useSocketEvent('trip:offer', refresh, isStaff);
   useSocketEvent('trip:updated', refresh, isStaff);
   useSocketEvent('load:updated', refresh, isStaff);
+  // Driver hasn't tapped Got it / pickup time passed (also in System Messages)
+  useSocketEvent<[any]>(
+    'trip:reminder',
+    (d) => {
+      if (d?.text) toast.warning(d.text, { autoClose: 20000, onClick: () => setOpen(true) });
+    },
+    isStaff
+  );
 
   if (!isStaff) return null;
   const count = waiting.data?.data?.total || 0;
@@ -39,6 +50,7 @@ export function LoadsButton(): React.JSX.Element | null {
           Loads
         </Button>
       </Badge>
+      <TypedLoadQuestion enabled={isStaff} />
       <Dialog fullScreen open={open} onClose={() => setOpen(false)} TransitionComponent={SlideUp}>
         <AppBar position="sticky" color="default" elevation={1}>
           <Toolbar>

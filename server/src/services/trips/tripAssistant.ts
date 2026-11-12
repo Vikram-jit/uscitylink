@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Message } from "../../models/Message";
 import { ChatTrip, ChatTripEvent } from "../../models/ChatTrip";
+import { loadFromChat } from "./loadService";
 import { UserProfile } from "../../models/UserProfile";
 import Role from "../../models/Role";
 import { isStaffRole } from "../../middleware/requireRole";
@@ -11,7 +12,7 @@ import { logUsage } from "../documentAi/usageLog";
 import { check, TripAction, TripStatus } from "./lifecycle";
 import { looksLikeLoad, parseLoad } from "./parseLoad";
 import { Intent, ruleIntent, SMALL_TALK } from "./intents";
-import { createTrip, currentTripFor, offerNextLoad } from "./tripService";
+import { currentTripFor, offerNextLoad } from "./tripService";
 
 // Reads chat as it's saved (one Message hook covers every send path):
 //   dispatch → driver: a typed load becomes a trip (flagged for a check when unsure);
@@ -129,8 +130,12 @@ async function onStaffMessage(m: Message) {
   const load = parseLoad(text);
   if (!load) return;
 
-  const trip = await createTrip(
+  // Treated like Add load → Send now: Load # required, same number = next leg, the driver gets the
+  // standard load message; questions (previous leg open / driver busy) go to the dispatcher's screen
+  const actor = { role: "dispatcher" as const, id: sender?.id || null, name: sender?.username || null };
+  const result = await loadFromChat(
     {
+      loadNo: load.loadNo,
       driverProfileId: m.userProfileId,
       truckNumber: load.truck,
       teamNames: load.team,
@@ -139,18 +144,16 @@ async function onStaffMessage(m: Message) {
       loadedTrailer: load.loadedTrailer,
       channelId: m.channelId,
       stops: load.stops,
-      source: "typed",
       needsReview: load.needsReview,
       reviewNotes: load.reasons,
       rawText: text,
-      messageId: m.id,
     },
-    { role: "dispatcher", id: sender?.id || null, name: sender?.username || null }
+    actor
   );
-  if (!trip) return;
+  const driverName = (await UserProfile.findByPk(m.userProfileId))?.username || "the driver";
   getSocketInstance()
     .to(userRoom(String(m.senderId)))
-    .emit("trip:detected", { tripId: trip.id, tripNo: trip.trip_no, messageId: m.id, needsReview: trip.needs_review, reviewNotes: trip.review_notes });
+    .emit("load:typed", { ...result, messageId: m.id, driverName });
 }
 
 /** Called once at startup. */

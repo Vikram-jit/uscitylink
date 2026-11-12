@@ -117,7 +117,7 @@ export async function truckOfDriver(profileId: string): Promise<string | null> {
 }
 
 /** The driver on a truck (members of its truck group who are drivers). */
-async function driverOfTruck(truckNumber: string): Promise<UserProfile | null> {
+export async function driverOfTruck(truckNumber: string): Promise<UserProfile | null> {
   const group = await Group.findOne({
     where: { name: truckNumber, type: "truck" },
   });
@@ -910,7 +910,9 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
   const handedTo = action === "end" ? await handOver(fresh).catch((e) => (console.warn("[trips] hand over:", e?.message), null)) : null;
   if (action === "start") await openScaleRoute(fresh, stops).catch(() => undefined);
   if (action === "end" || action === "cancel") await closeScaleRoute(fresh).catch(() => undefined);
-  if ((action === "rolling" || action === "end") && fresh.driver_profile_id && handedTo?.driver_profile_id !== fresh.driver_profile_id) {
+  // Delivered: a load dispatch lined up "after this one" goes out now — the driver's next main load
+  const autoSent = action === "end" && fresh.driver_profile_id ? await sendLinedUpNext(fresh.driver_profile_id).catch(() => null) : null;
+  if ((action === "rolling" || action === "end") && !autoSent && fresh.driver_profile_id && handedTo?.driver_profile_id !== fresh.driver_profile_id) {
     void offerNextLoad(fresh.driver_profile_id, action === "end" ? "ended" : "rolling").catch((e) =>
       console.warn("[trips] next load:", e?.message),
     );
@@ -1323,21 +1325,37 @@ export async function tripsForDriver(profileId: string, page = 1, limit = 20) {
 }
 
 /** The trip the driver is on now (the app's trip card), with what the big button does. */
+/**
+ * The trip on the driver's dashboard / chat card. An active one (sent, Got it, rolling, on hold) first.
+ * After delivery the card stays only while it's the driver's latest load and still waits for the
+ * paperwork / dispatch: once dispatch marks it completed — or a newer load came, or the leg was handed
+ * over to another driver — it's only in the Loads history.
+ */
 export async function currentTripFor(profileId: string) {
-  const trip = await ChatTrip.findOne({
-    where: {
-      driver_profile_id: profileId,
-      status: { [Op.in]: DRIVER_CURRENT },
-    },
-    order: [
-      ["sent_at", "DESC"],
-      ["id", "DESC"],
-    ],
-    include: [
-      { model: ChatTripStop, as: "stops" },
-      { model: ChatTripProblem, as: "problems" },
-    ],
+  const include = [
+    { model: ChatTripStop, as: "stops" },
+    { model: ChatTripProblem, as: "problems" },
+  ];
+  const newest = [
+    ["sent_at", "DESC"],
+    ["id", "DESC"],
+  ] as any;
+  let trip = await ChatTrip.findOne({
+    where: { driver_profile_id: profileId, status: { [Op.in]: ["planned", "accepted", "started", "rolling", "on_hold"] } },
+    order: newest,
+    include,
   });
+  if (!trip) {
+    // The latest load sent to them: shown while delivered and waiting for dispatch, not after
+    const latest = await ChatTrip.findOne({
+      where: { driver_profile_id: profileId, sent_at: { [Op.ne]: null }, status: { [Op.ne]: "cancelled" } },
+      order: newest,
+      include,
+    });
+    const last = latest ? [...(latest.stops || [])].sort((a, b) => a.seq - b.seq).pop() : null;
+    const handedOver = !!latest && (latest.ends_at_yard || last?.type === "switch" || last?.type === "yard" || !!latest.handover_reason);
+    if (latest && ["ended", "paperwork"].includes(latest.status) && !handedOver) trip = latest;
+  }
   if (!trip) return null;
   const stops = (trip.stops || []).sort((a, b) => a.seq - b.seq);
   return { trip, next: nextStep(trip.status as TripStatus, stops) };
@@ -1359,4 +1377,23 @@ export async function upcomingFor(profileId: string) {
     });
   }
   return { trips: out };
+}
+
+/**
+ * The driver is free (ended their load): the first load in their lineup, if dispatch lined it up
+ * "after the current one" (auto_send), is sent to them now — it becomes their main load. Loads only
+ * saved for later still wait for dispatch to confirm (offerNextLoad).
+ */
+export async function sendLinedUpNext(profileId: string): Promise<ChatTrip | null> {
+  const busy = await ChatTrip.count({ where: { driver_profile_id: profileId, status: { [Op.in]: ["planned", "accepted", "started", "rolling", "on_hold"] } } });
+  if (busy) return null;
+  for (const leg of await linedUpLegs(profileId)) {
+    if (await blockingLeg(leg)) continue; // waits for the leg before it
+    if (!leg.auto_send || leg.driver_profile_id !== profileId) return null; // #1 needs dispatch's confirm
+    await sendLoad(leg.id, { role: "dispatcher", id: null, name: "Dispatch Assistant" });
+    const name = await profileName(profileId);
+    alertStaff("trip:reminder", { tripId: leg.id, tripNo: leg.trip_no, kind: "auto_sent", text: `✅ Next load #${leg.trip_no} sent to ${name || "the driver"} — the one before is delivered` });
+    return leg;
+  }
+  return null;
 }

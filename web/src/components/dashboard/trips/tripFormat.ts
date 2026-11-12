@@ -47,7 +47,7 @@ export const STOP_LABEL = { pickup: 'Pickup', drop: 'Drop', switch: 'Meet point'
 export const LOAD_TYPE: Record<LoadType, { label: string; short: string; help: string }> = {
   direct: { label: 'Direct', short: 'Direct', help: 'One driver: pickup → delivery' },
   via_yard: { label: 'Via our yard', short: 'Via yard', help: 'Pickup → drop the trailer at our yard → the same or another driver / truck takes it to the delivery' },
-  relay: { label: 'Relay / transfer', short: 'Relay', help: 'Pickup → meet another driver on the road → they take the load to the delivery' },
+  relay: { label: 'Transfer', short: 'Transfer', help: 'Another driver / truck took the load on (same Load #)' },
   trailer_move: { label: 'Trailer move', short: 'Trailer move', help: 'Move a trailer (empty or loaded) from one place to another' },
 };
 

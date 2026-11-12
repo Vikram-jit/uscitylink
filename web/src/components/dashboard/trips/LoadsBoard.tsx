@@ -123,7 +123,7 @@ export function LoadsBoard(): React.JSX.Element {
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }} alignItems={{ sm: 'center' }}>
         <TextField
           size="small"
-          placeholder="Invoice #, load #, truck, trailer or driver"
+          placeholder="Load #, truck, trailer or driver"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           sx={{ flexGrow: 1, maxWidth: { sm: 420 } }}
@@ -179,7 +179,7 @@ export function LoadsBoard(): React.JSX.Element {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Invoice · Load</TableCell>
+            <TableCell>Load #</TableCell>
             <TableCell>Legs</TableCell>
             <TableCell sx={WIDE}>Route</TableCell>
             <TableCell sx={WIDE}>Delivery appt</TableCell>
@@ -201,12 +201,12 @@ export function LoadsBoard(): React.JSX.Element {
             return (
               <TableRow key={load.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpenLoad(load.id)} data-testid={`loadRow-${load.id}`}>
                 <TableCell>
-                  <Typography variant="body2" fontWeight={700} color={load.invoice_no ? 'text.primary' : 'warning.main'}>
-                    {load.invoice_no || 'No invoice #'}
+                  <Typography variant="body2" fontWeight={700}>
+                    Load {load.invoice_no || load.load_no}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" component="div">
-                    #{load.load_no}
-                    {load.type !== 'direct' ? ` · ${LOAD_TYPE[load.type].short}` : ''}
+                    {LOAD_TYPE[load.type].short}
+                    {legs.length > 1 ? ` · ${legs.length} legs` : ''}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -265,7 +265,7 @@ export function LoadsBoard(): React.JSX.Element {
                       {action.kind === 'confirm' ? 'Confirm & send' : legs.length > 1 ? `Send leg ${action.leg.leg_no}` : 'Send'}
                     </Button>
                   )}
-                  {action?.kind === 'complete' && <CompleteTripButton trip={action.leg} size="small" requireInvoice={action.isLast} />}
+                  {action?.kind === 'complete' && <CompleteTripButton trip={action.leg} size="small" requireInvoice={action.isLast} legs={load.legs} names={names} />}
                   <Tooltip title="Open">
                     <IconButton size="small" onClick={() => setOpenLoad(load.id)}>
                       <Visibility fontSize="small" />

@@ -3,13 +3,13 @@ import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
 import { Actor, TripError } from "../services/trips/tripService";
-import { addLeg, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, updateLoad } from "../services/trips/loadService";
+import { addLeg, addLoad, answerTypedLoad, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, lookupLoad, NeedsAnswer, updateLoad } from "../services/trips/loadService";
 import { conflictsFor, driversBoard, trailersBoard, trucksBoard } from "../services/trips/equipment";
 import { placeStop, PlacesError, searchPlaces } from "../services/trips/places";
 import { lineupOf, removeFromLineup, reorderLineup } from "../services/trips/lineup";
 import { refreshLoadStatus } from "../services/trips/legs";
 import { ChatTrip } from "../models/ChatTrip";
-import { changeType, correctTimes, releaseLeg, setMiles, splitLeg, truckPlace, undoSplit } from "../services/trips/loadControl";
+import { changeType, correctTimes, endLegNow, releaseLeg, setMiles, splitLeg, truckPlace, undoSplit } from "../services/trips/loadControl";
 import { milesReport } from "../services/trips/milesReport";
 
 // Loads (a load = invoice # + its legs) and the equipment board, for dispatch. The rules live in
@@ -24,6 +24,8 @@ async function actorOf(req: Request): Promise<Actor> {
 const ok = (res: Response, data: any, message = "OK") => res.json({ status: true, message, data });
 
 function fail(res: Response, err: any) {
+  // Dispatch has to answer first (end the previous leg / the driver's current load)
+  if (err instanceof NeedsAnswer) return res.status(409).json({ status: false, message: err.message, needs: err.needs, info: err.info });
   if (err instanceof PlacesError) return res.status(400).json({ status: false, message: err.message });
   if (err instanceof TripError) return res.status(err.status).json({ status: false, message: err.message });
   console.error("[loads]", err);
@@ -46,8 +48,24 @@ export const listLoadsRest = handle(async (req) => ({
 export const showLoadRest = handle(async (req) => ({ data: await getLoad(Number(req.params.id)) }));
 
 export const createLoadRest = handle(async (req) => {
-  const send = req.body?.send === true;
-  return { data: await createLoad(req.body || { legs: [] }, await actorOf(req), { send }), message: send ? "Load sent" : "Load saved" };
+  const body = req.body || {};
+  const send = body.send === true;
+  // The simple form: one load (Load # decides if it's a new load or the next leg). Old multi-leg body still works.
+  if (!Array.isArray(body.legs)) {
+    const { send: _s, endPrevious, endDriverCurrent, lineUp, ...input } = body;
+    const data = await addLoad(input, await actorOf(req), { send, endPrevious: endPrevious === true, endDriverCurrent: endDriverCurrent === true, lineUp: lineUp === true });
+    return { data, message: send && !lineUp ? "Load sent" : lineUp ? "Lined up after the driver's current load" : "Load saved" };
+  }
+  return { data: await createLoad(body, await actorOf(req), { send }), message: send ? "Load sent" : "Load saved" };
+});
+
+/** Add-load form: what this Load # is (new, or leg N after …) and whether the driver is busy. */
+export const lookupLoadRest = handle(async (req) => ({ data: await lookupLoad(req.query.no as string, (req.query.driver as string) || null) }));
+
+/** Dispatch ends a leg the driver didn't end. */
+export const endLegRest = handle(async (req) => {
+  await endLegNow(Number(req.params.legId), await actorOf(req), { at: req.body?.at ?? null });
+  return { data: await getLoad(Number(req.params.id)), message: "Load ended" };
 });
 
 export const updateLoadRest = handle(async (req) => ({ data: await updateLoad(Number(req.params.id), req.body || {}, await actorOf(req)), message: "Load updated" }));
@@ -145,4 +163,11 @@ export const milesRest = handle(async (req) => {
 export const releaseLegRest = handle(async (req) => {
   await releaseLeg(Number(req.params.legId), { at: req.body?.at ?? null }, await actorOf(req));
   return { data: await getLoad(Number(req.params.id)), message: "Handed over — sent to the driver" };
+});
+
+/** Dispatch answers the pop-up about a load typed in chat (End & send / Line up). */
+export const answerTypedRest = handle(async (req) => {
+  const b = req.body || {};
+  const data = await answerTypedLoad(String(req.params.pendingId), { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true }, await actorOf(req));
+  return { data, message: data.kind === "sent" ? `Load ${data.loadNo} sent` : "One more question" };
 });

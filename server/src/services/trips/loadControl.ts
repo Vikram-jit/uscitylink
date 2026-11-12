@@ -13,6 +13,7 @@ import {
   offerNextLoad,
   postToChat,
   record,
+  sendLinedUpNext,
   sendLoad,
   syncRoute,
   TripError,
@@ -290,39 +291,64 @@ export async function releaseLeg(legId: number, input: { at?: string | null }, a
   if (!leg) throw new TripError("Leg not found", 404);
   if (!["scheduled", "offered"].includes(leg.status)) throw new TripError("This leg is already sent");
   if (!leg.driver_profile_id) throw new TripError("Assign a driver to this leg first");
-  const prevLegs = byLeg(await ChatTrip.findAll({ where: { load_id: leg.load_id, leg_no: { [Op.lt]: leg.leg_no }, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] }));
-  const prev = prevLegs[prevLegs.length - 1];
-  if (prev && !["ended", "paperwork", "completed", "routed"].includes(prev.status)) {
-    const blockedEarlier = prevLegs.slice(0, -1).find((l) => !["ended", "paperwork", "completed", "routed"].includes(l.status));
-    if (blockedEarlier) throw new TripError(`Leg ${blockedEarlier.leg_no} isn't handed over yet either`);
-    const at = input.at ? moment(input.at, "Handover time") : new Date();
-    if (prev.started_at && at.getTime() < new Date(prev.started_at).getTime()) throw new TripError(`Leg ${prev.leg_no} started after that time`);
-    const stops = [...(prev.stops || [])].sort((a, b) => a.seq - b.seq);
-    const handover = stops[stops.length - 1];
-    const from = prev.status;
-    await primarySequelize.transaction(async (t) => {
-      if (handover && !handover.arrived_at) await handover.update({ arrived_at: at }, { transaction: t });
-      await prev.update({ status: "ended", ended_at: at, status_before_hold: null }, { transaction: t });
-    });
-    await record(prev, {
-      type: "status",
-      from,
-      to: "ended",
-      actor,
-      at,
-      note: `Handed over — marked by dispatch${from === "rolling" || from === "started" ? "" : " (the driver hadn't tapped Rolling)"}`,
-      data: { action: "release", before: { trip: { status: from, ended_at: null } } },
-    });
-    if (["planned", "accepted", "started", "rolling", "on_hold"].includes(from)) {
-      await postToChat(prev, `🔁 Trip ${prev.trip_no} handed over${handover ? ` at ${placeText(handover)}` : ""} — thank you, dispatch has the rest of this load`);
-      await closeScaleRoute(prev).catch(() => undefined);
-    }
-    void addMileage(prev.id).catch(() => undefined);
-    announce(prev.id);
-  }
+  const prevLegs = byLeg(await ChatTrip.findAll({ where: { load_id: leg.load_id, leg_no: { [Op.lt]: leg.leg_no }, status: { [Op.ne]: "cancelled" } } }));
+  const open = prevLegs.filter((l) => !["ended", "paperwork", "completed", "routed"].includes(l.status));
+  if (open.length > 1) throw new TripError(`Leg ${open[0].leg_no} isn't handed over yet either`);
+  if (open[0]) await endLegNow(open[0].id, actor, { at: input.at, handover: true });
   await sendLoad(leg.id, actor);
   await refreshLoadStatus(leg.load_id);
-  return { leg: leg.id, handedOver: prev?.id ?? null };
+  return { leg: leg.id, handedOver: open[0]?.id ?? null };
+}
+
+/**
+ * Dispatch ends a leg the driver didn't end (or hands it over): marked delivered / handed over at
+ * [at] (default now) at its last stop, the driver is told, the trip leaves their app, miles are read.
+ * A leg never sent to the driver is cancelled instead (nothing happened on it).
+ */
+export async function endLegNow(legId: number, actor: Actor, opts: { at?: string | Date | null; handover?: boolean; note?: string; sendNext?: boolean } = {}) {
+  const leg = await ChatTrip.findByPk(legId, withStops);
+  if (!leg) throw new TripError("Leg not found", 404);
+  if (["ended", "paperwork", "completed", "routed", "cancelled"].includes(leg.status)) return leg;
+  const from = leg.status;
+  if (from === "scheduled" || from === "offered") {
+    await leg.update({ status: "cancelled", queue_pos: null });
+    await record(leg, { type: "status", from, to: "cancelled", actor, note: opts.note || "Not sent — replaced by dispatch" });
+    announce(leg.id);
+    await refreshLoadStatus(leg.load_id);
+    return leg;
+  }
+  const at = opts.at ? moment(opts.at instanceof Date ? opts.at.toISOString() : opts.at, "End time") : new Date();
+  if (leg.started_at && at.getTime() < new Date(leg.started_at).getTime()) throw new TripError(`Leg ${leg.leg_no} started after that time`);
+  const stops = [...(leg.stops || [])].sort((a, b) => a.seq - b.seq);
+  const last = stops[stops.length - 1];
+  await primarySequelize.transaction(async (t) => {
+    if (last && !last.arrived_at) await last.update({ arrived_at: at }, { transaction: t });
+    await leg.update({ status: "ended", ended_at: at, status_before_hold: null }, { transaction: t });
+  });
+  const tapped = from === "rolling" || from === "started";
+  await record(leg, {
+    type: "status",
+    from,
+    to: "ended",
+    actor,
+    at,
+    note: opts.note || `${opts.handover ? "Handed over" : "Ended"} by dispatch${tapped ? "" : " (the driver hadn't tapped Rolling)"}`,
+    data: { action: "end_by_dispatch", before: { trip: { status: from, ended_at: null } } },
+  });
+  const where = last ? ` at ${placeText(last)}` : "";
+  await postToChat(
+    leg,
+    opts.handover
+      ? `🔁 Trip ${leg.trip_no} handed over${where} — thank you, dispatch has the rest of this load`
+      : `✅ Trip ${leg.trip_no} ended by dispatch${where} — thank you. Send the BOL / POD photos here if you have them`
+  );
+  await closeScaleRoute(leg).catch(() => undefined);
+  void addMileage(leg.id).catch(() => undefined);
+  announce(leg.id);
+  await refreshLoadStatus(leg.load_id);
+  // The driver is free: a load lined up after this one goes out now (not when dispatch sends one itself)
+  if (opts.sendNext !== false && leg.driver_profile_id) await sendLinedUpNext(leg.driver_profile_id).catch(() => null);
+  return leg;
 }
 
 // ---------- undo a handover / merge legs ----------

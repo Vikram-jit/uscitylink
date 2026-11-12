@@ -22,6 +22,8 @@ import GroupChannel from "../../src/models/GroupChannel";
 import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
 import { ChatLoad, ChatTrip, ChatTripEvent } from "../../src/models/ChatTrip";
+import { answerTypedLoad, loadFromChat } from "../../src/services/trips/loadService";
+import { parseLoad } from "../../src/services/trips/parseLoad";
 import { act, addProblem, createTrip, getTrip, loadNo, tripsForDriver, offerNextLoad, onDocumentRead, resolveProblem, sendLoad, syncPriced, undo } from "../../src/services/trips/tripService";
 import { MessageDocument } from "../../src/models/MessageDocument";
 import { isPriced, syncRouteRow } from "../../src/services/trips/routeListSync";
@@ -320,12 +322,13 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       assert(!others.trips.some((t) => ids.includes(t.id)), "another driver doesn't see them");
     });
 
-    await test("a load typed by dispatch in chat becomes a trip (planned, flagged when unsure)", async () => {
-      const m = await Message.create({
+    await test("a load typed by dispatch in chat becomes a trip like the form's Send now (flagged when unsure)", async () => {
+      const no = `ZZF${Date.now() % 100000}`;
+      await Message.create({
         channelId: channel[0].id,
         userProfileId: driver.id,
         senderId: staff!.id,
-        body: "YOUR LONG LOAD FOR TOMORROW MORNING.\n\nTEMP # 34 CONT.\n\nZZ TARGET - LAKE CITY\n309 NE TAMMY LANE\nLAKE CITY, FL 32055\n11/05/2026 02:00PM",
+        body: `YOUR LONG LOAD FOR TOMORROW MORNING.\n\nLOAD # ${no}\nTEMP # 34 CONT.\n\nZZ TARGET - LAKE CITY\n309 NE TAMMY LANE\nLAKE CITY, FL 32055\n11/05/2026 02:00PM`,
         messageDirection: "S",
         deliveryStatus: "sent",
         messageTimestampUtc: new Date(),
@@ -333,13 +336,21 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
         status: "sent",
         url_upload_type: "with-out-media",
       } as any);
-      await wait(1500);
-      const trip = await ChatTrip.findOne({ where: { message_id: m.id }, include: ["stops"] });
+      await wait(2500);
+      // This driver may still be busy with an earlier load: then dispatch was asked — answer "Line up"
+      if (!(await ChatLoad.findOne({ where: { invoice_no: no } }))) {
+        const parsed = parseLoad(`YOUR LONG LOAD FOR TOMORROW MORNING.\n\nLOAD # ${no}\nTEMP # 34 CONT.\n\nZZ TARGET - LAKE CITY\n309 NE TAMMY LANE\nLAKE CITY, FL 32055\n11/05/2026 02:00PM`)!;
+        const q = await loadFromChat({ loadNo: parsed.loadNo, driverProfileId: driver.id, stops: parsed.stops, temperature: parsed.temperature, needsReview: parsed.needsReview, reviewNotes: parsed.reasons }, dispatcher);
+        assert.equal(q.kind, "question", "asked, not created");
+        await answerTypedLoad((q as any).id, { lineUp: true, endPrevious: true }, dispatcher);
+      }
+      const load = await ChatLoad.findOne({ where: { invoice_no: no } });
+      const trip = load ? await ChatTrip.findOne({ where: { load_id: load.id }, include: ["stops"] }) : null;
       assert(trip, "no trip from the typed load");
       tripIds.push(trip.id);
-      assert.equal(trip.status, "planned");
+      assert(["planned", "scheduled"].includes(trip.status), trip.status);
       assert.equal(trip.source, "typed");
-      assert.equal(trip.needs_review, true);
+      assert.equal(trip.needs_review, true, "one address: flagged");
       assert.equal(trip.stops?.[0].type, "drop");
     });
   } finally {

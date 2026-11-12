@@ -35,8 +35,7 @@ import {
 } from '@/redux/TripApiSlice';
 
 import { CompleteTripButton } from './CompleteTripButton';
-import { HandoverDialog } from './HandoverDialog';
-import { ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
+import { EndLegDialog, ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { LoadFormDialog } from './LoadFormDialog';
 import { TripLivePanel } from './TripLivePanel';
 import { appointment, atStop, PROBLEM_KINDS, STATUS, STOP_LABEL, tripLabel } from './tripFormat';
@@ -81,7 +80,7 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
   const [resolveProblem] = useResolveTripProblemMutation();
 
   const [editing, setEditing] = React.useState(false);
-  const [handover, setHandover] = React.useState(false);
+  const [ending, setEnding] = React.useState(false);
   const [release, setRelease] = React.useState<ReleaseTarget | null>(null);
   const [prompt, setPrompt] = React.useState<ReturnType<typeof ask> | null>(null);
   const [promptText, setPromptText] = React.useState('');
@@ -205,9 +204,9 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
               <Button onClick={() => setPrompt(ask('Put the trip on hold', 'Why?', (t) => void doAction('hold', t), false))}>Hold</Button>
             )}
             {s === 'on_hold' && <Button onClick={() => void doAction('resume')}>Resume</Button>}
-            {trip.load_id && ['started', 'rolling', 'on_hold'].includes(s!) && (
-              <Button color="warning" onClick={() => setHandover(true)}>
-                Change driver / truck
+            {trip.load_id && ['planned', 'accepted', 'started', 'rolling', 'on_hold'].includes(s!) && (
+              <Button color="warning" onClick={() => setEnding(true)} data-testid="tripEndBtn">
+                End load
               </Button>
             )}
             {!['completed', 'routed', 'cancelled'].includes(s!) && (
@@ -304,7 +303,7 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
 
       <ReleaseLegDialog target={release} onClose={() => setRelease(null)} />
       {trip?.load_id && (
-        <HandoverDialog open={handover} onClose={() => setHandover(false)} loadId={trip.load_id} leg={trip} driverName={driverName} />
+        <EndLegDialog loadId={trip.load_id} leg={ending ? trip : null} driverName={driverName} onClose={() => setEnding(false)} />
       )}
       <LoadFormDialog open={editing} onClose={() => setEditing(false)} trip={trip} driver={trip?.driver_profile_id && driverName ? { id: trip.driver_profile_id, name: driverName } : null} />
 

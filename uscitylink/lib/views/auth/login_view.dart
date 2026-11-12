@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uscitylink/controller/login_controller.dart';
 import 'package:uscitylink/utils/device/device_utility.dart';
+import 'package:uscitylink/views/trip/track_load_view.dart';
 import 'package:uscitylink/views/widgets/logo_widgets.dart';
 
 class LoginView extends StatefulWidget {
@@ -84,6 +85,54 @@ class _LoginViewState extends State<LoginView>
                       "Log in",
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.02,
+                ),
+                // Customers / shippers: follow a load with the code the carrier sent (no account)
+                Row(children: [
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("or", style: TextStyle(color: Colors.grey.shade500)),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                ]),
+                SizedBox(
+                  height: TDeviceUtils.getScreenHeight() * 0.02,
+                ),
+                Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    key: const Key('trackLoadButton'),
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => Get.to(() => const TrackLoadView()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(color: const Color(0xFF0B2545).withValues(alpha: 0.08), shape: BoxShape.circle),
+                          child: const Icon(Icons.local_shipping_rounded, color: Color(0xFF0B2545)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text("Track a load", style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 2),
+                            Text("Have a tracking code? See your shipment live", style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+                          ]),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
+                      ]),
                     ),
                   ),
                 ),

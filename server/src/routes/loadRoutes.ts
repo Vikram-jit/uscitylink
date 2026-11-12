@@ -14,6 +14,9 @@ import {
   milesRest,
   setMilesRest,
   splitLegRest,
+  lookupLoadRest,
+  answerTypedRest,
+  endLegRest,
   releaseLegRest,
   truckPlaceRest,
   undoSplitRest,
@@ -33,6 +36,8 @@ const staffOnly = [authMiddleware, requireRole("staff", "admin")];
 router.get("/", ...staffOnly, listLoadsRest);
 router.post("/", ...staffOnly, createLoadRest);
 router.get("/yard-stop", ...staffOnly, yardStopRest);
+router.get("/lookup", ...staffOnly, lookupLoadRest);
+router.post("/typed/:pendingId/answer", ...staffOnly, answerTypedRest);
 router.get("/places/search", ...staffOnly, searchPlacesRest);
 router.get("/lineup/:profileId", ...staffOnly, lineupRest);
 router.get("/miles", ...staffOnly, milesRest);
@@ -49,6 +54,7 @@ router.post("/:id/legs/:legId/assign", ...staffOnly, assignLegRest);
 router.post("/:id/legs/:legId/split", ...staffOnly, splitLegRest);
 router.post("/:id/legs/:legId/undo-split", ...staffOnly, undoSplitRest);
 router.post("/:id/legs/:legId/release", ...staffOnly, releaseLegRest);
+router.post("/:id/legs/:legId/end", ...staffOnly, endLegRest);
 router.patch("/:id/legs/:legId/times", ...staffOnly, correctTimesRest);
 router.patch("/:id/legs/:legId/miles", ...staffOnly, setMilesRest);
 router.patch("/:id/type", ...staffOnly, changeTypeRest);

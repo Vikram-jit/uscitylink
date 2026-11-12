@@ -138,6 +138,8 @@ export interface TripInput {
 }
 
 export interface ParsedLoad {
+  /** LOAD # / INVOICE # read from the text */
+  loadNo: string | null;
   stops: { type: StopType; name: string; street: string; city: string; state: string; zip: string; appointment: string | null }[];
   truck: string | null;
   trailers: string[];
@@ -157,6 +159,10 @@ export interface Load {
   id: number;
   load_no: string | null;
   invoice_no: string | null;
+  /** Public tracking link /track/<token> for the shipper (until completed) */
+  track_token: string | null;
+  /** Short code for the app's "Track a load" */
+  track_code: string | null;
   type: LoadType;
   status: LoadStatus;
   notes: string | null;
@@ -216,6 +222,30 @@ export interface LoadHistoryEntry {
   actor: string;
   actorRole: string;
   data: any;
+}
+
+/** A leg in short (the Load # lookup, and the questions before ending something) */
+export interface LegBrief {
+  tripId: number;
+  loadId: number | null;
+  legNo: number;
+  tripNo: string | null;
+  status: TripStatus;
+  open: boolean;
+  driverProfileId: string | null;
+  driverName: string | null;
+  truck: string | null;
+  trailers: string | null;
+  from: string;
+  to: string;
+}
+
+export interface LoadLookup {
+  loadNo: string | null;
+  load: { id: number; loadNo: string | null; invoiceNo: string | null; type: LoadType; status: LoadStatus; legs: number } | null;
+  nextLegNo: number;
+  prev: LegBrief | null;
+  driverBusy: LegBrief | null;
 }
 
 export interface HandoverPlace {
@@ -366,6 +396,8 @@ export interface LiveTruck {
   fuelPercent: number | null;
   engine: string | null;
   vehicleName: string | null;
+  /** Not moving since (server remembers when it stopped) */
+  stoppedSince?: string | null;
 }
 
 export interface LiveStopEta {
@@ -529,6 +561,27 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       query: ({ id, legId, ...body }) => ({ url: `loads/${id}/legs/${legId}/split`, method: 'POST', body }),
       invalidatesTags: ['chatTrips'],
     }),
+    // Simple loads: the Load # decides new load or next leg. May answer 409 with a question
+    // ({ needs: 'endPrevious' | 'driverBusy', info }) — the form asks dispatch and sends again.
+    addSimpleLoad: builder.mutation<
+      Res<LoadDetail>,
+      TripInput & { loadNo: string; send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }
+    >({
+      query: (body) => ({ url: 'loads', method: 'POST', body }),
+      invalidatesTags: ['chatTrips'],
+    }),
+    lookupLoadNo: builder.query<Res<LoadLookup>, { no: string; driver?: string | null }>({
+      query: ({ no, driver }) => ({ url: 'loads/lookup', method: 'GET', params: { no, ...(driver ? { driver } : {}) } }),
+      keepUnusedDataFor: 0,
+    }),
+    answerTypedLoad: builder.mutation<Res<any>, { id: string; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }>({
+      query: ({ id, ...body }) => ({ url: `loads/typed/${id}/answer`, method: 'POST', body }),
+      invalidatesTags: ['chatTrips'],
+    }),
+    endLoadLeg: builder.mutation<Res<LoadDetail>, { id: number; legId: number; at?: string | null }>({
+      query: ({ id, legId, at }) => ({ url: `loads/${id}/legs/${legId}/end`, method: 'POST', body: { at: at ?? null } }),
+      invalidatesTags: ['chatTrips'],
+    }),
     releaseLoadLeg: builder.mutation<Res<LoadDetail>, { id: number; legId: number; at?: string | null }>({
       query: ({ id, legId, at }) => ({ url: `loads/${id}/legs/${legId}/release`, method: 'POST', body: { at: at ?? null } }),
       invalidatesTags: ['chatTrips'],
@@ -665,6 +718,10 @@ export const {
   useSplitLoadLegMutation,
   useUndoLoadSplitMutation,
   useReleaseLoadLegMutation,
+  useAddSimpleLoadMutation,
+  useLazyLookupLoadNoQuery,
+  useEndLoadLegMutation,
+  useAnswerTypedLoadMutation,
   useChangeLoadTypeMutation,
   useCorrectLegTimesMutation,
   useSetLegMilesMutation,

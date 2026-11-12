@@ -4,6 +4,7 @@ import { hideLoader, showLoader } from '@/redux/slices/loaderSlice';
 import { AttachFile, Attachment } from '@mui/icons-material';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import {
+  Alert,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -36,6 +37,7 @@ import { useSocketEvent } from '@/hooks/use-socket-event';
 
 import MediaComponent from './MediaComment';
 import { SendLoadButton } from '@/components/dashboard/trips/SendLoadButton';
+import { loadNoIn, looksLikeLoad } from '@/components/dashboard/trips/loadText';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -79,7 +81,28 @@ export default function MessageInput(props: MessageInputProps) {
   const [userTypingMessage, setUserTypingMessage] = React.useState<string>('');
   const [url, setUrl] = React.useState<string>('');
 
+  // A load typed in chat needs its Load # (the server makes it a load / the next leg from it)
+  const [loadNoMissing, setLoadNoMissing] = React.useState(false);
+  const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  React.useEffect(() => {
+    if (loadNoMissing && (!looksLikeLoad(textAreaValue) || loadNoIn(textAreaValue))) setLoadNoMissing(false);
+  }, [textAreaValue, loadNoMissing]);
+  const addLoadNoLine = () => {
+    setTextAreaValue(`LOAD # \n${textAreaValue}`);
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(7, 7);
+      }
+    }, 50);
+  };
+
   const handleClick = () => {
+    if (textAreaValue.trim() !== '' && looksLikeLoad(textAreaValue) && !loadNoIn(textAreaValue)) {
+      setLoadNoMissing(true);
+      return;
+    }
     if (textAreaValue.trim() !== '') {
       onSubmit();
       setTextAreaValue('');
@@ -283,8 +306,23 @@ export default function MessageInput(props: MessageInputProps) {
           {userTypingMessage ?? 'Typing...'}
         </div>
       )}
+      {loadNoMissing && (
+        <Alert
+          severity="error"
+          sx={{ mb: 1 }}
+          data-testid="loadNoMissing"
+          action={
+            <Button color="inherit" size="small" onClick={addLoadNoLine} data-testid="addLoadNoLine">
+              Add LOAD # line
+            </Button>
+          }
+        >
+          Not sent — this looks like a load but has no <b>Load #</b>. Add a line like <b>LOAD # 1011</b> (PU# / PO# are pickup numbers, not the Load #).
+        </Alert>
+      )}
       <TextField
         fullWidth
+        inputRef={inputRef}
         placeholder="Type something here…"
         aria-label="Message"
         multiline

@@ -26,6 +26,22 @@ export interface TruckNow {
   fuelPercent: number | null;
   engine: string | null;
   vehicleName: string | null;
+  /** Stopped (speed ≤ 3 mph) since — known once the truck has been watched moving / stopping */
+  stoppedSince?: string | null;
+}
+
+// When each truck stopped moving (Samsara only says where it is now): remembered while the server runs
+const motion = new Map<string, { moving: boolean; since: number }>();
+const MOVING_MPH = 3;
+
+/** Marks the truck's stopped-since time; the first sighting of a stopped truck counts from its GPS time. */
+export function trackMotion(key: string, truck: TruckNow): TruckNow {
+  const moving = (truck.speedMph || 0) > MOVING_MPH;
+  const seenAt = new Date(truck.at).getTime() || Date.now();
+  const prev = motion.get(key);
+  if (!prev || prev.moving !== moving) motion.set(key, { moving, since: seenAt });
+  const now = motion.get(key)!;
+  return { ...truck, stoppedSince: moving ? null : new Date(now.since).toISOString() };
 }
 
 export interface StopEta {
@@ -247,7 +263,9 @@ async function routeAhead(trip: ChatTrip, origin: { lat: number; lng: number } |
 
 export async function liveTrip(trip: ChatTrip, stops: ChatTripStop[]): Promise<LiveTrip> {
   const now = Date.now();
-  const { truck, problem: truckProblem } = await truckNow(trip);
+  const seen = await truckNow(trip);
+  const truck = seen.truck ? trackMotion(String(seen.truck.vehicleName || trip.truck_number || trip.id), seen.truck) : null;
+  const truckProblem = seen.problem;
   const ahead = remainingStops(trip, stops);
   const route = await routeAhead(trip, truck ? { lat: truck.lat, lng: truck.lng } : null, ahead);
 

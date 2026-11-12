@@ -58,7 +58,7 @@ const STOPS = [
 const KINGMAN = { type: "switch" as const, name: "ZZ TA KINGMAN", city: "KINGMAN", state: "AZ" };
 const types = (stops?: ChatTripStop[]) => [...(stops || [])].sort((a, b) => a.seq - b.seq).map((s) => `${s.type}:${s.name}`);
 const lastMsg = async (id: string, re: RegExp) =>
-  String((await Message.findAll({ where: { userProfileId: id }, order: [["createdAt", "DESC"]], limit: 10 })).find((m) => re.test(String(m.body)))?.body || "");
+  String((await Message.findAll({ where: { userProfileId: id }, order: [["createdAt", "DESC"]], limit: 40 })).find((m) => re.test(String(m.body)))?.body || "");
 
 (async () => {
   initSocket(http.createServer());
@@ -281,7 +281,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       assert.match(await lastMsg(a.id, /handed over/), /handed over at ZZ TA KINGMAN/);
       // B's app: it's the current trip now with its Got it button
       const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: t.id, type: "status", to_status: "ended" } });
-      assert.match(String(ev?.note), /marked by dispatch \(the driver hadn't tapped Rolling\)/);
+      assert.match(String(ev?.note), /Handed over by dispatch \(the driver hadn't tapped Rolling\)/);
     });
 
     await test("change type on a planned load: Direct → Via yard splits after the pickup; back to Direct merges", async () => {

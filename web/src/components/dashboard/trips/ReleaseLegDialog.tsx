@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
 import { toast } from 'react-toastify';
 
-import { useReleaseLoadLegMutation } from '@/redux/TripApiSlice';
+import { useEndLoadLegMutation, useReleaseLoadLegMutation } from '@/redux/TripApiSlice';
 
 // The load already changed hands but the driver before didn't tap it: dispatch marks the handover
 // (time, default now) and the next leg goes to its driver — it becomes their active trip.
@@ -69,6 +69,62 @@ export function ReleaseLegDialog({ target, onClose }: { target: ReleaseTarget | 
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" disabled={isLoading} onClick={() => void save()} data-testid="releaseSave">
           Handed over — send to {target?.driverName}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** Dispatch ends a load the driver didn't end (forgot, no signal, swapped out): time, default now. */
+export function EndLegDialog({
+  loadId,
+  leg,
+  driverName,
+  onClose,
+}: {
+  loadId: number;
+  leg: { id: number; trip_no: string | null } | null;
+  driverName?: string | null;
+  onClose: () => void;
+}): React.JSX.Element {
+  const [at, setAt] = React.useState('');
+  const [end, { isLoading }] = useEndLoadLegMutation();
+  React.useEffect(() => {
+    if (leg) setAt(toLocalInput(new Date()));
+  }, [leg]);
+  const save = async () => {
+    if (!leg) return;
+    try {
+      const res = await end({ id: loadId, legId: leg.id, at: at ? new Date(at).toISOString() : null }).unwrap();
+      toast.success(res.message || 'Load ended');
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Could not end it');
+    }
+  };
+  return (
+    <Dialog open={!!leg} onClose={onClose} maxWidth="xs" fullWidth onClick={(e) => e.stopPropagation()}>
+      <DialogTitle>End #{leg?.trip_no}?</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Typography variant="body2">
+            Marks the load delivered at this time. {driverName || 'The driver'} is told and it leaves their app; miles are counted up to then.
+          </Typography>
+          <TextField
+            size="small"
+            type="datetime-local"
+            label="Ended at"
+            InputLabelProps={{ shrink: true }}
+            value={at}
+            onChange={(e) => setAt(e.target.value)}
+            inputProps={{ max: toLocalInput(new Date()) }}
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" color="warning" disabled={isLoading} onClick={() => void save()} data-testid="endSave">
+          End load
         </Button>
       </DialogActions>
     </Dialog>

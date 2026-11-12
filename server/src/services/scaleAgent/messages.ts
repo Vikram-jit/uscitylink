@@ -1,11 +1,10 @@
 import { Adjustment, GROUP_LABELS, Issue, RuleLimits, ScaleResult, Weights } from "./evaluate";
 
-// Fixed driver/staff wording for each result (spec §8 sample). Never says "legal" or "good to go":
+// Driver / staff wording for each result. Never says "legal" or "good to go":
 // a ticket alone cannot prove that, and the driver must wait for dispatch to confirm.
 
 const lb = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${Math.round(n).toLocaleString("en-US")} lbs`);
 
-const SAFETY = "Park safely and keep the vehicle secured. Do not drive overweight on public roads, and do not depart until dispatch confirms.";
 
 const issueLine = (issue: Issue, weights: Weights): string => {
   if (issue.kind === "missing") return `- ${GROUP_LABELS[issue.group as keyof typeof GROUP_LABELS]}: could not be read`;
@@ -30,88 +29,73 @@ const issueLine = (issue: Issue, weights: Weights): string => {
   return `- ${label}: ${lb(issue.value)} — ${lb(issue.over)} over the ${lb(issue.limit)} limit`;
 };
 
-const holesText = (a: Adjustment) =>
-  a.holes ? ` About ${a.holes} hole${a.holes === 1 ? "" : "s"} (estimate from this trailer's past reweighs).` : "";
+export const weightsLine = (w: Weights) =>
+  `Steer ${lb(w.steer)} · Drive ${lb(w.drive)} · Trailer ${lb(w.trailer)} · Gross ${lb(w.gross)}`;
 
-const adjustmentLine = (a: Adjustment): string | null => {
-  const room = `${GROUP_LABELS[a.to as keyof typeof GROUP_LABELS] || ""} has ${lb(a.available_lb)} available`;
-  if (a.reason === "kpra") {
-    return `- Move the trailer tandems FORWARD to bring the rear axle within the trailer-length rule.${a.holes ? ` About ${a.holes} hole${a.holes === 1 ? "" : "s"}.` : ""} This moves weight onto the trailer axle.`;
-  }
+// ---------- the driver's message: one plain line ----------
+// Drivers read this in the cab: what's wrong, what to do, and wait for dispatch. Numbers and limits
+// stay in dispatch's alert (buildStaffAlert).
+
+const PLAIN: Record<string, string> = { steer: "Front axle", drive: "Drive axles", trailer: "Trailer axles", gross: "Truck" };
+const holes = (a: Adjustment) => (a.holes ? ` (about ${a.holes} hole${a.holes === 1 ? "" : "s"})` : "");
+const WAIT = "Don't leave until dispatch OKs it.";
+
+/** The one thing to do for the first suggested move */
+const moveText = (a?: Adjustment | null): string | null => {
+  if (!a) return null;
+  if (a.reason === "kpra") return `slide the trailer tandems forward${holes(a)}`;
   switch (a.action) {
     case "tandems_forward":
-      return `- Move the trailer tandems FORWARD to shift weight from the drives to the trailer axle (${room}).${holesText(a)}`;
+      return `slide the trailer tandems forward${holes(a)}`;
     case "tandems_backward":
-      return `- Move the trailer tandems BACKWARD to shift weight from the trailer axle to the drives (${room}).${holesText(a)}`;
+      return `slide the trailer tandems back${holes(a)}`;
     case "fifth_wheel_forward":
-      return `- Move the fifth wheel FORWARD to shift weight from the drives to the steer axle (${room}).`;
+      return "slide the fifth wheel forward";
     case "fifth_wheel_back":
-      return `- Move the fifth wheel BACK to shift weight from the steer axle to the drives (${room}).`;
+      return "slide the fifth wheel back";
     default:
       return null;
   }
 };
 
-export const weightsLine = (w: Weights) =>
-  `Steer ${lb(w.steer)} · Drive ${lb(w.drive)} · Trailer ${lb(w.trailer)} · Gross ${lb(w.gross)}`;
+/** The biggest problem, in plain words ("Trailer axles are 920 lbs too heavy") */
+const mainProblem = (result: ScaleResult): string | null => {
+  const over = result.issues.filter((i) => ["over_limit", "over_rating", "over_target", "bridge", "kpra"].includes(i.kind));
+  const worst = [...over].sort((a, b) => (Number(b.over) || 0) - (Number(a.over) || 0))[0];
+  if (!worst) return null;
+  if (worst.kind === "kpra") return "The trailer tandems are too far back";
+  if (worst.kind === "bridge") return `The axles are ${lb(worst.over)} too heavy for their spacing`;
+  const who = PLAIN[worst.group as string] || "One axle";
+  return `${who} ${who === "Truck" || who === "Front axle" ? "is" : "are"} ${lb(worst.over)} too heavy`;
+};
 
 export const buildDriverMessage = (
   result: ScaleResult,
   weights: Weights,
-  rules: RuleLimits,
+  _rules: RuleLimits,
   options: { reweigh?: boolean; predictionNote?: string | null } = {},
 ): string => {
-  const prefix = options.reweigh ? "(Reweigh) " : "";
-  const problems = result.issues.map((i) => issueLine(i, weights)).join("\n");
-  const body = buildBody(result, weights, rules, prefix, problems);
-  return options.predictionNote ? `${body}\n\nCompared with your last ticket: ${options.predictionNote}` : body;
-};
-
-const buildBody = (result: ScaleResult, weights: Weights, rules: RuleLimits, prefix: string, problems: string): string => {
+  const again = options.reweigh ? "New ticket: " : "";
   switch (result.status) {
+    case "PASS_PRELIMINARY":
+      return `✅ ${again}Scale ticket looks good (gross ${lb(weights.gross)}). ${WAIT}`;
     case "ROUTE_REVIEW_REQUIRED":
     case "BRIDGE_REVIEW":
-      return [
-        `🕓 ${prefix}Scale ticket — weights look within limits, review pending`,
-        weightsLine(weights),
-        result.status === "ROUTE_REVIEW_REQUIRED"
-          ? "Dispatch still has to check your route and the state rules for it."
-          : "Dispatch still has to check the axle spacing and trailer position.",
-        "Please wait for dispatch to confirm before you depart.",
-      ].join("\n\n");
-
-    case "PASS_PRELIMINARY":
-      return [
-        `✅ ${prefix}Scale ticket — preliminary check passed`,
-        weightsLine(weights),
-        `Within the limits for your route (${rules.jurisdiction}: tandem ${lb(rules.tandem_lb)}, gross ${lb(rules.gross_lb)}), including axle spacing and trailer position.`,
-        "Please wait for dispatch to confirm before you depart.",
-      ].join("\n\n");
-
-    case "OVER_GROSS":
-      return [
-        `⛔ ${prefix}Scale ticket — over gross weight`,
-        problems,
-        "Sliding the tandems or fifth wheel cannot reduce gross weight. Contact dispatch now to remove or rework cargo, then send a new CAT ticket.",
-        SAFETY,
-      ].join("\n\n");
-
-    case "ADJUST_AND_REWEIGH": {
-      const moves = result.adjustments.map(adjustmentLine).filter(Boolean).join("\n");
-      const advice = result.feasible
-        ? `If the trailer position and route rules allow, this may help (an estimate, not a guarantee):\n${moves}\n\nMake a small adjustment, then send a new CAT ticket.`
-        : `${moves ? `${moves}\n\n` : ""}A slide alone cannot bring every axle within its limit. Contact dispatch to rework the load, then send a new CAT ticket.`;
-      return [`⚠️ ${prefix}Scale ticket — adjust and reweigh`, problems, advice, SAFETY].join("\n\n");
+      return `🕓 ${again}Scale ticket looks OK — dispatch is checking it. ${WAIT}`;
+    case "OVER_GROSS": {
+      const over = result.issues.find((i) => i.group === "gross")?.over;
+      return `⛔ ${again}The truck is ${over ? `${lb(over)} ` : ""}too heavy overall — sliding won't fix it. Don't drive; call dispatch.`;
     }
-
+    case "ADJUST_AND_REWEIGH": {
+      const problem = mainProblem(result) || "One axle is too heavy";
+      const move = result.feasible ? moveText(result.adjustments[0]) : null;
+      return move
+        ? `⚠️ ${again}${problem} — ${move}, reweigh and send the new ticket. ${WAIT}`
+        : `⚠️ ${again}${problem} and a slide won't fix it — don't drive; call dispatch.`;
+    }
     case "OCR_UNCERTAIN":
     default:
-      return [
-        `📷 ${prefix}Scale ticket — we could not verify it`,
-        problems,
-        "Please send a clear, straight photo of the whole ticket. Dispatch will review it.",
-        "Do not depart until dispatch confirms.",
-      ].join("\n\n");
+      return `📷 ${again}We couldn't read the scale ticket — please send a clear photo of the whole ticket. ${WAIT}`;
   }
 };
 

@@ -6,14 +6,10 @@ import {
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogContent,
-  DialogTitle,
   Divider,
   Drawer,
   IconButton,
   LinearProgress,
-  MenuItem,
   Stack,
   Table,
   TableBody,
@@ -24,32 +20,26 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Add, Close, Edit, ExpandLess, History, LocalParking, OpenInNew, Save, Schedule, Straighten, SwapHoriz, Undo } from '@mui/icons-material';
+import { Close, ContentCopy, Edit, ExpandLess, History, Link, LocalParking, OpenInNew, Save, Schedule, StopCircle, Straighten } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
 import {
-  HandoverPlace,
   LoadDetail,
   LoadHistoryEntry,
-  LoadType,
-  StopInput,
   Trip,
-  useChangeLoadTypeMutation,
   useGetLoadDetailQuery,
   useSendTripMutation,
-  useUndoLoadSplitMutation,
   useUpdateLoadInfoMutation,
 } from '@/redux/TripApiSlice';
 
-import { AddressSearch } from './AddressSearch';
 import { AssignLegDialog } from './AssignLegDialog';
 import { CorrectTimesDialog, MilesDialog } from './CorrectTimesDialog';
-import { HANDOVER_REASONS, HandoverDialog } from './HandoverDialog';
+import { HANDOVER_REASONS } from './HandoverDialog';
 import { CompleteTripButton } from './CompleteTripButton';
 import { LegChain } from './LegChain';
 import { LineupDrawer } from './LineupDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
-import { ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
+import { EndLegDialog, ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { TripDrawer } from './TripDrawer';
 import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL } from './tripFormat';
 
@@ -58,7 +48,6 @@ import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText
 // with the appointment and with the ETA it had when it went Rolling. A leg opens the trip panel
 // (live map, problems, record).
 
-const ON_ROAD = ['started', 'rolling', 'on_hold'];
 
 const STATUS_WORD: Record<string, string> = {
   scheduled: 'Saved for later',
@@ -156,6 +145,45 @@ function InvoiceField({ detail }: { detail: LoadDetail }) {
   );
 }
 
+/** The shipper's public tracking link: copy it into an email / text, or open it */
+function TrackingLink({ detail }: { detail: LoadDetail }) {
+  const token = detail.load.track_token;
+  if (!token) return null;
+  const closed = ['completed', 'cancelled'].includes(detail.load.status);
+  const url = typeof window !== 'undefined' ? `${window.location.origin}/track/${token}` : `/track/${token}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Tracking link copied — send it to the shipper / customer');
+    } catch {
+      toast.info(url, { autoClose: 15000 });
+    }
+  };
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, px: 1.5, borderRadius: 2, bgcolor: 'action.hover' }} data-testid="trackingLink">
+      <Link fontSize="small" color={closed ? 'disabled' : 'primary'} />
+      <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }} noWrap color={closed ? 'text.disabled' : 'text.primary'}>
+        {closed ? 'Tracking link expired (load completed)' : url}
+      </Typography>
+      {!closed && detail.load.track_code && (
+        <Tooltip title="Code for the app's “Track a load”">
+          <Chip size="small" label={`Code ${detail.load.track_code}`} sx={{ fontWeight: 700, letterSpacing: 1 }} data-testid="trackCode" />
+        </Tooltip>
+      )}
+      {!closed && (
+        <>
+          <Button size="small" startIcon={<ContentCopy fontSize="small" />} onClick={() => void copy()}>
+            Copy
+          </Button>
+          <Button size="small" startIcon={<OpenInNew fontSize="small" />} href={url} target="_blank" rel="noopener">
+            Open
+          </Button>
+        </>
+      )}
+    </Stack>
+  );
+}
+
 function LegCard({
   leg,
   prev,
@@ -165,12 +193,11 @@ function LegCard({
   onAssign,
   onEdit,
   onLineup,
-  onHandover,
   onTimes,
   onMiles,
-  onUndoSplit,
-  canUndoSplit,
   onRelease,
+  onEnd,
+  allLegs,
 }: {
   leg: Trip;
   prev?: Trip;
@@ -180,12 +207,13 @@ function LegCard({
   onAssign: () => void;
   onEdit: () => void;
   onLineup: (profileId: string) => void;
-  onHandover: () => void;
+
   onTimes: () => void;
   onMiles: () => void;
-  onUndoSplit: () => void;
-  canUndoSplit: boolean;
   onRelease: () => void;
+  onEnd: () => void;
+  /** Every leg of the load (Mark completed lists the delivered ones together) */
+  allLegs: Trip[];
 }) {
   const [sendTrip, { isLoading: sending }] = useSendTripMutation();
   const stops = [...(leg.stops || [])].sort((a, b) => a.seq - b.seq);
@@ -274,14 +302,9 @@ function LegCard({
             Reassign
           </Button>
         )}
-        {!['ended', 'paperwork', 'completed', 'routed', 'cancelled'].includes(leg.status) && (
-          <Button size="small" color={ON_ROAD.includes(leg.status) ? 'warning' : 'primary'} startIcon={<SwapHoriz fontSize="small" />} onClick={onHandover} data-testid={`handoverBtn-${leg.leg_no}`}>
-            {ON_ROAD.includes(leg.status) ? 'Change driver / truck' : 'Split leg'}
-          </Button>
-        )}
-        {canUndoSplit && (
-          <Button size="small" color="inherit" startIcon={<Undo fontSize="small" />} onClick={onUndoSplit} sx={{ color: 'text.secondary' }}>
-            Undo handover
+        {['planned', 'accepted', 'started', 'rolling', 'on_hold'].includes(leg.status) && (
+          <Button size="small" color="warning" startIcon={<StopCircle fontSize="small" />} onClick={onEnd} data-testid={`endBtn-${leg.leg_no}`}>
+            End load
           </Button>
         )}
         {leg.started_at && !['routed', 'cancelled'].includes(leg.status) && (
@@ -294,7 +317,7 @@ function LegCard({
             Miles
           </Button>
         )}
-        {(leg.status === 'ended' || leg.status === 'paperwork') && <CompleteTripButton trip={leg} size="small" requireInvoice={isLast} />}
+        {(leg.status === 'ended' || leg.status === 'paperwork') && <CompleteTripButton trip={leg} size="small" requireInvoice={isLast} legs={allLegs} names={names} />}
         {!['completed', 'routed', 'cancelled'].includes(leg.status) && (
           <Button size="small" startIcon={<Edit fontSize="small" />} onClick={onEdit}>
             Edit
@@ -314,17 +337,13 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
   const [openTrip, setOpenTrip] = React.useState<number | null>(null);
   const [assigning, setAssigning] = React.useState<Trip | null>(null);
   const [editing, setEditing] = React.useState<Trip | null>(null);
-  const [addingLeg, setAddingLeg] = React.useState(false);
   const [lineupOf, setLineupOf] = React.useState<string | null>(null);
-  const [handover, setHandover] = React.useState<Trip | null>(null);
   const [timesOf, setTimesOf] = React.useState<Trip | null>(null);
   const [milesOf, setMilesOf] = React.useState<Trip | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
   const [showRemoved, setShowRemoved] = React.useState(false);
   const [release, setRelease] = React.useState<ReleaseTarget | null>(null);
-  const [relayPlace, setRelayPlace] = React.useState(false);
-  const [undoSplit] = useUndoLoadSplitMutation();
-  const [changeType, { isLoading: changingType }] = useChangeLoadTypeMutation();
+  const [ending, setEnding] = React.useState<Trip | null>(null);
 
   const legs = legsInOrder(detail?.legs);
   const names = detail?.driverNames || {};
@@ -333,26 +352,6 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
   const lastStop = lastLeg ? [...(lastLeg.stops || [])].sort((a, b) => a.seq - b.seq).pop() : undefined;
   const t = detail?.timing;
   const st = detail ? LOAD_STATUS[detail.load.status] : null;
-  // Legs made by a handover that haven't started can be merged back
-  const madeByHandover = new Set((detail?.history || []).filter((h) => h.type === 'transfer' && h.data?.transferFrom).map((h) => h.legNo));
-  const setType = async (type: LoadType, place?: HandoverPlace | null) => {
-    if (!detail) return;
-    if (type === 'relay' && live.length === 1 && !place) return setRelayPlace(true);
-    try {
-      const res = await changeType({ id: detail.load.id, type, place: place || null }).unwrap();
-      toast.success(res.message || 'Load type changed');
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Could not change the type');
-    }
-  };
-  const undo = async (leg: Trip) => {
-    try {
-      const res = await undoSplit({ id: loadId!, legId: leg.id }).unwrap();
-      toast.success(res.message || 'Handover undone');
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Could not undo');
-    }
-  };
   const assigningPrev = assigning ? legs.filter((l) => l.leg_no < assigning.leg_no && l.status !== 'cancelled').pop() : undefined;
 
   return (
@@ -364,22 +363,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h6">Load #{detail.load.load_no}</Typography>
               <Stack direction="row" spacing={0.75} sx={{ mt: 0.5 }}>
-                <TextField
-                  select
-                  size="small"
-                  variant="standard"
-                  value={detail.load.type}
-                  disabled={changingType || ['completed', 'cancelled'].includes(detail.load.status)}
-                  onChange={(e) => void setType(e.target.value as LoadType)}
-                  InputProps={{ disableUnderline: true, sx: { fontSize: 13, fontWeight: 600, px: 1, borderRadius: 4, border: 1, borderColor: 'divider' } }}
-                  inputProps={{ 'data-testid': 'loadTypeSelect' }}
-                >
-                  {(Object.keys(LOAD_TYPE) as LoadType[]).map((k) => (
-                    <MenuItem key={k} value={k}>
-                      {LOAD_TYPE[k].label}
-                    </MenuItem>
-                  ))}
-                </TextField>
+<Chip size="small" variant="outlined" label={LOAD_TYPE[detail.load.type].label} data-testid="loadTypeChip" />
                 {st && <Chip size="small" label={st.label} color={st.color} />}
               </Stack>
             </Box>
@@ -389,6 +373,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
           </Stack>
 
           <InvoiceField detail={detail} />
+          <TrackingLink detail={detail} />
           <LegChain legs={legs} names={names} />
           <Typography variant="caption" color="text.secondary">
             Added by {detail.load.created_by_name || '—'} ·{' '}
@@ -565,11 +550,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
             <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
               Legs
             </Typography>
-            {!['completed', 'cancelled'].includes(detail.load.status) && (
-              <Button size="small" startIcon={<Add />} onClick={() => setAddingLeg(true)}>
-                Add leg
-              </Button>
-            )}
+
           </Stack>
           {legs.filter((l) => l.status !== 'cancelled').map((leg, i) => (
             <LegCard
@@ -582,11 +563,10 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
               onAssign={() => setAssigning(leg)}
               onEdit={() => setEditing(leg)}
               onLineup={setLineupOf}
-              onHandover={() => setHandover(leg)}
               onTimes={() => setTimesOf(leg)}
               onMiles={() => setMilesOf(leg)}
-              onUndoSplit={() => void undo(leg)}
-              canUndoSplit={madeByHandover.has(leg.leg_no) && ['scheduled', 'offered', 'planned', 'accepted'].includes(leg.status) && !leg.started_at}
+              onEnd={() => setEnding(leg)}
+              allLegs={legs}
               onRelease={() => {
                 const prev = live[i - 1];
                 const hs = prev ? [...(prev.stops || [])].sort((a, b) => a.seq - b.seq).pop() : undefined;
@@ -635,32 +615,13 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
         trip={editing}
         driver={editing?.driver_profile_id && names[editing.driver_profile_id] ? { id: editing.driver_profile_id, name: names[editing.driver_profile_id] } : null}
       />
-      <LoadFormDialog
-        open={addingLeg}
-        onClose={() => setAddingLeg(false)}
-        addLegTo={loadId ? { loadId, startsAt: lastStop ? (({ type: lastStop.type, name: lastStop.name || '', city: lastStop.city || '', state: lastStop.state || '' }) as StopInput) : null } : null}
-      />
-      <HandoverDialog
-        open={!!handover}
-        onClose={() => setHandover(null)}
-        loadId={loadId || 0}
-        leg={handover}
-        driverName={handover?.driver_profile_id ? names[handover.driver_profile_id] : null}
-      />
+
+
       <CorrectTimesDialog open={!!timesOf} onClose={() => setTimesOf(null)} loadId={loadId || 0} leg={timesOf} />
       <MilesDialog open={!!milesOf} onClose={() => setMilesOf(null)} loadId={loadId || 0} leg={milesOf} />
-      <Dialog open={relayPlace} onClose={() => setRelayPlace(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Where do the drivers meet?</DialogTitle>
-        <DialogContent dividers>
-          <AddressSearch
-            onPick={(p) => {
-              setRelayPlace(false);
-              void setType('relay', { type: 'switch', name: p.name || null, street: p.street, city: p.city, state: p.state, zip: p.zip });
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+
       <ReleaseLegDialog target={release} onClose={() => setRelease(null)} />
+      <EndLegDialog loadId={loadId || 0} leg={ending} driverName={ending?.driver_profile_id ? names[ending.driver_profile_id] : null} onClose={() => setEnding(null)} />
       <TripDrawer tripId={openTrip} onClose={() => setOpenTrip(null)} />
       <LineupDrawer profileId={lineupOf} onClose={() => setLineupOf(null)} />
     </Drawer>

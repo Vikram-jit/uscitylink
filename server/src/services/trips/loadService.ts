@@ -3,8 +3,9 @@ import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripProblem, ChatTripStop, LoadT
 import { UserProfile } from "../../models/UserProfile";
 import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
-import { historyOf, segmentsOf } from "./loadControl";
-import { Actor, cleanInvoice, createTrip, editTrip, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
+import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
+import { trackToken } from "./publicTracking";
+import { Actor, cleanInvoice, createTrip, driverOfTruck, editTrip, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
 
 // Loads (Loads screen): one load, tracked by its invoice #, moved by one or more legs —
 //   direct        pickup → delivery
@@ -207,6 +208,7 @@ export function deliveryTiming(legs: ChatTrip[]) {
 export async function getLoad(id: number) {
   const load = await ChatLoad.findByPk(id);
   if (!load) throw new TripError("Load not found", 404);
+  await trackToken(load); // the shipper's tracking link (older loads get one now)
   const legs = byLeg(
     await ChatTrip.findAll({
       where: { load_id: id },
@@ -297,4 +299,221 @@ export async function listLoads(query: { status?: string; q?: string; page?: num
     ((await ChatLoad.count({ group: ["status"] })) as unknown as { status: string; count: number }[]).map((c) => [c.status, Number(c.count)])
   );
   return { loads: rows, total: count, page, counts, driverNames: await driverNames(legs) };
+}
+
+// ---------- simple loads: the Load # decides the legs ----------
+//
+// Dispatch adds a plain load with its own Load # (= invoice #). The same Load # again — another
+// driver / truck / trailer, typed, pasted or from the form — is the next leg of that load. The type
+// (direct / via yard / transfer) follows from the legs. Before ending anything dispatch is asked:
+// the previous leg of this load still open, or the driver already on another load.
+
+const OPEN_LEG = ["scheduled", "offered", "planned", "accepted", "started", "rolling", "on_hold"];
+/** The driver has a load on their app (sent, not delivered) */
+const ON_DRIVER = ["planned", "accepted", "started", "rolling", "on_hold"];
+const SAME_LOAD_DAYS = 60;
+
+export const cleanLoadNo = (v?: string | null) =>
+  String(v || "")
+    .trim()
+    .replace(/^#/, "")
+    .toUpperCase()
+    .slice(0, 64) || null;
+
+/** dispatch has to answer before this can go ahead (the form asks and sends again) */
+export class NeedsAnswer extends TripError {
+  constructor(
+    public needs: "endPrevious" | "driverBusy",
+    public info: Record<string, any>,
+    message: string
+  ) {
+    super(message, 409);
+  }
+}
+
+async function findLoadByNo(no: string): Promise<ChatLoad | null> {
+  return ChatLoad.findOne({
+    where: { invoice_no: no, status: { [Op.ne]: "cancelled" }, updated_at: { [Op.gte]: new Date(Date.now() - SAME_LOAD_DAYS * 86400000) } },
+    order: [["id", "DESC"]],
+  });
+}
+
+async function legBrief(l: ChatTrip | null) {
+  if (!l) return null;
+  const stops = l.stops || (await ChatTripStop.findAll({ where: { chat_trip_id: l.id } }));
+  const sorted = [...stops].sort((a, b) => a.seq - b.seq);
+  const name = l.driver_profile_id ? (await UserProfile.findByPk(l.driver_profile_id))?.username || "Driver" : null;
+  const where = (s?: ChatTripStop) => (s ? [s.city, s.state].filter(Boolean).join(", ") || s.name || "—" : "—");
+  return {
+    tripId: l.id,
+    loadId: l.load_id,
+    legNo: l.leg_no,
+    tripNo: l.trip_no,
+    status: l.status,
+    open: OPEN_LEG.includes(l.status),
+    driverProfileId: l.driver_profile_id,
+    driverName: name,
+    truck: l.truck_number,
+    trailers: l.trailer_numbers,
+    from: where(sorted[0]),
+    to: where(sorted[sorted.length - 1]),
+  };
+}
+
+/** The load / trip the driver has on their app now (sent, not delivered), not counting [exceptLoad] */
+async function driverCurrent(profileId: string | null | undefined, exceptLoad?: number | null) {
+  if (!profileId) return null;
+  return ChatTrip.findOne({
+    where: { driver_profile_id: profileId, status: { [Op.in]: ON_DRIVER }, ...(exceptLoad ? { load_id: { [Op.ne]: exceptLoad } } : {}) },
+    order: [["sent_at", "DESC"], ["id", "DESC"]],
+  });
+}
+
+/** Add-load form: what the Load # means (new load, or leg N after …) and whether the driver is busy. */
+export async function lookupLoad(no: string | null | undefined, driverProfileId?: string | null) {
+  const loadNo = cleanLoadNo(no);
+  const load = loadNo ? await findLoadByNo(loadNo) : null;
+  const legs = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
+  const prev = legs[legs.length - 1] || null;
+  const busy = await driverCurrent(driverProfileId, load?.id);
+  return {
+    loadNo,
+    load: load ? { id: load.id, loadNo: load.load_no, invoiceNo: load.invoice_no, type: load.type, status: load.status, legs: legs.length } : null,
+    nextLegNo: legs.length + 1,
+    prev: await legBrief(prev),
+    driverBusy: await legBrief(busy),
+  };
+}
+
+export async function addLoad(
+  input: TripInput & { loadNo?: string | null },
+  actor: Actor,
+  opts: { send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; typed?: boolean; fromChat?: boolean } = {}
+) {
+  const no = cleanLoadNo(input.loadNo ?? input.invoiceNo);
+  if (!no && !opts.typed) throw new TripError("Enter the Load # — it's how the load is tracked");
+  const load = no ? await findLoadByNo(no) : null;
+  const legs = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
+  const prev = legs[legs.length - 1] || null;
+  const prevOpen = !!prev && OPEN_LEG.includes(prev.status);
+
+  // Who gets it (the truck's driver when only a truck is given)
+  const driverId = input.driverProfileId || (input.truckNumber ? (await driverOfTruck(input.truckNumber.trim()))?.id : null) || null;
+
+  // Ask first — nothing is ended without dispatch saying so
+  if (opts.send && prevOpen && !opts.endPrevious) {
+    const p = await legBrief(prev);
+    throw new NeedsAnswer("endPrevious", { prev: p }, `${p?.driverName || "The driver"} hasn't ended leg ${prev!.leg_no} (#${prev!.trip_no}) yet`);
+  }
+  const busy = opts.send ? await driverCurrent(driverId, load?.id) : null;
+  if (busy && !opts.endDriverCurrent && !opts.lineUp) {
+    const b = await legBrief(busy);
+    throw new NeedsAnswer("driverBusy", { current: b }, `${b?.driverName || "The driver"} is on load #${b?.tripNo} (${b?.status})`);
+  }
+
+  // Answers given: end what dispatch said to end
+  if (prevOpen && opts.endPrevious) await endLegNow(prev!.id, actor, { handover: true, sendNext: !opts.send || prev!.driver_profile_id !== driverId });
+  if (busy && opts.endDriverCurrent) await endLegNow(busy.id, actor, { sendNext: false });
+
+  // A leg that ends at our yard makes the load "via yard"
+  const yard = await defaultYardStop();
+  const atYard = (s?: ChatTripStop) =>
+    !!s && (s.type === "yard" || (!!yard.city && s.city?.toUpperCase() === yard.city?.toUpperCase() && (!yard.name || s.name?.toUpperCase() === yard.name?.toUpperCase())));
+  const prevLast = prev ? [...(prev.stops || [])].sort((a, b) => a.seq - b.seq).pop() : undefined;
+  if (prev && atYard(prevLast) && !prev.ends_at_yard) await prev.update({ ends_at_yard: true });
+
+  const reviewNotes = [...(input.reviewNotes || [])];
+  if (opts.typed && !no) reviewNotes.push("Load # missing — add it so the next leg of this load joins it");
+  if (opts.typed && prevOpen) reviewNotes.push(`Leg ${prev!.leg_no} (#${prev!.trip_no}) is still open — end it on the Loads screen`);
+  const leg = {
+    ...input,
+    invoiceNo: no,
+    trailerNumbers: input.trailerNumbers?.length ? input.trailerNumbers : prev?.trailer_numbers ? prev.trailer_numbers.split(/,\s*/) : [],
+    loadedTrailer: input.loadedTrailer ?? (prev ? true : false),
+    allowNoDriver: false,
+    reviewNotes,
+    source: opts.typed || opts.fromChat ? ("typed" as const) : ("form" as const),
+  };
+
+  let target = load;
+  if (!target) {
+    target = await ChatLoad.create({ load_no: no, invoice_no: no, type: "direct", status: "scheduled", created_by: actor.id || null, created_by_name: actor.name || null });
+  }
+  let trip: ChatTrip | null;
+  try {
+    trip = await createTrip(leg, actor, {
+      send: false,
+      // Sent right away → the full load goes to the chat; lined up → "Up next" message
+      quiet: !!opts.typed || (!!opts.send && (!busy || !!opts.endDriverCurrent)),
+      leg: { loadId: target.id, legNo: (legs[legs.length - 1]?.leg_no || 0) + 1, loadNo: target.load_no },
+    });
+  } catch (err) {
+    if (!load) await target.destroy();
+    throw err;
+  }
+  if (!trip) throw new TripError("Could not save the load", 500);
+  if (!target.load_no) await target.update({ load_no: trip.trip_no });
+  if (atYard([...(trip.stops || [])].sort((a, b) => a.seq - b.seq).pop()) && !trip.ends_at_yard) await trip.update({ ends_at_yard: true });
+
+  await deriveType(target.id);
+  // Lined up after the driver's current load: it goes out by itself when they end that one
+  if (busy && opts.lineUp && !opts.endDriverCurrent) await trip.update({ auto_send: true });
+  // Send now — unless dispatch chose to line it up after the driver's current load
+  if (opts.send && (!busy || opts.endDriverCurrent)) await sendLoad(trip.id, actor);
+  await refreshLoadStatus(target.id);
+  return getLoad(target.id);
+}
+
+
+// ---------- a load pasted / typed straight into a driver's chat ----------
+//
+// Treated like the form's Send now: Load # required (same number = next leg), the driver gets the
+// standard load message and the trip card. If dispatch has to answer first (previous leg open /
+// driver busy) the question pops up on their screen; the answer comes back by id.
+
+const pendingTyped = new Map<
+  string,
+  { input: TripInput & { loadNo?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean } }
+>();
+const PENDING_MS = 30 * 60_000;
+
+export type TypedLoadOutcome =
+  | { kind: "sent"; loadId: number; loadNo: string | null; tripNo: string | null; legNo: number }
+  | { kind: "noLoadNo" }
+  | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy"; info: Record<string, any>; loadNo: string | null; message: string };
+
+export async function loadFromChat(input: TripInput & { loadNo?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
+  if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
+  try {
+    return outcome(await addLoad(input, actor, { send: true, fromChat: true }));
+  } catch (err) {
+    if (!(err instanceof NeedsAnswer)) throw err;
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    for (const [k, v] of pendingTyped) if (Date.now() - v.at > PENDING_MS) pendingTyped.delete(k);
+    pendingTyped.set(id, { input, actor, at: Date.now(), answers: {} });
+    return { kind: "question", id, needs: err.needs, info: err.info, loadNo: cleanLoadNo(input.loadNo), message: err.message };
+  }
+}
+
+/** Dispatch answered the question about a typed load (End & send / Line up). */
+export async function answerTypedLoad(id: string, answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }, actor: Actor): Promise<TypedLoadOutcome> {
+  const p = pendingTyped.get(id);
+  if (!p || Date.now() - p.at > PENDING_MS) throw new TripError("That question expired — add the load from the Loads screen", 410);
+  // Answers add up (end the previous leg, then: the driver is busy too)
+  p.answers = { ...p.answers, ...answers };
+  try {
+    const res = await addLoad(p.input, actor, { send: true, fromChat: true, ...p.answers });
+    pendingTyped.delete(id);
+    return outcome(res);
+  } catch (err) {
+    if (!(err instanceof NeedsAnswer)) throw err;
+    // The next question (e.g. previous leg ended, now the driver is busy): same id, more answers
+    return { kind: "question", id, needs: err.needs, info: err.info, loadNo: cleanLoadNo(p.input.loadNo), message: err.message };
+  }
+}
+
+function outcome(res: Awaited<ReturnType<typeof getLoad>>): TypedLoadOutcome {
+  const legs = res.legs.filter((l) => l.status !== "cancelled");
+  const leg = legs[legs.length - 1];
+  return { kind: "sent", loadId: res.load.id, loadNo: res.load.invoice_no || res.load.load_no, tripNo: leg?.trip_no || null, legNo: leg?.leg_no || 1 };
 }

@@ -1,3 +1,4 @@
+import { startTripReminders } from "./services/trips/reminders";
 import express from "express";
 import http from "http";
 import cors from "cors";
@@ -33,6 +34,7 @@ import appVersionRoutes from "./routes/appVersionRoutes";
 import callRoutes from "./routes/callRoutes";
 import tripRoutes from "./routes/tripRoutes";
 import loadRoutes from "./routes/loadRoutes";
+import publicRoutes from "./routes/publicRoutes";
 import { registerTripHooks } from "./services/trips/tripAssistant";
 import Channel from "./models/Channel";
 import UserChannel from "./models/UserChannel";
@@ -128,6 +130,7 @@ const mountApi = (base: string, auth: typeof authRoutes) => {
   app.use(`${base}/calls`, callRoutes);
   app.use(`${base}/trips`, tripRoutes);
   app.use(`${base}/loads`, loadRoutes);
+  app.use(`${base}/public`, publicRoutes);
 };
 mountApi("/api/v1", authRoutes);
 mountApi("/api/v2", authRoutesV2);
@@ -153,6 +156,7 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
   logCallPushSetup();
   registerTripHooks();
+  startTripReminders();
   logRecordingSetup();
   await primarySequelize.authenticate();
   console.log("Connected to primary database.");

@@ -167,7 +167,12 @@ function truckState(live: LiveTrip) {
   const t = live.truck;
   if (!t) return { value: 'No position', caption: live.truckProblem || '' };
   const moving = (t.speedMph || 0) > 3;
-  const value = moving ? `Moving · ${Math.round(t.speedMph || 0)} mph` : t.engine === 'Idle' || t.engine === 'On' ? 'Stopped · engine on' : 'Parked · engine off';
+  const stoppedFor = !moving && t.stoppedSince ? ` · ${duration((Date.now() - new Date(t.stoppedSince).getTime()) / 60000)}` : '';
+  const value = moving
+    ? `Moving · ${Math.round(t.speedMph || 0)} mph`
+    : t.engine === 'Idle' || t.engine === 'On'
+      ? `Stopped${stoppedFor} · engine on`
+      : `Parked${stoppedFor} · engine off`;
   return { value, caption: t.address || '' };
 }
 
