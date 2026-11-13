@@ -34,6 +34,8 @@ interface MessageInputProps {
   setSelectedTemplate?: React.Dispatch<React.SetStateAction<{ name: string; body:   string; url?: string }>>;
   message: string;
   setMessage: React.Dispatch<React.SetStateAction<string>>;
+  /** Extra buttons before the text box (e.g. Send load) */
+  actions?: React.ReactNode;
 }
 const InputContainer = styled(Box)({
   padding: '10px 20px',
@@ -54,7 +56,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   setSelectedTemplate,
   selectedTemplate,
   message,
-    setMessage
+    setMessage,
+  actions
 }) => {
  const handleVedioClick = () => {
     document?.getElementById('file-input-vedio')?.click();
@@ -207,6 +210,7 @@ const openPopOver = Boolean(anchorElPopOver);
                         <Divider />
                       </List>
                     </Popover>
+                    {actions}
                     <TextField
                       fullWidth
                       placeholder="Type a message"

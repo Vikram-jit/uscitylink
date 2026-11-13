@@ -50,6 +50,8 @@ interface Props {
   trip?: Trip | null;
   /** Opened from a driver's chat */
   driver?: Person | null;
+  /** Opened from a truck's chat: its number (the driver / team come from it) */
+  truck?: string | null;
   onSaved?: () => void;
 }
 
@@ -120,7 +122,7 @@ function LookupNote({ lookup, loading }: { lookup: LoadLookup | null; loading: b
   );
 }
 
-export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props): React.JSX.Element {
+export function LoadFormDialog({ open, onClose, trip, driver, truck, onSaved }: Props): React.JSX.Element {
   const editing = !!trip;
   const [loadNo, setLoadNo] = React.useState('');
   const [leg, setLeg] = React.useState<LegState>(newLeg([emptyStop('pickup'), emptyStop('drop')]));
@@ -152,7 +154,7 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
       return;
     }
     setLoadNo('');
-    setLeg(newLeg([emptyStop('pickup'), emptyStop('drop')], { driver: driver || null }));
+    setLeg(newLeg([emptyStop('pickup'), emptyStop('drop')], { driver: driver || null, ...(truck ? { truck } : {}) }));
     // From a driver's chat: their truck and team mate
     if (driver) {
       lookupDriverTruck(driver.id, true)
@@ -167,7 +169,7 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
     }
     // The parent passes a new `driver` object on every render: depend on ids only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, trip?.id, driver?.id]);
+  }, [open, trip?.id, driver?.id, truck]);
 
   // The driver's name loaded after opening: show it without resetting anything
   React.useEffect(() => {
@@ -266,7 +268,13 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
   };
 
   const who = leg.driver?.name.split(' (')[0] || 'the driver';
-  const title = editing ? `Edit trip #${(trip?.trip_no) || trip?.id}` : driver ? `Send load to ${driver.name}` : 'New load';
+  const title = editing
+    ? `Edit trip #${(trip?.trip_no) || trip?.id}`
+    : driver
+      ? `Send load to ${driver.name}${truck ? ` · Truck ${truck}` : ''}`
+      : truck
+        ? `Send load · Truck ${truck}`
+        : 'New load';
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" PaperProps={{ sx: { bgcolor: 'background.default' } }}>

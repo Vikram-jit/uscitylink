@@ -22,7 +22,9 @@ import { MediaGallery } from '../truckgroup/view';
 import { ChatView } from './ChatView';
 import { Chat, Message, User } from './types';
 import { generateTempId } from '@/components/messages/MessageInput';
-import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing, looksLikeLoad } from '@/components/dashboard/trips/loadText';
+import { useTruckDrivers } from '@/components/dashboard/trips/SendLoadButton';
+import { useChatLoadSender } from '@/components/dashboard/trips/useChatLoadSender';
 import { toast } from 'react-toastify';
 
 const ChatPage = () => {
@@ -75,6 +77,14 @@ const ChatPage = () => {
   const [message, setMessage] = useState<MessageModel[]>([]);
   // True only when the loaded group data belongs to the group the staff member has open
   const isOpenGroupLoaded = () => Boolean(currentChatId && (messages?.data as any)?.group?.id === currentChatId);
+  // The truck's driver (and team mate): the group is named by its truck number
+  const truckNo = isOpenGroupLoaded() ? (messages?.data as any)?.group?.name || null : null;
+  const { drivers: truckDrivers } = useTruckDrivers(truckNo);
+  const { send: sendLoad, sending: sendingLoad, dialog: loadDialog } = useChatLoadSender({
+    driverId: truckDrivers[0]?.id || null,
+    driverName: truckDrivers[0]?.name || null,
+    onSent: () => setNewMessage(''),
+  });
 
   const loadMoreGroupMessages = () => {
     console.log('Loading more messages...');
@@ -324,6 +334,16 @@ const ChatPage = () => {
       toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
       return;
     }
+    // A load pasted here goes to the truck's driver as a load (same as the driver's own chat) —
+    // never as group text
+    if (message.trim() && looksLikeLoad(message)) {
+      if (!isOpenGroupLoaded()) {
+        alert('The group is still loading. Please try again in a moment.');
+        return;
+      }
+      if (!sendingLoad) void sendLoad(message);
+      return;
+    }
     try {
       // userId,groupId,body,direction,url
       if (!currentChatId) {
@@ -486,6 +506,7 @@ const ChatPage = () => {
 
   return (
     <div style={{ height: '80vh' }}>
+      {loadDialog}
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
           <p>Loading...</p>

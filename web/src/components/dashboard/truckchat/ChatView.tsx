@@ -12,6 +12,7 @@ import { MessagesList } from './MessagesList';
 import { ChatViewProps } from './types';
 import { set } from 'react-hook-form';
 import MediaPane from '@/components/messages/MediaPane';
+import { SendLoadButton } from '../trips/SendLoadButton';
 
 export const ChatView: React.FC<ChatViewProps> = ({
   currentUser,
@@ -125,6 +126,7 @@ currentChatId,
                 setMessage={setMessage}
                 handleFileChangeVedio={handleFileChangeVedio}
                 onSend={onSendMessage}
+                actions={<SendLoadButton truck={currentUser?.group?.name || null} />}
                 // handleVedioClick={handleVedioClick}
                 handleFileChange={handleFileChange}
                 //   disabled={currentChat}
