@@ -75,7 +75,8 @@ export class ChatTrip extends Model {
   public completed_by_name!: string | null;
   public total_mileage!: string | null;
   /** samsara (odometer) | manual (typed by dispatch — Samsara won't overwrite it) */
-  public miles_source!: "samsara" | "manual" | null;
+  /** samsara: odometer at the tapped times · gps: odometer at times read from the GPS trail · manual: typed */
+  public miles_source!: "samsara" | "gps" | "manual" | null;
   public miles_note!: string | null;
   /** Why this leg was cut and handed to another driver / truck (breakdown, out_of_hours …) */
   public handover_reason!: string | null;

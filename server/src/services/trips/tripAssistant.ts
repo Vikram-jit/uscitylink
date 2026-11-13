@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Message } from "../../models/Message";
 import { ChatTrip, ChatTripEvent } from "../../models/ChatTrip";
 import { loadFromChat } from "./loadService";
+import { systemAlert } from "./reminders";
 import { UserProfile } from "../../models/UserProfile";
 import Role from "../../models/Role";
 import { isStaffRole } from "../../middleware/requireRole";
@@ -154,6 +155,15 @@ async function onStaffMessage(m: Message) {
   getSocketInstance()
     .to(userRoom(String(m.senderId)))
     .emit("load:typed", { ...result, messageId: m.id, driverName });
+  // A load text with no Load # makes no load: say so where it can't be missed (System Messages, unread
+  // for staff) — the pop-up above only reaches an open dashboard, not the staff app or a closed tab
+  if (result.kind === "noLoadNo") {
+    const sentBy = sender?.username || "Dispatch";
+    await systemAlert(
+      m.channelId,
+      `⚠️ Load NOT created: ${sentBy} sent a load to ${driverName} with no Load # (message of ${new Date(m.messageTimestampUtc || Date.now()).toISOString().slice(0, 16).replace("T", " ")} UTC). Add a line "LOAD # 1234" and send it again, or use Add load.`
+    ).catch((e) => console.warn("[trips] system alert:", e?.message));
+  }
 }
 
 /** Called once at startup. */

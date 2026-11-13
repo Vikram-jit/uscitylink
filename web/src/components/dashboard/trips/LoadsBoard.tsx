@@ -42,6 +42,12 @@ import { appointment, currentLeg, isLate, legsInOrder, LOAD_STATUS, LOAD_TABS, L
 // the one button it needs now.
 
 const WIDE = { display: { xs: 'none', md: 'table-cell' } } as const;
+
+/** When the load was added: "Nov 12, 2026" / "3:40 PM" */
+const created = (iso: string | null | undefined, part: 'date' | 'time') =>
+  iso
+    ? new Intl.DateTimeFormat('en-US', part === 'date' ? { month: 'short', day: 'numeric', year: 'numeric' } : { hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
+    : '—';
 const HANDED_OVER = ['ended', 'paperwork', 'completed', 'routed'];
 
 /** What dispatch does next on this load, and on which leg */
@@ -91,7 +97,7 @@ export function LoadsBoard(): React.JSX.Element {
   });
   useSocketEvent<[any]>('load:transfer', (d) => {
     refresh();
-    toast.warning(`Load ${d?.tripNo || ''} is ${d?.atYard ? 'in the yard' : 'at the meet point'} — assign the next driver`, {
+    toast.warning(`Load ${d?.tripNo} is ${d?.atYard ? 'in the yard' : 'at the meet point'} — assign the next driver`, {
       onClick: () => d?.loadId && setOpenLoad(Number(d.loadId)),
       autoClose: 15000,
     });
@@ -101,7 +107,7 @@ export function LoadsBoard(): React.JSX.Element {
   });
   useSocketEvent<[any]>('trip:problem', (d) => {
     refresh();
-    toast.error(`Problem on trip #${d?.tripNo || d?.tripId}: ${d?.note || d?.kind || ''}`);
+    toast.error(`Problem on trip #${(d?.tripNo) || d?.tripId}: ${d?.note || d?.kind || ''}`);
   });
 
   const loads = data?.data?.loads || [];
@@ -180,6 +186,7 @@ export function LoadsBoard(): React.JSX.Element {
         <TableHead>
           <TableRow>
             <TableCell>Load #</TableCell>
+            <TableCell sx={WIDE}>Created</TableCell>
             <TableCell>Legs</TableCell>
             <TableCell sx={WIDE}>Route</TableCell>
             <TableCell sx={WIDE}>Delivery appt</TableCell>
@@ -207,6 +214,17 @@ export function LoadsBoard(): React.JSX.Element {
                   <Typography variant="caption" color="text.secondary" component="div">
                     {LOAD_TYPE[load.type].short}
                     {legs.length > 1 ? ` · ${legs.length} legs` : ''}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="div" sx={{ display: { xs: 'block', md: 'none' } }}>
+                    Created {created(load.created_at, 'date')}, {created(load.created_at, 'time')}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={WIDE} data-testid="loadCreated">
+                  <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                    {created(load.created_at, 'date')}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {created(load.created_at, 'time')}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -277,7 +295,7 @@ export function LoadsBoard(): React.JSX.Element {
           })}
           {!loads.length && !isFetching && (
             <TableRow>
-              <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+              <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                 {tab === 'all' && !query ? "No loads yet — use Add load, or the truck button in a driver's chat" : 'No loads here'}
               </TableCell>
             </TableRow>

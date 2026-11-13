@@ -108,13 +108,12 @@ class _LoadsViewState extends State<LoadsView> {
     super.initState();
     if (widget.service == null) {
       trips.refresh();
-      trips.loadUpcoming();
       trips.loadHistory(reset: true);
     }
   }
 
   Future<void> _reload() async {
-    await Future.wait([trips.refresh(), trips.loadUpcoming(), trips.loadHistory(reset: true)]);
+    await Future.wait([trips.refresh(), trips.loadHistory(reset: true)]);
   }
 
   @override
@@ -152,12 +151,6 @@ class _LoadsViewState extends State<LoadsView> {
                           icon: Icons.local_shipping_outlined,
                           text: 'No load right now — dispatch will send your next load to your chat and it shows up here.',
                         ),
-                      if (trips.upcoming.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        const _SectionTitle('Up next'),
-                        const _UpNextNote(),
-                        for (final t in trips.upcoming) _LoadTile(trip: t),
-                      ],
                       const SizedBox(height: AppSpacing.sm),
                       const _SectionTitle('History'),
                       if (past.isEmpty && !trips.historyLoading.value)
@@ -317,15 +310,6 @@ class _LoadTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          if (trip.position != null) ...[
-                            Container(
-                              key: Key('upNextPos_${trip.id}'),
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                              decoration: BoxDecoration(color: TColors.navyHeaderDeep, borderRadius: BorderRadius.circular(10)),
-                              child: Text('#${trip.position}', style: AppText.labelSm.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
                           Text('Trip #${trip.tripNo}', style: AppText.labelLg),
                           const Spacer(),
                           Text(trip.statusLabel,
@@ -339,14 +323,12 @@ class _LoadTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: AppText.bodyMd,
                       ),
-                      if (trip.waitsFor != null)
-                        Text('Starts after: ${trip.waitsFor}',
-                            style: AppText.labelSm.copyWith(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
                       Text(
                         [
                           '${trip.stops.length} stop${trip.stops.length == 1 ? '' : 's'}',
                           if (trip.truck != null) 'Truck ${trip.truck}',
                           if (when != null) shortDate(when),
+                          if (trip.createdAt != null) 'Created ${shortDate(trip.createdAt!.toLocal())}',
                         ].join(' · '),
                         style: AppText.labelSm.copyWith(color: Colors.grey.shade600),
                       ),
@@ -399,18 +381,19 @@ class LoadDetailView extends StatelessWidget {
                               style: AppText.labelMd.copyWith(color: statusColor(trip.status), fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      const Divider(height: AppSpacing.xl),
-                      if (trip.isUpcoming) ...[
-                        const _UpNextNote(),
-                        if (trip.waitsFor != null) _Line('Starts after', trip.waitsFor!),
-                      ] else ...[
-                        _Line('Sent', dateTime(trip.sentAt)),
-                        _Line('Started', dateTime(trip.startedAt)),
-                        _Line('Delivered', dateTime(trip.endedAt)),
-                        _Line('Completed', dateTime(trip.completedAt)),
+                      if (trip.loadNo != null) ...[
+                        const SizedBox(height: 4),
+                        Text('Load # ${trip.loadNo}', key: const Key('loadNoLine'), style: AppText.labelMd.copyWith(color: Colors.grey.shade700)),
                       ],
+                      const Divider(height: AppSpacing.xl),
+                      _Line('Sent', dateTime(trip.sentAt)),
+                      _Line('Started', dateTime(trip.startedAt)),
+                      _Line('Delivered', dateTime(trip.endedAt)),
+                      _Line('Completed', dateTime(trip.completedAt)),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  _TripTotals(trip: trip),
                   const SizedBox(height: AppSpacing.md),
                   const _SectionTitle('Stops'),
                   for (final s in trip.stops)
@@ -429,6 +412,7 @@ class LoadDetailView extends StatelessWidget {
                         if (s.appointment != null) _Line('Appointment', s.appointment!),
                         if (s.arrivedAt != null) _Line('Arrived', dateTime(s.arrivedAt)),
                         if (s.departedAt != null) _Line('Left', dateTime(s.departedAt)),
+                        if (s.miles != null && s.miles! > 0) _Line('Miles to here', '${_miles(s.miles!)} mi'),
                       ],
                     ),
                   if (trip.notes != null && trip.notes!.isNotEmpty) ...[
@@ -445,30 +429,6 @@ class LoadDetailView extends StatelessWidget {
   }
 }
 
-/// Lined up loads are read-only until dispatch sends them
-class _UpNextNote extends StatelessWidget {
-  const _UpNextNote();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        key: const Key('upNextNote'),
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(AppRadii.md)),
-        child: Row(
-          children: [
-            Icon(Icons.hourglass_top_rounded, size: 18, color: Colors.blue.shade700),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text('Lined up for you — dispatch confirms before you start. The trip buttons appear when it\'s sent.',
-                  style: AppText.labelSm.copyWith(color: Colors.blue.shade900)),
-            ),
-          ],
-        ),
-      );
-}
-
 class _Card extends StatelessWidget {
   const _Card({required this.children});
   final List<Widget> children;
@@ -481,6 +441,50 @@ class _Card extends StatelessWidget {
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadii.md)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
       );
+}
+
+String _miles(double m) => m == m.roundToDouble() ? m.toInt().toString() : m.toStringAsFixed(1);
+
+String _hours(Duration d) => d.inHours > 0 ? '${d.inHours} h ${d.inMinutes % 60} min' : '${d.inMinutes} min';
+
+/// The driver's numbers for this load: miles and driving time once it's delivered.
+class _TripTotals extends StatelessWidget {
+  const _TripTotals({required this.trip});
+  final CurrentTrip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!trip.isDelivered) {
+      return Container(
+        key: const Key('milesLater'),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(AppRadii.md)),
+        child: Row(children: [
+          Icon(Icons.route_rounded, size: 18, color: Colors.blue.shade700),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: Text('Miles for this load show here after it\'s delivered.', style: AppText.labelMd.copyWith(color: Colors.blue.shade900))),
+        ]),
+      );
+    }
+    Widget tile(String label, String value, IconData icon, Key key) => Expanded(
+          child: Container(
+            key: key,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadii.md), border: Border.all(color: const Color(0xFFE6E8EF))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [Icon(icon, size: 16, color: Colors.grey.shade600), const SizedBox(width: 6), Text(label, style: AppText.labelMd.copyWith(color: Colors.grey.shade600))]),
+              const SizedBox(height: 4),
+              Text(value, style: AppText.titleMd.copyWith(fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        );
+    final d = trip.drivingTime;
+    return Row(children: [
+      tile('Miles', trip.miles != null ? '${_miles(trip.miles!)} mi' : 'Being counted', Icons.route_rounded, const Key('tripMiles')),
+      const SizedBox(width: AppSpacing.sm),
+      tile('On the road', d != null ? _hours(d) : '—', Icons.timer_outlined, const Key('tripDriveTime')),
+    ]);
+  }
 }
 
 class _Line extends StatelessWidget {

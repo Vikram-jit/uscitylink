@@ -7,6 +7,7 @@ import 'package:uscitylink/views/staff/view/staff_channel_view.dart';
 import 'package:uscitylink/views/staff/view/staff_chat_view.dart';
 import 'package:uscitylink/views/staff/view/staff_dashboard.dart';
 import 'package:uscitylink/views/staff/view/staff_group_chat_view.dart';
+import 'package:uscitylink/views/staff/view/loads/staff_loads_view.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffView extends StatefulWidget {
@@ -26,7 +27,8 @@ class _StaffViewState extends State<StaffView> with WidgetsBindingObserver {
     StaffDashboard(),
     StaffChatView(),
     StaffGroupChatView(),
-    StaffChannelView()
+    StaffChannelView(),
+    StaffLoadsView(),
   ];
 
   @override
@@ -98,6 +100,11 @@ class _StaffViewState extends State<StaffView> with WidgetsBindingObserver {
                   icon: Icon(Icons.hub_outlined),
                   selectedIcon: Icon(Icons.hub_rounded),
                   label: 'Channels',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.local_shipping_outlined),
+                  selectedIcon: Icon(Icons.local_shipping_rounded),
+                  label: 'Loads',
                 ),
               ],
             ),

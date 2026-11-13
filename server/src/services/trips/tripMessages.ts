@@ -108,7 +108,7 @@ export const statusLine = {
     `⚠️ ${PROBLEM_KINDS[kind] || "Problem"} on trip ${tripNo(trip)}${amount ? ` ($${amount.toFixed(2)})` : ""}${note ? `: ${note}` : ""} — added by ${who}`,
   resolved: (trip: ChatTrip, kind: string, who: string) => `✔️ ${PROBLEM_KINDS[kind] || "Problem"} on trip ${tripNo(trip)} resolved by ${who}`,
   askScaleTicket: (trip: ChatTrip) => `⚖️ Please send the scale ticket for trip ${tripNo(trip)} here`,
-  offered: () => "Your next load is lined up 👍 — waiting for dispatch to confirm, you'll get the details here",
+  offered: () => "Thanks 👍 — dispatch will send your next load here",
   noLoad: () => "No next load is planned yet — dispatch has been told, they'll send it to you soon",
   declined: () => "Dispatch is updating your next load — they'll send it to you here",
 };

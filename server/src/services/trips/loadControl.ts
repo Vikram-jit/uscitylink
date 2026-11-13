@@ -9,7 +9,6 @@ import {
   announce,
   closeScaleRoute,
   createTrip,
-  notifyLinedUp,
   offerNextLoad,
   postToChat,
   record,
@@ -267,11 +266,8 @@ export async function splitLeg(legId: number, input: SplitInput, actor: Actor) {
     } else {
       alertStaff("load:transfer", { loadId: load.id, tripId: fresh.id, tripNo: fresh.trip_no, atYard: type === "yard" });
     }
-  } else if (fresh.driver_profile_id && fresh.driver_profile_id !== leg.driver_profile_id) {
-    // Planned for later: the new driver knows now what's coming (the details come when it's ready)
-    const from = leg.driver_profile_id ? (await UserProfile.findByPk(leg.driver_profile_id))?.username : null;
-    await notifyLinedUp(fresh.id, `📋 You're lined up for trip ${fresh.trip_no}: you take over at ${placeText(place)}${from ? ` from ${from}` : ""}.`);
   }
+  // Planned for later: the new driver gets it when dispatch sends it (drivers don't see lined-up loads)
 
   await deriveType(load.id);
   await refreshLoadStatus(load.id);

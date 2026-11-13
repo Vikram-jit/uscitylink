@@ -72,3 +72,45 @@ export async function tripMileage(
   }
   return { total: miles(end - start), legs };
 }
+
+// ---------- the truck's GPS trail (where it was, minute by minute) ----------
+
+export interface GpsPoint {
+  /** ms since epoch */
+  t: number;
+  lat: number;
+  lng: number;
+  mph: number;
+}
+
+/** Samsara GPS history for a truck between two times, oldest first. null when Samsara can't answer. */
+export async function gpsTrail(vehicleId: string, from: Date, to: Date): Promise<GpsPoint[] | null> {
+  const key = process.env.SAMSARA_API_KEY;
+  if (!key) return null;
+  const out: GpsPoint[] = [];
+  let after = "";
+  try {
+    for (let page = 0; page < 40; page++) {
+      const url = new URL(API);
+      url.searchParams.set("vehicleIds", vehicleId);
+      url.searchParams.set("types", "gps");
+      url.searchParams.set("startTime", from.toISOString());
+      url.searchParams.set("endTime", to.toISOString());
+      if (after) url.searchParams.set("after", after);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: "application/json" } });
+      if (!res.ok) return out.length ? out : null;
+      const json: any = await res.json();
+      for (const p of json?.data?.[0]?.gps || []) {
+        const lat = Number(p?.latitude);
+        const lng = Number(p?.longitude);
+        const t = new Date(p?.time).getTime();
+        if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(t)) out.push({ t, lat, lng, mph: Number(p?.speedMilesPerHour) || 0 });
+      }
+      if (!json?.pagination?.hasNextPage || !json?.pagination?.endCursor) break;
+      after = String(json.pagination.endCursor);
+    }
+  } catch {
+    return out.length ? out : null;
+  }
+  return out.sort((a, b) => a.t - b.t);
+}

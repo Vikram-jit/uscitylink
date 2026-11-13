@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripProblem, ChatTripStop, newTrackToken, uniqueTrackCode } from "../../models/ChatTrip";
 import { byLeg } from "./legs";
 import { liveTrip } from "./liveTrip";
@@ -22,12 +23,39 @@ export async function trackToken(load: ChatLoad): Promise<string> {
   return load.track_token!;
 }
 
-/** The app's "Track a load": the short code → the same view as the link */
+/**
+ * The app's "Track a load": the customer types the load number exactly as on their order (or one
+ * of the older random codes) and gets the same view as the link.
+ */
 export async function trackingByCode(code: string) {
-  const clean = String(code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const load = clean.length >= 5 ? await ChatLoad.findOne({ where: { track_code: clean } }) : null;
-  if (!load?.track_token) throw new TrackingNotFound("No load with that tracking code");
-  return trackingView(load.track_token);
+  const clean = String(code || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  if (clean.length < 3) throw new TrackingNotFound("No load with that tracking code");
+  let load = await ChatLoad.findOne({ where: { track_code: clean } });
+  if (!load) {
+    // That exact load number; active loads first, then the latest
+    load = await ChatLoad.findOne({
+      where: { invoice_no: clean, status: { [Op.ne]: "cancelled" } },
+      order: [[ChatLoad.sequelize!.literal("status = 'completed'"), "ASC"], ["id", "DESC"]],
+    });
+  }
+  if (!load) throw new TrackingNotFound("No load with that tracking code");
+  return trackingView(await trackToken(load));
+}
+
+// Load numbers are guessable, so one device can only try so many numbers
+const tries = new Map<string, { n: number; resetAt: number }>();
+export const MAX_TRIES = 30;
+const WINDOW_MS = 10 * 60_000;
+/** false once [who] (an IP) has tried too many codes in 10 minutes */
+export function allowLookup(who: string, now = Date.now()): boolean {
+  const t = tries.get(who);
+  if (!t || now > t.resetAt) {
+    tries.set(who, { n: 1, resetAt: now + WINDOW_MS });
+    if (tries.size > 5000) for (const [k, v] of tries) if (now > v.resetAt) tries.delete(k);
+    return true;
+  }
+  t.n += 1;
+  return t.n <= MAX_TRIES;
 }
 
 const placeOf = (s: ChatTripStop) => [s.city, s.state].filter(Boolean).join(", ");

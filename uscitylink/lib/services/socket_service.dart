@@ -1,3 +1,4 @@
+import 'package:uscitylink/services/staff/typed_load_handler.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -87,6 +88,9 @@ class SocketService extends GetxController {
       startPing();
       sendQueueMessage();
     });
+
+    // Dispatch: a load typed into a driver's chat (sent / no Load # / a question to answer)
+    socket.on('load:typed', TypedLoadHandler.handle);
 
     socket.on('message', (data) {
       message.value = data; // Update message when new data is received

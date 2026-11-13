@@ -16,8 +16,8 @@ import { STATUS } from './tripFormat';
 interface Typed {
   kind: 'sent' | 'noLoadNo' | 'question';
   id?: string;
-  needs?: 'endPrevious' | 'driverBusy';
-  info?: { prev?: LegBrief; current?: LegBrief };
+  needs?: 'endPrevious' | 'driverBusy' | 'replaceLinedUp';
+  info?: { prev?: LegBrief; current?: LegBrief | null; linedUp?: LegBrief };
   loadNo?: string | null;
   tripNo?: string | null;
   legNo?: number;
@@ -39,7 +39,7 @@ export function TypedLoadQuestion({ enabled }: { enabled: boolean }): React.JSX.
   }, []);
   useSocketEvent<[Typed]>('load:typed', handle, enabled);
 
-  const reply = async (a: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }) => {
+  const reply = async (a: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }) => {
     if (!q?.id) return;
     try {
       const res = await answer({ id: q.id, ...a }).unwrap();
@@ -53,8 +53,42 @@ export function TypedLoadQuestion({ enabled }: { enabled: boolean }): React.JSX.
 
   const prev = q?.info?.prev;
   const cur = q?.info?.current;
+  const lined = q?.info?.linedUp;
   return (
     <Dialog open={!!q} onClose={() => setQ(null)} maxWidth="sm" fullWidth>
+      {q?.needs === 'replaceLinedUp' && lined && (
+        <>
+          <DialogTitle>Load {q.loadNo} is already lined up</DialogTitle>
+          <DialogContent dividers>
+            <Typography variant="body2" data-testid="typedAskReplace">
+              You sent load {q.loadNo} to <b>{q.driverName}</b> in chat. It&apos;s already lined up (not sent) as <b>#{lined.tripNo}</b> for{' '}
+              {lined.driverName || 'no driver'} ({lined.from} → {lined.to}). Replace that copy with this one?
+            </Typography>
+            {cur && (
+              <Typography variant="body2" sx={{ mt: 1 }} color="warning.main">
+                {cur.driverName || q.driverName} is on load <b>#{cur.tripNo}</b> now ({STATUS[cur.status]?.label.toLowerCase() || cur.status}).
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setQ(null)}>Not now</Button>
+            {cur ? (
+              <>
+                <Button variant="outlined" disabled={isLoading} onClick={() => void reply({ replace: true, lineUp: true })}>
+                  Replace &amp; line up after #{cur.tripNo}
+                </Button>
+                <Button variant="contained" color="warning" disabled={isLoading} onClick={() => void reply({ replace: true, endDriverCurrent: true })}>
+                  End #{cur.tripNo} &amp; send
+                </Button>
+              </>
+            ) : (
+              <Button variant="contained" disabled={isLoading} onClick={() => void reply({ replace: true })}>
+                Replace &amp; send now
+              </Button>
+            )}
+          </DialogActions>
+        </>
+      )}
       {q?.needs === 'endPrevious' && prev && (
         <>
           <DialogTitle>Load {q.loadNo}: end leg {prev.legNo} first?</DialogTitle>

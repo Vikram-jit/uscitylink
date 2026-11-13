@@ -141,3 +141,7 @@ export function isLate(trip: Trip): boolean {
   if (!['planned', 'accepted', 'started', 'rolling'].includes(trip.status)) return false;
   return sorted(trip.stops).some((s) => !s.arrived_at && s.appointment_at && new Date(s.appointment_at).getTime() < Date.now());
 }
+
+/** Where a leg's miles came from, in plain words */
+export const milesSourceLabel = (source?: string | null, note?: string | null) =>
+  source === 'manual' ? `typed${note ? ` (${note})` : ''}` : source === 'gps' ? 'Samsara · times from GPS' : 'Samsara';

@@ -1,3 +1,4 @@
+import { driverPayload, driverTrip } from "../services/trips/driverView";
 import { Request, Response } from "express";
 import { Op } from "sequelize";
 import { ChatTrip, ChatTripStop } from "../models/ChatTrip";
@@ -104,6 +105,8 @@ export async function showTrip(req: Request, res: Response): Promise<any> {
     }
     const actor = await actorOf(req);
     if (actor.role === "driver" && trip.driver_profile_id !== actor.id) return res.status(403).json({ status: false, message: "Not your trip" });
+    // The driver's app: only the driver's part of it
+    if (actor.role === "driver") return ok(res, { trip: driverTrip(trip) });
     // Which leg of its load, and whether the leg before still has the load (then it can't be sent yet)
     const siblings = (await legsOf(trip)).filter((l) => l.status !== "cancelled");
     const blocking = await blockingLeg(trip);
@@ -135,7 +138,7 @@ export async function showTrip(req: Request, res: Response): Promise<any> {
 /** Driver app: the trip I'm on and what my big button does. */
 export async function myCurrentTrip(req: Request, res: Response): Promise<any> {
   try {
-    return ok(res, await currentTripFor(String(req.user?.id)));
+    return ok(res, driverPayload(await currentTripFor(String(req.user?.id))));
   } catch (err) {
     return fail(res, err);
   }
@@ -188,7 +191,9 @@ export async function tripActionRest(req: Request, res: Response): Promise<any> 
     const action = String(req.body?.action || "") as TripAction;
     if (!ACTIONS.includes(action)) return res.status(400).json({ status: false, message: "Unknown action" });
     const { stopId, note, lat, lng, at, invoiceNo } = req.body || {};
-    return ok(res, await act(Number(req.params.id), action, await actorOf(req), { stopId, note, lat, lng, at, invoiceNo }));
+    const actor = await actorOf(req);
+    const data = await act(Number(req.params.id), action, actor, { stopId, note, lat, lng, at, invoiceNo });
+    return ok(res, actor.role === "driver" ? driverPayload(data) : data);
   } catch (err) {
     return fail(res, err);
   }
@@ -196,7 +201,9 @@ export async function tripActionRest(req: Request, res: Response): Promise<any> 
 
 export async function undoTripRest(req: Request, res: Response): Promise<any> {
   try {
-    return ok(res, await undo(Number(req.params.id), await actorOf(req)), "Undone");
+    const actor = await actorOf(req);
+    const data = await undo(Number(req.params.id), actor);
+    return ok(res, actor.role === "driver" ? driverPayload(data) : data, "Undone");
   } catch (err) {
     return fail(res, err);
   }
@@ -205,7 +212,9 @@ export async function undoTripRest(req: Request, res: Response): Promise<any> {
 export async function addProblemRest(req: Request, res: Response): Promise<any> {
   try {
     const { kind, note, amount, hold } = req.body || {};
-    return ok(res, await addProblem(Number(req.params.id), { kind, note, amount, hold: hold === true }, await actorOf(req)), "Problem added");
+    const actor = await actorOf(req);
+    const data = await addProblem(Number(req.params.id), { kind, note, amount, hold: hold === true }, actor);
+    return ok(res, actor.role === "driver" ? driverPayload(data) : data, "Problem added");
   } catch (err) {
     return fail(res, err);
   }
@@ -254,13 +263,13 @@ export async function liveTripRest(req: Request, res: Response): Promise<any> {
 export async function myTrips(req: Request, res: Response): Promise<any> {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
-    return ok(res, await tripsForDriver(String(req.user?.id), page));
+    return ok(res, driverPayload(await tripsForDriver(String(req.user?.id), page)));
   } catch (err) {
     return fail(res, err);
   }
 }
 
-/** Driver app: loads lined up for me, not sent yet (read-only "Up next"). */
+/** Driver app (older builds): lined-up loads are not shown to drivers — always empty. */
 export async function myUpcoming(req: Request, res: Response): Promise<any> {
   try {
     return ok(res, await upcomingFor(String(req.user?.id)));

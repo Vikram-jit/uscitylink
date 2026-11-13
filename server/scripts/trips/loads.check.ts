@@ -160,7 +160,7 @@ const lastMessage = async (profileId: string) => String((await Message.findOne({
       assert.equal(l2?.status, "offered");
       assert.equal(l2?.trailer_numbers, trailer.number);
       assert.equal(l2?.loaded_trailer, true);
-      assert.match(await lastMessageOf(b.id, /waiting for dispatch/), /waiting for dispatch/);
+      assert.match(await lastMessageOf(b.id, /dispatch will send your next load/), /dispatch will send your next load here/);
       await wait(600);
       assert.equal((await ChatLoad.findByPk(viaYard))?.status, "waiting");
     });

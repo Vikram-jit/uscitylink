@@ -38,6 +38,9 @@ import { useSocketEvent } from '@/hooks/use-socket-event';
 import MediaComponent from './MediaComment';
 import { SendLoadButton } from '@/components/dashboard/trips/SendLoadButton';
 import { loadNoIn, looksLikeLoad } from '@/components/dashboard/trips/loadText';
+import { LoadAnswers, LoadQuestion, LoadQuestionDialog } from '@/components/dashboard/trips/LoadQuestionDialog';
+import { useSendLoadTextMutation } from '@/redux/TripApiSlice';
+import { toast } from 'react-toastify';
 
 export type MessageInputProps = {
   textAreaValue: string;
@@ -98,9 +101,37 @@ export default function MessageInput(props: MessageInputProps) {
     }, 50);
   };
 
+  // A load with its Load #: sent as a load (the driver gets the standard load message only when it's
+  // really sent — never the pasted text). The server may ask first (driver busy / lined up / leg open).
+  const [sendLoadText, { isLoading: sendingLoad }] = useSendLoadTextMutation();
+  const [loadQuestion, setLoadQuestion] = React.useState<LoadQuestion | null>(null);
+  const [loadAnswers, setLoadAnswers] = React.useState<LoadAnswers>({});
+  const [loadText, setLoadText] = React.useState('');
+  const sendAsLoad = async (text: string, answers: LoadAnswers) => {
+    try {
+      const res = await sendLoadText({ text, driverProfileId: props.userId, ...answers }).unwrap();
+      toast.success(res.message || 'Load sent');
+      setLoadQuestion(null);
+      setLoadAnswers({});
+      if (textAreaValue === text) setTextAreaValue('');
+    } catch (err: any) {
+      if (err?.status === 409 && err?.data?.needs) {
+        setLoadText(text);
+        setLoadAnswers(answers);
+        setLoadQuestion({ needs: err.data.needs, info: err.data.info || {} });
+        return;
+      }
+      toast.error(err?.data?.message || 'Could not send the load', { autoClose: 10000 });
+    }
+  };
+
   const handleClick = () => {
     if (textAreaValue.trim() !== '' && looksLikeLoad(textAreaValue) && !loadNoIn(textAreaValue)) {
       setLoadNoMissing(true);
+      return;
+    }
+    if (textAreaValue.trim() !== '' && looksLikeLoad(textAreaValue)) {
+      if (!sendingLoad) void sendAsLoad(textAreaValue, {});
       return;
     }
     if (textAreaValue.trim() !== '') {
@@ -306,6 +337,17 @@ export default function MessageInput(props: MessageInputProps) {
           {userTypingMessage ?? 'Typing...'}
         </div>
       )}
+      <LoadQuestionDialog
+        question={loadQuestion}
+        loadNo={loadNoIn(loadText) || ''}
+        driverName="the driver"
+        busy={sendingLoad}
+        onClose={() => setLoadQuestion(null)}
+        onAnswer={(a) => {
+          setLoadQuestion(null);
+          void sendAsLoad(loadText, { ...loadAnswers, ...a });
+        }}
+      />
       {loadNoMissing && (
         <Alert
           severity="error"

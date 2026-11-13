@@ -242,25 +242,18 @@ const lastMsg = async (id: string, re: RegExp) =>
       const two = (await ChatTrip.findByPk(res.next))!;
       assert.equal(two.status, "offered");
       assert.equal(two.channel_id, channel[0].id, "channel found and saved");
-      assert.match(await lastMsg(c.id, /waiting for dispatch/), /lined up/);
+      assert.match(await lastMsg(c.id, /dispatch will send your next load/), /dispatch will send your next load here/);
       await sendLoad(res.next, dispatcher);
       assert.equal((await ChatTrip.findByPk(res.next))?.status, "planned");
 
-      // And with a channel already there, a planned handover tells the new driver right away
+      // A planned handover: the new driver isn't told anything until dispatch sends it (no lineup for drivers)
       const t2 = (await createTrip({ driverProfileId: a.id, stops: STOPS }, dispatcher))!;
       loadIds.push(t2.load_id!);
       const s2 = (await ChatTripStop.findAll({ where: { chat_trip_id: t2.id } })).sort((x, y) => x.seq - y.seq)[1];
       const r2 = await splitLeg(t2.id, { when: "plan", afterSeq: s2.seq, place: KINGMAN, driverProfileId: c.id, reason: "planned" }, dispatcher);
-      const heads = await lastMsg(c.id, /You're lined up for trip/);
-      assert.match(heads, new RegExp(`You're lined up for trip ${(await ChatTrip.findByPk(r2.next))!.trip_no}: you take over at ZZ TA KINGMAN · KINGMAN, AZ from ZZ Control Driver A`));
-      // The whole load is in it (read-only until dispatch confirms), and it's in the app's "Up next"
-      assert.match(heads, /GO TO \(SWITCH TRAILER\)\nZZ TA KINGMAN[\s\S]*DROP\nZZ DROP TWO/);
-      assert.match(heads, /Dispatch confirms before you start/);
-      const up = await upcomingFor(c.id);
-      const mine = up.trips.find((t: any) => t.id === r2.next) as any;
-      assert(mine, "in Up next");
-      assert.match(String(mine.waits_for), /^Leg 1 \(L\d+\) handing over$/);
-      assert(mine.stops?.length === 2, "with its stops");
+      assert.equal(await lastMsg(c.id, /lined up/i), "", "nothing about a lined-up load");
+      assert.equal(await lastMsg(c.id, new RegExp(String((await ChatTrip.findByPk(r2.next))!.trip_no))), "", "the load isn't in their chat yet");
+      assert.deepEqual((await upcomingFor(c.id)).trips, [], "no Up next for drivers");
     });
 
     await test("dispatch marks the handover (leg 1 never tapped Rolling) and sends leg 2 to the new driver", async () => {

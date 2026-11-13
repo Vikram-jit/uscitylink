@@ -41,7 +41,7 @@ export interface ParsedLoad {
   reasons: string[];
 }
 
-const CITY_STATE_ZIP = /^(.+?),?\s+([A-Za-z]{2})\.?\s+(\d{5})(?:-\d{4})?$/;
+const CITY_STATE_ZIP = /^(.+?),?\s+([A-Za-z]{2})\.?,?\s*(\d{5})(?:-\d{4})?[.,]?$/;
 const DATE_TIME = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/;
 const PICK_LABEL = /^pick(?:\s*-?\s*up)?\s*#?\s*\d*\s*:?\s*$/i;
 const DROP_LABEL = /^(?:drop|delivery|deliver|del)\s*#?\s*\d*\s*:?\s*$/i;
@@ -77,15 +77,29 @@ const isCityStateZip = (line: string) => {
   return !!m && isUsState(m[2]);
 };
 
-/** Does this text look like a load at all (vs. a chat line that happens to contain an address)? */
+// Words that mean a load / a stop anywhere in the text: "pickup", "pick up", "PU", "delivery", "deliver",
+// "drop", "drop off", "unload", "shipper", "consignee", "receiver", "load"
+export const LOAD_WORDS = /\b(?:pick\s*-?\s*ups?|pickups?|deliver(?:y|ies|ed|ing)?|del\s*#|drop(?:\s*-?\s*off)?s?|dropped|unload(?:ing)?|shipper|consignee|receiver|loads?|loaded)\b/i;
+// A street address anywhere: "301 AVIATION PARKWAY", "at 575 Northpoint Dr,"
+const STREET = /\b\d{1,6}\s+[A-Za-z0-9][A-Za-z0-9 .'-]*?\s(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|hwy|highway|pkwy|parkway|ln|lane|way|ct|court|pl|place|cir|circle|fwy|freeway|pike|trl|trail|expy|expressway|ter|terrace|sq|loop)\b/i;
+// "City, ST" / "City, ST, 76501" anywhere
+// (capital state letters; states that are also words — OK, IN, ME, OR, HI, ID, OH — need a ZIP after)
+const CITY_ST = /[A-Za-z][A-Za-z .'-]*,\s*([A-Z]{2})\b(\.?,?\s*\d{5})?/g;
+const WORD_STATES = new Set(["OK", "IN", "ME", "OR", "HI", "ID", "OH"]);
+
+const hasPlace = (text: string, lines: string[]) =>
+  lines.some((l) => isCityStateZip(l) || STREET.test(l)) ||
+  [...text.matchAll(CITY_ST)].some((m) => isUsState(m[1]) && (!WORD_STATES.has(m[1]) || !!m[2]));
+
+/**
+ * Does this text look like a load (vs. a chat line)? An address plus any load word — pickup,
+ * delivery, drop, … anywhere and in any format — or a PICKUP / DELIVERY heading, an appointment
+ * date-time or a LOAD # line. Then it needs its Load # (the chat box won't send it without one).
+ */
 export function looksLikeLoad(text: string): boolean {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
-  const addresses = lines.filter(isCityStateZip).length;
-  if (!addresses) return false;
-  const signals =
-    lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || FIELD.test(l) || parseDateTime(l)) ||
-    /\bload(ed)?\b/i.test(text);
-  return addresses >= 2 || signals;
+  if (!hasPlace(text, lines)) return false;
+  return LOAD_WORDS.test(text) || lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || LOAD_FIELD.test(l) || parseDateTime(l));
 }
 
 export function parseLoad(text: string): ParsedLoad | null {

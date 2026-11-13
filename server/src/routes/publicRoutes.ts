@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { trackingByCode, TrackingNotFound, trackingView } from "../services/trips/publicTracking";
+import { allowLookup, trackingByCode, TrackingNotFound, trackingView } from "../services/trips/publicTracking";
 
 // No login: the shipper / customer tracking page (/track/<token> on the web).
 const router = Router();
@@ -17,10 +17,13 @@ router.get("/track/:token", async (req: Request, res: Response): Promise<any> =>
   }
 });
 
-/** The app's "Track a load" screen: the short code dispatch gives the customer (e.g. K7M2QX). */
+/** The app's "Track a load" screen: the customer types the load number (or an older random code). */
 router.get("/track-code/:code", async (req: Request, res: Response): Promise<any> => {
   try {
     res.setHeader("Cache-Control", "no-store");
+    if (!allowLookup(String(req.ip || req.socket.remoteAddress || "unknown"))) {
+      return res.status(429).json({ status: false, message: "Too many tries — wait a few minutes and try again" });
+    }
     return res.json({ status: true, data: await trackingByCode(String(req.params.code || "")) });
   } catch (err: any) {
     if (err instanceof TrackingNotFound) return res.status(404).json({ status: false, message: "No load found with that tracking code" });

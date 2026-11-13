@@ -40,7 +40,7 @@ function LegLine({ leg }: { leg: LineupLeg }) {
     <>
       <Stack direction="row" spacing={1} alignItems="center">
         <Typography variant="body2" fontWeight={700} sx={{ flexGrow: 1 }} noWrap>
-          {leg.invoiceNo || 'No invoice #'} · #{leg.tripNo}
+          {leg.invoiceNo || 'No load #'} · #{leg.tripNo}
           {leg.legCount > 1 ? ` (leg ${leg.legNo}/${leg.legCount})` : ''}
         </Typography>
         <Chip size="small" label={STATUS[leg.status].label} color={STATUS[leg.status].color} />
@@ -53,6 +53,11 @@ function LegLine({ leg }: { leg: LineupLeg }) {
       <Typography variant="caption" color="text.secondary" component="div">
         Pickup {appointment(leg.first?.appointmentLocal)} · Delivery {appointment(leg.last?.appointmentLocal)}
       </Typography>
+      {leg.createdAt && (
+        <Typography variant="caption" color="text.disabled" component="div">
+          Created {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(leg.createdAt))}
+        </Typography>
+      )}
     </>
   );
 }
@@ -98,7 +103,7 @@ export function LineupDrawer({ profileId, onClose }: { profileId: string | null;
   const name = lineup?.driver.name || 'Driver';
 
   return (
-    <Drawer anchor="right" open={!!profileId} onClose={onClose} sx={{ zIndex: (t) => t.zIndex.modal }} PaperProps={{ sx: { width: { xs: '100%', md: 520 } } }}>
+    <Drawer anchor="right" open={!!profileId} onClose={onClose} sx={{ zIndex: (t) => t.zIndex.modal }} PaperProps={{ sx: { width: { xs: '100%', md: 600 } } }}>
       {(isFetching || saving) && <LinearProgress />}
       <Stack spacing={2} sx={{ p: 2.5 }} data-testid="lineupDrawer">
         <Stack direction="row" alignItems="center">

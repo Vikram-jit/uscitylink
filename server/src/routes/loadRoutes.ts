@@ -27,6 +27,8 @@ import {
   showLoadRest,
   updateLoadRest,
   yardStopRest,
+  matchGpsRest,
+  fromTextRest,
 } from "../controllers/loadController";
 
 // Loads with legs + the equipment board (dispatch only). Each leg's own actions stay under /trips.
@@ -38,6 +40,7 @@ router.post("/", ...staffOnly, createLoadRest);
 router.get("/yard-stop", ...staffOnly, yardStopRest);
 router.get("/lookup", ...staffOnly, lookupLoadRest);
 router.post("/typed/:pendingId/answer", ...staffOnly, answerTypedRest);
+router.post("/from-text", ...staffOnly, fromTextRest);
 router.get("/places/search", ...staffOnly, searchPlacesRest);
 router.get("/lineup/:profileId", ...staffOnly, lineupRest);
 router.get("/miles", ...staffOnly, milesRest);
@@ -57,6 +60,7 @@ router.post("/:id/legs/:legId/release", ...staffOnly, releaseLegRest);
 router.post("/:id/legs/:legId/end", ...staffOnly, endLegRest);
 router.patch("/:id/legs/:legId/times", ...staffOnly, correctTimesRest);
 router.patch("/:id/legs/:legId/miles", ...staffOnly, setMilesRest);
+router.post("/:id/legs/:legId/match-gps", ...staffOnly, matchGpsRest);
 router.patch("/:id/type", ...staffOnly, changeTypeRest);
 
 export default router;

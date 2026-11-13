@@ -28,6 +28,7 @@ import {
   LoadHistoryEntry,
   Trip,
   useGetLoadDetailQuery,
+  useMatchLegGpsMutation,
   useSendTripMutation,
   useUpdateLoadInfoMutation,
 } from '@/redux/TripApiSlice';
@@ -41,7 +42,7 @@ import { LineupDrawer } from './LineupDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
 import { EndLegDialog, ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { TripDrawer } from './TripDrawer';
-import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL } from './tripFormat';
+import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL, milesSourceLabel } from './tripFormat';
 
 // One load (tracked by its invoice #): every leg with its driver, truck and trailer and the button
 // it needs now (assign, send, complete), how long it sat in the yard, and how the delivery compared
@@ -165,9 +166,9 @@ function TrackingLink({ detail }: { detail: LoadDetail }) {
       <Typography variant="body2" sx={{ flexGrow: 1, minWidth: 0 }} noWrap color={closed ? 'text.disabled' : 'text.primary'}>
         {closed ? 'Tracking link expired (load completed)' : url}
       </Typography>
-      {!closed && detail.load.track_code && (
-        <Tooltip title="Code for the app's “Track a load”">
-          <Chip size="small" label={`Code ${detail.load.track_code}`} sx={{ fontWeight: 700, letterSpacing: 1 }} data-testid="trackCode" />
+      {!closed && (
+        <Tooltip title="Customers enter this load number in the app's “Track a load”">
+          <Chip size="small" label={`Code ${detail.load.invoice_no || detail.load.load_no}`} sx={{ fontWeight: 700, letterSpacing: 1 }} data-testid="trackCode" />
         </Tooltip>
       )}
       {!closed && (
@@ -216,6 +217,15 @@ function LegCard({
   allLegs: Trip[];
 }) {
   const [sendTrip, { isLoading: sending }] = useSendTripMutation();
+  const [matchGps, { isLoading: matching }] = useMatchLegGpsMutation();
+  const recheck = async () => {
+    try {
+      const res = await matchGps({ id: leg.load_id!, legId: leg.id }).unwrap();
+      toast.success(res.message || 'Miles re-checked');
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Could not re-check the miles');
+    }
+  };
   const stops = [...(leg.stops || [])].sort((a, b) => a.seq - b.seq);
   const first = stops[0];
   const last = stops[stops.length - 1];
@@ -263,7 +273,14 @@ function LegCard({
       )}
       {(leg.ended_at || leg.total_mileage) && (
         <Typography variant="caption" component="div" color={leg.total_mileage ? 'text.secondary' : 'warning.main'} data-testid={`legMiles-${leg.leg_no}`}>
-          {leg.total_mileage ? `${Number(leg.total_mileage).toLocaleString()} mi · ${leg.miles_source === 'manual' ? `typed (${leg.miles_note || 'no note'})` : 'Samsara'}` : 'Miles missing — Samsara had nothing; enter them'}
+          {leg.total_mileage
+            ? `${Number(leg.total_mileage).toLocaleString()} mi · ${milesSourceLabel(leg.miles_source, leg.miles_note || 'no note')}`
+            : leg.miles_note || 'Miles missing — Samsara had nothing yet'}
+          {leg.ended_at && leg.miles_source !== 'manual' && leg.load_id && (
+            <Button size="small" sx={{ ml: 1, py: 0, minWidth: 0 }} disabled={matching} onClick={() => void recheck()} data-testid={`recheckMiles-${leg.leg_no}`}>
+              {matching ? 'Checking…' : 'Re-check miles'}
+            </Button>
+          )}
         </Typography>
       )}
       {leg.handover_reason && (
@@ -355,13 +372,13 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
   const assigningPrev = assigning ? legs.filter((l) => l.leg_no < assigning.leg_no && l.status !== 'cancelled').pop() : undefined;
 
   return (
-    <Drawer anchor="right" open={!!loadId} onClose={onClose} sx={{ zIndex: (theme) => theme.zIndex.modal }} PaperProps={{ sx: { width: { xs: '100%', md: 640 } } }}>
+    <Drawer anchor="right" open={!!loadId} onClose={onClose} sx={{ zIndex: (theme) => theme.zIndex.modal }} PaperProps={{ sx: { width: { xs: '100%', md: 860, lg: 980 } } }}>
       {isFetching && <LinearProgress />}
       {detail && (
         <Stack spacing={2} sx={{ p: 2.5 }} data-testid="loadDrawer">
           <Stack direction="row" alignItems="center" spacing={1}>
             <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6">Load #{detail.load.load_no}</Typography>
+              <Typography variant="h6">Load #{detail.load.invoice_no || detail.load.load_no}</Typography>
               <Stack direction="row" spacing={0.75} sx={{ mt: 0.5 }}>
 <Chip size="small" variant="outlined" label={LOAD_TYPE[detail.load.type].label} data-testid="loadTypeChip" />
                 {st && <Chip size="small" label={st.label} color={st.color} />}
@@ -375,14 +392,6 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
           <InvoiceField detail={detail} />
           <TrackingLink detail={detail} />
           <LegChain legs={legs} names={names} />
-          <Typography variant="caption" color="text.secondary">
-            Added by {detail.load.created_by_name || '—'} ·{' '}
-            {live.length > 1
-              ? 'Route List: on hold for multi-leg loads'
-              : legs[0]?.route_trip_no
-                ? `Route List trip ${legs[0].route_trip_no}`
-                : 'Route List entry is created when the load is marked completed'}
-          </Typography>
 
           {detail.load.status === 'transfer' && (
             <Alert severity="warning">
@@ -428,14 +437,13 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
             </Box>
           )}
 
-          {/* Yard */}
+          {/* Yard (only when the load went through it) */}
+          {detail.yardVisits.length > 0 && (
           <Box sx={{ p: 1.5, border: 1, borderColor: 'divider', borderRadius: 2 }} data-testid="loadYard">
             <Stack direction="row" spacing={1} alignItems="center">
               <LocalParking fontSize="small" color="action" />
               <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
-                {detail.yardVisits.length
-                  ? `In the yard ${detail.yardVisits.length}× · ${minutesText(detail.yardMinutes)} total`
-                  : 'Not in the yard during this load'}
+                {`In the yard ${detail.yardVisits.length}× · ${minutesText(detail.yardMinutes)} total`}
               </Typography>
             </Stack>
             {detail.yardVisits.map((v, i) => (
@@ -446,6 +454,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
               </Typography>
             ))}
           </Box>
+          )}
 
           {/* Who moved which part, on which truck, and the miles */}
           <Box data-testid="loadSegments">
@@ -496,7 +505,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
                         <>
                           <b>{sg.miles.toLocaleString()}</b>
                           <Typography variant="caption" color="text.secondary" component="div">
-                            {sg.milesSource === 'manual' ? 'typed' : 'Samsara'}
+                            {milesSourceLabel(sg.milesSource)}
                           </Typography>
                         </>
                       ) : sg.endedAt ? (
@@ -576,7 +585,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
                   tripNo: leg.trip_no,
                   driverName: (leg.driver_profile_id && names[leg.driver_profile_id]) || 'the driver',
                   prevLegNo: prev?.leg_no || leg.leg_no - 1,
-                  prevTripNo: prev?.trip_no || null,
+                  prevTripNo: (prev?.trip_no) || null,
                   prevDriver: (prev?.driver_profile_id && names[prev.driver_profile_id]) || 'the driver before',
                   place: hs ? [hs.name, [hs.city, hs.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') : '',
                 });

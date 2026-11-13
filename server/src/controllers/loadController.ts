@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
-import { Actor, TripError } from "../services/trips/tripService";
-import { addLeg, addLoad, answerTypedLoad, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, lookupLoad, NeedsAnswer, updateLoad } from "../services/trips/loadService";
+import { Actor, addMileage, NO_GPS_NOTE, TripError } from "../services/trips/tripService";
+import { addLeg, addLoad, answerTypedLoad, loadFromText, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, lookupLoad, NeedsAnswer, updateLoad } from "../services/trips/loadService";
 import { conflictsFor, driversBoard, trailersBoard, trucksBoard } from "../services/trips/equipment";
 import { placeStop, PlacesError, searchPlaces } from "../services/trips/places";
 import { lineupOf, removeFromLineup, reorderLineup } from "../services/trips/lineup";
@@ -52,8 +52,8 @@ export const createLoadRest = handle(async (req) => {
   const send = body.send === true;
   // The simple form: one load (Load # decides if it's a new load or the next leg). Old multi-leg body still works.
   if (!Array.isArray(body.legs)) {
-    const { send: _s, endPrevious, endDriverCurrent, lineUp, ...input } = body;
-    const data = await addLoad(input, await actorOf(req), { send, endPrevious: endPrevious === true, endDriverCurrent: endDriverCurrent === true, lineUp: lineUp === true });
+    const { send: _s, endPrevious, endDriverCurrent, lineUp, replace, ...input } = body;
+    const data = await addLoad(input, await actorOf(req), { send, endPrevious: endPrevious === true, endDriverCurrent: endDriverCurrent === true, lineUp: lineUp === true, replace: replace === true });
     return { data, message: send && !lineUp ? "Load sent" : lineUp ? "Lined up after the driver's current load" : "Load saved" };
   }
   return { data: await createLoad(body, await actorOf(req), { send }), message: send ? "Load sent" : "Load saved" };
@@ -168,6 +168,33 @@ export const releaseLegRest = handle(async (req) => {
 /** Dispatch answers the pop-up about a load typed in chat (End & send / Line up). */
 export const answerTypedRest = handle(async (req) => {
   const b = req.body || {};
-  const data = await answerTypedLoad(String(req.params.pendingId), { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true }, await actorOf(req));
+  const data = await answerTypedLoad(String(req.params.pendingId), { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true, replace: b.replace === true }, await actorOf(req));
   return { data, message: data.kind === "sent" ? `Load ${data.loadNo} sent` : "One more question" };
+});
+
+/** Read the leg's times and miles from the truck's GPS again (Samsara had a gap / the driver didn't tap). */
+export const matchGpsRest = handle(async (req) => {
+  const legId = Number(req.params.legId);
+  const leg = await ChatTrip.findByPk(legId);
+  if (!leg || leg.load_id !== Number(req.params.id)) throw new TripError("Leg not found", 404);
+  if (!leg.ended_at) throw new TripError("This leg hasn't ended yet — miles are read when it ends");
+  if (leg.miles_source === "manual") throw new TripError("These miles were typed — use Samsara again in Miles first");
+  await addMileage(legId, { forceGps: true });
+  const fresh = await ChatTrip.findByPk(legId);
+  return {
+    data: await getLoad(Number(req.params.id)),
+    message: fresh?.miles_note === NO_GPS_NOTE ? "Still no GPS match — check the times or type the miles" : `Miles re-checked from the truck's GPS: ${fresh?.total_mileage ?? "—"} mi`,
+  };
+});
+
+/**
+ * A load pasted / typed in a driver's chat box. The chat box sends it here instead of as a chat
+ * message, so nothing reaches the driver until it's really sent: same questions as Add load (409),
+ * Send → the driver gets the standard load message; Line up → the driver gets nothing yet.
+ */
+export const fromTextRest = handle(async (req) => {
+  const b = req.body || {};
+  const answers = { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true, replace: b.replace === true };
+  const { data, loadNo } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null);
+  return { data, message: answers.lineUp && !answers.endDriverCurrent ? `Load ${loadNo} lined up — it goes to the driver when their current load is delivered` : `Load ${loadNo} sent to the driver` };
 });

@@ -16,7 +16,9 @@ import { ActorRole, check, DRIVER_CURRENT, nextStep, TripAction, TripStatus, UND
 import { localToDate, stateTimezone } from "./stateTimezone";
 import { createRouteRow, isPriced, removeRouteRow, syncRouteRow } from "./routeListSync";
 import { formatLoad, PROBLEM_KINDS, statusLine } from "./tripMessages";
-import { tripMileage } from "./samsara";
+import { gpsTrail, tripMileage } from "./samsara";
+import { matchStops, meetPoint, pointAt } from "./gpsTimes";
+import { geocodeStop, placeAt } from "./places";
 import { blockingLeg, isLastLeg, legsOf, legTripNo, nextLeg, refreshLoadStatus } from "./legs";
 import { liveTrip } from "./liveTrip";
 import { linedUpLegs, nextPosition } from "./lineup";
@@ -418,34 +420,9 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
     });
 
   if (opts.send && !typed) await sendLoad(trip.id, actor);
-  else {
-    // Saved for later on a driver: they see what's coming (it starts when dispatch confirms)
-    if (!typed && !opts.quiet && trip.driver_profile_id) await notifyLinedUp(trip.id).catch((e) => console.warn("[trips] lined up:", e?.message));
-    announce(trip.id);
-  }
+  // Saved for later / lined up: only dispatch sees it — the driver gets it when it's sent
+  else announce(trip.id);
   return getTrip(trip.id);
-}
-
-/**
- * Tell a driver a load is lined up for them, with the whole load (stops, appointments, truck,
- * trailer) — read-only: dispatch still confirms before it starts. [intro] replaces the first line
- * (a handover says where they take over).
- */
-export async function notifyLinedUp(tripId: number, intro?: string) {
-  const trip = await ChatTrip.findByPk(tripId, withStops);
-  if (!trip?.driver_profile_id || !["scheduled", "offered"].includes(trip.status)) return null;
-  const blocking = await blockingLeg(trip);
-  const first =
-    intro ||
-    `📋 Lined up for you: trip ${trip.trip_no}${blocking ? ` (after leg ${blocking.leg_no} is ${blocking.ends_at_yard ? "dropped at the yard" : "handed over"})` : ""}.`;
-  const body = formatLoad(trip, trip.stops || []);
-  const messageId = await postToChat(trip, `${first}
-
-${body}
-
-⏳ Dispatch confirms before you start — it's in your Loads under "Up next".`);
-  if (messageId) await record(trip, { type: "note", actor: { role: "system", name: "Dispatch Assistant" }, note: "Driver told it's lined up", messageId });
-  return messageId;
 }
 
 /** Dispatch fixes a trip (stops, people, notes). Recorded; Route List follows unless priced. */
@@ -527,10 +504,6 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
     );
   });
   if (input.invoiceNo !== undefined) await setInvoice(trip, input.invoiceNo, actor);
-  // A new driver on a lined-up load: they see what's coming
-  if (!opts.quiet && changes.driver_profile_id && changes.driver_profile_id !== before.driver_profile_id) {
-    await notifyLinedUp(id).catch((e) => console.warn("[trips] lined up:", e?.message));
-  }
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch((e) => console.warn("[trips] route row:", e?.message));
   announce(id);
@@ -918,6 +891,8 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
     );
   }
   if (action === "end") void addMileage(fresh.id);
+  // Samsara had a gap when it ended: try the GPS again now
+  if (action === "complete" && fresh.miles_note === NO_GPS_NOTE) void addMileage(fresh.id, { forceGps: true }).catch(() => undefined);
   if (action === "complete" && fresh.route_trip_no) {
     await record(fresh, { type: "note", actor: { role: "system", name: "Route List" }, note: `Route List entry ${fresh.route_trip_no} created` });
   }
@@ -974,24 +949,174 @@ async function snapshotEta(id: number) {
   }
 }
 
-/** Samsara odometer difference for the trip and each leg, written to the trip and its Route List row. */
-export async function addMileage(id: number) {
+export const NO_GPS_NOTE = "No GPS match — check times / type miles";
+
+async function vehicleOf(truckId: number | null | undefined): Promise<string | null> {
+  if (!truckId) return null;
+  const truck = await yardOne<{ samsara_vehicle_id: string | null }>(`SELECT samsara_vehicle_id FROM trucks WHERE id = :id`, { id: truckId });
+  return truck?.samsara_vehicle_id ? String(truck.samsara_vehicle_id) : null;
+}
+
+/** The driver didn't tap everything, or dispatch ended / handed over the leg: its times come from GPS. */
+async function needsGpsTimes(trip: ChatTrip): Promise<boolean> {
+  if (!trip.started_at || (trip.stops || []).some((s) => !s.arrived_at)) return true;
+  const events = await ChatTripEvent.findAll({ where: { chat_trip_id: trip.id, type: ["status", "transfer"] }, attributes: ["type", "data", "actor_role"] });
+  return events.some((e) => e.data?.action === "end_by_dispatch" || (e.type === "transfer" && e.data?.transferTo && e.actor_role !== "driver"));
+}
+
+const hhmm = (d: Date, tz?: string | null) =>
+  d.toLocaleString("en-US", { timeZone: tz || "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/**
+ * Fill the leg's missing times (and a late dispatch end) from the truck's GPS trail. Times the driver
+ * tapped, and times dispatch corrected by hand, are never changed. Returns whether GPS was matched.
+ */
+export async function applyGpsTimes(id: number): Promise<{ matched: boolean; changed: boolean; note?: string }> {
   const trip = await ChatTrip.findByPk(id, withStops);
-  // Miles typed by dispatch stay as they are
-  if (!trip?.truck_id || !trip.started_at || !trip.ended_at || trip.miles_source === "manual") return;
-  const truck = await yardOne<{ samsara_vehicle_id: string | null }>(`SELECT samsara_vehicle_id FROM trucks WHERE id = :id`, {
-    id: trip.truck_id,
+  if (!trip) return { matched: false, changed: false };
+  const vehicle = await vehicleOf(trip.truck_id);
+  if (!vehicle) return { matched: false, changed: false, note: "No Samsara truck on this leg" };
+  const stops = [...(trip.stops || [])].sort((a, b) => a.seq - b.seq);
+  if (!stops.length) return { matched: false, changed: false };
+
+  const events = await ChatTripEvent.findAll({ where: { chat_trip_id: trip.id } });
+  const endEvent = events.find((e) => e.type === "status" && e.data?.action === "end_by_dispatch");
+  const handedOver = events.some((e) => e.type === "transfer" && e.data?.transferTo && e.actor_role !== "driver");
+  const byDispatch = !!endEvent || handedOver;
+  const corrected = events.some((e) => e.type === "time_correction" && e.actor_role !== "system");
+
+  const to = new Date(Math.min(Date.now(), (trip.ended_at ? new Date(trip.ended_at).getTime() : Date.now()) + 60 * 60_000));
+  const start = trip.sent_at || trip.created_at || trip.started_at || to;
+  const from = new Date(Math.max(new Date(start).getTime() - 60 * 60_000, to.getTime() - 5 * 86400_000));
+  const trail = await gpsTrail(vehicle, from, to);
+  if (!trail?.length) return { matched: false, changed: false, note: "Samsara has no GPS for this truck in that time" };
+
+  // Each stop's point: its address on the map; a handover point with another truck → where both trucks met
+  const places = await Promise.all(stops.map((s) => geocodeStop(s).catch(() => null)));
+  const meetIdx = (i: number) => stops[i] && ["switch", "yard"].includes(stops[i].type);
+  const other =
+    meetIdx(stops.length - 1) ? await nextLeg(trip) : meetIdx(0) && trip.leg_no > 1 ? (await legsOf(trip)).filter((l) => l.leg_no < trip.leg_no && l.status !== "cancelled").pop() || null : null;
+  let meet: { lat: number; lng: number; at: Date } | null = null;
+  if (other && other.truck_id && other.truck_id !== trip.truck_id) {
+    const otherVehicle = await vehicleOf(other.truck_id);
+    const otherTrail = otherVehicle ? await gpsTrail(otherVehicle, from, to) : null;
+    if (otherTrail?.length) meet = meetPoint(trail, otherTrail, trail[0].t);
+    const i = meetIdx(stops.length - 1) && other.leg_no > trip.leg_no ? stops.length - 1 : 0;
+    // Where the trucks really met beats a typed meet address
+    if (meet) places[i] = { lat: meet.lat, lng: meet.lng };
+  }
+
+  const endBy = trip.ended_at ? new Date(trip.ended_at) : null;
+  const fixes = matchStops(trail, places, { endBy });
+  if (!fixes.some(Boolean)) return { matched: false, changed: false, note: "The truck's GPS didn't pass the stops" };
+
+  const legBefore: Record<string, any> = {};
+  const legChanges: Record<string, any> = {};
+  const stopChanges: { stop: ChatTripStop; before: Record<string, any>; changes: Record<string, any> }[] = [];
+  const notes: string[] = [];
+  const last = stops.length - 1;
+  stops.forEach((s, i) => {
+    const f = fixes[i];
+    if (!f) return;
+    const before: Record<string, any> = {};
+    const changes: Record<string, any> = {};
+    const lateDispatchEnd = i === last && byDispatch && !corrected && f.arrivedAt && s.arrived_at && f.arrivedAt.getTime() < new Date(s.arrived_at).getTime() - 5 * 60_000;
+    if (f.arrivedAt && (!s.arrived_at || lateDispatchEnd)) {
+      before.arrived_at = s.arrived_at;
+      changes.arrived_at = f.arrivedAt;
+    }
+    if (i < last && f.departedAt && !s.departed_at) {
+      before.departed_at = s.departed_at;
+      changes.departed_at = f.departedAt;
+    }
+    if (Object.keys(changes).length) stopChanges.push({ stop: s, before, changes });
   });
-  if (!truck?.samsara_vehicle_id) return;
-  const stops = trip.stops || [];
+  const firstFix = fixes[0];
+  const lastFix = fixes[last];
+  const startAt = firstFix?.departedAt || null;
+  if (!trip.started_at && startAt) {
+    legBefore.started_at = null;
+    legChanges.started_at = startAt;
+    notes.push(`Rolling (left ${stops[0].name || stops[0].city || "the first stop"}) ${hhmm(startAt, stops[0].timezone)}`);
+  }
+  if (trip.ended_at && byDispatch && !corrected && lastFix?.arrivedAt && lastFix.arrivedAt.getTime() < new Date(trip.ended_at).getTime() - 5 * 60_000) {
+    legBefore.ended_at = trip.ended_at;
+    legChanges.ended_at = lastFix.arrivedAt;
+    const was = pointAt(trail, new Date(trip.ended_at));
+    const wasAt = was ? await placeAt(was.lat, was.lng).catch(() => null) : null;
+    notes.push(
+      `${handedOver && !endEvent ? "Handed over" : "Delivered"} ${hhmm(lastFix.arrivedAt, stops[last].timezone)} — truck reached ${stops[last].name || stops[last].city || "the stop"} (dispatch ended at ${hhmm(new Date(trip.ended_at), stops[last].timezone)}${wasAt?.city ? `, truck was then at ${wasAt.city}, ${wasAt.state}` : ""})`
+    );
+  }
+  // A meet point with no address gets the place where the trucks met
+  const meetStop = meet ? stops[meetIdx(last) && other && other.leg_no > trip.leg_no ? last : 0] : null;
+  if (meet && meetStop && !meetStop.city) {
+    const p = await placeAt(meet.lat, meet.lng).catch(() => null);
+    if (p?.city) {
+      const entry = stopChanges.find((c) => c.stop.id === meetStop.id) || (stopChanges.push({ stop: meetStop, before: {}, changes: {} }), stopChanges[stopChanges.length - 1]);
+      for (const k of ["name", "street", "city", "state", "zip"] as const) {
+        entry.before[k] = (meetStop as any)[k];
+        entry.changes[k] = (p as any)[k] || null;
+      }
+      notes.push(`Handover place from both trucks' GPS: ${p.city}, ${p.state} ${hhmm(meet.at, meetStop.timezone)}`);
+    }
+  }
+  const filled = stopChanges.filter((c) => "arrived_at" in c.changes || "departed_at" in c.changes).length;
+  if (filled) notes.push(`${filled} stop time${filled > 1 ? "s" : ""} filled from GPS`);
+  if (!Object.keys(legChanges).length && !stopChanges.length) return { matched: true, changed: false };
+
+  await primarySequelize.transaction(async (t) => {
+    if (Object.keys(legChanges).length) await trip.update(legChanges, { transaction: t });
+    for (const c of stopChanges) await c.stop.update(c.changes, { transaction: t });
+  });
+  await record(trip, {
+    type: "time_correction",
+    actor: { role: "system", name: "Samsara GPS" },
+    note: `Times from the truck's GPS: ${notes.join(" · ")}`,
+    data: {
+      gps: true,
+      before: { leg: legBefore, stops: stopChanges.map((c) => ({ id: c.stop.id, ...c.before })) },
+      after: { leg: legChanges, stops: stopChanges.map((c) => ({ id: c.stop.id, ...c.changes })) },
+    },
+  });
+  return { matched: true, changed: true };
+}
+
+/** Samsara odometer difference for the trip and each leg, written to the trip and its Route List row. */
+export async function addMileage(id: number, opts: { forceGps?: boolean } = {}) {
+  let trip = await ChatTrip.findByPk(id, withStops);
+  // Miles typed by dispatch stay as they are
+  if (!trip?.truck_id || !trip.ended_at || trip.miles_source === "manual") return;
+  const vehicle = await vehicleOf(trip.truck_id);
+  if (!vehicle) return;
+  // The driver didn't tap / dispatch ended late: the truck's GPS says when it really left and arrived
+  let gps = trip.miles_source === "gps";
+  if (opts.forceGps || (await needsGpsTimes(trip))) {
+    const r = await applyGpsTimes(id).catch((e) => {
+      console.warn("[trips] gps times:", e?.message || e);
+      return { matched: false, changed: false };
+    });
+    gps = gps || r.changed;
+    trip = (await ChatTrip.findByPk(id, withStops))!;
+    if (!r.matched && !trip.started_at) {
+      await trip.update({ miles_note: NO_GPS_NOTE });
+      announce(id);
+      return;
+    }
+  }
+  if (!trip.started_at || !trip.ended_at) return;
+  const stops = [...(trip.stops || [])].sort((a, b) => a.seq - b.seq);
   const result = await tripMileage(
-    truck.samsara_vehicle_id,
+    vehicle,
     trip.started_at,
     trip.ended_at,
     stops.map((s) => s.arrived_at),
   );
-  if (!result) return;
-  await trip.update({ total_mileage: result.total, miles_source: "samsara", miles_note: null });
+  if (!result) {
+    if (gps) await trip.update({ miles_note: NO_GPS_NOTE });
+    return;
+  }
+  await trip.update({ total_mileage: result.total, miles_source: gps ? "gps" : "samsara", miles_note: null });
   for (let i = 0; i < stops.length; i++) {
     const miles = result.legs[i];
     if (miles !== null && miles !== undefined) await stops[i].update({ mileage: miles });
@@ -999,7 +1124,7 @@ export async function addMileage(id: number) {
   await record(trip, {
     type: "note",
     actor: { role: "system", name: "Samsara" },
-    note: `Trip mileage ${result.total} mi (odometer)`,
+    note: `Trip mileage ${result.total} mi (odometer${gps ? ", times from GPS" : ""})`,
     data: result,
   });
   const fresh = await ChatTrip.findByPk(id, withStops);
@@ -1362,21 +1487,11 @@ export async function currentTripFor(profileId: string) {
 }
 
 /**
- * The driver app's "Up next": loads lined up for this driver (theirs, or on their truck), in lineup
- * order — read-only until dispatch sends them. waitsFor: the leg before still has the load.
+ * Driver app "Up next": drivers don't see loads lined up for them — only their current load and their
+ * history. Kept (empty) so older app builds that still ask don't break.
  */
-export async function upcomingFor(profileId: string) {
-  const legs = await linedUpLegs(profileId);
-  const out = [];
-  for (const [i, leg] of legs.entries()) {
-    const blocking = await blockingLeg(leg);
-    out.push({
-      ...leg.toJSON(),
-      position: i + 1,
-      waits_for: blocking ? `Leg ${blocking.leg_no} (${blocking.trip_no}) ${blocking.ends_at_yard ? "dropping at the yard" : "handing over"}` : null,
-    });
-  }
-  return { trips: out };
+export async function upcomingFor(_profileId: string) {
+  return { trips: [] as any[] };
 }
 
 /**

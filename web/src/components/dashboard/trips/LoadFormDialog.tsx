@@ -53,7 +53,11 @@ interface Props {
   onSaved?: () => void;
 }
 
-type Question = { needs: 'endPrevious'; prev: LegBrief } | { needs: 'driverBusy'; current: LegBrief };
+type Answers = { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean };
+type Question =
+  | { needs: 'endPrevious'; prev: LegBrief; send: boolean }
+  | { needs: 'driverBusy'; current: LegBrief; send: boolean }
+  | { needs: 'replaceLinedUp'; linedUp: LegBrief; current: LegBrief | null; send: boolean };
 
 const fromTrip = (trip: Trip, driver?: Person | null): LegState =>
   newLeg(
@@ -90,6 +94,14 @@ function LookupNote({ lookup, loading }: { lookup: LoadLookup | null; loading: b
       <Typography variant="caption" color="success.main" data-testid="loadNoNote">
         New load {lookup.loadNo}
       </Typography>
+    );
+  }
+  if (lookup.linedUp) {
+    const l = lookup.linedUp;
+    return (
+      <Alert severity="info" sx={{ py: 0.25 }} data-testid="loadNoNote">
+        Load {lookup.loadNo} is <b>already lined up</b> for {legText(l)} — not sent yet. Saving or sending this one <b>replaces</b> that copy (you&apos;ll confirm).
+      </Alert>
     );
   }
   const prev = lookup.prev;
@@ -204,7 +216,7 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
     return null;
   };
 
-  const save = async (send: boolean, answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean } = {}) => {
+  const save = async (send: boolean, answers: Answers = {}) => {
     const problem = problems();
     if (problem) {
       toast.error(problem);
@@ -226,7 +238,14 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
       // The server asks first before ending anything
       if (err?.status === 409 && err?.data?.needs) {
         const info = err.data.info || {};
-        setQuestion(err.data.needs === 'endPrevious' ? { needs: 'endPrevious', prev: info.prev } : { needs: 'driverBusy', current: info.current });
+        const needs = err.data.needs;
+        setQuestion(
+          needs === 'replaceLinedUp'
+            ? { needs, linedUp: info.linedUp, current: info.current || null, send }
+            : needs === 'endPrevious'
+              ? { needs, prev: info.prev, send }
+              : { needs: 'driverBusy', current: info.current, send }
+        );
         return;
       }
       toast.error(err?.data?.message || 'Could not save the load');
@@ -234,19 +253,20 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
   };
 
   // Answering one question can lead to the other (previous leg open AND driver busy): keep earlier answers
-  const [given, setGiven] = React.useState<{ endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }>({});
+  const [given, setGiven] = React.useState<Answers>({});
   React.useEffect(() => {
     if (open) setGiven({});
   }, [open]);
-  const answer = (a: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }) => {
+  const answer = (a: Answers) => {
     const all = { ...given, ...a };
+    const send = question?.send ?? true;
     setGiven(all);
     setQuestion(null);
-    void save(true, all);
+    void save(send, all);
   };
 
   const who = leg.driver?.name.split(' (')[0] || 'the driver';
-  const title = editing ? `Edit trip #${trip?.trip_no || trip?.id}` : driver ? `Send load to ${driver.name}` : 'New load';
+  const title = editing ? `Edit trip #${(trip?.trip_no) || trip?.id}` : driver ? `Send load to ${driver.name}` : 'New load';
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" PaperProps={{ sx: { bgcolor: 'background.default' } }}>
@@ -353,6 +373,58 @@ export function LoadFormDialog({ open, onClose, trip, driver, onSaved }: Props):
 
       {/* The server asks before ending anything */}
       <Dialog open={!!question} onClose={() => setQuestion(null)} maxWidth="sm" fullWidth>
+        {question?.needs === 'replaceLinedUp' && (
+          <>
+            <DialogTitle>Load {loadNo.trim()} is already lined up</DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={1.5} data-testid="askReplaceLinedUp">
+                <Box sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', bgcolor: 'action.hover' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                    Lined up · not sent yet
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    #{question.linedUp.tripNo} · {question.linedUp.driverName || 'No driver'}
+                    {question.linedUp.truck ? ` · Truck ${question.linedUp.truck}` : ''}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {question.linedUp.from} → {question.linedUp.to}
+                  </Typography>
+                </Box>
+                <Typography variant="body2">
+                  {question.send ? 'Sending' : 'Saving'} this load replaces that copy — it&apos;s taken off the lineup (kept in the load&apos;s history) and this one takes its place with the same
+                  number.
+                </Typography>
+                {question.current && (
+                  <Alert severity="warning" icon={false} data-testid="replaceDriverBusy">
+                    <b>{question.current.driverName || who}</b> is on load <b>#{question.current.tripNo}</b> now ({question.current.from} → {question.current.to},{' '}
+                    {STATUS[question.current.status]?.label.toLowerCase() || question.current.status}). End it and send this one, or line this one up after it?
+                  </Alert>
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setQuestion(null)}>Cancel</Button>
+              {!question.send ? (
+                <Button variant="contained" onClick={() => answer({ replace: true })} data-testid="answerReplace">
+                  Replace lined-up copy
+                </Button>
+              ) : question.current ? (
+                <>
+                  <Button variant="outlined" onClick={() => answer({ replace: true, lineUp: true })} data-testid="answerReplaceLineUp">
+                    Replace &amp; line up after #{question.current.tripNo}
+                  </Button>
+                  <Button variant="contained" color="warning" onClick={() => answer({ replace: true, endDriverCurrent: true })} data-testid="answerReplaceEndCurrent">
+                    End #{question.current.tripNo} &amp; send
+                  </Button>
+                </>
+              ) : (
+                <Button variant="contained" onClick={() => answer({ replace: true })} data-testid="answerReplaceSend">
+                  Replace &amp; send now
+                </Button>
+              )}
+            </DialogActions>
+          </>
+        )}
         {question?.needs === 'endPrevious' && (
           <>
             <DialogTitle>End leg {question.prev.legNo} first?</DialogTitle>

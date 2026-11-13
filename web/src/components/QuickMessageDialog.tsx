@@ -5,6 +5,7 @@ import { MessageModel } from '@/redux/models/MessageModel';
 import { useQuickMessageMutation } from '@/redux/MessageApiSlice';
 import { toast } from 'react-toastify';
 import useErrorHandler from '@/hooks/use-error-handler';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
 
 interface QuickMessageDialogProps {
   open: boolean;
@@ -24,6 +25,10 @@ const QuickMessageDialog: React.FC<QuickMessageDialogProps> = ({ open, onClose, 
   };
 
   const handleSendMessage = async() => {
+    if (loadNoMissing(body)) {
+      toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
+      return;
+    }
         const res = await quickMessage({body,userProfileId:message?.userProfileId!})
         if(res.data?.status){
             toast.success(res?.data?.message)

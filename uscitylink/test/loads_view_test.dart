@@ -76,26 +76,46 @@ void main() {
     expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsNothing);
   });
 
-  testWidgets('Up next: lined-up loads are listed read-only, in order, with what they wait for', (tester) async {
+  testWidgets('drivers see no Up next / lined-up loads — only the current load and history', (tester) async {
     final service = TripService();
-    service.upcoming.assignAll([
-      CurrentTrip.fromTrip({...trip(73, 'scheduled'), 'trip_no': 'L0073-2', 'position': 1, 'waits_for': 'Leg 1 (L0073) handing over'}),
-      CurrentTrip.fromTrip({...trip(80, 'offered'), 'position': 2}),
-    ]);
     await tester.pumpWidget(GetMaterialApp(home: LoadsView(service: service)));
-    expect(find.text('Up next'), findsWidgets);
-    expect(find.byKey(const Key('upNextNote')), findsOneWidget);
-    expect(find.byKey(const Key('upNextPos_73')), findsOneWidget);
-    expect(find.text('#1'), findsOneWidget);
-    expect(find.text('#2'), findsOneWidget);
-    expect(find.text('Starts after: Leg 1 (L0073) handing over'), findsOneWidget);
-    expect(find.text('Waiting for dispatch'), findsOneWidget);
-    // Opening it shows the stops, no trip buttons
-    await tester.tap(find.byKey(const Key('load_73')));
     await tester.pumpAndSettle();
-    expect(find.text('Trip #L0073-2'), findsOneWidget);
-    expect(find.text('Drop · COSTCO'), findsOneWidget);
-    expect(find.byKey(const Key('upNextNote')), findsOneWidget);
-    expect(find.byKey(const Key('tripNextButton')), findsNothing);
+    expect(find.text('Up next'), findsNothing);
+    expect(find.textContaining('Lined up'), findsNothing);
+    expect(find.text('History'), findsWidgets);
+  });
+
+  testWidgets('each load in the list shows the date it was created', (tester) async {
+    await show(tester, past: [{...trip(5, 'completed', completed: '2026-11-03T18:00:00.000Z'), 'created_at': '2026-10-30T12:00:00.000Z'}]);
+    expect(find.textContaining('Created Oct 30'), findsOneWidget);
+  });
+
+  testWidgets('load detail: Load #, miles and time on the road once delivered; before that "after it\'s delivered"', (tester) async {
+    final done = {
+      ...trip(5, 'completed', completed: '2026-11-03T18:00:00.000Z'),
+      'invoice_no': '0055926',
+      'started_at': '2026-11-03T08:00:00.000Z',
+      'ended_at': '2026-11-03T15:40:00.000Z',
+      'total_mileage': 412.5,
+    };
+    done['stops'] = [
+      (done['stops'] as List)[0],
+      {...Map<String, dynamic>.from((done['stops'] as List)[1] as Map), 'mileage': '412.5'},
+    ];
+    await show(tester, current: trip(7, 'rolling'), past: [done]);
+    await tester.tap(find.byKey(const Key('load_5')));
+    await tester.pumpAndSettle();
+    expect(find.text('Load # 0055926'), findsOneWidget);
+    expect(find.text('412.5 mi'), findsWidgets);
+    expect(find.text('7 h 40 min'), findsOneWidget);
+    expect(find.text('Miles to here'), findsOneWidget);
+    Get.back();
+    await tester.pumpAndSettle();
+    // A load still running: miles come after delivery
+    await show(tester, past: [{...trip(9, 'rolling'), 'total_mileage': 99}]);
+    await tester.tap(find.byKey(const Key('load_9')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('milesLater')), findsOneWidget);
+    expect(find.byKey(const Key('tripMiles')), findsNothing);
   });
 }

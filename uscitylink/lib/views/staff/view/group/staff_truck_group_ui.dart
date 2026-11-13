@@ -1,3 +1,4 @@
+import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
@@ -111,6 +112,7 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     //   showAlert(context);
     // } else {
     if (_controller.text.isNotEmpty) {
+      if (blockLoadWithoutNo(_controller)) return;
       if (socketService.isConnected.value) {
         socketService.sendMessageToTruck(
             "",

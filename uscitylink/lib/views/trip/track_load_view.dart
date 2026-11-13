@@ -8,9 +8,9 @@ import 'package:http/http.dart' as http;
 import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 
-/// "Track a load" (login screen, no account needed): the customer types the short tracking code
-/// dispatch gave them (e.g. K7M2QX) and sees what the public tracking link shows — status, ETA,
-/// where the truck is (or why it's stopped), breaks on the way, stops and activity. The code stops
+/// "Track a load" (login screen, no account needed): the customer types their load number
+/// (e.g. 56033) and sees what the public tracking link shows — status, ETA,
+/// where the truck is (or why it's stopped), breaks on the way, stops and activity. It stops
 /// working once the load is completed. Server: GET public/track-code/:code.
 class TrackLoadView extends StatefulWidget {
   const TrackLoadView({super.key, this.initialCode, this.fetcher});
@@ -57,8 +57,8 @@ class _TrackLoadViewState extends State<TrackLoadView> {
 
   Future<void> _track({bool quiet = false}) async {
     final code = _code.text.trim().toUpperCase();
-    if (code.length < 5) {
-      setState(() => _error = 'Enter the tracking code from your carrier (like K7M2QX)');
+    if (code.length < 3) {
+      setState(() => _error = 'Please type your load number first (like 56033)');
       return;
     }
     FocusScope.of(context).unfocus();
@@ -165,29 +165,29 @@ class _Welcome extends StatelessWidget {
             const SizedBox(height: 14),
             const Text('Track your shipment', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            Text('Enter the 6-character code from your carrier to see where your load is, live.',
+            Text('Enter your load number to see where your load is, live.',
                 textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), height: 1.35)),
           ]),
         ),
         const SizedBox(height: 16),
         _Card(children: [
-          const Text('Tracking code', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const Text('Load number', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 10),
           TextField(
             key: const Key('trackCodeInput'),
             controller: controller,
             textAlign: TextAlign.center,
             textCapitalization: TextCapitalization.characters,
-            maxLength: 8,
+            maxLength: 20,
             autocorrect: false,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+              FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9-]')),
               TextInputFormatter.withFunction((o, n) => n.copyWith(text: n.text.toUpperCase())),
             ],
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 8),
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 4),
             decoration: InputDecoration(
-              hintText: 'K7M2QX',
-              hintStyle: TextStyle(color: Colors.grey.shade300, letterSpacing: 8),
+              hintText: '56033',
+              hintStyle: TextStyle(color: Colors.grey.shade300, letterSpacing: 4),
               counterText: '',
               filled: true,
               fillColor: const Color(0xFFF4F6FA),
@@ -232,7 +232,7 @@ class _Welcome extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            "Where's my code? It's in the message from US City Link dispatch with your load number. It works until the load is delivered and completed.",
+            "It's the load number on your order from US City Link. It works until the load is delivered and completed.",
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5, height: 1.4),
           ),
@@ -253,7 +253,7 @@ class _CodeBar extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.qr_code_rounded, color: TColors.navyHeaderDeep),
           const SizedBox(width: 10),
-          Text('Code', style: TextStyle(color: Colors.grey.shade600)),
+          Text('Load', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(width: 8),
           Expanded(child: Text(code, style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 3, fontSize: 16))),
           TextButton(key: const Key('trackChange'), onPressed: onChange, child: const Text('Change')),
@@ -308,7 +308,7 @@ class _Expired extends StatelessWidget {
       const SizedBox(height: 6),
       Center(
         child: Text(
-          cancelled ? 'This tracking code is no longer active.' : 'Delivered ${_when(view['deliveredAt'] as String?)}. This tracking code has expired.',
+          cancelled ? 'This tracking is no longer active.' : 'Delivered ${_when(view['deliveredAt'] as String?)}. This tracking has expired.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey.shade700),
         ),

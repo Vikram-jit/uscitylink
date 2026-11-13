@@ -180,7 +180,7 @@ export function MilesBoard(): React.JSX.Element {
                             </TableCell>
                             <TableCell align="right">
                               {i.miles !== null ? i.miles.toLocaleString() : <Typography variant="caption" color="warning.main">missing</Typography>}
-                              {i.milesSource === 'manual' ? ' (typed)' : ''}
+                              {i.milesSource === 'manual' ? ' (typed)' : i.milesSource === 'gps' ? ' (GPS times)' : ''}
                             </TableCell>
                           </TableRow>
                         ))}

@@ -66,6 +66,19 @@ function ask(title: string, label: string, onOk: (text: string) => void, require
   return { title, label, onOk, required };
 }
 
+function Fact({ label, value, warn, testId }: { label: string; value: string; warn?: boolean; testId?: string }): React.JSX.Element {
+  return (
+    <Box sx={{ minWidth: 0 }} data-testid={testId}>
+      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.6, fontSize: 11 }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight={600} color={warn ? 'warning.main' : 'text.primary'} noWrap title={value}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
 export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose: () => void }): React.JSX.Element {
   const { data, isFetching } = useGetLoadQuery(tripId as number, { skip: !tripId });
   const trip = data?.data?.trip;
@@ -110,40 +123,48 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
       open={!!tripId}
       onClose={onClose}
       sx={{ zIndex: (theme) => theme.zIndex.modal }}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 640, lg: 760 } } }}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 720, lg: 900 } } }}
     >
       {!trip ? (
         <Box sx={{ p: 4, textAlign: 'center' }}>{isFetching ? <CircularProgress /> : 'Trip not found'}</Box>
       ) : (
-        <Stack spacing={2} sx={{ p: 3 }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Trip {tripLabel(trip)}
-            </Typography>
-            <Chip size="small" label={STATUS[trip.status].label} color={STATUS[trip.status].color} />
-            <IconButton onClick={onClose}>
+        <Stack spacing={2.5} sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', py: 1, mx: { xs: -2, sm: -3 }, px: { xs: 2, sm: 3 }, borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+              <Typography variant="overline" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                Trip
+              </Typography>
+              <Typography variant="h6" noWrap sx={{ lineHeight: 1.2 }}>
+                {tripLabel(trip)}
+              </Typography>
+            </Box>
+            <Chip size="small" label={STATUS[trip.status].label} color={STATUS[trip.status].color} sx={{ fontWeight: 700 }} />
+            <IconButton onClick={onClose} aria-label="Close">
               <Close />
             </IconButton>
           </Stack>
 
-          <Typography variant="body2" color="text.secondary">
-            {driverName || 'Driver'}
-            {trip.driver_id_2 ? ' + team' : ''} · Truck {trip.truck_number || '—'} · Trailer {trip.trailer_numbers || '—'}
-            {trip.temperature ? ` · Temp ${trip.temperature}` : ''}
-            {trip.loaded_trailer ? ' · Loaded trailer' : ''}
-          </Typography>
-          <Typography variant="body2" color={trip.invoice_no ? 'text.secondary' : 'warning.main'} data-testid="tripInvoice">
-            Invoice # {trip.invoice_no || 'not added yet — needed to mark completed'}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Added by {trip.created_by_name || '—'} {trip.source === 'typed' ? '(read from a typed load)' : ''} ·{' '}
-            {legInfo && legInfo.count > 1
-              ? `Leg ${trip.leg_no} of ${legInfo.count} · Route List: on hold for multi-leg loads`
-              : trip.route_trip_no
-                ? `Route List trip ${trip.route_trip_no}`
-                : 'Route List entry is created when you mark it completed'}
-            {trip.total_mileage ? ` · ${trip.total_mileage} mi (Samsara)` : ''}
-          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 1.5,
+              gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' },
+              p: 2,
+              borderRadius: 2,
+              border: 1,
+              borderColor: 'divider',
+              bgcolor: 'action.hover',
+            }}
+            data-testid="tripSummary"
+          >
+            <Fact label="Driver" value={`${driverName || 'Driver'}${trip.driver_id_2 ? ' + team' : ''}`} />
+            <Fact label="Truck" value={trip.truck_number || '—'} />
+            <Fact label="Trailer" value={trip.trailer_numbers || '—'} />
+            <Fact label="Load #" value={trip.invoice_no || 'Not added yet'} warn={!trip.invoice_no} testId="tripInvoice" />
+            {trip.temperature ? <Fact label="Temperature" value={trip.temperature} /> : null}
+            {trip.total_mileage ? <Fact label="Miles" value={`${trip.total_mileage} mi`} /> : null}
+            {trip.loaded_trailer ? <Fact label="Trailer" value="Loaded" /> : null}
+          </Box>
 
           {trip.needs_review && (
             <Alert severity="warning">
@@ -186,7 +207,7 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
           {s === 'offered' && !blockedBy && <Alert severity="info">The driver is waiting for this load. Confirm to send it to their chat.</Alert>}
 
           {/* Dispatch actions for this status */}
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ '& .MuiButton-root': { borderRadius: 2, textTransform: 'none', fontWeight: 600 } }}>
             {(s === 'scheduled' || s === 'offered') && !blockedBy && (
               <Button variant="contained" disabled={sending} onClick={() => void run(() => sendTrip(trip.id).unwrap())}>
                 {s === 'offered' ? 'Confirm & send' : 'Send to driver'}
@@ -198,19 +219,19 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
             {(s === 'ended' || s === 'paperwork') && (
               <CompleteTripButton trip={trip} requireInvoice={legInfo ? legInfo.isLast : !(trip.ends_at_yard || stops[stops.length - 1]?.type === 'switch')} />
             )}
-            {!['completed', 'routed', 'cancelled'].includes(s!) && <Button onClick={() => setEditing(true)}>Edit</Button>}
-            {!['scheduled', 'offered', 'cancelled', 'routed'].includes(s!) && <Button onClick={() => setProblemOpen(true)}>Add problem</Button>}
+            {!['completed', 'routed', 'cancelled'].includes(s!) && <Button variant="outlined" onClick={() => setEditing(true)}>Edit</Button>}
+            {!['scheduled', 'offered', 'cancelled', 'routed'].includes(s!) && <Button variant="outlined" onClick={() => setProblemOpen(true)}>Add problem</Button>}
             {['planned', 'accepted', 'started', 'rolling', 'ended', 'paperwork'].includes(s!) && (
-              <Button onClick={() => setPrompt(ask('Put the trip on hold', 'Why?', (t) => void doAction('hold', t), false))}>Hold</Button>
+              <Button variant="outlined" onClick={() => setPrompt(ask('Put the trip on hold', 'Why?', (t) => void doAction('hold', t), false))}>Hold</Button>
             )}
-            {s === 'on_hold' && <Button onClick={() => void doAction('resume')}>Resume</Button>}
+            {s === 'on_hold' && <Button variant="outlined" onClick={() => void doAction('resume')}>Resume</Button>}
             {trip.load_id && ['planned', 'accepted', 'started', 'rolling', 'on_hold'].includes(s!) && (
-              <Button color="warning" onClick={() => setEnding(true)} data-testid="tripEndBtn">
+              <Button variant="outlined" color="warning" onClick={() => setEnding(true)} data-testid="tripEndBtn">
                 End load
               </Button>
             )}
             {!['completed', 'routed', 'cancelled'].includes(s!) && (
-              <Button color="error" onClick={() => setPrompt(ask('Cancel this trip', 'Reason (the driver sees it)', (t) => void doAction('cancel', t)))}>
+              <Button variant="outlined" color="error" onClick={() => setPrompt(ask('Cancel this trip', 'Reason (the driver sees it)', (t) => void doAction('cancel', t)))}>
                 Cancel trip
               </Button>
             )}
@@ -225,21 +246,33 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
           )}
 
           <Divider />
-          <Typography variant="subtitle2">Stops</Typography>
-          {stops.map((st) => (
-            <Box key={st.id} sx={{ pl: 1.5, borderLeft: 3, borderColor: st.departed_at ? 'success.main' : st.arrived_at ? 'warning.main' : 'divider' }}>
-              <Typography variant="body2" fontWeight={600}>
-                {STOP_LABEL[st.type]} · {st.name || '—'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" component="div">
-                {[st.street, [st.city, st.state, st.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-              </Typography>
-              <Typography variant="caption" component="div">
-                Appointment {appointment(st.appointment_local)} · Arrived {atStop(st.arrived_at, st.timezone)} · Left {atStop(st.departed_at, st.timezone)}
-                {st.mileage ? ` · ${st.mileage} mi` : ''}
-              </Typography>
-            </Box>
-          ))}
+          <Typography variant="subtitle1" fontWeight={700}>
+            Stops
+          </Typography>
+          <Stack spacing={1.25}>
+            {stops.map((st, i) => (
+              <Box
+                key={st.id}
+                sx={{ display: 'flex', gap: 1.5, p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', borderLeftWidth: 4, borderLeftColor: st.departed_at ? 'success.main' : st.arrived_at ? 'warning.main' : 'divider' }}
+              >
+                <Box sx={{ width: 26, height: 26, flexShrink: 0, borderRadius: '50%', bgcolor: 'action.selected', display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700 }}>{i + 1}</Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {STOP_LABEL[st.type]} · {st.name || '—'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="div">
+                    {[st.street, [st.city, st.state, st.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
+                    <Chip size="small" variant="outlined" label={`Appointment ${appointment(st.appointment_local)}`} />
+                    <Chip size="small" variant="outlined" color={st.arrived_at ? 'warning' : 'default'} label={`Arrived ${atStop(st.arrived_at, st.timezone)}`} />
+                    <Chip size="small" variant="outlined" color={st.departed_at ? 'success' : 'default'} label={`Left ${atStop(st.departed_at, st.timezone)}`} />
+                    {st.mileage ? <Chip size="small" variant="outlined" label={`${st.mileage} mi`} /> : null}
+                  </Stack>
+                </Box>
+              </Box>
+            ))}
+          </Stack>
 
           {(trip.problems || []).length > 0 && (
             <>

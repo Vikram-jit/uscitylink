@@ -118,10 +118,10 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       await offerNextLoad(driver.id, "asked");
       const trip = await ChatTrip.findByPk(tripId);
       assert.equal(trip?.status, "offered");
-      // Saving it for later already told the driver it's lined up; asking gets "waiting for dispatch"
+      // Drivers never see lined-up loads: asking only gets "dispatch will send your next load"
       const said = await Message.findAll({ where: { userProfileId: driver.id }, order: [["createdAt", "DESC"]], limit: 5 });
-      assert(said.some((m) => /waiting for dispatch/.test(String(m.body))), "told to wait for dispatch");
-      assert(said.some((m) => /Lined up for you: trip/.test(String(m.body))), "told it's lined up when saved");
+      assert(said.some((m) => /dispatch will send your next load here/.test(String(m.body))), "told dispatch will send it");
+      assert(!said.some((m) => /lined up/i.test(String(m.body))), "nothing about a lined-up load");
     });
 
     await test("only dispatch sends it: the load text goes to the driver's chat", async () => {

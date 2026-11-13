@@ -5,7 +5,8 @@ import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
 import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
 import { trackToken } from "./publicTracking";
-import { Actor, cleanInvoice, createTrip, driverOfTruck, editTrip, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
+import { parseLoad } from "./parseLoad";
+import { Actor, announce, cleanInvoice, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
 
 // Loads (Loads screen): one load, tracked by its invoice #, moved by one or more legs —
 //   direct        pickup → delivery
@@ -312,7 +313,10 @@ const OPEN_LEG = ["scheduled", "offered", "planned", "accepted", "started", "rol
 /** The driver has a load on their app (sent, not delivered) */
 const ON_DRIVER = ["planned", "accepted", "started", "rolling", "on_hold"];
 const SAME_LOAD_DAYS = 60;
+/** Saved / lined up, not sent to a driver yet */
+const NOT_SENT = ["scheduled", "offered"];
 
+/** The load number exactly as staff typed it (a leading "#" and spaces dropped, upper case) */
 export const cleanLoadNo = (v?: string | null) =>
   String(v || "")
     .trim()
@@ -323,7 +327,7 @@ export const cleanLoadNo = (v?: string | null) =>
 /** dispatch has to answer before this can go ahead (the form asks and sends again) */
 export class NeedsAnswer extends TripError {
   constructor(
-    public needs: "endPrevious" | "driverBusy",
+    public needs: "endPrevious" | "driverBusy" | "replaceLinedUp",
     public info: Record<string, any>,
     message: string
   ) {
@@ -333,6 +337,7 @@ export class NeedsAnswer extends TripError {
 
 async function findLoadByNo(no: string): Promise<ChatLoad | null> {
   return ChatLoad.findOne({
+    // The same number as typed by staff — nothing added or removed
     where: { invoice_no: no, status: { [Op.ne]: "cancelled" }, updated_at: { [Op.gte]: new Date(Date.now() - SAME_LOAD_DAYS * 86400000) } },
     order: [["id", "DESC"]],
   });
@@ -374,13 +379,17 @@ export async function lookupLoad(no: string | null | undefined, driverProfileId?
   const loadNo = cleanLoadNo(no);
   const load = loadNo ? await findLoadByNo(loadNo) : null;
   const legs = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
-  const prev = legs[legs.length - 1] || null;
+  const last = legs[legs.length - 1] || null;
+  // The same Load # already lined up (not sent): sending it again replaces that copy
+  const linedUp = last && NOT_SENT.includes(last.status) ? last : null;
+  const prev = linedUp ? legs[legs.length - 2] || null : last;
   const busy = await driverCurrent(driverProfileId, load?.id);
   return {
     loadNo,
     load: load ? { id: load.id, loadNo: load.load_no, invoiceNo: load.invoice_no, type: load.type, status: load.status, legs: legs.length } : null,
-    nextLegNo: legs.length + 1,
+    nextLegNo: linedUp ? linedUp.leg_no : legs.length + 1,
     prev: await legBrief(prev),
+    linedUp: await legBrief(linedUp),
     driverBusy: await legBrief(busy),
   };
 }
@@ -388,17 +397,28 @@ export async function lookupLoad(no: string | null | undefined, driverProfileId?
 export async function addLoad(
   input: TripInput & { loadNo?: string | null },
   actor: Actor,
-  opts: { send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; typed?: boolean; fromChat?: boolean } = {}
+  opts: { send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean; typed?: boolean; fromChat?: boolean } = {}
 ) {
   const no = cleanLoadNo(input.loadNo ?? input.invoiceNo);
   if (!no && !opts.typed) throw new TripError("Enter the Load # — it's how the load is tracked");
   const load = no ? await findLoadByNo(no) : null;
-  const legs = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
-  const prev = legs[legs.length - 1] || null;
-  const prevOpen = !!prev && OPEN_LEG.includes(prev.status);
+  const all = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
 
   // Who gets it (the truck's driver when only a truck is given)
   const driverId = input.driverProfileId || (input.truckNumber ? (await driverOfTruck(input.truckNumber.trim()))?.id : null) || null;
+
+  // The same Load # is already lined up (saved, not sent): this copy replaces it — asked first, with
+  // the driver's current load in the same question (end it & send, or line up after it)
+  const last = all[all.length - 1] || null;
+  const linedUp = last && NOT_SENT.includes(last.status) ? last : null;
+  if (linedUp && !opts.replace) {
+    const l = await legBrief(linedUp);
+    const current = opts.send ? await legBrief(await driverCurrent(driverId, load?.id)) : null;
+    throw new NeedsAnswer("replaceLinedUp", { linedUp: l, current }, `Load ${no} is already lined up${l?.driverName ? ` for ${l.driverName}` : ""} (not sent yet)`);
+  }
+  const legs = linedUp ? all.slice(0, -1) : all;
+  const prev = legs[legs.length - 1] || null;
+  const prevOpen = !!prev && OPEN_LEG.includes(prev.status);
 
   // Ask first — nothing is ended without dispatch saying so
   if (opts.send && prevOpen && !opts.endPrevious) {
@@ -411,7 +431,13 @@ export async function addLoad(
     throw new NeedsAnswer("driverBusy", { current: b }, `${b?.driverName || "The driver"} is on load #${b?.tripNo} (${b?.status})`);
   }
 
-  // Answers given: end what dispatch said to end
+  // Answers given: the old lined-up copy goes (kept, cancelled, for the record) …
+  if (linedUp) {
+    await linedUp.update({ status: "cancelled", queue_pos: null, auto_send: false });
+    await record(linedUp, { type: "status", from: linedUp.status, to: "cancelled", actor, note: `Replaced — Load ${no} sent again by ${actor.name || "dispatch"}` });
+    announce(linedUp.id);
+  }
+  // … and end what dispatch said to end
   if (prevOpen && opts.endPrevious) await endLegNow(prev!.id, actor, { handover: true, sendNext: !opts.send || prev!.driver_profile_id !== driverId });
   if (busy && opts.endDriverCurrent) await endLegNow(busy.id, actor, { sendNext: false });
 
@@ -443,9 +469,9 @@ export async function addLoad(
   try {
     trip = await createTrip(leg, actor, {
       send: false,
-      // Sent right away → the full load goes to the chat; lined up → "Up next" message
+      // Sent right away → the full load goes to the chat; lined up → nothing to the driver yet
       quiet: !!opts.typed || (!!opts.send && (!busy || !!opts.endDriverCurrent)),
-      leg: { loadId: target.id, legNo: (legs[legs.length - 1]?.leg_no || 0) + 1, loadNo: target.load_no },
+      leg: { loadId: target.id, legNo: linedUp ? linedUp.leg_no : (legs[legs.length - 1]?.leg_no || 0) + 1, loadNo: target.load_no },
     });
   } catch (err) {
     if (!load) await target.destroy();
@@ -465,6 +491,43 @@ export async function addLoad(
 }
 
 
+/**
+ * A load pasted in a driver's chat box: the chat box sends it here instead of as a chat message, so
+ * nothing reaches the driver until it's really sent. Same questions as Add load (NeedsAnswer → 409);
+ * sent → the standard load message; lined up → nothing to the driver yet.
+ */
+export async function loadFromText(
+  text: string,
+  driverProfileId: string | null,
+  actor: Actor,
+  answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } = {},
+  channelId: string | null = null
+) {
+  if (!driverProfileId) throw new TripError("Open a driver's chat first");
+  const parsed = parseLoad(text);
+  if (!parsed) throw new TripError("Couldn't read a pickup / delivery address from that text — use Add load", 422);
+  if (!parsed.loadNo) throw new TripError('Add a line "LOAD # 1234" — the Load # is required', 422);
+  const data = await addLoad(
+    {
+      loadNo: parsed.loadNo,
+      driverProfileId,
+      channelId,
+      truckNumber: parsed.truck,
+      teamNames: parsed.team,
+      trailerNumbers: parsed.trailers,
+      temperature: parsed.temperature,
+      loadedTrailer: parsed.loadedTrailer,
+      stops: parsed.stops,
+      needsReview: parsed.needsReview,
+      reviewNotes: parsed.reasons,
+      rawText: text,
+    },
+    actor,
+    { send: true, fromChat: true, ...answers }
+  );
+  return { data, loadNo: parsed.loadNo };
+}
+
 // ---------- a load pasted / typed straight into a driver's chat ----------
 //
 // Treated like the form's Send now: Load # required (same number = next leg), the driver gets the
@@ -473,14 +536,14 @@ export async function addLoad(
 
 const pendingTyped = new Map<
   string,
-  { input: TripInput & { loadNo?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean } }
+  { input: TripInput & { loadNo?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } }
 >();
 const PENDING_MS = 30 * 60_000;
 
 export type TypedLoadOutcome =
   | { kind: "sent"; loadId: number; loadNo: string | null; tripNo: string | null; legNo: number }
   | { kind: "noLoadNo" }
-  | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy"; info: Record<string, any>; loadNo: string | null; message: string };
+  | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy" | "replaceLinedUp"; info: Record<string, any>; loadNo: string | null; message: string };
 
 export async function loadFromChat(input: TripInput & { loadNo?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
@@ -496,7 +559,7 @@ export async function loadFromChat(input: TripInput & { loadNo?: string | null }
 }
 
 /** Dispatch answered the question about a typed load (End & send / Line up). */
-export async function answerTypedLoad(id: string, answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }, actor: Actor): Promise<TypedLoadOutcome> {
+export async function answerTypedLoad(id: string, answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }, actor: Actor): Promise<TypedLoadOutcome> {
   const p = pendingTyped.get(id);
   if (!p || Date.now() - p.at > PENDING_MS) throw new TripError("That question expired — add the load from the Loads screen", 410);
   // Answers add up (end the previous leg, then: the driver is busy too)

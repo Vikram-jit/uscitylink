@@ -33,6 +33,7 @@ import TemplateDialog from '../template/TemplateDialog';
 import ReactPlayer from 'react-player';
 import MediaComponent from '@/components/messages/MediaComment';
 import { apiSlice } from '@/redux/apiSlice';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -101,6 +102,10 @@ const MessageForm: React.FC = ({}) => {
     }, [selectedTemplate]);
   
   const handleSend = async () => {
+    if (loadNoMissing(message)) {
+      toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
+      return;
+    }
       
     if (media) {
       const extension = media.name?.split('.')[media.name?.split('.').length - 1];

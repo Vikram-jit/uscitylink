@@ -109,7 +109,7 @@ export const STOP_COLOR: Record<StopType, string> = {
 // ---------- availability ----------
 
 const refText = (leg: LegRef | null) =>
-  leg ? `${leg.tripNo || `trip ${leg.tripId}`}${leg.invoiceNo ? ` · inv ${leg.invoiceNo}` : ''}` : '';
+  leg ? `${leg.tripNo || `trip ${leg.tripId}`}${leg.invoiceNo ? ` · load ${leg.invoiceNo}` : ''}` : '';
 const since = (iso?: string | null) => (iso ? minutesText((Date.now() - new Date(iso).getTime()) / 60000) : '');
 
 export function truckState(

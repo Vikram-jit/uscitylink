@@ -28,6 +28,8 @@ export interface LegSummary {
   last: StopBrief | null;
   /** When it should be done: the ETA at Rolling, else the last appointment */
   finishAt: string | null;
+  /** When the load was added */
+  createdAt: string | null;
 }
 interface StopBrief {
   type: string;
@@ -139,6 +141,7 @@ async function summaries(legs: ChatTrip[]): Promise<Map<number, LegSummary>> {
           first: brief(stops[0]),
           last: brief(last),
           finishAt: finish ? new Date(finish).toISOString() : null,
+          createdAt: l.created_at ? new Date(l.created_at).toISOString() : null,
         },
       ];
     })

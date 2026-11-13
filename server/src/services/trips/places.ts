@@ -83,6 +83,29 @@ export async function placeStop(placeId: string, session?: string): Promise<Plac
   return stopFromPlace(json.result);
 }
 
+const geocoded = new Map<string, { lat: number; lng: number } | null>();
+
+/** A stop's address → its point on the map (Google Geocoding), remembered per address. */
+export async function geocodeStop(stop: { name?: string | null; street?: string | null; city?: string | null; state?: string | null; zip?: string | null }): Promise<{ lat: number; lng: number } | null> {
+  const address = [stop.street, stop.city, [stop.state, stop.zip].filter(Boolean).join(" ")].filter((x) => x && String(x).trim()).join(", ");
+  if (!stop.city && !stop.zip) return null;
+  if (geocoded.has(address)) return geocoded.get(address)!;
+  if (!KEY()) return null;
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", address);
+  url.searchParams.set("components", "country:US");
+  url.searchParams.set("key", KEY());
+  try {
+    const json: any = await (await fetch(url)).json();
+    const loc = json.status === "OK" ? json.results?.[0]?.geometry?.location : null;
+    const point = loc && Number.isFinite(Number(loc.lat)) ? { lat: Number(loc.lat), lng: Number(loc.lng) } : null;
+    if (json.status === "OK" || json.status === "ZERO_RESULTS") geocoded.set(address, point);
+    return point;
+  } catch {
+    return null;
+  }
+}
+
 /** A point (the truck's GPS) → the nearest address as a stop. Google Geocoding; null when it can't. */
 export async function placeAt(lat: number, lng: number): Promise<PlaceStop | null> {
   if (!KEY()) return null;

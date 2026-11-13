@@ -23,7 +23,7 @@ import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripStop } from "../../src/model
 import { act } from "../../src/services/trips/tripService";
 import { addLoad, getLoad } from "../../src/services/trips/loadService";
 import { endLegNow } from "../../src/services/trips/loadControl";
-import { trackingByCode, trackingView } from "../../src/services/trips/publicTracking";
+import { allowLookup, MAX_TRIES, trackingByCode, trackingView } from "../../src/services/trips/publicTracking";
 
 const local = (h?: string) => !h || /^(localhost|127\.0\.0\.1)$/.test(h);
 if (!local(process.env.DB_PRIMARY_HOST) || !local(process.env.DB_SECONDARY_HOST)) {
@@ -91,6 +91,21 @@ MessageStaff.associate({ UserProfile });
       const byCode: any = await trackingByCode(` ${code.toLowerCase()} `);
       assert.equal(byCode.loadNo, NO);
       await assert.rejects(trackingByCode("ZZZZZZ"), /No load with that tracking code/);
+      // The load number works as the code too (zeros don't matter), and so does the old random code
+      assert.equal(((await trackingByCode(NO)) as any).loadNo, NO);
+      assert.equal(((await trackingByCode(` ${NO.toLowerCase()} `)) as any).loadNo, NO);
+      assert.equal(((await trackingByCode(code)) as any).loadNo, NO);
+      const numeric = String(Date.now() % 1000000).padStart(6, "8");
+      const nr = await addLoad({ loadNo: `00${numeric}`, driverProfileId: driver.id, stops: [{ type: "pickup", city: "FRESNO", state: "CA" }, { type: "drop", city: "FREMONT", state: "CA" }] }, dispatcher, { send: false });
+      loadIds.push(nr.load.id);
+      assert.equal(((await trackingByCode(`00${numeric}`)) as any).loadNo, `00${numeric}`, "the number as staff typed it");
+      await assert.rejects(trackingByCode(numeric), /No load with that tracking code/);
+      await assert.rejects(trackingByCode("12"), /No load with that tracking code/);
+      // Guessing is limited: 30 tries per 10 minutes from one device
+      for (let i = 0; i < MAX_TRIES; i++) assert.equal(allowLookup("1.2.3.4", 1_000), true);
+      assert.equal(allowLookup("1.2.3.4", 1_000), false);
+      assert.equal(allowLookup("1.2.3.4", 1_000 + 11 * 60_000), true, "allowed again later");
+      assert.equal(allowLookup("5.6.7.8", 1_000), true, "other devices are not affected");
     });
 
     await test("the page: load #, steps, stops with appointments, plain activity — no names or notes", async () => {

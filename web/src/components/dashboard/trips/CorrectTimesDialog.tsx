@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 
 import { Trip, useCorrectLegTimesMutation, useSetLegMilesMutation } from '@/redux/TripApiSlice';
 
-import { STOP_LABEL } from './tripFormat';
+import { milesSourceLabel, STOP_LABEL } from './tripFormat';
 
 // Fix the times of a leg (the driver tapped late, forgot, or came back online later) and its miles.
 // Every change needs a reason and is kept with the old value; changing start / end re-reads the miles
@@ -149,7 +149,7 @@ export function MilesDialog({ open, onClose, loadId, leg }: { open: boolean; onC
       <DialogContent dividers>
         <Stack spacing={2}>
           <Alert severity="info" icon={false}>
-            Now: <b>{leg?.total_mileage ? `${Number(leg.total_mileage)} mi` : 'none'}</b> {leg?.miles_source === 'manual' ? '(typed)' : leg?.total_mileage ? '(Samsara)' : ''}
+            Now: <b>{leg?.total_mileage ? `${Number(leg.total_mileage)} mi` : 'none'}</b> {leg?.total_mileage ? `(${milesSourceLabel(leg.miles_source)})` : leg?.miles_note || ''}
           </Alert>
           <TextField size="small" type="number" label="Miles" value={miles} onChange={(e) => setMiles(e.target.value)} inputProps={{ min: 0, step: 0.1 }} />
           <TextField size="small" label="Why (kept on the record)" placeholder="Samsara offline — odometer photo" value={note} onChange={(e) => setNote(e.target.value)} />

@@ -54,17 +54,17 @@ function Punctuality({ late }: { late: number | null }) {
 
 function Stat({ icon, label, value, caption, children }: { icon: React.ReactNode; label: string; value: string; caption?: string; children?: React.ReactNode }) {
   return (
-    <Box sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider', minWidth: 0 }}>
-      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ color: 'text.secondary' }}>
+    <Box sx={{ p: 1.75, borderRadius: 2.5, border: 1, borderColor: 'divider', bgcolor: 'action.hover', minWidth: 0 }}>
+      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ color: 'text.secondary', mb: 0.25 }}>
         {icon}
         <Typography variant="caption">{label}</Typography>
       </Stack>
-      <Typography variant="subtitle1" fontWeight={700} noWrap>
+      <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.3, wordBreak: 'break-word' }}>
         {value}
       </Typography>
       {children}
       {caption && (
-        <Typography variant="caption" color="text.secondary" component="div" noWrap title={caption}>
+        <Typography variant="caption" color="text.secondary" component="div" title={caption} sx={{ mt: 0.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {caption}
         </Typography>
       )}
@@ -93,7 +93,7 @@ export function EtaBreakdown({ plan, team }: { plan: EtaPlan; team: boolean }): 
   const truckPace = plan.drivingMinutes > plan.googleMinutes + 5;
 
   return (
-    <Box data-testid="etaBreakdown" sx={{ p: 1.5, borderRadius: 2, border: 1, borderColor: 'divider' }}>
+    <Box data-testid="etaBreakdown" sx={{ p: 2, borderRadius: 2.5, border: 1, borderColor: 'divider', bgcolor: 'action.hover' }}>
       <Stack direction="row" alignItems="center" spacing={1}>
         <Typography variant="subtitle2" sx={{ flexGrow: 1 }}>
           How the ETA is worked out
@@ -222,7 +222,7 @@ export function TripLivePanel({ tripId }: { tripId: number }): React.JSX.Element
       {!t && live.truckProblem && <Alert severity="info">{live.truckProblem}</Alert>}
       {live.routeProblem && <Alert severity="warning">{live.routeProblem}</Alert>}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1.25 }}>
         <Stat icon={<Speed fontSize="small" />} label="Truck" value={state.value} caption={state.caption} />
         <Stat
           icon={<LocalGasStation fontSize="small" />}

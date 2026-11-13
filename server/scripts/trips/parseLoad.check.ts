@@ -194,6 +194,29 @@ test("ordinary chat lines are not loads", () => {
   assert.equal(parseLoad(""), null);
 });
 
+test("any message with an address and a pickup / delivery / drop word is a load (needs its Load #)", () => {
+  const waco =
+    "AFTER GETTING EMPTY, GO TO WACO, TX AND PICKUP EMPTY TRAILER# 13065 AND DROP IT TO NEARBY THERMO KING. \n\nADDRESS FOR WACO, TX\n\nWACO PROCESSING\n301 AVIATION PARKWAY\nWACO, TX 76705\n\n\nTRAILER# 13065\n\nTHERMO KING ADDRESS : \n\nConvoy Servicing - Thermo King of Temple\n575 Northpoint Dr, \nTemple, TX, 76501";
+  assert.equal(looksLikeLoad(waco), true);
+  // both addresses are read: Waco is the pickup, Thermo King (written "Temple, TX, 76501") the drop
+  const w = must(waco);
+  assert.deepEqual(
+    w.stops.map((s) => [s.type, s.name, s.street, s.city, s.state, s.zip]),
+    [
+      ["pickup", "WACO PROCESSING", "301 AVIATION PARKWAY", "WACO", "TX", "76705"],
+      ["drop", "Convoy Servicing - Thermo King of Temple", "575 Northpoint Dr", "Temple", "TX", "76501"],
+    ]
+  );
+  assert.deepEqual(w.trailers, ["13065"]);
+  assert.equal(looksLikeLoad("pickup at Walmart Fresno, CA tomorrow 5am then deliver to Reno, NV"), true);
+  assert.equal(looksLikeLoad("Drop the trailer at 575 Northpoint Dr"), true);
+  assert.equal(looksLikeLoad("LOAD # 1011\n" + waco), true);
+  // chat without an address is never a load
+  assert.equal(looksLikeLoad("Did you deliver yet?"), false);
+  assert.equal(looksLikeLoad("Delivered, OK thanks"), false);
+  assert.equal(looksLikeLoad("drop the trailer at the yard and go home"), false);
+});
+
 test("12 AM / 12 PM and local time zones", () => {
   const l = must("PICK #\nA\n1 ST\nRENO, NV 89501\n01/02/2026 12:05AM\n\nDROP #\nB\n2 ST\nBOISE, ID 83702\n01/02/2026 12:30PM");
   assert.deepEqual(l.stops.map((s) => s.appointment), ["2026-01-02T00:05", "2026-01-02T12:30"]);

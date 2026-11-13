@@ -66,6 +66,8 @@ import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
 import { generateTempId } from '@/components/messages/MessageInput';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
+import { toast } from 'react-toastify';
 
 // Styled Components
 const MessagesContainer = styled(Box)({
@@ -439,6 +441,10 @@ const ChatInterface = ({ type }: { type: string }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
+    if (loadNoMissing(newMessage)) {
+      toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
+      return;
+    }
 
     try {
       // userId,groupId,body,direction,url

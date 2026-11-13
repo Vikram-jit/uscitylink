@@ -46,10 +46,10 @@ void main() {
       asked = code;
       return live;
     });
-    await tester.enterText(find.byKey(const Key('trackCodeInput')), 'k7m2qx');
+    await tester.enterText(find.byKey(const Key('trackCodeInput')), '0056033');
     await tester.tap(find.byKey(const Key('trackButton')));
     await tester.pumpAndSettle();
-    expect(asked, 'K7M2QX', reason: 'sent in capitals');
+    expect(asked, '0056033', reason: 'sent exactly as typed');
     expect(find.text('LOAD 1011'), findsOneWidget);
     expect(find.textContaining('Arriving'), findsOneWidget);
     expect(find.text('Running 25 min late'), findsOneWidget);
@@ -69,21 +69,21 @@ void main() {
           'status': true,
           'data': {'expired': true, 'loadNo': '1011', 'status': 'completed', 'deliveredAt': '2026-11-12T18:20:00.000Z'},
         });
-    await tester.enterText(find.byKey(const Key('trackCodeInput')), 'K7M2QX');
+    await tester.enterText(find.byKey(const Key('trackCodeInput')), '56033');
     await tester.tap(find.byKey(const Key('trackButton')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('trackExpired')), findsOneWidget);
     expect(find.text('Load 1011 is completed'), findsOneWidget);
-    expect(find.textContaining('This tracking code has expired'), findsOneWidget);
+    expect(find.textContaining('This tracking has expired'), findsOneWidget);
   });
 
   testWidgets('a wrong code says so; a too-short one asks for the code', (tester) async {
     await open(tester, (_) => {'status': false, 'message': 'No load found with that tracking code'});
-    await tester.enterText(find.byKey(const Key('trackCodeInput')), 'AB');
+    await tester.enterText(find.byKey(const Key('trackCodeInput')), '12');
     await tester.tap(find.byKey(const Key('trackButton')));
     await tester.pump();
-    expect(find.textContaining('Enter the tracking code'), findsOneWidget);
-    await tester.enterText(find.byKey(const Key('trackCodeInput')), 'ZZZZZZ');
+    expect(find.textContaining('type your load number first'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('trackCodeInput')), '99999');
     await tester.tap(find.byKey(const Key('trackButton')));
     await tester.pumpAndSettle();
     expect(find.text('No load found with that tracking code'), findsOneWidget);

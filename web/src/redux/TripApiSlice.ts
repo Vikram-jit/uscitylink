@@ -98,7 +98,8 @@ export interface Trip {
   completed_by_name: string | null;
   total_mileage: string | null;
   /** samsara (odometer) | manual (typed by dispatch) */
-  miles_source: 'samsara' | 'manual' | null;
+  /** samsara: odometer at the tapped times · gps: times read from the truck's GPS · manual: typed */
+  miles_source: 'samsara' | 'gps' | 'manual' | null;
   miles_note: string | null;
   /** Why this leg was cut and handed to another driver / truck */
   handover_reason: string | null;
@@ -206,7 +207,7 @@ export interface LoadSegment {
   endedAt: string | null;
   minutes: number | null;
   miles: number | null;
-  milesSource: 'samsara' | 'manual' | null;
+  milesSource: 'samsara' | 'gps' | 'manual' | null;
   milesNote: string | null;
   handoverReason: string | null;
 }
@@ -245,6 +246,8 @@ export interface LoadLookup {
   load: { id: number; loadNo: string | null; invoiceNo: string | null; type: LoadType; status: LoadStatus; legs: number } | null;
   nextLegNo: number;
   prev: LegBrief | null;
+  /** The same Load # already lined up (saved, not sent): saving / sending again replaces it */
+  linedUp?: LegBrief | null;
   driverBusy: LegBrief | null;
 }
 
@@ -367,6 +370,8 @@ export interface LineupLeg {
   first: LineupStop | null;
   last: LineupStop | null;
   finishAt: string | null;
+  /** When the load was added */
+  createdAt?: string | null;
 }
 export interface LineupItem extends LineupLeg {
   position: number;
@@ -562,10 +567,10 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['chatTrips'],
     }),
     // Simple loads: the Load # decides new load or next leg. May answer 409 with a question
-    // ({ needs: 'endPrevious' | 'driverBusy', info }) — the form asks dispatch and sends again.
+    // ({ needs: 'endPrevious' | 'driverBusy' | 'replaceLinedUp', info }) — the form asks dispatch and sends again.
     addSimpleLoad: builder.mutation<
       Res<LoadDetail>,
-      TripInput & { loadNo: string; send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }
+      TripInput & { loadNo: string; send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }
     >({
       query: (body) => ({ url: 'loads', method: 'POST', body }),
       invalidatesTags: ['chatTrips'],
@@ -574,7 +579,15 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       query: ({ no, driver }) => ({ url: 'loads/lookup', method: 'GET', params: { no, ...(driver ? { driver } : {}) } }),
       keepUnusedDataFor: 0,
     }),
-    answerTypedLoad: builder.mutation<Res<any>, { id: string; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean }>({
+    /** A load pasted in a driver's chat box: sent as a load (never as a chat message) — may answer 409 with a question */
+    sendLoadText: builder.mutation<
+      Res<LoadDetail>,
+      { text: string; driverProfileId: string; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }
+    >({
+      query: (body) => ({ url: 'loads/from-text', method: 'POST', body }),
+      invalidatesTags: ['chatTrips'],
+    }),
+    answerTypedLoad: builder.mutation<Res<any>, { id: string; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }>({
       query: ({ id, ...body }) => ({ url: `loads/typed/${id}/answer`, method: 'POST', body }),
       invalidatesTags: ['chatTrips'],
     }),
@@ -610,6 +623,11 @@ export const TripApiSlice = apiSlice.injectEndpoints({
     }),
     setLegMiles: builder.mutation<Res<LoadDetail>, { id: number; legId: number; miles: number | null; note?: string | null }>({
       query: ({ id, legId, ...body }) => ({ url: `loads/${id}/legs/${legId}/miles`, method: 'PATCH', body }),
+      invalidatesTags: ['chatTrips'],
+    }),
+    /** Read the leg's times / miles from the truck's GPS again */
+    matchLegGps: builder.mutation<Res<LoadDetail>, { id: number; legId: number }>({
+      query: ({ id, legId }) => ({ url: `loads/${id}/legs/${legId}/match-gps`, method: 'POST' }),
       invalidatesTags: ['chatTrips'],
     }),
     getMilesReport: builder.query<
@@ -722,9 +740,11 @@ export const {
   useLazyLookupLoadNoQuery,
   useEndLoadLegMutation,
   useAnswerTypedLoadMutation,
+  useSendLoadTextMutation,
   useChangeLoadTypeMutation,
   useCorrectLegTimesMutation,
   useSetLegMilesMutation,
+  useMatchLegGpsMutation,
   useGetMilesReportQuery,
   useReorderDriverLineupMutation,
   useRemoveFromDriverLineupMutation,

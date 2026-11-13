@@ -12,10 +12,14 @@ class TripStop {
     this.appointmentLocal,
     this.arrivedAt,
     this.departedAt,
+    this.miles,
   });
 
   final int id;
   final int seq;
+
+  /// Miles driven to this stop (from the stop before) — shown once the load is delivered
+  final double? miles;
 
   /// pickup | drop | switch (meet another driver) | yard (drop the trailer at our yard)
   final String type;
@@ -50,6 +54,8 @@ class TripStop {
     return '${d[1]}/${d[2]} ${h.toString().padLeft(2, '0')}:${t[1].toString().padLeft(2, '0')} ${t[0] >= 12 ? 'PM' : 'AM'}';
   }
 
+  static double? _num(dynamic v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
+
   static DateTime? _date(dynamic v) => v == null ? null : DateTime.tryParse('$v')?.toLocal();
 
   factory TripStop.fromJson(Map<String, dynamic> j) => TripStop(
@@ -64,6 +70,7 @@ class TripStop {
         appointmentLocal: j['appointment_local'] as String?,
         arrivedAt: _date(j['arrived_at']),
         departedAt: _date(j['departed_at']),
+        miles: _num(j['mileage']),
       );
 }
 
@@ -95,9 +102,22 @@ class CurrentTrip {
     this.startedAt,
     this.endedAt,
     this.completedAt,
+    this.createdAt,
     this.position,
     this.waitsFor,
+    this.loadNo,
+    this.miles,
   });
+
+  /// The Load # (for the paperwork)
+  final String? loadNo;
+
+  /// Miles of this load — sent once it's delivered
+  final double? miles;
+
+  /// Driving time from Rolling to Delivered
+  Duration? get drivingTime => startedAt != null && endedAt != null && endedAt!.isAfter(startedAt!) ? endedAt!.difference(startedAt!) : null;
+  bool get isDelivered => const ['ended', 'paperwork', 'completed', 'routed'].contains(status);
 
   final int id;
   final String tripNo;
@@ -116,6 +136,9 @@ class CurrentTrip {
   final DateTime? startedAt;
   final DateTime? endedAt;
   final DateTime? completedAt;
+
+  /// When dispatch added the load (shown in the Loads list)
+  final DateTime? createdAt;
 
   /// Lined up, not sent yet ("Up next"): its place in the driver's lineup, and what it waits for
   final int? position;
@@ -169,8 +192,11 @@ class CurrentTrip {
       startedAt: TripStop._date(t['started_at']),
       endedAt: TripStop._date(t['ended_at']),
       completedAt: TripStop._date(t['completed_at']),
+      createdAt: TripStop._date(t['created_at']),
       position: (t['position'] as num?)?.toInt(),
       waitsFor: t['waits_for'] as String?,
+      loadNo: (t['invoice_no'] ?? '').toString().isEmpty ? null : '${t['invoice_no']}',
+      miles: TripStop._num(t['total_mileage']),
     );
   }
 }

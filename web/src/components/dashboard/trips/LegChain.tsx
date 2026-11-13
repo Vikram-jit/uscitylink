@@ -33,7 +33,7 @@ export function LegChain({ legs, names, dense }: { legs?: Trip[]; names: Record<
         return (
           <React.Fragment key={leg.id}>
             {i > 0 && <ChevronRight fontSize="small" sx={{ color: 'text.disabled' }} />}
-            <Tooltip title={`Leg ${leg.leg_no} · ${leg.trip_no || ''} · ${s.label}${leg.trailer_numbers ? ` · trailer ${leg.trailer_numbers}` : ''}`}>
+            <Tooltip title={`Leg ${leg.leg_no} · ${leg.trip_no} · ${s.label}${leg.trailer_numbers ? ` · trailer ${leg.trailer_numbers}` : ''}`}>
               <Box
                 sx={{
                   display: 'inline-flex',

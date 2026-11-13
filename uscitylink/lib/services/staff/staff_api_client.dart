@@ -59,6 +59,9 @@ class StaffApiClient {
   Future<Map<String, dynamic>> put(String path, [Object? body]) =>
       _send(() async => http.put(_uri(path), headers: await _headers(), body: jsonEncode(body ?? {})));
 
+  Future<Map<String, dynamic>> patch(String path, [Object? body]) =>
+      _send(() async => http.patch(_uri(path), headers: await _headers(), body: jsonEncode(body ?? {})));
+
   Future<Map<String, dynamic>> delete(String path) =>
       _send(() async => http.delete(_uri(path), headers: await _headers()));
 

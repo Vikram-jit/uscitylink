@@ -1,3 +1,4 @@
+import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
 
 import 'package:adaptive_action_sheet/adaptive_action_sheet.dart';
@@ -135,6 +136,7 @@ class _StaffGroupChatUiState extends State<StaffGroupChatUi>
   // Function to send a new message
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
+      if (blockLoadWithoutNo(_controller)) return;
       socketService.addUserToGroup(widget.channelId, widget.groupId);
       socketService.updateCountGroup(widget.channelId);
       socketService.sendGroupMessage(widget.groupId, widget.channelId,

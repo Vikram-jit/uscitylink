@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 
 import { useEndLoadLegMutation, useReleaseLoadLegMutation } from '@/redux/TripApiSlice';
 
+
 // The load already changed hands but the driver before didn't tap it: dispatch marks the handover
 // (time, default now) and the next leg goes to its driver — it becomes their active trip.
 

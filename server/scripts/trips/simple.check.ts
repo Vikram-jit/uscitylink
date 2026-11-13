@@ -22,10 +22,11 @@ import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripStop } from "../../src/models/ChatTrip";
 import { act, currentTripFor, tripsForDriver } from "../../src/services/trips/tripService";
-import { addLoad, answerTypedLoad, getLoad, loadFromChat, lookupLoad, NeedsAnswer } from "../../src/services/trips/loadService";
+import { addLoad, answerTypedLoad, getLoad, loadFromChat, loadFromText, lookupLoad, NeedsAnswer } from "../../src/services/trips/loadService";
 import { endLegNow, setMiles } from "../../src/services/trips/loadControl";
 import { milesReport } from "../../src/services/trips/milesReport";
 import { parseLoad } from "../../src/services/trips/parseLoad";
+import { driverPayload } from "../../src/services/trips/driverView";
 import { registerTripHooks } from "../../src/services/trips/tripAssistant";
 
 const local = (h?: string) => !h || /^(localhost|127\.0\.0\.1)$/.test(h);
@@ -62,7 +63,7 @@ const AMB_DEL = [
   { type: "pickup" as const, name: "ZZ DROP AMBALA", city: "AMBALA", state: "HR" },
   { type: "drop" as const, name: "ZZ DELIVERY DELHI", city: "DELHI", state: "DL" },
 ];
-const msgs = async (id: string) => (await Message.findAll({ where: { userProfileId: id }, order: [["createdAt", "DESC"]], limit: 12 })).map((m) => String(m.body));
+const msgs = async (id: string) => (await Message.findAll({ where: { userProfileId: id }, order: [["createdAt", "DESC"]], limit: 60 })).map((m) => String(m.body));
 const asks = async (p: Promise<any>, needs: string) => {
   try {
     await p;
@@ -109,6 +110,18 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(parseLoad("LOAD # 1011\nTRUCK # 101\nPICK\nCOLD LINK\n1 MAIN ST\nFRESNO, CA 93701\nDROP\nSYSCO\n2 MAIN ST\nFREMONT, CA 94538")?.loadNo, "1011");
       assert.equal(parseLoad("INVOICE #: 55-AB\nPICK\nCOLD LINK\n1 MAIN ST\nFRESNO, CA 93701\nDROP\nSYSCO\n2 MAIN ST\nFREMONT, CA 94538")?.loadNo, "55-AB");
       assert.equal(parseLoad("LOADED TRAILER\nDROP\nSYSCO\n2 MAIN ST\nFREMONT, CA 94538")?.loadNo, null);
+    });
+
+    await test("the load number is kept exactly as staff typed it (zeros and all) and matched exactly", async () => {
+      const digits = String(Date.now() % 1000000).padStart(6, "7");
+      const res = await addLoad({ loadNo: `00${digits}`, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: false });
+      loadIds.add(res.load.id);
+      assert.equal(res.load.invoice_no, `00${digits}`, "saved as typed");
+      assert.equal(res.legs[0].trip_no, `00${digits}`);
+      assert.equal((await lookupLoad(`00${digits}`)).load?.id, res.load.id, "the same number finds it");
+      assert.equal((await lookupLoad(digits)).load, null, "a different number (no zeros) is a different load");
+      // Don't leave a lined-up load on driver A for the tests that follow
+      await ChatTrip.update({ status: "cancelled", queue_pos: null }, { where: { load_id: res.load.id } });
     });
 
     await test("add a direct load: Chandigarh → Ambala, driver A, truck 101, trailer 10010 — trip # is the Load #", async () => {
@@ -312,7 +325,126 @@ const asks = async (p: Promise<any>, needs: string) => {
       } as any);
       await wait(2000);
       assert.equal(await ChatTrip.count(), before, "nothing created without a Load #");
+      // …and dispatch is told in System Messages (unread), not just by a pop-up
+      const sys = await UserProfile.findOne({ include: [{ model: User, as: "user", where: { driver_number: "system001" }, required: true }] });
+      if (sys) {
+        const note = await Message.findOne({ where: { userProfileId: sys.id, body: { [Op.like]: "%Load NOT created%ZZ Simple Driver A%" } }, order: [["createdAt", "DESC"]] });
+        assert(note, "a System Message says the load was not created");
+        assert((await MessageStaff.count({ where: { messageId: note!.id, status: "un-read" } })) > 0, "unread for staff");
+        await MessageStaff.destroy({ where: { messageId: note!.id } });
+        await Message.destroy({ where: { id: note!.id } });
+      }
       assert.equal((await loadFromChat({ driverProfileId: a.id, stops: CHD_AMB }, dispatcher)).kind, "noLoadNo");
+    });
+
+    await test("same Load # already lined up: asked to replace it; Replace & send / End current & send / Replace & line up — the driver never sees the lined-up copy", async () => {
+      const no = `${NO}R`;
+      // Saved for later on driver A: lined up, nothing in A's chat
+      const before = (await msgs(a.id)).length;
+      const saved = await addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB, temperature: "34" }, dispatcher, { send: false });
+      loadIds.add(saved.load.id);
+      const old = saved.legs[0];
+      assert.equal(old.status, "scheduled");
+      assert.equal((await msgs(a.id)).length, before, "the driver is told nothing about a lined-up load");
+      // The form's note says so
+      const look = await lookupLoad(no, a.id);
+      assert.equal(look.linedUp?.tripId, old.id);
+      assert.equal(look.nextLegNo, 1, "replacing it keeps leg 1");
+      // Same Load # again → asked (send or save)
+      const q = await asks(addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: true }), "replaceLinedUp");
+      assert.equal(q.info.linedUp.tripId, old.id);
+      await asks(addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: false }), "replaceLinedUp");
+      // Replace & send: the old copy is cancelled, the new one is leg 1 with the same number, sent
+      const done = await addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB, temperature: "36" }, dispatcher, { send: true, replace: true, endDriverCurrent: true });
+      assert.equal(done.load.id, saved.load.id, "same load");
+      const live = done.legs.filter((l: any) => l.status !== "cancelled");
+      assert.equal(live.length, 1, "one leg, not two");
+      assert.equal(live[0].leg_no, 1);
+      assert.equal(live[0].trip_no, old.trip_no, "same number");
+      assert.equal(live[0].temperature, "36", "the new copy's details");
+      assert.equal(live[0].status, "planned", "sent");
+      assert.equal((await ChatTrip.findByPk(old.id))?.status, "cancelled");
+      const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: old.id, to_status: "cancelled" } });
+      assert.match(String(ev?.note), new RegExp(`Replaced — Load ${no} sent again`));
+      assert.equal((await currentTripFor(a.id))?.trip.id, live[0].id, "A's app: the new copy");
+
+      // Driver busy: the replace question carries the current load; Replace & line up → after it
+      const no2 = `${NO}R2`;
+      const s2 = await addLoad({ loadNo: no2, driverProfileId: a.id, stops: AMB_DEL }, dispatcher, { send: false });
+      loadIds.add(s2.load.id);
+      const q2 = await asks(addLoad({ loadNo: no2, driverProfileId: a.id, stops: AMB_DEL }, dispatcher, { send: true }), "replaceLinedUp");
+      assert.equal(q2.info.current?.tripId, live[0].id, "the driver's current load is in the question");
+      const lined = await addLoad({ loadNo: no2, driverProfileId: a.id, stops: AMB_DEL }, dispatcher, { send: true, replace: true, lineUp: true });
+      const l2 = lined.legs.filter((l: any) => l.status !== "cancelled");
+      assert.equal(l2.length, 1);
+      assert.equal(l2[0].status, "scheduled", "lined up after the current load");
+      assert.equal(l2[0].auto_send, true, "goes out when the current one is delivered");
+      assert.equal((await ChatTrip.findByPk(live[0].id))?.status, "planned", "current load untouched");
+      // Again, this time End current & send
+      const ended = await addLoad({ loadNo: no2, driverProfileId: a.id, stops: AMB_DEL }, dispatcher, { send: true, replace: true, endDriverCurrent: true });
+      const l3 = ended.legs.filter((l: any) => l.status !== "cancelled");
+      assert.equal(l3.length, 1);
+      assert.equal(l3[0].status, "planned", "sent");
+      assert.equal((await ChatTrip.findByPk(live[0].id))?.status, "ended", "A's current load ended");
+      assert.equal((await currentTripFor(a.id))?.trip.id, l3[0].id);
+      assert(!(await msgs(a.id)).some((m) => /lined up/i.test(m)), "nothing about lined-up loads in A's chat");
+    });
+
+    await test("a load pasted in the chat box: nothing reaches the driver until it's sent; Line up → nothing; End & send → the standard load message", async () => {
+      const no = `${NO}P`;
+      const text = `Load #: ${no}\n\nPickup#\nWayne Farms - Albertville\n700 McDonald Ave.\nALBERTVILLE, AL 35950\n\nPickup#\nSANDERSON FARMS\n320 SANDERSONS FARMS PARKWAY\nPALESTINE, TX 75801\n11/12/2026 08:00PM\n\nDrop#\nROMA SOUTHERN CALIFORNIA\n16639 East Gale Ave\nCITY OF INDUSTRY, CA 91745\n11/15/2026 07:00AM`;
+      // A is on another load
+      const cur = await addLoad({ loadNo: `${NO}P0`, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(cur.load.id);
+      const before = (await msgs(a.id)).length;
+      const q = await asks(loadFromText(text, a.id, dispatcher), "driverBusy");
+      assert.equal(q.info.current.tripId, cur.legs[0].id);
+      assert.equal((await msgs(a.id)).length, before, "asked first: nothing in the driver's chat");
+      // Line up → saved, nothing to the driver
+      const lined = await loadFromText(text, a.id, dispatcher, { lineUp: true });
+      loadIds.add(lined.data.load.id);
+      assert.equal(lined.loadNo, no);
+      const leg = lined.data.legs.find((l: any) => l.status !== "cancelled")!;
+      assert.equal(leg.status, "scheduled");
+      assert.equal(leg.stops.length, 3, "two pickups and the drop");
+      assert.equal((await msgs(a.id)).length, before, "lined up: still nothing in the driver's chat");
+      // Pasted again: already lined up → replace; End current & send → the standard load message
+      await asks(loadFromText(text, a.id, dispatcher), "replaceLinedUp");
+      const sent = await loadFromText(text, a.id, dispatcher, { replace: true, endDriverCurrent: true });
+      const live = sent.data.legs.filter((l: any) => l.status !== "cancelled");
+      assert.equal(live.length, 1);
+      assert.equal(live[0].status, "planned");
+      const chat = await msgs(a.id);
+      assert(chat.some((m) => /PICKUP\nWayne Farms - Albertville/.test(m)), "the standard load message");
+      assert(!chat.some((m) => m.startsWith("Load #:")), "the pasted text itself never went to the driver");
+      // No Load # / no address: refused, nothing sent
+      await assert.rejects(loadFromText("Pickup#\nX\n1 Main St\nRENO, NV 89501", a.id, dispatcher), /LOAD # 1234/);
+      await assert.rejects(loadFromText("LOAD # 1\nhello", a.id, dispatcher), /Couldn't read a pickup/);
+    });
+
+    await test("the driver's app gets only the driver's part: no dispatch notes / raw text / pay ids; miles once delivered", async () => {
+      const no = `${NO}V`;
+      const r = await addLoad({ loadNo: no, driverProfileId: b.id, stops: CHD_AMB, notes: "Call receiver 30 min out", reviewNotes: ["check appt"], rawText: "RAW PASTED TEXT" }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(r.load.id);
+      const legId = r.legs[0].id;
+      await ChatTrip.update({ needs_review: true, review_notes: "check appt", miles_note: "internal" } as any, { where: { id: legId } });
+      const forbidden = ["needs_review", "review_notes", "raw_text", "created_by", "created_by_name", "miles_source", "miles_note", "route_trip_no", "driver_pay_details_id", "queue_pos", "auto_send", "events", "message_id"];
+      const live = driverPayload(await currentTripFor(b.id));
+      assert.equal(live.trip.id, legId);
+      assert(live.next, "the next button is kept");
+      for (const k of forbidden) assert(!(k in live.trip), `${k} hidden`);
+      assert.equal(live.trip.notes, "Call receiver 30 min out", "driver notes kept");
+      assert.equal(live.trip.invoice_no, no, "the Load # is kept");
+      assert(!("total_mileage" in live.trip), "no miles while running");
+      // Delivered with miles: the driver sees them
+      const asB = { role: "driver" as const, id: b.id, name: b.username };
+      for (const x of ["accept", "rolling", "end"] as const) await act(legId, x, asB);
+      await setMiles(legId, 212.4, "test", dispatcher);
+      const mine = driverPayload(await tripsForDriver(b.id));
+      const done = mine.trips.find((t: any) => t.id === legId);
+      assert.equal(done.total_mileage, 212.4);
+      for (const k of forbidden) assert(!(k in done), `${k} hidden in history`);
+      assert(done.stops.every((st: any) => !("ref" in st)), "stops cleaned");
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { [Op.or]: [{ load_id: [...loadIds] }, { driver_profile_id: people.map((p) => p.id) }] } });

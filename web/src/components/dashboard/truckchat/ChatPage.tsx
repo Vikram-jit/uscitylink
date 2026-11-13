@@ -22,6 +22,8 @@ import { MediaGallery } from '../truckgroup/view';
 import { ChatView } from './ChatView';
 import { Chat, Message, User } from './types';
 import { generateTempId } from '@/components/messages/MessageInput';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
+import { toast } from 'react-toastify';
 
 const ChatPage = () => {
   const [search, setSearch] = React.useState<string>('');
@@ -318,6 +320,10 @@ const ChatPage = () => {
   }
 
   const handleSendMessage = (message: string) => {
+    if (loadNoMissing(message)) {
+      toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
+      return;
+    }
     try {
       // userId,groupId,body,direction,url
       if (!currentChatId) {

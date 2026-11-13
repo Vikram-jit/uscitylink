@@ -27,8 +27,6 @@ class TripService extends GetxService {
   int _historyPage = 0;
   int _historyTotal = 0;
   bool get hasMoreHistory => history.length < _historyTotal;
-  /// Loads lined up for this driver, not sent yet — read-only "Up next" (GET trips/upcoming)
-  final upcoming = <CurrentTrip>[].obs;
   final suggestion = Rxn<TripSuggestion>();
   final busy = false.obs;
   final pendingCount = 0.obs;
@@ -52,7 +50,6 @@ class TripService extends GetxService {
     }
     unawaited(_loadPendingCount());
     unawaited(refresh());
-    unawaited(loadUpcoming());
   }
 
   void _bind(io.Socket socket) {
@@ -60,7 +57,6 @@ class TripService extends GetxService {
     _bound = socket;
     socket.on('trip:updated', (_) {
       refresh();
-      loadUpcoming();
       if (_historyPage > 0) loadHistory(reset: true);
     });
     socket.on('trip:suggest', (d) {
@@ -98,13 +94,6 @@ class TripService extends GetxService {
     } finally {
       historyLoading.value = false;
     }
-  }
-
-  Future<void> loadUpcoming() async {
-    final res = await _rest('GET', 'trips/upcoming');
-    final data = res.body?['data'];
-    if (!res.ok || data is! Map) return;
-    upcoming.assignAll((data['trips'] as List? ?? []).map((t) => CurrentTrip.fromTrip(Map<String, dynamic>.from(t))));
   }
 
   Future<void> refresh() async {

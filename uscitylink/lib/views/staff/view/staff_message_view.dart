@@ -1,3 +1,5 @@
+import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
+import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:uscitylink/services/call/call_service.dart';
@@ -128,6 +130,17 @@ class _StaffMessageViewState extends State<StaffMessageView>
   // Function to send a message
   void _sendMessage() {
     if (_staffchatController.messageController.text.isNotEmpty) {
+      // Looks like a load but has no Load # line: don't send it
+      if (blockLoadWithoutNo(_staffchatController.messageController)) return;
+      // A load with its Load #: sent as a load (asked first when needed), never as a chat message
+      final text = _staffchatController.messageController.text;
+      if (ChatLoadSender.isLoad(text)) {
+        final driverId = _staffchatController.userId.value;
+        ChatLoadSender.send(context, text, driverId).then((done) {
+          if (done && _staffchatController.messageController.text == text) _staffchatController.messageController.clear();
+        });
+        return;
+      }
       socketService
           .updateStaffActiveUserChat(_staffchatController.userId.value);
       socketService.sendMessageToUser(
