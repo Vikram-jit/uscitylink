@@ -9,6 +9,8 @@ import 'package:uscitylink/utils/load_text.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_add_load_view.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_load_detail_view.dart';
 import 'package:uscitylink/views/staff/widgets/delete_message_guard.dart';
+import 'package:uscitylink/views/staff/widgets/repair_load.dart';
+import 'package:uscitylink/views/staff/view/loads/staff_missed_loads_view.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_loads_view.dart';
 import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
@@ -333,6 +335,103 @@ void main() {
     expect(deleted, ['loadmsg']);
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('Add to loads / Repair: shown on load texts and the assistant\'s own load message; asks first; add = nothing sent, repair = before → after + replaced message', (tester) async {
+    const text = 'ORDER # 0056000\nTRUCK # 35865\nZZ FreshPoint\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11/16/2026 06:00AM';
+    expect(RepairLoad.canRepair(text), true);
+    expect(RepairLoad.canRepair('please call dispatch'), false);
+    expect(RepairLoad.canRepair(text, url: 'a/b.jpg'), false);
+    expect(RepairLoad.canRepair(text, automated: true), false, reason: 'an assistant line that is not a load message');
+    expect(RepairLoad.canRepair('TRIP #0056034\nTRUCK # 1\nPICKUP\nA\nWaco, TX 76701', automated: true), true);
+    expect(RepairLoad.canRepair('LOAD # 0056034\nTRUCK # 1\nDROP\nA\nWaco, TX 76701', automated: true), true);
+
+    final api = FakeApi((m, p, b) {
+      if (m == 'GET' && p == 'loads/repair/add1') return {'data': {'messageId': 'add1', 'text': text, 'mode': 'add', 'loadNo': '0056000', 'plan': false, 'load': null, 'changes': [], 'message': null, 'canApply': true}};
+      if (m == 'GET' && p == 'loads/repair/fix1') {
+        return {'data': {
+          'messageId': 'fix1', 'text': 'TRIP #0056034', 'mode': 'repair', 'loadNo': '0056034', 'plan': false,
+          'load': {'loadId': 7, 'legId': 70, 'legNo': 1, 'tripNo': '0056034', 'loadNo': '0056034', 'status': 'planned', 'driverName': 'Terry', 'onlyLeg': true, 'canDelete': true},
+          'changes': [{'label': 'Stop 1 (FreshPoint)', 'before': 'Pickup', 'after': 'Drop'}, {'label': 'Temperature', 'before': '—', 'after': '34 CONT.'}],
+          'message': {'before': 'TRIP #0056034\nPICKUP\nFreshPoint', 'after': 'LOAD # 0056034\nTEMP # 34 CONT.\nDROP\nFreshPoint'},
+          'canApply': true,
+        }};
+      }
+      return {'message': m == 'POST' && p.endsWith('add1') ? 'Load 0056000 added to Loads — not sent to the driver' : 'Load 0056034 repaired — the message was replaced'};
+    });
+    RepairLoad.service = LoadsService(api);
+    late BuildContext ctx;
+    await tester.pumpWidget(GetMaterialApp(home: Scaffold(body: Builder(builder: (c) {
+      ctx = c;
+      return const SizedBox();
+    }))));
+
+    // Add: the Load # is read from the text; nothing is sent until confirmed
+    unawaited(RepairLoad.show(ctx, 'add1'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Add this message to Loads'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '0056000'), findsOneWidget);
+    expect(api.calls.where((c) => c.startsWith('POST')).isEmpty, true, reason: 'asked first');
+    await tester.tap(find.byKey(const Key('repairSubmit')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(api.calls.any((c) => c.startsWith('POST loads/repair/add1') && c.contains('0056000')), true);
+    expect(find.textContaining('not sent to the driver'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 2));
+
+    // Repair: before → after, the replacement text, then Replace & update
+    unawaited(RepairLoad.show(ctx, 'fix1'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Repair this load'), findsOneWidget);
+    expect(find.textContaining('Stop 1 (FreshPoint)', findRichText: true), findsOneWidget);
+    expect(find.textContaining('Pickup', findRichText: true), findsOneWidget);
+    expect(find.textContaining('Drop', findRichText: true), findsOneWidget);
+    expect(find.textContaining('WILL BE REPLACED'), findsOneWidget);
+    expect(find.textContaining('LOAD # 0056034'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('repairSubmit')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(api.calls.any((c) => c.startsWith('POST loads/repair/fix1')), true);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('Missed loads: lists not-in-Loads and fix-details rows; Add opens the confirm dialog', (tester) async {
+    final api = FakeApi((m, p, b) {
+      if (p == 'loads/missed') {
+        return {'data': [
+          {'kind': 'missing', 'messageId': 'm1', 'at': '2026-11-13T10:00:00Z', 'driverName': 'Terry', 'loadNo': '0056000', 'firstLine': 'ORDER # 0056000', 'changes': []},
+          {'kind': 'fixable', 'messageId': 'm2', 'at': '2026-11-13T11:00:00Z', 'driverName': 'Abby', 'loadNo': '0056034', 'firstLine': 'Load 0056034', 'changes': ['Stop 1: Pickup → Drop', 'Message text will be replaced']},
+        ]};
+      }
+      if (p == 'loads/repair/m1') return {'data': {'messageId': 'm1', 'text': 'ORDER # 0056000', 'mode': 'add', 'loadNo': '0056000', 'plan': true, 'load': null, 'changes': [], 'message': null, 'canApply': true}};
+      return {};
+    });
+    RepairLoad.service = LoadsService(api);
+    await tester.pumpWidget(GetMaterialApp(home: StaffMissedLoadsView(service: LoadsService(api))));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Load 0056000'), findsOneWidget);
+    expect(find.text('Not in Loads'), findsOneWidget);
+    expect(find.text('Fix details'), findsOneWidget);
+    expect(find.text('Stop 1: Pickup → Drop'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('missedOpen_m1')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Add this message to Loads'), findsOneWidget);
+    expect(find.textContaining('added as a plan'), findsOneWidget);
+  });
+
+  test('ORDER # / TRIP # / LOAD ORDER # are the Load # (so the chat box does not block them)', () {
+    const text = 'YOUR LONG FOR TOMORROW MORNING.\n\nTRUCK # 35865\n\nTEAM # ABBY + AMIT\n\nTRAILER # 107065\n\nTEMP # 34 CONT.\n\nORDER # 0056000\n\nFreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11/16/2026 06:00AM';
+    expect(looksLikeLoad(text), true);
+    expect(loadNoIn(text), '0056000');
+    expect(loadMissingNo(text), false);
+    const addr = 'PICK\nA\n1 Main St\nWaco, TX 76701\n11/16/2026 06:00AM';
+    expect(loadNoIn('LOAD ORDER # 5501\n$addr'), '5501');
+    expect(loadNoIn('TRIP # 0056034\n$addr'), '0056034');
+    expect(loadNoIn('ORD: 88\n$addr'), '88');
+    expect(loadNoIn('ORDER NO. 9-1\n$addr'), '9-1');
+    for (final no in ['PO # 5501', 'PU # 5501', 'ORDER OF ARRIVAL', 'TRIP SHEET', 'BOL # 22']) {
+      expect(loadNoIn('$no\n$addr'), null, reason: no);
+    }
   });
 
   testWidgets('add load: same Load # already lined up → note, then Replace dialog with End current & send', (tester) async {

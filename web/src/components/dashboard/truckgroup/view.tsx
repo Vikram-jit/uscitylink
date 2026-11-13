@@ -393,6 +393,10 @@ const ChatInterface = ({ type }: { type: string }) => {
     );
   useSocketEvent('update_file_upload_status_group', applyUploadStatus, type == 'group');
   useSocketEvent('new_group_message_received', (incoming: MessageModel) => handleReceiveMessage(incoming, ''), type == 'group');
+  // A message's text was replaced (Repair): show the new text without a refresh
+  useSocketEvent('message_updated', (p: { id: string; ids?: string[]; body: string }) => {
+    setMessages((prev: any[]) => prev.map((e) => (e.id === p.id || p.ids?.includes(e.id) ? { ...e, body: p.body } : e)));
+  });
   useSocketEvent('update_url_status_truck_group', applyUploadStatus, type != 'group');
   useSocketEvent('receive_message_group_truck', (incoming: MessageModel) => handleReceiveMessage(incoming, ''), type != 'group');
 

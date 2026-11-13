@@ -48,8 +48,9 @@ const DROP_LABEL = /^(?:drop|delivery|deliver|del)\s*#?\s*\d*\s*:?\s*$/i;
 const SWITCH_LABEL = /^go\s+to\b/i;
 // "#" or ":" is required after TRUCK / TRAILER / TEAM, so a company called "TEAM FOODS" stays a name
 // "LOAD # 1011", "LOAD ID: 1011", "LOAD NO 1011", "INVOICE # 1011", "INV# 1011" — never "LOADED TRAILER"
+// The Load # can be written LOAD / ORDER / TRIP / INVOICE (and LOAD ORDER): "ORDER # 0056000" is a load id
 const LOAD_FIELD =
-  /^(?:load|invoice|inv)(?:\s*(?:no\.?|id|number))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load|invoice|inv)\s+(?:no\.?|id|number)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$/i;
+  /^(?:load\s+order|load|order|ord|trip|invoice|inv)(?:\s*(?:no\.?|id|number|num))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load\s+order|load|order|ord|trip|invoice|inv)\s+(?:no\.?|id|number|num)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$/i;
 /** "TRAILER # WILL ADVISE / TBD / later" — no number yet (it comes in a later message) */
 export const TRAILER_LATER = /^(will\s+advise|w\/?a|tba|tbd|tbc|later|pending|n\/?a|none|na|-+|\?+|advise\s+later|will\s+send|will\s+update|update\s+later|coming|soon)(?=$|[\s.,!])/i;
 const FIELD = /^(?:(truck|trailer|team)\s*[#:]|(temp(?:erature)?)\b\s*[#:]?)\s*(.*)$/i;
@@ -104,8 +105,12 @@ export function looksLikeLoad(text: string): boolean {
   return LOAD_WORDS.test(text) || lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || LOAD_FIELD.test(l) || parseDateTime(l));
 }
 
-export function parseLoad(text: string): ParsedLoad | null {
-  if (!text || !looksLikeLoad(text)) return null;
+/**
+ * Read a load text. `plan: true` (the "Add to loads" button / Repair) also accepts a text with a Load # but
+ * no address at all: it comes back with no stops, as a plan to be filled in later.
+ */
+export function parseLoad(text: string, opts: { plan?: boolean } = {}): ParsedLoad | null {
+  if (!text || (!looksLikeLoad(text) && !opts.plan)) return null;
   const lines = text.split(/\r?\n/).map((l) => l.trim());
 
   const result: ParsedLoad = {
@@ -194,7 +199,15 @@ export function parseLoad(text: string): ParsedLoad | null {
     nextType = null;
   }
 
-  if (!result.stops.length) return null;
+  if (!result.stops.length) {
+    // Nothing to route, but it has a Load #: a plan-only load (saved, never sent until stops are added)
+    if (opts.plan && result.loadNo) {
+      result.needsReview = true;
+      result.reasons.push("No address found — saved as a plan; add the stops before sending");
+      return result;
+    }
+    return null;
+  }
 
   // Unlabeled stops after a switch are deliveries ("GO TO … DO THE SWITCHING … DELIVER")
   const sawSwitch = result.stops.some((s) => s.type === "switch");
@@ -206,12 +219,16 @@ export function parseLoad(text: string): ParsedLoad | null {
     }
   }
 
-  // One address only: was it the pickup or the delivery? With a loaded trailer or a switch it's
-  // the delivery; otherwise dispatch must say
-  if (result.stops.length === 1) {
+  // One address and no PICK / DROP labels: it is the delivery (drop). Only when the text itself talks
+  // about a pickup and never about a delivery is it the pickup — and then dispatch is asked to check.
+  if (result.stops.length === 1 && !labelled) {
     const only = result.stops[0];
-    if (!labelled) only.type = result.loadedTrailer || sawSwitch || /\blong\s+load\b/i.test(text) ? "drop" : "pickup";
-    result.reasons.push("Only one address — check whether it is the pickup or the delivery");
+    const pickWord = /\bpick\s*-?\s*ups?\b/i.test(text);
+    const dropWord = /\b(?:deliver(?:y|ies|ed|ing)?|drops?|dropped|unload(?:ing)?|consignee|receiver)\b/i.test(text);
+    if (pickWord && !dropWord && !result.loadedTrailer && !sawSwitch) {
+      only.type = "pickup";
+      result.reasons.push("Only one address, and the text mentions a pickup — check it is not the delivery");
+    } else only.type = "drop";
   }
 
   if (!result.stops.some((s) => s.type === "drop")) result.reasons.push("No delivery found");

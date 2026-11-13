@@ -21,7 +21,7 @@ export function useTruckDrivers(truck?: string | null) {
  * Send this driver a load (it becomes a trip, see Loads). In a driver's chat: that driver (their truck
  * and team mate fill in). In a truck's chat: the truck's driver, the truck and the team mate.
  */
-export function SendLoadButton({ driverId, truck }: { driverId?: string | null; truck?: string | null }): React.JSX.Element {
+export function SendLoadButton({ driverId, truck, groupId }: { driverId?: string | null; truck?: string | null; groupId?: string | null }): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const { drivers } = useTruckDrivers(driverId ? null : truck);
   const id = driverId || drivers[0]?.id || '';
@@ -38,7 +38,7 @@ export function SendLoadButton({ driverId, truck }: { driverId?: string | null; 
           </IconButton>
         </span>
       </Tooltip>
-      <LoadFormDialog open={open} onClose={() => setOpen(false)} driver={driver} truck={driverId ? null : truck} />
+      <LoadFormDialog open={open} onClose={() => setOpen(false)} driver={driver} truck={driverId ? null : truck} groupId={groupId || null} />
     </>
   );
 }

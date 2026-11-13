@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { MessageModel, SenderModel } from '@/redux/models/MessageModel';
-import { Delete, Done, DoneAll, Forward, PushPin, Reply } from '@mui/icons-material';
-import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Popover } from '@mui/material';
+import { Delete, Done, DoneAll, Forward, LocalShipping, PushPin, Reply } from '@mui/icons-material';
+import { Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Popover, Tooltip } from '@mui/material';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
@@ -22,6 +22,8 @@ import { formatUtcTime } from './utils';
 import { CallBubble } from '@/calls/CallBubble';
 import { mediaServerUrl } from '@/lib/serverUrl';
 import { DeleteMessageDialog } from '../dashboard/trips/DeleteMessageDialog';
+import { RepairLoadDialog } from '../dashboard/trips/RepairLoadDialog';
+import { looksLikeLoad } from '../dashboard/trips/loadText';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -57,6 +59,10 @@ export default function ChatBubble(props: ChatBubbleProps) {
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   // Delete asks first when the message made a load
   const [deleting, setDeleting] = React.useState<string | null>(null);
+  // A load text that never became a load can be added to Loads from here (nothing is sent again)
+  const [converting, setConverting] = React.useState<string | null>(null);
+  // …and the assistant's own old load messages ("TRIP #…" / "LOAD #…") can be repaired in place
+  const canConvert = !props.url && (automated ? /^\s*(?:TRIP|LOAD)\b/i.test(String(props.body || '')) : looksLikeLoad(String(props.body || '')));
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -243,6 +249,13 @@ export default function ChatBubble(props: ChatBubbleProps) {
             <DotsThree />
           </IconButton>
         )}
+        {!props.isVisibleThreeDot && canConvert && (
+          <Tooltip title="Add to loads / Repair (nothing is sent)">
+            <IconButton onClick={() => setConverting(props.id)} sx={{ padding: 0 }} data-testid="convertToLoadIcon">
+              <LocalShipping sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        )}
         {messageDirection === 'S' && deliveryStatus == 'sent' ? (
           <Done
             sx={{
@@ -342,6 +355,22 @@ export default function ChatBubble(props: ChatBubbleProps) {
               </ListItemButton>
             </ListItem>
             <Divider />
+            {canConvert && (
+              <ListItem disablePadding>
+                <ListItemButton
+                  data-testid="convertToLoad"
+                  onClick={() => {
+                    handleClose();
+                    setConverting(props.id);
+                  }}
+                >
+                  <ListItemIcon>
+                    <LocalShipping />
+                  </ListItemIcon>
+                  <ListItemText primary="Add to loads / Repair" />
+                </ListItemButton>
+              </ListItem>
+            )}
           </List>
         </Popover>
       </Stack>
@@ -354,6 +383,7 @@ export default function ChatBubble(props: ChatBubbleProps) {
           message={props.singleMessage!}
         />
       )}
+      <RepairLoadDialog messageId={converting} onClose={() => setConverting(null)} />
       <DeleteMessageDialog
         messageId={deleting}
         onClose={() => setDeleting(null)}

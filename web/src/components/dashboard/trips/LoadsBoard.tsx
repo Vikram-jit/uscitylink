@@ -26,7 +26,7 @@ import { Add, LocalParking, Refresh, Search, Visibility } from '@mui/icons-mater
 import { toast } from 'react-toastify';
 
 import { useSocketEvent } from '@/hooks/use-socket-event';
-import { Load, Trip, useListLoadBoardQuery, useSendTripMutation } from '@/redux/TripApiSlice';
+import { Load, Trip, useGetMissedLoadsQuery, useListLoadBoardQuery, useSendTripMutation } from '@/redux/TripApiSlice';
 
 import { AssignLegDialog } from './AssignLegDialog';
 import { CompleteTripButton } from './CompleteTripButton';
@@ -34,6 +34,7 @@ import { LegChain } from './LegChain';
 import { LoadDrawer } from './LoadDrawer';
 import { LineupDrawer } from './LineupDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
+import { MissedLoadsDialog } from './MissedLoadsDialog';
 import { appointment, currentLeg, isLate, legsInOrder, LOAD_STATUS, LOAD_TABS, LOAD_TYPE } from './tripFormat';
 
 // Dispatch's Loads screen. A load is tracked by its invoice # and moved by one or more legs (direct,
@@ -69,6 +70,9 @@ export function LoadsBoard(): React.JSX.Element {
   const [query, setQuery] = React.useState('');
   const [page, setPage] = React.useState(0);
   const [adding, setAdding] = React.useState(false);
+  // Chat load messages not in Loads (or in with wrong details) — the badge on the Missed loads button
+  const [missedOpen, setMissedOpen] = React.useState(false);
+  const missed = (useGetMissedLoadsQuery(14, { pollingInterval: 300_000 }).data?.data || []).length;
   const [openLoad, setOpenLoad] = React.useState<number | null>(null);
   const [lineupOf, setLineupOf] = React.useState<string | null>(null);
   const [assigning, setAssigning] = React.useState<{ loadId: number; leg: Trip; canSend: boolean } | null>(null);
@@ -126,6 +130,7 @@ export function LoadsBoard(): React.JSX.Element {
 
   return (
     <Card>
+      <MissedLoadsDialog open={missedOpen} onClose={() => setMissedOpen(false)} />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }} alignItems={{ sm: 'center' }}>
         <TextField
           size="small"
@@ -148,6 +153,9 @@ export function LoadsBoard(): React.JSX.Element {
             <Refresh />
           </IconButton>
         </Tooltip>
+        <Button variant="outlined" color={missed ? 'warning' : 'inherit'} onClick={() => setMissedOpen(true)} data-testid="missedLoadsButton">
+          Missed loads{missed ? ` (${missed})` : ''}
+        </Button>
         <Button variant="contained" startIcon={<Add />} onClick={() => setAdding(true)}>
           Add load
         </Button>

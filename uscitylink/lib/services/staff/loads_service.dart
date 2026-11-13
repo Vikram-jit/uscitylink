@@ -29,6 +29,23 @@ class LoadsService {
     return list.whereType<Map>().map((m) => MessageLoad.fromJson(Map<String, dynamic>.from(m))).toList();
   }
 
+  /// Repair / Add to loads, step 1: what re-reading the chat message would change (nothing changes yet).
+  Future<RepairPreview> repairPreview(String messageId) async => RepairPreview.fromJson(_data(await _api.get('loads/repair/$messageId')));
+
+  /// Step 2, after dispatch confirms: add it to Loads (nothing is sent to the driver), or fix the load and
+  /// replace the assistant's old message text. Returns the server's message.
+  Future<String> repairApply(String messageId, {String? loadNo}) async {
+    final res = await _api.post('loads/repair/$messageId', {'loadNo': (loadNo == null || loadNo.trim().isEmpty) ? null : loadNo.trim()});
+    return '${res['message'] ?? 'Done'}';
+  }
+
+  /// Recent chat messages that look like loads but aren't in Loads, and loads made from them wrongly.
+  Future<List<MissedLoad>> missedLoads({int days = 14}) async {
+    final res = await _api.get('loads/missed', {'days': days});
+    final list = res['data'] is List ? res['data'] as List : const [];
+    return list.whereType<Map>().map((m) => MissedLoad.fromJson(Map<String, dynamic>.from(m))).toList();
+  }
+
   /// Confirmed: delete the leg this message made (the whole load when it's the only leg).
   Future<String> deleteLoadOfMessage(String messageId, int legId) async {
     final res = await _api.delete('loads/by-message/$messageId/legs/$legId');
@@ -152,6 +169,7 @@ class LoadsService {
       trailerNumbers: (d['trailers'] as List? ?? []).map((e) => '$e').toList(),
       temperature: s(d['temperature']),
       loadedTrailer: d['loadedTrailer'] == true,
+      teamNames: (d['team'] as List? ?? []).map((e) => '$e').toList(),
       stops: (d['stops'] as List? ?? [])
           .whereType<Map>()
           .map((x) => NewStop(type: '${x['type']}', name: '${x['name'] ?? ''}', street: '${x['street'] ?? ''}', city: '${x['city'] ?? ''}', state: '${x['state'] ?? ''}', zip: '${x['zip'] ?? ''}', appointment: s(x['appointment'])))

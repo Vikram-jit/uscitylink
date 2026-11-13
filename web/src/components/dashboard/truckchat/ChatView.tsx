@@ -126,7 +126,7 @@ currentChatId,
                 setMessage={setMessage}
                 handleFileChangeVedio={handleFileChangeVedio}
                 onSend={onSendMessage}
-                actions={<SendLoadButton truck={currentUser?.group?.name || null} />}
+                actions={<SendLoadButton truck={currentUser?.group?.name || null} groupId={currentUser?.group?.id || null} />}
                 // handleVedioClick={handleVedioClick}
                 handleFileChange={handleFileChange}
                 //   disabled={currentChat}

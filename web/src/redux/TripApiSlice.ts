@@ -314,6 +314,30 @@ export interface MessageLoad {
   why: string | null;
 }
 
+/** Repair / Add to loads, step 1: what re-reading a chat message would change (server: messageRepair.ts) */
+export interface RepairPreview {
+  messageId: string;
+  text: string;
+  mode: 'add' | 'repair' | 'ok';
+  loadNo: string | null;
+  plan: boolean;
+  load: MessageLoad | null;
+  changes: { label: string; before: string; after: string }[];
+  message: { before: string; after: string } | null;
+  canApply: boolean;
+  why: string | null;
+}
+
+export interface MissedLoad {
+  kind: 'missing' | 'fixable';
+  messageId: string;
+  at: string;
+  driverName: string | null;
+  loadNo: string | null;
+  firstLine: string;
+  changes: string[];
+}
+
 export interface LoadDetail {
   load: Load;
   legs: Trip[];
@@ -598,7 +622,7 @@ export const TripApiSlice = apiSlice.injectEndpoints({
     // ({ needs: 'endPrevious' | 'driverBusy' | 'replaceLinedUp', info }) — the form asks dispatch and sends again.
     addSimpleLoad: builder.mutation<
       Res<LoadDetail>,
-      TripInput & { loadNo: string; send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }
+      TripInput & { loadNo: string; send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean; groupId?: string | null }
     >({
       query: (body) => ({ url: 'loads', method: 'POST', body }),
       invalidatesTags: ['chatTrips'],
@@ -610,7 +634,7 @@ export const TripApiSlice = apiSlice.injectEndpoints({
     /** A load pasted in a driver's chat box: sent as a load (never as a chat message) — may answer 409 with a question */
     sendLoadText: builder.mutation<
       Res<LoadDetail>,
-      { text: string; driverProfileId: string; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }
+      { text: string; driverProfileId?: string | null; groupId?: string | null; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }
     >({
       query: (body) => ({ url: 'loads/from-text', method: 'POST', body }),
       invalidatesTags: ['chatTrips'],
@@ -661,6 +685,22 @@ export const TripApiSlice = apiSlice.injectEndpoints({
     deleteLoadOfMessage: builder.mutation<Res<{ deletedLoad: boolean; loadId: number }>, { messageId: string; legId: number }>({
       query: ({ messageId, legId }) => ({ url: `loads/by-message/${messageId}/legs/${legId}`, method: 'DELETE' }),
       invalidatesTags: ['chatTrips'],
+    }),
+    /** Repair / Add to loads on a chat message: what re-reading it would change (nothing changes yet) */
+    getRepairPreview: builder.query<Res<RepairPreview>, string>({
+      query: (messageId) => ({ url: `loads/repair/${messageId}`, method: 'GET' }),
+      keepUnusedDataFor: 0,
+    }),
+    /** …and confirmed: add it to Loads (nothing sent to the driver), or fix the load and replace the assistant's message */
+    applyRepair: builder.mutation<Res<{ load: LoadDetail; replaced: boolean }>, { messageId: string; loadNo?: string | null }>({
+      query: ({ messageId, loadNo }) => ({ url: `loads/repair/${messageId}`, method: 'POST', body: { loadNo: loadNo || null } }),
+      invalidatesTags: ['chatTrips'],
+    }),
+    /** Recent chat messages that look like loads but aren't in Loads, and loads made from them wrongly */
+    getMissedLoads: builder.query<Res<MissedLoad[]>, number | void>({
+      query: (days) => ({ url: 'loads/missed', method: 'GET', params: { days: days || 14 } }),
+      providesTags: ['chatTrips'],
+      keepUnusedDataFor: 30,
     }),
     matchLegGps: builder.mutation<Res<LoadDetail>, { id: number; legId: number }>({
       query: ({ id, legId }) => ({ url: `loads/${id}/legs/${legId}/match-gps`, method: 'POST' }),
@@ -751,6 +791,7 @@ export const {
   useGetLoadLiveQuery,
   useParseTripTextMutation,
   useGetTruckAssignmentsQuery,
+  useLazyGetTruckAssignmentsQuery,
   useLazyGetDriverAssignmentQuery,
   useCreateTripMutation,
   useEditTripMutation,
@@ -781,6 +822,9 @@ export const {
   useCorrectLegTimesMutation,
   useSetLegMilesMutation,
   useMatchLegGpsMutation,
+  useLazyGetRepairPreviewQuery,
+  useApplyRepairMutation,
+  useGetMissedLoadsQuery,
   useLazyGetLoadsOfMessageQuery,
   useDeleteLoadOfMessageMutation,
   useGetMilesReportQuery,

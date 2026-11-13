@@ -1,4 +1,5 @@
 import 'package:uscitylink/views/staff/widgets/delete_message_guard.dart';
+import 'package:uscitylink/views/staff/widgets/repair_load.dart';
 import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
 import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
@@ -851,6 +852,10 @@ class _StaffMessageViewState extends State<StaffMessageView>
                     (message.staffPin ?? "0") == "0" ? "1" : "0", "staff");
                 // Handle pin action
                 break;
+              case 'convert':
+                // Add to loads / Repair: asks first with a preview; nothing is sent to the driver
+                RepairLoad.show(context, message.id!);
+                break;
               case 'delete':
                 // Asks first when this message made a load
                 DeleteMessageGuard.delete(context, message.id!, socketService.deleteMessage);
@@ -894,6 +899,22 @@ class _StaffMessageViewState extends State<StaffMessageView>
                 ],
               ),
             ),
+            if (RepairLoad.canRepair(message.body, url: message.url, automated: message.isAutomated)) ...[
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'convert',
+                child: Row(
+                  children: [
+                    Icon(Icons.local_shipping_rounded, color: Colors.grey[700]),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Add to loads / Repair",
+                      style: TextStyle(fontSize: 14, color: Colors.grey[800], fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (message.messageDirection == "R" &&
                 message.deliveryStatus == "sent")
               const PopupMenuDivider(),

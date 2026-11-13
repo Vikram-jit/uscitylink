@@ -7,6 +7,7 @@ import 'package:uscitylink/utils/theme/app_tokens.dart';
 import 'package:uscitylink/views/staff/view/loads/loads_common.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_add_load_view.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_fleet_view.dart';
+import 'package:uscitylink/views/staff/view/loads/staff_missed_loads_view.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_load_detail_view.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
@@ -98,6 +99,7 @@ class StaffLoadsViewState extends State<StaffLoadsView> {
           subtitle: attention > 0 ? '$attention need${attention == 1 ? 's' : ''} dispatch' : 'Every load by its Load #',
           leadingIcon: Icons.local_shipping_rounded,
           actions: [
+            StaffGlassButton(icon: Icons.manage_search_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffMissedLoadsView(service: _svc)))),
             StaffGlassButton(icon: Icons.fire_truck_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StaffFleetView(service: _svc)))),
           ],
           bottom: StaffSearchField(

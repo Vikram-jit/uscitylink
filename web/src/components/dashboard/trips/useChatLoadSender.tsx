@@ -13,7 +13,7 @@ import { loadNoIn } from './loadText';
  * it's really sent — never the pasted text). The server may ask first (driver busy / lined up / leg
  * open): the same questions as the driver's chat. Returns send() and the question dialog to render.
  */
-export function useChatLoadSender({ driverId, driverName, onSent }: { driverId: string | null; driverName?: string | null; onSent?: () => void }) {
+export function useChatLoadSender({ driverId, groupId, driverName, onSent }: { driverId?: string | null; groupId?: string | null; driverName?: string | null; onSent?: () => void }) {
   const [sendLoadText, { isLoading: sending }] = useSendLoadTextMutation();
   const [question, setQuestion] = React.useState<LoadQuestion | null>(null);
   const [answers, setAnswers] = React.useState<LoadAnswers>({});
@@ -21,12 +21,12 @@ export function useChatLoadSender({ driverId, driverName, onSent }: { driverId: 
 
   const send = React.useCallback(
     async (body: string, given: LoadAnswers = {}) => {
-      if (!driverId) {
-        toast.error('No driver on this truck — add the driver to the truck, or use Send load and pick one', { autoClose: 10000 });
+      if (!driverId && !groupId) {
+        toast.error('Open a driver or truck chat first', { autoClose: 10000 });
         return;
       }
       try {
-        const res = await sendLoadText({ text: body, driverProfileId: driverId, ...given }).unwrap();
+        const res = await sendLoadText({ text: body, driverProfileId: driverId || null, groupId: groupId || null, ...given }).unwrap();
         toast.success(res.message || 'Load sent');
         setQuestion(null);
         setAnswers({});
@@ -41,7 +41,7 @@ export function useChatLoadSender({ driverId, driverName, onSent }: { driverId: 
         toast.error(err?.data?.message || 'Could not send the load', { autoClose: 10000 });
       }
     },
-    [driverId, sendLoadText, onSent]
+    [driverId, groupId, sendLoadText, onSent]
   );
 
   const dialog = (

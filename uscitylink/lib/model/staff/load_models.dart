@@ -504,6 +504,7 @@ class NewLoadInput {
     this.notes,
     this.loadedTrailer = false,
     this.stops = const [],
+    this.teamNames = const [],
   });
 
   String loadNo;
@@ -515,6 +516,9 @@ class NewLoadInput {
   String? notes;
   bool loadedTrailer;
   List<NewStop> stops;
+
+  /// Team names found in a pasted text ("TEAM # ABBY + AMIT") — only used to pick the drivers, not sent.
+  List<String> teamNames;
 
   Map<String, dynamic> toJson() => {
         'loadNo': loadNo.trim(),
@@ -904,4 +908,72 @@ class MessageLoad {
       );
 
   String get title => 'Load ${loadNo ?? '#${tripNo ?? loadId}'}${onlyLeg ? '' : ' · leg $legNo'}';
+}
+
+/// Repair / Add to loads, step 1: what re-reading a chat message would change (nothing changes yet).
+class RepairChange {
+  RepairChange({required this.label, required this.before, required this.after});
+  final String label;
+  final String before;
+  final String after;
+  factory RepairChange.fromJson(Map<String, dynamic> j) => RepairChange(label: '${j['label']}', before: '${j['before']}', after: '${j['after']}');
+}
+
+class RepairPreview {
+  RepairPreview({required this.messageId, this.text = '', this.mode = 'ok', this.loadNo, this.plan = false, this.load, this.changes = const [], this.messageBefore, this.messageAfter, this.canApply = false, this.why});
+  final String messageId;
+  final String text;
+
+  /// add: no load yet · repair: something to fix · ok: the load already matches
+  final String mode;
+  final String? loadNo;
+  final bool plan;
+  final MessageLoad? load;
+  final List<RepairChange> changes;
+
+  /// The assistant's message that would be replaced in the chat (null: dispatch's own text stays)
+  final String? messageBefore;
+  final String? messageAfter;
+  final bool canApply;
+  final String? why;
+
+  factory RepairPreview.fromJson(Map<String, dynamic> j) {
+    final msg = j['message'] is Map ? Map<String, dynamic>.from(j['message']) : null;
+    return RepairPreview(
+      messageId: '${j['messageId']}',
+      text: '${j['text'] ?? ''}',
+      mode: '${j['mode'] ?? 'ok'}',
+      loadNo: _str(j['loadNo']),
+      plan: j['plan'] == true,
+      load: j['load'] is Map ? MessageLoad.fromJson(Map<String, dynamic>.from(j['load'])) : null,
+      changes: _maps(j['changes']).map(RepairChange.fromJson).toList(),
+      messageBefore: msg == null ? null : '${msg['before']}',
+      messageAfter: msg == null ? null : '${msg['after']}',
+      canApply: j['canApply'] == true,
+      why: _str(j['why']),
+    );
+  }
+}
+
+/// A recent chat message that looks like a load but isn't in Loads (missing) or made a wrong load (fixable).
+class MissedLoad {
+  MissedLoad({required this.kind, required this.messageId, this.at, this.driverName, this.loadNo, this.firstLine = '', this.changes = const []});
+  final String kind;
+  final String messageId;
+  final DateTime? at;
+  final String? driverName;
+  final String? loadNo;
+  final String firstLine;
+  final List<String> changes;
+  bool get missing => kind == 'missing';
+
+  factory MissedLoad.fromJson(Map<String, dynamic> j) => MissedLoad(
+        kind: '${j['kind']}',
+        messageId: '${j['messageId']}',
+        at: _date(j['at']),
+        driverName: _str(j['driverName']),
+        loadNo: _str(j['loadNo']),
+        firstLine: '${j['firstLine'] ?? ''}',
+        changes: (j['changes'] as List? ?? []).map((e) => '$e').toList(),
+      );
 }

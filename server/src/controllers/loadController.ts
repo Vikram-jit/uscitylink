@@ -3,7 +3,7 @@ import { UserProfile } from "../models/UserProfile";
 import Role from "../models/Role";
 import { isStaffRole } from "../middleware/requireRole";
 import { Actor, addMileage, NO_GPS_NOTE, TripError } from "../services/trips/tripService";
-import { addLeg, addLoad, answerTypedLoad, loadFromText, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, lookupLoad, NeedsAnswer, updateLoad } from "../services/trips/loadService";
+import { addLeg, addLoad, answerTypedLoad, convertMessageToLoad, loadFromText, assignLeg, createLoad, defaultYardStop, getLoad, listLoads, lookupLoad, NeedsAnswer, updateLoad } from "../services/trips/loadService";
 import { conflictsFor, driversBoard, trailersBoard, trucksBoard } from "../services/trips/equipment";
 import { placeStop, PlacesError, searchPlaces } from "../services/trips/places";
 import { lineupOf, removeFromLineup, reorderLineup } from "../services/trips/lineup";
@@ -12,6 +12,7 @@ import { ChatTrip } from "../models/ChatTrip";
 import { changeType, correctTimes, endLegNow, releaseLeg, setMiles, splitLeg, truckPlace, undoSplit } from "../services/trips/loadControl";
 import { milesReport } from "../services/trips/milesReport";
 import { deleteLegOfMessage, loadsOfMessage } from "../services/trips/messageLoads";
+import { missedLoads, repairApply, repairPreview } from "../services/trips/messageRepair";
 
 // Loads (a load = invoice # + its legs) and the equipment board, for dispatch. The rules live in
 // services/trips (loadService, equipment, tripService); this only maps HTTP to them.
@@ -53,8 +54,9 @@ export const createLoadRest = handle(async (req) => {
   const send = body.send === true;
   // The simple form: one load (Load # decides if it's a new load or the next leg). Old multi-leg body still works.
   if (!Array.isArray(body.legs)) {
-    const { send: _s, endPrevious, endDriverCurrent, lineUp, replace, ...input } = body;
-    const data = await addLoad(input, await actorOf(req), { send, endPrevious: endPrevious === true, endDriverCurrent: endDriverCurrent === true, lineUp: lineUp === true, replace: replace === true });
+    const { send: _s, endPrevious, endDriverCurrent, lineUp, replace, groupId, ...input } = body;
+    // groupId: sent from a truck chat — the load message shows in that chat
+    const data = await addLoad(input, await actorOf(req), { send, endPrevious: endPrevious === true, endDriverCurrent: endDriverCurrent === true, lineUp: lineUp === true, replace: replace === true, groupId: groupId || null });
     return { data, message: send && !lineUp ? "Load sent" : lineUp ? "Lined up after the driver's current load" : "Load saved" };
   }
   return { data: await createLoad(body, await actorOf(req), { send }), message: send ? "Load sent" : "Load saved" };
@@ -196,7 +198,7 @@ export const matchGpsRest = handle(async (req) => {
 export const fromTextRest = handle(async (req) => {
   const b = req.body || {};
   const answers = { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true, replace: b.replace === true };
-  const { data, loadNo } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null);
+  const { data, loadNo } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null, b.groupId || null);
   return { data, message: answers.lineUp && !answers.endDriverCurrent ? `Load ${loadNo} lined up — it goes to the driver when their current load is delivered` : `Load ${loadNo} sent to the driver` };
 });
 
@@ -208,3 +210,28 @@ export const deleteLoadOfMessageRest = handle(async (req) => {
   const res = await deleteLegOfMessage(String(req.params.messageId), Number(req.params.legId), await actorOf(req));
   return { data: res, message: res.deletedLoad ? "Load deleted" : "Leg deleted" };
 });
+
+/** "Convert to load" on a chat message: adds it to Loads (lined up) — nothing is sent to the driver. */
+export const convertMessageRest = handle(async (req) => {
+  const out = await convertMessageToLoad(String(req.params.messageId), await actorOf(req), { loadNo: req.body?.loadNo ?? null });
+  return {
+    data: out.data,
+    message: out.already
+      ? `Load ${out.loadNo} is already in Loads`
+      : out.plan
+        ? `Load ${out.loadNo} added as a plan — no address was found; add the stops from Loads`
+        : `Load ${out.loadNo} added to Loads — not sent to the driver`,
+  };
+});
+
+/** Repair / Add to loads, step 1: what re-reading the message would change (nothing is changed). */
+export const repairPreviewRest = handle(async (req) => ({ data: await repairPreview(String(req.params.messageId)) }));
+
+/** Step 2, after dispatch confirms: fix the load and replace the assistant's old message text. */
+export const repairApplyRest = handle(async (req) => {
+  const out = await repairApply(String(req.params.messageId), await actorOf(req), { loadNo: req.body?.loadNo ?? null });
+  return { data: { load: out.data, replaced: out.replaced }, message: out.message };
+});
+
+/** Recent chat messages that look like loads but aren't in Loads, and loads made from them wrongly. */
+export const missedLoadsRest = handle(async (req) => ({ data: await missedLoads(Number(req.query.days) || 14) }));

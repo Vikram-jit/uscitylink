@@ -22,7 +22,7 @@ import { byLeg, legTripNo, refreshLoadStatus } from "./legs";
 import { nextPosition } from "./lineup";
 import { defaultYardStop } from "./loadService";
 import { localToDate, stateTimezone } from "./stateTimezone";
-import { statusLine } from "./tripMessages";
+import { loadRef, statusLine } from "./tripMessages";
 import { liveTrip } from "./liveTrip";
 import { placeAt, PlaceStop } from "./places";
 
@@ -248,7 +248,7 @@ export async function splitLeg(legId: number, input: SplitInput, actor: Actor) {
   }
 
   if (live) {
-    await postToChat(leg, `🔁 Trip ${leg.trip_no} handed over at ${placeText(place)} (${reasonLabel.toLowerCase()}) — thank you, dispatch has the rest of this load`);
+    await postToChat(leg, `🔁 ${loadRef(leg)} handed over at ${placeText(place)} (${reasonLabel.toLowerCase()}) — thank you, dispatch has the rest of this load`);
     await closeScaleRoute(leg).catch(() => undefined);
     void addMileage(leg.id).catch(() => undefined);
     if (leg.driver_profile_id && leg.driver_profile_id !== fresh.driver_profile_id) {
@@ -335,8 +335,8 @@ export async function endLegNow(legId: number, actor: Actor, opts: { at?: string
   await postToChat(
     leg,
     opts.handover
-      ? `🔁 Trip ${leg.trip_no} handed over${where} — thank you, dispatch has the rest of this load`
-      : `✅ Trip ${leg.trip_no} ended by dispatch${where} — thank you. Send the BOL / POD photos here if you have them`
+      ? `🔁 ${loadRef(leg)} handed over${where} — thank you, dispatch has the rest of this load`
+      : `✅ ${loadRef(leg)} ended by dispatch${where} — thank you. Send the BOL / POD photos here if you have them`
   );
   await closeScaleRoute(leg).catch(() => undefined);
   void addMileage(leg.id).catch(() => undefined);
@@ -384,8 +384,8 @@ export async function undoSplit(nextLegId: number, actor: Actor) {
 
   await record(prev, { type: "transfer_undone", from: prev.status, to: restore.status, actor, note: `Handover undone — the load stays on leg ${prev.leg_no}`, data: { undid: ev.id, removedLeg: next.id } });
   await record(next, { type: "transfer_undone", from: next.status, to: "cancelled", actor, note: "Handover undone — this leg was removed" });
-  if (nextDriver) await postToChat(nextDriver, `↩️ Dispatch changed the plan — trip ${next.trip_no} is not yours anymore`);
-  if (restore.status && ON_ROAD.includes(restore.status)) await postToChat(prev, `↩️ Dispatch undid the handover — trip ${prev.trip_no} continues with you`);
+  if (nextDriver) await postToChat(nextDriver, `↩️ Dispatch changed the plan — ${loadRef(next, false)} is not yours anymore`);
+  if (restore.status && ON_ROAD.includes(restore.status)) await postToChat(prev, `↩️ Dispatch undid the handover — ${loadRef(prev, false)} continues with you`);
 
   await deriveType(load.id);
   await refreshLoadStatus(load.id);

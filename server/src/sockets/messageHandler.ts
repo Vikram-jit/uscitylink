@@ -2508,8 +2508,12 @@ export async function messageToDriverByTruckGroup(
   thumbnail: string | null,
   url_upload_type?: string,
   reply_message_id?: string | null,
+  // From the server (a load sent to the truck chat): no staff socket to read the open channel from
+  opts: { channelId?: string | null; automated?: boolean } = {},
 ) {
-  const findStaffActiveChannel = global.staffActiveChannel[socket?.user?.id!];
+  const staffChannel = global.staffActiveChannel[socket?.user?.id!];
+  const findStaffActiveChannel = { channelId: staffChannel?.channelId || opts.channelId || undefined };
+  const automated = opts.automated ? { is_automated: true } : {};
 
   const utcTime = moment.utc().toDate();
   let userIds: String[] = [];
@@ -2552,6 +2556,7 @@ export async function messageToDriverByTruckGroup(
     thumbnail: thumbnail || null,
     url_upload_type: url_upload_type || "server",
     reply_message_id: reply_message_id || null,
+    ...automated,
   });
   let isSendToStaff = false;
 
@@ -2605,6 +2610,7 @@ export async function messageToDriverByTruckGroup(
       type: "truck_group",
       thumbnail: thumbnail || null,
       url_upload_type: url_upload_type || "server",
+      ...automated,
     });
     idsf = messageSave.id;
     const message = await Message.findOne({
@@ -2762,6 +2768,7 @@ export async function messageToDriverByTruckGroup(
       },
     },
   );
+  return { staffMessage: newSaveStaff, groupMessage: group_message };
 }
 
 export async function deleteMessage(
@@ -3783,7 +3790,9 @@ export async function sendSystemMessageToDriver(
   userId: string,
   channelId: string,
   body: string,
-  options: { replyToId?: string | null; flowRunId?: string | null } = {},
+  // automated: false → shown as the sender's own message (dispatch's text sent as typed), not as the
+  // Dispatch Assistant's. The default (assistant lines) is unchanged.
+  options: { replyToId?: string | null; flowRunId?: string | null; automated?: boolean } = {},
 ) {
   const messageSave = await Message.create({
     channelId,
@@ -3799,7 +3808,7 @@ export async function sendSystemMessageToDriver(
     thumbnail: null,
     reply_message_id: options.replyToId || null,
     url_upload_type: "with-out-media",
-    is_automated: true,
+    is_automated: options.automated === false ? false : true,
     flow_run_id: options.flowRunId || null,
   });
   const message = await Message.findOne({

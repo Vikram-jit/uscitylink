@@ -28,6 +28,7 @@ import {
   useAddSimpleLoadMutation,
   useEditTripMutation,
   useLazyGetDriverAssignmentQuery,
+  useLazyGetTruckAssignmentsQuery,
   useLazyLookupLoadNoQuery,
   useParseTripTextMutation,
 } from '@/redux/TripApiSlice';
@@ -52,6 +53,8 @@ interface Props {
   driver?: Person | null;
   /** Opened from a truck's chat: its number (the driver / team come from it) */
   truck?: string | null;
+  /** The truck chat it was opened from: the load message shows in that chat */
+  groupId?: string | null;
   onSaved?: () => void;
 }
 
@@ -84,6 +87,22 @@ const fromTrip = (trip: Trip, driver?: Person | null): LegState =>
       notes: trip.notes || '',
     }
   );
+
+/**
+ * Driver and team mate from a truck's drivers after reading a pasted load: names in the text that match
+ * a driver come first (TEAM # ABBY + AMIT → Abby, Amit), else the truck's order. A driver already
+ * chosen (opened from a driver's chat) stays the driver.
+ */
+export function pickFromTruck(drivers: Person[], team: string[], cur: Pick<LegState, 'driver' | 'team'>): Partial<LegState> {
+  const find = (name?: string) => {
+    const n = (name || '').trim().toLowerCase();
+    return n ? drivers.find((d) => d.name.toLowerCase().includes(n)) || null : null;
+  };
+  const first = cur.driver || find(team[0]) || drivers[0] || null;
+  const named = find(team[1]);
+  const second = (named && named.id !== first?.id ? named : null) || drivers.find((d) => d.id !== first?.id) || null;
+  return { ...(first ? { driver: first } : {}), team: cur.team || second };
+}
 
 const legText = (l: LegBrief) => `${l.driverName || 'no driver'}${l.truck ? ` / truck ${l.truck}` : ''} (${l.from} → ${l.to})`;
 
@@ -122,7 +141,7 @@ function LookupNote({ lookup, loading }: { lookup: LoadLookup | null; loading: b
   );
 }
 
-export function LoadFormDialog({ open, onClose, trip, driver, truck, onSaved }: Props): React.JSX.Element {
+export function LoadFormDialog({ open, onClose, trip, driver, truck, groupId, onSaved }: Props): React.JSX.Element {
   const editing = !!trip;
   const [loadNo, setLoadNo] = React.useState('');
   const [leg, setLeg] = React.useState<LegState>(newLeg([emptyStop('pickup'), emptyStop('drop')]));
@@ -137,6 +156,7 @@ export function LoadFormDialog({ open, onClose, trip, driver, truck, onSaved }: 
   const [editTrip, { isLoading: saving }] = useEditTripMutation();
   const [parseText, { isLoading: reading }] = useParseTripTextMutation();
   const [lookupDriverTruck] = useLazyGetDriverAssignmentQuery();
+  const [lookupTruck] = useLazyGetTruckAssignmentsQuery();
   const [lookupLoad, lookupState] = useLazyLookupLoadNoQuery();
   const busy = adding || saving;
   const lookup = lookupState.data?.data || null;
@@ -197,10 +217,25 @@ export function LoadFormDialog({ open, onClose, trip, driver, truck, onSaved }: 
         ...(l.temperature ? { temperature: l.temperature } : {}),
         loaded: l.loadedTrailer,
       }));
+      // The truck's group names its driver(s): pick the driver and team mate from it (the names in the
+      // text decide who is first when they match)
+      let teamPicked = false;
+      if (l.truck) {
+        try {
+          const list = (await lookupTruck(l.truck, true).unwrap()).data || [];
+          const a = list.find((x) => x.truck.trim().toUpperCase() === l.truck!.trim().toUpperCase());
+          if (a?.drivers.length) {
+            setLeg((cur) => ({ ...cur, ...pickFromTruck(a.drivers, l.team, cur) }));
+            teamPicked = a.drivers.length > 1;
+          }
+        } catch {
+          // no truck group: dispatch picks the driver
+        }
+      }
       setReadNotes([
         ...(l.loadNo ? [] : ['No Load # in the text — type it above']),
         ...l.reasons,
-        ...(l.team.length > 1 ? [`Team in the text: ${l.team.join(' + ')} — pick the second driver below`] : []),
+        ...(l.team.length > 1 && !teamPicked ? [`Team in the text: ${l.team.join(' + ')} — pick the second driver below`] : []),
       ]);
       setPasteOpen(false);
       toast.success('Load read — check the fields');
@@ -230,7 +265,7 @@ export function LoadFormDialog({ open, onClose, trip, driver, truck, onSaved }: 
         const res = await editTrip({ id: trip!.id, ...legBody(leg), needsReview: false }).unwrap();
         toast.success(res.message || 'Trip updated');
       } else {
-        const res = await addLoad({ loadNo: loadNo.trim(), ...legBody(leg), send, ...answers }).unwrap();
+        const res = await addLoad({ loadNo: loadNo.trim(), ...legBody(leg), send, ...answers, ...(groupId ? { groupId } : {}) }).unwrap();
         toast.success(res.message || (send ? 'Load sent to the driver' : 'Load saved'));
       }
       setQuestion(null);

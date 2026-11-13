@@ -140,6 +140,11 @@ export default function SingleMessagesPane(props: SingleMessagesPanerops) {
     setMessages((prev) => prev.map((e) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e)));
   useSocketEvent('update_file_recivied_status', applyUploadStatus);
   useSocketEvent('update_file_sent_status', applyUploadStatus);
+  // A message's text was replaced (Repair): show the new text without a refresh
+  useSocketEvent('message_updated', (p: { id: string; ids?: string[]; body: string }) => {
+    setMessages((prev: any[]) => prev.map((e) => (e.id === p.id || p.ids?.includes(e.id) ? { ...e, body: p.body } : e)));
+  });
+
   useSocketEvent('delete_message', (messageId: any) => {
     setMessages((prev) => prev.filter((e) => e.id != messageId));
     toast.error('Deleted message successfully');

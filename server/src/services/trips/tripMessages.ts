@@ -25,10 +25,18 @@ export function clock(at: Date, state?: string | null): string {
 
 const place = (s: ChatTripStop) => [s.name, [s.city, s.state].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 
-export const tripNo = (trip: ChatTrip) => `#${trip.trip_no || trip.id}`;
+/** The Load # the driver knows ("0056034", "0056034-2" for the next leg) — never the database id. */
+export const loadNoOf = (trip: Pick<ChatTrip, "trip_no" | "invoice_no">) => trip.trip_no || trip.invoice_no || "";
+
+/** "Load 0056034" (mid-sentence: "load 0056034"); with no number at all: "Your load" / "your load". */
+export const loadRef = (trip: Pick<ChatTrip, "trip_no" | "invoice_no">, capital = true) => {
+  const no = loadNoOf(trip);
+  if (!no) return capital ? "Your load" : "your load";
+  return `${capital ? "Load" : "load"} ${no}`;
+};
 
 export function formatLoad(trip: ChatTrip, stops: ChatTripStop[], teamNames: string[] = []): string {
-  const lines: string[] = [`TRIP ${tripNo(trip)}`];
+  const lines: string[] = [`LOAD # ${loadNoOf(trip)}`.trim()];
   if (trip.truck_number) lines.push(`TRUCK # ${trip.truck_number}`);
   if (teamNames.length > 1) lines.push(`TEAM # ${teamNames.join(" + ")}`);
   if (trip.trailer_numbers) lines.push(`TRAILER # ${trip.trailer_numbers}`);
@@ -85,9 +93,9 @@ export const PROBLEM_KINDS: Record<string, string> = {
 };
 
 export const statusLine = {
-  accept: (trip: ChatTrip, who: string) => `👍 ${who} accepted trip ${tripNo(trip)}`,
+  accept: (trip: ChatTrip, who: string) => `👍 ${who} accepted ${loadRef(trip, false)}`,
   start: (trip: ChatTrip, at: Date, first?: ChatTripStop | null) =>
-    `🚚 Trip ${tripNo(trip)} started · ${clock(at, first?.state)}${first ? ` — heading to ${place(first)}` : ""}`,
+    `🚚 ${loadRef(trip)} started · ${clock(at, first?.state)}${first ? ` — heading to ${place(first)}` : ""}`,
   arrive: (stop: ChatTripStop, at: Date) => `📍 Arrived at ${place(stop)} · ${clock(at, stop.state)}${punctuality(stop, at)}`,
   rolling: (trip: ChatTrip, stops: ChatTripStop[], stop?: ChatTripStop | null) =>
     `🛣️ Loaded — rolling${towards(nextAfter(stops, stop))}`,
@@ -95,19 +103,19 @@ export const statusLine = {
     `🛣️ Departed ${place(stop)} · ${clock(at, stop.state)}${towards(nextAfter(stops, stop))}`,
   end: (trip: ChatTrip, stop?: ChatTripStop | null) =>
     stop?.type === "yard"
-      ? `🅿️ Trip ${tripNo(trip)} dropped at the yard${stop ? ` (${place(stop)})` : ""} — thank you, dispatch has the next move`
+      ? `🅿️ ${loadRef(trip)} dropped at the yard${stop ? ` (${place(stop)})` : ""} — thank you, dispatch has the next move`
       : stop?.type === "switch"
-        ? `🔁 Trip ${tripNo(trip)} handed over at ${place(stop)} — thank you`
-        : `✅ Trip ${tripNo(trip)} delivered${stop ? ` at ${place(stop)}` : ""} — please send the BOL / POD photos`,
-  paperwork: (trip: ChatTrip, summary: string) => `📄 Paperwork for trip ${tripNo(trip)}: ${summary} — waiting for dispatch to confirm`,
-  complete: (trip: ChatTrip, who: string) => `✅ Trip ${tripNo(trip)} completed — paperwork confirmed by ${who}`,
-  hold: (trip: ChatTrip, note?: string | null) => `⏸️ Trip ${tripNo(trip)} on hold${note ? `: ${note}` : ""}`,
-  resume: (trip: ChatTrip) => `▶️ Trip ${tripNo(trip)} resumed`,
-  cancel: (trip: ChatTrip, note?: string | null) => `❌ Trip ${tripNo(trip)} cancelled${note ? `: ${note}` : ""}`,
+        ? `🔁 ${loadRef(trip)} handed over at ${place(stop)} — thank you`
+        : `✅ ${loadRef(trip)} delivered${stop ? ` at ${place(stop)}` : ""} — please send the BOL / POD photos`,
+  paperwork: (trip: ChatTrip, summary: string) => `📄 Paperwork for ${loadRef(trip, false)}: ${summary} — waiting for dispatch to confirm`,
+  complete: (trip: ChatTrip, who: string) => `✅ ${loadRef(trip)} completed — paperwork confirmed by ${who}`,
+  hold: (trip: ChatTrip, note?: string | null) => `⏸️ ${loadRef(trip)} on hold${note ? `: ${note}` : ""}`,
+  resume: (trip: ChatTrip) => `▶️ ${loadRef(trip)} resumed`,
+  cancel: (trip: ChatTrip, note?: string | null) => `❌ ${loadRef(trip)} cancelled${note ? `: ${note}` : ""}`,
   problem: (trip: ChatTrip, kind: string, who: string, note?: string | null, amount?: number | null) =>
-    `⚠️ ${PROBLEM_KINDS[kind] || "Problem"} on trip ${tripNo(trip)}${amount ? ` ($${amount.toFixed(2)})` : ""}${note ? `: ${note}` : ""} — added by ${who}`,
-  resolved: (trip: ChatTrip, kind: string, who: string) => `✔️ ${PROBLEM_KINDS[kind] || "Problem"} on trip ${tripNo(trip)} resolved by ${who}`,
-  askScaleTicket: (trip: ChatTrip) => `⚖️ Please send the scale ticket for trip ${tripNo(trip)} here`,
+    `⚠️ ${PROBLEM_KINDS[kind] || "Problem"} on ${loadRef(trip, false)}${amount ? ` ($${amount.toFixed(2)})` : ""}${note ? `: ${note}` : ""} — added by ${who}`,
+  resolved: (trip: ChatTrip, kind: string, who: string) => `✔️ ${PROBLEM_KINDS[kind] || "Problem"} on ${loadRef(trip, false)} resolved by ${who}`,
+  askScaleTicket: (trip: ChatTrip) => `⚖️ Please send the scale ticket for ${loadRef(trip, false)} here`,
   offered: () => "Thanks 👍 — dispatch will send your next load here",
   noLoad: () => "No next load is planned yet — dispatch has been told, they'll send it to you soon",
   declined: () => "Dispatch is updating your next load — they'll send it to you here",

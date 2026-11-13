@@ -153,12 +153,23 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
     if (t != null) _applyTruck(t);
   }
 
-  void _applyTruck(TruckPick t) {
+  /// Driver and team mate from the truck's drivers. Names in a pasted text ("TEAM # ABBY + AMIT") that
+  /// match a driver come first; otherwise the truck's order.
+  void _applyTruck(TruckPick t, {List<String> team = const []}) {
+    DriverPick? find(String? n) {
+      final q = (n ?? '').trim().toLowerCase();
+      if (q.isEmpty) return null;
+      return t.drivers.where((d) => d.name.toLowerCase().contains(q)).firstOrNull;
+    }
+
+    final first = find(team.isNotEmpty ? team[0] : null) ?? t.drivers.firstOrNull;
+    final named = find(team.length > 1 ? team[1] : null);
+    final second = (named != null && named.id != first?.id) ? named : t.drivers.where((d) => d.id != first?.id).firstOrNull;
     setState(() {
       _truck.text = t.truck;
       _drivers = t.drivers;
-      _driver = t.drivers.isEmpty ? null : t.drivers.first;
-      _team = t.drivers.length > 1 ? t.drivers[1] : null;
+      _driver = first;
+      _team = second;
     });
     _doLookup();
   }
@@ -197,7 +208,7 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
         final m = (await _svc.truckPicks(p.truckNumber!))
             .where((t) => t.truck == p.truckNumber)
             .firstOrNull;
-        if (m != null) _applyTruck(m);
+        if (m != null) _applyTruck(m, team: p.teamNames);
       }
       _doLookup();
       if (mounted && p.loadNo.isEmpty)

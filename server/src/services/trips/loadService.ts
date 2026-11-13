@@ -1,10 +1,14 @@
 import { Op } from "sequelize";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripProblem, ChatTripStop, LoadType } from "../../models/ChatTrip";
 import { UserProfile } from "../../models/UserProfile";
+import Role from "../../models/Role";
+import { Message } from "../../models/Message";
+import { loadsOfMessage } from "./messageLoads";
 import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
 import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
 import { documentsOf } from "./paperwork";
+import { truckOfGroup } from "./truckGroup";
 import { trackToken } from "./publicTracking";
 import { parseLoad } from "./parseLoad";
 import { Actor, announce, cleanInvoice, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
@@ -337,7 +341,7 @@ export class NeedsAnswer extends TripError {
   }
 }
 
-async function findLoadByNo(no: string): Promise<ChatLoad | null> {
+export async function findLoadByNo(no: string): Promise<ChatLoad | null> {
   return ChatLoad.findOne({
     // The same number as typed by staff — nothing added or removed
     where: { invoice_no: no, status: { [Op.ne]: "cancelled" }, updated_at: { [Op.gte]: new Date(Date.now() - SAME_LOAD_DAYS * 86400000) } },
@@ -399,7 +403,7 @@ export async function lookupLoad(no: string | null | undefined, driverProfileId?
 export async function addLoad(
   input: TripInput & { loadNo?: string | null },
   actor: Actor,
-  opts: { send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean; typed?: boolean; fromChat?: boolean } = {}
+  opts: { send?: boolean; endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean; typed?: boolean; fromChat?: boolean; groupId?: string | null; messageId?: string | null } = {}
 ) {
   const no = cleanLoadNo(input.loadNo ?? input.invoiceNo);
   if (!no && !opts.typed) throw new TripError("Enter the Load # — it's how the load is tracked");
@@ -453,8 +457,12 @@ export async function addLoad(
   const reviewNotes = [...(input.reviewNotes || [])];
   if (opts.typed && !no) reviewNotes.push("Load # missing — add it so the next leg of this load joins it");
   if (opts.typed && prevOpen) reviewNotes.push(`Leg ${prev!.leg_no} (#${prev!.trip_no}) is still open — end it on the Loads screen`);
+  // Dispatch's own message is already in the driver's chat and the load goes out now: the trip IS that
+  // message (linked, sent) — nothing is posted again. Lined up / saved loads wait for dispatch instead.
+  const goesNow = !!opts.send && (!busy || !!opts.endDriverCurrent);
   const leg = {
     ...input,
+    messageId: goesNow && opts.messageId ? opts.messageId : null,
     invoiceNo: no,
     trailerNumbers: input.trailerNumbers?.length ? input.trailerNumbers : prev?.trailer_numbers ? prev.trailer_numbers.split(/,\s*/) : [],
     loadedTrailer: input.loadedTrailer ?? (prev ? true : false),
@@ -487,7 +495,7 @@ export async function addLoad(
   // Lined up after the driver's current load: it goes out by itself when they end that one
   if (busy && opts.lineUp && !opts.endDriverCurrent) await trip.update({ auto_send: true });
   // Send now — unless dispatch chose to line it up after the driver's current load
-  if (opts.send && (!busy || opts.endDriverCurrent)) await sendLoad(trip.id, actor);
+  if (goesNow && !trip.sent_at) await sendLoad(trip.id, actor, { groupId: opts.groupId });
   await refreshLoadStatus(target.id);
   return getLoad(target.id);
 }
@@ -503,19 +511,24 @@ export async function loadFromText(
   driverProfileId: string | null,
   actor: Actor,
   answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } = {},
-  channelId: string | null = null
+  channelId: string | null = null,
+  groupId: string | null = null
 ) {
-  if (!driverProfileId) throw new TripError("Open a driver's chat first");
+  // From a truck chat: the load is for the truck — its main driver, the team mate and the truck number
+  const truck = await truckOfGroup(groupId);
+  const driverId = driverProfileId || truck?.driver?.id || null;
+  if (!driverId) throw new TripError(groupId ? "There's no driver in this truck chat — add the driver to the truck first" : "Open a driver's chat first");
   const parsed = parseLoad(text);
   if (!parsed) throw new TripError("Couldn't read a pickup / delivery address from that text — use Add load", 422);
   if (!parsed.loadNo) throw new TripError('Add a line "LOAD # 1234" — the Load # is required', 422);
   const data = await addLoad(
     {
       loadNo: parsed.loadNo,
-      driverProfileId,
+      driverProfileId: driverId,
       channelId,
-      truckNumber: parsed.truck,
+      truckNumber: parsed.truck || truck?.truck || null,
       teamNames: parsed.team,
+      ...(truck?.team && !parsed.team.length ? { teamDriverProfileId: truck.team.id } : {}),
       trailerNumbers: parsed.trailers,
       temperature: parsed.temperature,
       loadedTrailer: parsed.loadedTrailer,
@@ -525,7 +538,7 @@ export async function loadFromText(
       rawText: text,
     },
     actor,
-    { send: true, fromChat: true, ...answers }
+    { send: true, fromChat: true, groupId: truck?.groupId || null, ...answers }
   );
   return { data, loadNo: parsed.loadNo };
 }
@@ -538,7 +551,7 @@ export async function loadFromText(
 
 const pendingTyped = new Map<
   string,
-  { input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } }
+  { input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null; groupId?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } }
 >();
 const PENDING_MS = 30 * 60_000;
 
@@ -555,10 +568,10 @@ async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: s
   if (leg) await record(leg, { type: "source_message", actor, messageId, note: "Made from a chat message" });
 }
 
-export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
+export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null; groupId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
   try {
-    const res = await addLoad(input, actor, { send: true, fromChat: true });
+    const res = await addLoad(input, actor, { send: true, fromChat: true, groupId: input.groupId || null, messageId: input.sourceMessageId || null });
     await linkSource(res, input.sourceMessageId, actor);
     return outcome(res);
   } catch (err) {
@@ -577,7 +590,7 @@ export async function answerTypedLoad(id: string, answers: { endPrevious?: boole
   // Answers add up (end the previous leg, then: the driver is busy too)
   p.answers = { ...p.answers, ...answers };
   try {
-    const res = await addLoad(p.input, actor, { send: true, fromChat: true, ...p.answers });
+    const res = await addLoad(p.input, actor, { send: true, fromChat: true, groupId: p.input.groupId || null, messageId: p.input.sourceMessageId || null, ...p.answers });
     pendingTyped.delete(id);
     await linkSource(res, (p.input as any).sourceMessageId, actor);
     return outcome(res);
@@ -592,4 +605,65 @@ function outcome(res: Awaited<ReturnType<typeof getLoad>>): TypedLoadOutcome {
   const legs = res.legs.filter((l) => l.status !== "cancelled");
   const leg = legs[legs.length - 1];
   return { kind: "sent", loadId: res.load.id, loadNo: res.load.invoice_no || res.load.load_no, tripNo: leg?.trip_no || null, legNo: leg?.leg_no || 1 };
+}
+
+
+// ---------- "Convert to load": a chat message that never became a load ----------
+//
+// A load text that was skipped (the driver was busy, a question went unanswered, an older app sent it
+// as plain text) is turned into a load from the message itself. It is only ADDED to the Loads list
+// (lined up, "saved for later") — nothing is sent to the driver again; dispatch sends it from Loads
+// when it's time. The message is remembered as the load's source, so Delete on it asks about the load.
+
+export async function convertMessageToLoad(messageId: string, actor: Actor, opts: { loadNo?: string | null } = {}) {
+  const m = await Message.findByPk(messageId);
+  if (!m || !m.body) throw new TripError("Message not found", 404);
+
+  // Already a load? Say where it is instead of making a second one
+  const already = (await loadsOfMessage(messageId))[0];
+  if (already) return { data: await getLoad(already.loadId), loadNo: already.loadNo, already: true, plan: false };
+
+  // plan: true → a message with a Load # but no address becomes a plan-only load (no stops yet)
+  const typedNo = cleanLoadNo(opts.loadNo);
+  const parsed = parseLoad(String(m.body), { plan: true }) ?? (typedNo ? parseLoad(`LOAD # ${typedNo}\n${m.body}`, { plan: true }) : null);
+  const loadNo = typedNo || parsed?.loadNo || null;
+  if (!parsed || !loadNo) throw new TripError('This message has no Load # — type it to add the load', 422);
+
+  // Whose load: the truck's main driver in a truck chat, else the driver of this chat
+  let driverId = m.userProfileId;
+  const truck = await truckOfGroup(m.groupId);
+  if (m.groupId) {
+    if (!truck?.driver) throw new TripError("There's no driver in this truck chat — add the driver to the truck first", 422);
+    driverId = truck.driver.id;
+  } else {
+    const who = await UserProfile.findByPk(driverId, { include: [{ model: Role, as: "role" }] });
+    if ((who as any)?.role?.name !== "driver") throw new TripError("Open a driver's chat to turn a message into a load", 422);
+  }
+
+  // The same Load # is already in Loads: that's where it is (a second leg is added with Add load)
+  const look = await lookupLoad(loadNo, driverId);
+  if (look.load) throw new TripError(`Load ${loadNo} is already in Loads (${look.load.legs} leg${look.load.legs > 1 ? "s" : ""}) — open it there`, 409);
+
+  const res = await addLoad(
+    {
+      loadNo,
+      driverProfileId: driverId,
+      channelId: m.groupId ? null : m.channelId,
+      truckNumber: parsed.truck || truck?.truck || null,
+      teamNames: parsed.team,
+      ...(truck?.team && !parsed.team.length ? { teamDriverProfileId: truck.team.id } : {}),
+      trailerNumbers: parsed.trailers,
+      temperature: parsed.temperature,
+      loadedTrailer: parsed.loadedTrailer,
+      stops: parsed.stops,
+      plan: !parsed.stops.length,
+      needsReview: parsed.needsReview,
+      reviewNotes: parsed.reasons,
+      rawText: String(m.body),
+    },
+    actor,
+    { send: false, fromChat: true }
+  );
+  await linkSource(res, messageId, actor);
+  return { data: res, loadNo, already: false, plan: !parsed.stops.length };
 }

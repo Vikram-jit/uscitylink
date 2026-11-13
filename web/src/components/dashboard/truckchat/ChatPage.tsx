@@ -81,7 +81,8 @@ const ChatPage = () => {
   const truckNo = isOpenGroupLoaded() ? (messages?.data as any)?.group?.name || null : null;
   const { drivers: truckDrivers } = useTruckDrivers(truckNo);
   const { send: sendLoad, sending: sendingLoad, dialog: loadDialog } = useChatLoadSender({
-    driverId: truckDrivers[0]?.id || null,
+    // The server picks the truck's main driver (and links the team mate) and posts the load in this chat
+    groupId: isOpenGroupLoaded() ? currentChatId || null : null,
     driverName: truckDrivers[0]?.name || null,
     onSent: () => setNewMessage(''),
   });
@@ -189,6 +190,11 @@ const ChatPage = () => {
     setMessage((prev: any) =>
       prev.map((e: any) => (e.id === statusData?.messageId ? { ...e, url_upload_type: statusData?.status } : e))
     );
+  });
+
+  // A message's text was replaced (Repair): show the new text without a refresh
+  useSocketEvent('message_updated', (p: { id: string; ids?: string[]; body: string }) => {
+    setMessage((prev: any[]) => prev.map((e) => (e.id === p.id || p.ids?.includes(e.id) ? { ...e, body: p.body } : e)));
   });
 
   useSocketEvent('receive_message_group_truck', (incoming: MessageModel) => {

@@ -360,6 +360,12 @@ class SocketService extends GetxController {
         Get.find<StaffchatController>().pinMessage(data);
       }
     });
+    // A message's text was replaced (Repair on a load message): show the new text
+    socket.on("message_updated", (data) {
+      if (Get.isRegistered<StaffchatController>()) {
+        Get.find<StaffchatController>().updateMessageBody(data);
+      }
+    });
     socket.on("delete_message", (data) {
       if (Get.isRegistered<MessageController>()) {
         Get.find<MessageController>().deleteMessage(data);

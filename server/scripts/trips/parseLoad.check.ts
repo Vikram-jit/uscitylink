@@ -65,7 +65,7 @@ WOODBURN, OR 97071
   assert.equal(l.needsReview, false, l.reasons.join("; "));
 });
 
-test("3. Long load with truck, team, trailer, temp and one address (flagged)", () => {
+test("3. Long load with truck, team, trailer, temp and one unlabelled address = the drop (no flag)", () => {
   const l = must(`YOUR LONG LOAD FOR TOMORROW MORNING.
 
 TRUCK # 23865
@@ -85,7 +85,7 @@ LAKE CITY, FL 32055
   assert.deepEqual(l.trailers, ["10265"]);
   assert.equal(l.temperature, "34 CONT.");
   assert.deepEqual(stops(l), ["drop:TARGET - LAKE CITY|LAKE CITY,FL|2026-11-05T14:00"]);
-  assert.equal(l.needsReview, true);
+  assert.equal(l.needsReview, false, "one address with no PICK/DROP labels is simply the drop");
 });
 
 test("4. GO TO … switching, then deliver", () => {
@@ -236,6 +236,47 @@ test("TRAILER # WILL ADVISE is no trailer; a later \"TAKE TRAILER # 16465\" is j
   ];
   for (const [text, want] of yes) assert.equal(trailerOnly(text), want, text);
   for (const text of ["trailer 16465 is broken", "TRAILER # WILL ADVISE", "where is trailer?", "LOAD # 1\nTRAILER # 16465", "take trailer"]) assert.equal(trailerOnly(text), null, text);
+});
+
+test("ORDER # / TRIP # / LOAD ORDER # are the Load #; temp, trailer and team come with it", () => {
+  const text = `YOUR LONG FOR TOMORROW MORNING.\n\nTRUCK # 35865\n\nTEAM # ABBY + AMIT\n\nTRAILER # 107065\n\nTEMP # 34 CONT.\n\nORDER # 0056000\n\nFreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11/16/2026 06:00AM`;
+  assert(looksLikeLoad(text));
+  const l = parseLoad(text)!;
+  assert.equal(l.loadNo, "0056000", "ORDER # is the Load #");
+  assert.equal(l.truck, "35865");
+  assert.deepEqual(l.team, ["ABBY", "AMIT"]);
+  assert.deepEqual(l.trailers, ["107065"]);
+  assert.equal(l.temperature, "34 CONT.");
+  assert.equal(l.stops.length, 1);
+  assert.equal(l.stops[0].city, "FAIRBURN");
+  assert.equal(l.stops[0].type, "drop", "no pickup / drop labels → the one address is the drop");
+  assert.equal(l.needsReview, false);
+  const addr = "PICK\nA\n1 Main St\nWaco, TX 76701\n11/16/2026 06:00AM";
+  for (const [label, want] of [
+    ["LOAD ORDER # 5501", "5501"], ["TRIP # 0056034", "0056034"], ["TRIP NO 77", "77"], ["ORD: 88", "88"], ["ORDER NO. 9-1", "9-1"],
+    ["ORDER ID 4", "4"], ["LOAD # 1011", "1011"], ["INVOICE # 55-AB", "55-AB"], ["Order number 312", "312"],
+  ] as [string, string][]) assert.equal(parseLoad(`${label}\n${addr}`)?.loadNo, want, label);
+  // Not a load id
+  for (const label of ["PO # 5501", "PU # 5501", "ORDER OF ARRIVAL", "TRIP SHEET", "BOL # 22"]) assert.equal(parseLoad(`${label}\n${addr}`)?.loadNo ?? null, null, label);
+});
+
+test("one address: a labelled PICKUP stays a pickup; unlabelled with only pickup words is flagged; none → plan-only with a Load #", () => {
+  const addr = "Waco Foods\n1 Main St\nWaco, TX 76701\n11/16/2026 06:00AM";
+  assert.equal(parseLoad(`LOAD # 7\nPICKUP\n${addr}`)!.stops[0].type, "pickup", "labelled");
+  assert.equal(parseLoad(`LOAD # 7\nDROP\n${addr}`)!.stops[0].type, "drop", "labelled");
+  const loose = parseLoad(`LOAD # 7 - we pick up tomorrow morning\n${addr}`);
+  assert.equal(loose!.loadNo, null, "'LOAD # 7 - …' on one line is not a Load # line");
+  const sentence = parseLoad(`LOAD # 7\nthey need a pick up tomorrow\n${addr}`)!;
+  assert.equal(sentence.stops[0].type, "pickup", "talks about a pickup, never a delivery");
+  assert(sentence.needsReview && sentence.reasons.some((r) => /mentions a pickup/.test(r)));
+  // Plan-only: nothing to route, but a Load #
+  assert.equal(parseLoad("LOAD # 9\nTRUCK # 11\nTEMP # 34"), null, "chat messages without an address are not loads");
+  const plan = parseLoad("ORDER # 0056000\nTRUCK # 35865\nTRAILER # 107065\nTEMP # 34 CONT.", { plan: true })!;
+  assert.equal(plan.loadNo, "0056000");
+  assert.deepEqual(plan.stops, []);
+  assert.equal(plan.truck, "35865");
+  assert.equal(plan.needsReview, true);
+  assert.equal(parseLoad("TRUCK # 11\nTEMP # 34", { plan: true }), null, "no Load # → nothing to plan");
 });
 
 console.log(results.join("\n"));

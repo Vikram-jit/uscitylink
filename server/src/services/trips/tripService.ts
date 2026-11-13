@@ -12,10 +12,11 @@ import { getBotProfileId } from "../flowEngine/botProfile";
 import { getSocketInstance } from "../../sockets/socket";
 import { userRoom } from "../../sockets/userConnections";
 import { sendSystemMessageToDriver } from "../../sockets/messageHandler";
+import { driversInGroup, postToGroup } from "./truckGroup";
 import { ActorRole, check, DRIVER_CURRENT, nextStep, TripAction, TripStatus, UNDO_WINDOW_MS } from "./lifecycle";
 import { localToDate, stateTimezone } from "./stateTimezone";
 import { createRouteRow, isPriced, removeRouteRow, syncRouteRow } from "./routeListSync";
-import { formatLoad, PROBLEM_KINDS, statusLine } from "./tripMessages";
+import { formatLoad, loadRef, PROBLEM_KINDS, statusLine } from "./tripMessages";
 import { gpsTrail, tripMileage } from "./samsara";
 import { matchStops, meetPoint, pointAt } from "./gpsTimes";
 import { geocodeStop, placeAt } from "./places";
@@ -68,6 +69,8 @@ export interface TripInput {
   rawText?: string | null;
   /** A typed load: the message it came in (already in the chat, so nothing is sent). */
   messageId?: string | null;
+  /** A plan-only load (a Load # and no stops yet): saved, can't be sent until it has stops */
+  plan?: boolean;
   /** A later leg of a load can be saved before its driver is known ("assign later") */
   allowNoDriver?: boolean;
 }
@@ -124,15 +127,9 @@ export async function driverOfTruck(truckNumber: string): Promise<UserProfile | 
     where: { name: truckNumber, type: "truck" },
   });
   if (!group) return null;
-  const links = await GroupUser.findAll({
-    where: { groupId: (group as any).id },
-  });
-  if (!links.length) return null;
-  const profiles = await UserProfile.findAll({
-    where: { id: links.map((l: any) => l.userProfileId) },
-    include: [{ model: Role, as: "role" }],
-  });
-  return profiles.find((p: any) => p.role?.name === "driver") || null;
+  // The main driver is the first by name — the same one the Send load form and the truck chat pick
+  const first = (await driversInGroup((group as any).id))[0];
+  return first ? UserProfile.findByPk(first.id) : null;
 }
 
 export interface TruckAssignment {
@@ -141,17 +138,6 @@ export interface TruckAssignment {
 }
 
 /** Drivers in a truck's group (the truck's assigned driver, two for a team). */
-async function driversInGroup(groupId: string) {
-  const links = await GroupUser.findAll({ where: { groupId } });
-  if (!links.length) return [];
-  const profiles = await UserProfile.findAll({
-    where: { id: links.map((l: any) => l.userProfileId) },
-    include: [{ model: Role, as: "role" }],
-    order: [["username", "ASC"]],
-  });
-  return profiles.filter((p: any) => p.role?.name === "driver").map((p) => ({ id: p.id, name: p.username || "Driver" }));
-}
-
 /** Trucks to pick from (Send load / Add load), each with the driver(s) its truck group assigns. */
 export async function truckAssignments(q = ""): Promise<TruckAssignment[]> {
   const groups = await Group.findAll({
@@ -243,8 +229,8 @@ export async function getTrip(id: number | string) {
 
 // ---------- create / edit ----------
 
-function stopRows(stops: StopInput[]) {
-  if (!stops.length) throw new TripError("Add at least one stop");
+function stopRows(stops: StopInput[], allowEmpty = false) {
+  if (!stops.length && !allowEmpty) throw new TripError("Add at least one stop");
   return stops.map((s, i) => {
     const state = (s.state || "").trim().toUpperCase().slice(0, 2) || null;
     const zone = stateTimezone(state);
@@ -330,7 +316,7 @@ async function resolvePeople(input: TripInput) {
 
 export async function createTrip(input: TripInput, actor: Actor, opts: { send?: boolean; leg?: LegOf; quiet?: boolean } = {}) {
   const people = await resolvePeople(input);
-  const rows = stopRows(input.stops);
+  const rows = stopRows(input.stops, !!input.plan);
   // The channel dispatch is working in, when the driver is in it (drivers can be in several)
   const working = actor.id ? (global as any).staffActiveChannel?.[actor.id]?.channelId : null;
   const channelId = people.profileId ? await driverChannel(people.profileId, input.channelId || working) : null;
@@ -375,7 +361,7 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
           sent_at: typed ? new Date() : null,
           created_by: actor.id || null,
           created_by_name: actor.name || null,
-          raw_text: input.rawText || null,
+          raw_text: input.rawText?.trim() || null,
         },
         { transaction: t },
       );
@@ -530,7 +516,7 @@ const pick = (o: any, keys: string[]) => Object.fromEntries(keys.map((k) => [k, 
 // ---------- send / offer ----------
 
 /** Dispatch sends (or confirms) a load: the full load goes to the driver's chat. */
-export async function sendLoad(id: number, actor: Actor) {
+export async function sendLoad(id: number, actor: Actor, opts: { groupId?: string | null } = {}) {
   const trip = await ChatTrip.findByPk(id, withStops);
   if (!trip) throw new TripError("Trip not found", 404);
   const ok = check("send", trip.status, actor.role);
@@ -541,10 +527,25 @@ export async function sendLoad(id: number, actor: Actor) {
   const blocking = await blockingLeg(trip);
   if (blocking) throw new TripError(`Leg ${blocking.leg_no} (${blocking.trip_no}) isn't delivered yet — this leg goes out after it`);
 
+  // No stops yet (a plan-only load): nothing to send
+  if (!(trip.stops || []).length) throw new TripError("Add where it goes (the stops) before sending this load");
+
   const teamNames = trip.driver_id_2 ? await teamNamesOf(trip) : [];
-  const body = formatLoad(trip, trip.stops || [], teamNames);
+  // A load made from dispatch's own text goes out as dispatch typed it — nothing added or rewritten.
+  // Loads made on the form have no text of their own: they get the standard layout.
+  const typedText = trip.source === "typed" && trip.raw_text && trip.raw_text.trim() ? trip.raw_text.trim() : null;
+  const body = typedText ?? formatLoad(trip, trip.stops || [], teamNames);
   const senderId = actor.id || (await getBotProfileId());
-  const message = await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body);
+  // Sent from a truck chat: the message shows in that chat (staff + each member, once). Anywhere else
+  // it goes to the driver's own chat.
+  const inGroup = opts.groupId
+    ? await postToGroup({ groupId: opts.groupId, senderId, channelId, body, automated: !typedText }).catch((e) => {
+        console.warn("[trips] truck chat post:", e?.message || e);
+        return null;
+      })
+    : null;
+  const message =
+    inGroup || (await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body, { automated: !typedText }));
   const from = trip.status;
   await trip.update({
     status: ok.to,
@@ -563,7 +564,7 @@ export async function sendLoad(id: number, actor: Actor) {
   return getTrip(trip.id);
 }
 
-async function teamNamesOf(trip: ChatTrip): Promise<string[]> {
+export async function teamNamesOf(trip: ChatTrip): Promise<string[]> {
   const ids = [trip.driver_id_1, trip.driver_id_2].filter(Boolean);
   if (!ids.length) return [];
   const rows = await secondarySequelize.query<{ id: number; name: string }>(`SELECT id, name FROM drivers WHERE id IN (:ids)`, {
@@ -1255,7 +1256,7 @@ export async function undo(id: number, actor: Actor) {
     note: `Undid: ${last.data?.action || last.type}`,
     data: { undoes: last.id },
   });
-  await postToChat(trip, `↩️ ${actor.name || "Driver"} undid the last update on trip #${trip.trip_no || trip.id}`);
+  await postToChat(trip, `↩️ ${actor.name || "Driver"} undid the last update on ${loadRef(trip, false)}`);
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch(() => undefined);
   announce(id);

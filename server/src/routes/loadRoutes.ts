@@ -29,6 +29,10 @@ import {
   yardStopRest,
   matchGpsRest,
   loadsOfMessageRest,
+  convertMessageRest,
+  missedLoadsRest,
+  repairPreviewRest,
+  repairApplyRest,
   deleteLoadOfMessageRest,
   fromTextRest,
 } from "../controllers/loadController";
@@ -42,6 +46,10 @@ router.post("/", ...staffOnly, createLoadRest);
 router.get("/yard-stop", ...staffOnly, yardStopRest);
 router.get("/lookup", ...staffOnly, lookupLoadRest);
 router.get("/by-message/:messageId", ...staffOnly, loadsOfMessageRest);
+router.post("/from-message/:messageId", ...staffOnly, convertMessageRest);
+router.get("/missed", ...staffOnly, missedLoadsRest);
+router.get("/repair/:messageId", ...staffOnly, repairPreviewRest);
+router.post("/repair/:messageId", ...staffOnly, repairApplyRest);
 router.delete("/by-message/:messageId/legs/:legId", ...staffOnly, deleteLoadOfMessageRest);
 router.post("/typed/:pendingId/answer", ...staffOnly, answerTypedRest);
 router.post("/from-text", ...staffOnly, fromTextRest);

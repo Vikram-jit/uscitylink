@@ -143,11 +143,11 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       assert.equal(trip?.status, "rolling");
       assert(trip?.started_at, "rolling starts the trip");
       const lines = await Message.findAll({ where: { userProfileId: driver.id, is_automated: true }, order: [["createdAt", "ASC"]] });
-      assert(lines.some((l) => /accepted trip/.test(String(l.body))) && lines.some((l) => /Loaded — rolling/.test(String(l.body))));
+      assert(lines.some((l) => /accepted load/.test(String(l.body))) && lines.some((l) => /Loaded — rolling/.test(String(l.body))));
       // No scale ticket sent: asked once, right after Rolling (not at Got it)
       const asks = lines.filter((l) => /Please send the scale ticket/.test(String(l.body)));
       assert.equal(asks.length, 1, "asked once");
-      const acceptedAt = lines.find((l) => /accepted trip/.test(String(l.body)))!;
+      const acceptedAt = lines.find((l) => /accepted load/.test(String(l.body)))!;
       const rollingAt = lines.find((l) => /Loaded — rolling/.test(String(l.body)))!;
       assert(new Date(asks[0].createdAt) >= new Date(rollingAt.createdAt) && asks[0].id !== acceptedAt.id, "asked after Rolling");
     });
@@ -245,7 +245,7 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       await MessageDocument.create({ message_id: photo.id, status: "done", doc_type_key: "scale_ticket" } as any);
       await onDocumentRead(photo as any, "scale_ticket");
       await act(t6!.id, "rolling", me);
-      const asks = await Message.count({ where: { userProfileId: driver.id, body: { [Op.like]: `%send the scale ticket for trip #${t6!.trip_no}%` } } });
+      const asks = await Message.count({ where: { userProfileId: driver.id, body: { [Op.like]: `%send the scale ticket for load ${t6!.trip_no}%` } } });
       assert.equal(asks, 0, "already shared: not asked");
       const trip = await getTrip(t6!.id);
       assert((trip?.events || []).some((e) => e.note === "Scale ticket received"));
@@ -350,8 +350,8 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       tripIds.push(trip.id);
       assert(["planned", "scheduled"].includes(trip.status), trip.status);
       assert.equal(trip.source, "typed");
-      assert.equal(trip.needs_review, true, "one address: flagged");
       assert.equal(trip.stops?.[0].type, "drop");
+      assert(!/Only one address/.test(String(trip.review_notes || "")), "one address with no PICK/DROP labels is simply the drop — no 'check it' note");
     });
   } finally {
     // ---------- clean up everything this run created ----------

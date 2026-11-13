@@ -570,6 +570,10 @@ export function LegEditor({
   );
   const [lookupDriverTruck] = useLazyGetDriverAssignmentQuery();
   const [more, setMore] = React.useState(!!(leg.temperature || leg.notes));
+  // A temperature / note that arrives later (Paste & read) opens the box instead of hiding in it
+  React.useEffect(() => {
+    if (leg.temperature || leg.notes) setMore(true);
+  }, [leg.temperature, leg.notes]);
 
   const pickTruck = (number: string, a: TruckAssignment | null) => {
     if (!a) return onChange({ truck: number });

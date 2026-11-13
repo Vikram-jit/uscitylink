@@ -352,6 +352,21 @@ class StaffchatController extends GetxController {
     message.refresh();
   }
 
+  /// "message_updated": the server replaced a message's text (Repair); show the new text in place.
+  void updateMessageBody(dynamic data) {
+    if (data is! Map) return;
+    final ids = <String>{'${data['id']}', ...((data['ids'] as List?) ?? const []).map((e) => '$e')};
+    final body = '${data['body']}';
+    var changed = false;
+    for (final m in message.value.messages ?? const <MessageModel>[]) {
+      if (ids.contains(m.id)) {
+        m.body = body;
+        changed = true;
+      }
+    }
+    if (changed) message.refresh();
+  }
+
   void deleteMessage(dynamic data) {
     final messageId = data;
 

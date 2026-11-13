@@ -270,7 +270,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       assert([...one.stops!].sort((x, y) => x.seq - y.seq).pop()?.arrived_at, "handover stop marked arrived");
       const two = (await ChatTrip.findByPk(r.next))!;
       assert.equal(two.status, "planned", "sent to the new driver");
-      assert.match(await lastMsg(b.id, /TRIP #/), new RegExp(`TRIP #${two.trip_no}[\\s\\S]*DROP\\nZZ DROP TWO`));
+      assert.match(await lastMsg(b.id, /LOAD # /), new RegExp(`LOAD # ${two.trip_no}[\\s\\S]*DROP\\nZZ DROP TWO`));
       assert.match(await lastMsg(a.id, /handed over/), /handed over at ZZ TA KINGMAN/);
       // B's app: it's the current trip now with its Got it button
       const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: t.id, type: "status", to_status: "ended" } });

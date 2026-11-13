@@ -78,11 +78,11 @@ const STOPS = [
       loadIds.push(res.load.id);
       tripId = res.legs[0].id;
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: trip/), 0, "too early");
+      assert.equal(await driverMsgs(/Reminder: load/), 0, "too early");
       await ChatTrip.update({ sent_at: new Date(Date.now() - 31 * MIN) }, { where: { id: tripId } });
       await runReminders();
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: trip .* tap "Got it"/), 1, "driver reminded once");
+      assert.equal(await driverMsgs(/Reminder: load .* tap "Got it"/), 1, "driver reminded once");
       if (sys) {
         const sm = await systemMsgs(/hasn't tapped "Got it"/);
         assert.equal(sm.length, 1, "one System Message");
@@ -94,11 +94,11 @@ const STOPS = [
       await ChatTrip.update({ sent_at: new Date(Date.now() - 61 * MIN) }, { where: { id: tripId } });
       await runReminders();
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: trip/), 2);
+      assert.equal(await driverMsgs(/Reminder: load/), 2);
       if (sys) assert.equal((await systemMsgs(/second reminder/)).length, 1);
       await ChatTrip.update({ sent_at: new Date(Date.now() - 120 * MIN) }, { where: { id: tripId } });
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: trip/), 2, "stops after two");
+      assert.equal(await driverMsgs(/Reminder: load/), 2, "stops after two");
     });
 
     await test("Got it, pickup time passed, not rolling: both alerted once", async () => {
@@ -122,9 +122,9 @@ const STOPS = [
       const res = await addLoad({ loadNo: `${NO}B`, driverProfileId: driver.id, stops: STOPS }, dispatcher, { send: true, endDriverCurrent: true });
       loadIds.push(res.load.id);
       await ChatTrip.update({ sent_at: new Date(Date.now() - 5 * 60 * MIN) }, { where: { id: res.legs[0].id } });
-      const before = await driverMsgs(/Reminder: trip/);
+      const before = await driverMsgs(/Reminder: load/);
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: trip/), before);
+      assert.equal(await driverMsgs(/Reminder: load/), before);
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { load_id: loadIds } });

@@ -12,6 +12,7 @@ import { PRECHECK_MODEL } from "../documentAi/settings";
 import { logUsage } from "../documentAi/usageLog";
 import { check, TripAction, TripStatus } from "./lifecycle";
 import { attachFromChat } from "./paperwork";
+import { truckOfGroup } from "./truckGroup";
 import { looksLikeLoad, parseLoad, trailerOnly } from "./parseLoad";
 import { clearStatus, Intent, ruleIntent, SMALL_TALK } from "./intents";
 import { act, currentTripFor, editTrip, offerNextLoad } from "./tripService";
@@ -180,13 +181,13 @@ async function onDriverMessage(m: Message) {
 }
 
 /** Staff sent only a trailer number: it goes on the driver's load just sent (current, else latest sent and open). */
-async function trailerFollowUp(m: Message, trailer: string) {
+async function trailerFollowUp(m: Message, trailer: string, driverId: string) {
   const sender = await UserProfile.findByPk(m.senderId, { include: [{ model: Role, as: "role" }] });
   if (!isStaffRole((sender as any)?.role?.name)) return;
   const trip =
-    (await currentTripFor(m.userProfileId))?.trip ||
+    (await currentTripFor(driverId))?.trip ||
     (await ChatTrip.findOne({
-      where: { driver_profile_id: m.userProfileId, sent_at: { [Op.ne]: null }, status: { [Op.notIn]: ["completed", "routed", "cancelled"] } },
+      where: { driver_profile_id: driverId, sent_at: { [Op.ne]: null }, status: { [Op.notIn]: ["completed", "routed", "cancelled"] } },
       order: [["sent_at", "DESC"], ["id", "DESC"]],
     }));
   if (!trip || ["completed", "routed", "cancelled"].includes(trip.status)) return;
@@ -197,10 +198,25 @@ async function trailerFollowUp(m: Message, trailer: string) {
 
 async function onStaffMessage(m: Message) {
   const text = String(m.body || "");
+  // A truck chat send saves several rows: the staff's own copy (shown in the truck chat) and one copy
+  // for each member. A load is made ONCE, from the staff's copy — for the truck's main driver (the
+  // team mate linked) — never once per member.
+  let driverId = m.userProfileId;
+  let truck: Awaited<ReturnType<typeof truckOfGroup>> = null;
+  if (m.groupId) {
+    if (m.type === "truck_group") return;
+    truck = await truckOfGroup(m.groupId);
+    if (!truck) return; // some other group chat: not a load
+    if (!truck.driver) return;
+    driverId = truck.driver.id;
+  }
   const trailer = trailerOnly(text);
-  if (trailer) return trailerFollowUp(m, trailer);
+  if (trailer) return trailerFollowUp(m, trailer, driverId);
   if (!looksLikeLoad(text)) return;
   if (await ChatTrip.findOne({ where: { message_id: m.id } })) return;
+  // The same text already made a load for this driver a moment ago — this is that load's own message
+  // (dispatch's text goes out as typed), or a double send: never a second load
+  if (await ChatTrip.findOne({ where: { raw_text: text.trim(), driver_profile_id: driverId, created_at: { [Op.gte]: new Date(Date.now() - 60_000) } } as any })) return;
   const sender = await UserProfile.findByPk(m.senderId, { include: [{ model: Role, as: "role" }] });
   if (!isStaffRole((sender as any)?.role?.name)) return;
   const load = parseLoad(text);
@@ -212,9 +228,11 @@ async function onStaffMessage(m: Message) {
   const result = await loadFromChat(
     {
       loadNo: load.loadNo,
-      driverProfileId: m.userProfileId,
-      truckNumber: load.truck,
+      driverProfileId: driverId,
+      truckNumber: load.truck || truck?.truck || null,
       teamNames: load.team,
+      ...(truck?.team && !load.team.length ? { teamDriverProfileId: truck.team.id } : {}),
+      groupId: truck?.groupId || null,
       trailerNumbers: load.trailers,
       temperature: load.temperature,
       loadedTrailer: load.loadedTrailer,
@@ -227,7 +245,7 @@ async function onStaffMessage(m: Message) {
     },
     actor
   );
-  const driverName = (await UserProfile.findByPk(m.userProfileId))?.username || "the driver";
+  const driverName = (await UserProfile.findByPk(driverId))?.username || "the driver";
   getSocketInstance()
     .to(userRoom(String(m.senderId)))
     .emit("load:typed", { ...result, messageId: m.id, driverName });

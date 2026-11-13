@@ -4,8 +4,9 @@
 
 final _cityStateZip = RegExp(r'^(.+?),?\s+([A-Za-z]{2})\.?,?\s*(\d{5})(?:-\d{4})?[.,]?$');
 final _label = RegExp(r'^(?:pick(?:\s*-?\s*up)?|drop|delivery|deliver|del)\s*#?\s*\d*\s*:?\s*$', caseSensitive: false);
+// LOAD / ORDER / TRIP / INVOICE (and LOAD ORDER) — "ORDER # 0056000" is a load id too
 final _loadNo = RegExp(
-  r'^(?:load|invoice|inv)(?:\s*(?:no\.?|id|number))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load|invoice|inv)\s+(?:no\.?|id|number)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$',
+  r'^(?:load\s+order|load|order|ord|trip|invoice|inv)(?:\s*(?:no\.?|id|number|num))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load\s+order|load|order|ord|trip|invoice|inv)\s+(?:no\.?|id|number|num)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$',
   caseSensitive: false,
 );
 

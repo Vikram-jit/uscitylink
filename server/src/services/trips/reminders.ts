@@ -7,6 +7,7 @@ import User from "../../models/User";
 import Role from "../../models/Role";
 import { STAFF_ROLES } from "../../middleware/requireRole";
 import { alertStaff, postToChat, record } from "./tripService";
+import { loadRef } from "./tripMessages";
 
 // Reminders, every few minutes:
 //   1. Sent, no "Got it": 30 min after the load was sent the driver is reminded in chat and dispatch
@@ -91,8 +92,8 @@ export async function runReminders(now = Date.now()) {
       await remind(
         trip,
         kind,
-        `⏰ Reminder: trip ${trip.trip_no} was sent to you ${mins} min ago — please open it and tap "Got it"`,
-        `⏰ ${who} hasn't tapped "Got it" on trip ${trip.trip_no} (sent ${mins} min ago)${kind === "ack60" ? " — second reminder" : ""}`
+        `⏰ Reminder: ${loadRef(trip, false)} was sent to you ${mins} min ago — please open it and tap "Got it"`,
+        `⏰ ${who} hasn't tapped "Got it" on ${loadRef(trip, false)} (sent ${mins} min ago)${kind === "ack60" ? " — second reminder" : ""}`
       );
     }
   }
@@ -114,8 +115,8 @@ export async function runReminders(now = Date.now()) {
     await remind(
       trip,
       "pickup_late",
-      `⚠️ Trip ${trip.trip_no}: the pickup time at ${where}${appt ? ` (${appt})` : ""} has passed and the load isn't rolling yet. Tap "Loaded — rolling" when you leave, or tell dispatch if you're delayed`,
-      `⚠️ Pickup time passed: ${who} on trip ${trip.trip_no} isn't rolling — pickup ${where}${appt ? ` was ${appt}` : ""} (${minutesSince(pickup.appointment_at, now)} min ago)`
+      `⚠️ ${loadRef(trip)}: the pickup time at ${where}${appt ? ` (${appt})` : ""} has passed and the load isn't rolling yet. Tap "Loaded — rolling" when you leave, or tell dispatch if you're delayed`,
+      `⚠️ Pickup time passed: ${who} on ${loadRef(trip, false)} isn't rolling — pickup ${where}${appt ? ` was ${appt}` : ""} (${minutesSince(pickup.appointment_at, now)} min ago)`
     );
   }
 }
