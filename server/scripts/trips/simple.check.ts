@@ -28,6 +28,8 @@ import { milesReport } from "../../src/services/trips/milesReport";
 import { parseLoad } from "../../src/services/trips/parseLoad";
 import { driverPayload } from "../../src/services/trips/driverView";
 import { registerTripHooks } from "../../src/services/trips/tripAssistant";
+import { deleteLegOfMessage, forgetMessage, loadsOfMessage } from "../../src/services/trips/messageLoads";
+import { randomUUID } from "crypto";
 
 const local = (h?: string) => !h || /^(localhost|127\.0\.0\.1)$/.test(h);
 if (!local(process.env.DB_PRIMARY_HOST) || !local(process.env.DB_SECONDARY_HOST)) {
@@ -445,6 +447,93 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(done.total_mileage, 212.4);
       for (const k of forbidden) assert(!(k in done), `${k} hidden in history`);
       assert(done.stops.every((st: any) => !("ref" in st)), "stops cleaned");
+    });
+
+    await test("chat words: a later \"TAKE TRAILER # …\" fills the load's trailer; the driver's plain \"rolling / arrived / delivered\" moves the load", async () => {
+      const no = `${NO}W`;
+      const r = await addLoad({ loadNo: no, driverProfileId: b.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(r.load.id);
+      const legId = r.legs[0].id;
+      const leg = async () => (await ChatTrip.findByPk(legId, { include: [{ model: ChatTripStop, as: "stops" }] }))!;
+      const say = async (body: string, fromStaff = false) => {
+        await Message.create({ channelId: channel[0].id, userProfileId: b.id, senderId: fromStaff ? staff!.id : b.id, body, messageDirection: fromStaff ? "S" : "R", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+        await wait(1800);
+      };
+      assert.equal((await leg()).trailer_numbers, null);
+      await say("TAKE TRAILER # 16465", true);
+      assert.equal((await leg()).trailer_numbers, "16465", "trailer filled from the follow-up");
+      await say("trailer 16465 is broken", true);
+      assert.equal((await leg()).trailer_numbers, "16465", "a sentence about a trailer changes nothing");
+
+      await say("not loaded yet");
+      assert.equal((await leg()).status, "planned", "not done → nothing moves");
+      await say("rolling ");
+      let t = await leg();
+      assert.equal(t.status, "rolling", "Got it → Rolling from the word");
+      assert(t.started_at, "started");
+      const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: legId, to_status: "rolling" } as any }).catch(() => null);
+      if (ev) assert.match(String(ev.note), /From the driver's chat/);
+      await say("arrived ");
+      t = await leg();
+      const stops = [...(t.stops || [])].sort((x, y) => x.seq - y.seq);
+      assert(stops[stops.length - 1].arrived_at, "arrived at the delivery (loaded at the pickup already)");
+      assert.equal(t.status, "rolling");
+      await say("delivered");
+      assert.equal((await leg()).status, "ended", "Delivered from the word");
+
+      // The BOL / POD photo sent straight in the chat goes on the load → Paperwork check
+      await Message.create({ channelId: channel[0].id, userProfileId: b.id, senderId: b.id, body: "pod", url: "uscitylink/zz-test-pod.jpg", thumbnail: "uscitylink/zz-test-pod-thumb.jpg", url_upload_type: "server", messageDirection: "R", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+      await wait(2000);
+      assert.equal((await leg()).status, "paperwork", "delivered load → Paperwork check");
+      const full = await getLoad(r.load.id);
+      assert.equal(full.documents.length, 1, "the photo is on the load");
+      assert.equal(full.documents[0].url, "uscitylink/zz-test-pod.jpg");
+      assert.equal(full.documents[0].caption, "pod");
+      assert(full.history.some((h: any) => h.type === "document"), "in History");
+      assert(!("events" in driverPayload(await currentTripFor(b.id)).trip), "the driver's app still gets no events");
+    });
+
+    await test("deleting a load message: the app is told which load it made; confirmed → the load is deleted; a deleted photo leaves the Paperwork", async () => {
+      const no = `${NO}X`;
+      // A load typed in the chat (the staff's own message)
+      const src = await Message.create({ channelId: channel[0].id, userProfileId: b.id, senderId: staff!.id, body: "(test) typed load", messageDirection: "S", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date(), is_automated: true } as any);
+      let out = await loadFromChat({ loadNo: no, driverProfileId: b.id, stops: CHD_AMB, sourceMessageId: src.id }, dispatcher);
+      while (out.kind === "question") out = await answerTypedLoad(out.id, out.needs === "endPrevious" ? { endPrevious: true } : out.needs === "replaceLinedUp" ? { replace: true } : { endDriverCurrent: true }, dispatcher);
+      assert.equal(out.kind, "sent");
+      const loadId = (out as any).loadId;
+      loadIds.add(loadId);
+      const leg = (await ChatTrip.findOne({ where: { load_id: loadId } }))!;
+
+      const fromTyped = await loadsOfMessage(src.id);
+      assert.equal(fromTyped.length, 1, "the typed message made the load");
+      assert.equal(fromTyped[0].loadNo, no);
+      assert(fromTyped[0].onlyLeg && fromTyped[0].canDelete);
+      const fromStandard = await loadsOfMessage(leg.message_id!);
+      assert.equal(fromStandard[0]?.legId, leg.id, "the standard load message is linked too");
+      assert.equal((await loadsOfMessage(randomUUID())).length, 0, "any other message: nothing to ask");
+
+      // A completed leg is never deleted from the chat
+      await ChatTrip.update({ status: "completed" }, { where: { id: leg.id } });
+      const done = await loadsOfMessage(src.id);
+      assert.equal(done[0].canDelete, false);
+      await assert.rejects(deleteLegOfMessage(src.id, leg.id, dispatcher), /completed/);
+      await ChatTrip.update({ status: "planned" }, { where: { id: leg.id } });
+
+      // A driver's photo on it, then the photo deleted → off the Paperwork
+      // (B's delivered load from the test before would take the photo first: close it, long ago)
+      await ChatTrip.update({ status: "completed", completed_at: new Date(Date.now() - 10 * 86400_000) }, { where: { driver_profile_id: b.id, status: ["ended", "paperwork"] } });
+      const photo = await Message.create({ channelId: channel[0].id, userProfileId: b.id, senderId: b.id, body: "bol", url: "uscitylink/zz-del-bol.jpg", url_upload_type: "server", messageDirection: "R", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+      await wait(1500);
+      assert.equal((await getLoad(loadId)).documents.length, 1);
+      await forgetMessage(photo.id);
+      assert.equal((await getLoad(loadId)).documents.length, 0, "deleted photo left the Paperwork");
+
+      // Confirmed: message + load go
+      const res = await deleteLegOfMessage(src.id, leg.id, dispatcher);
+      assert.equal(res.deletedLoad, true);
+      assert.equal(await ChatLoad.count({ where: { id: loadId } }), 0, "load deleted");
+      assert.equal(await ChatTrip.count({ where: { load_id: loadId } }), 0, "legs deleted");
+      assert.equal(await ChatTripEvent.count({ where: { chat_trip_id: leg.id } }), 0, "its history deleted");
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { [Op.or]: [{ load_id: [...loadIds] }, { driver_profile_id: people.map((p) => p.id) }] } });

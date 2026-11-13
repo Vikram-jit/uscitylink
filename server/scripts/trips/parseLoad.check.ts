@@ -2,7 +2,7 @@
 // The load messages dispatchers really send (examples from dispatch, 2026-11) and what must be read
 // from each. Add new formats here before changing the parser.
 import assert from "assert";
-import { looksLikeLoad, parseLoad, ParsedLoad } from "../../src/services/trips/parseLoad";
+import { looksLikeLoad, parseLoad, ParsedLoad, trailerOnly } from "../../src/services/trips/parseLoad";
 import { localToDate } from "../../src/services/trips/stateTimezone";
 
 const results: string[] = [];
@@ -223,6 +223,19 @@ test("12 AM / 12 PM and local time zones", () => {
   // 03:15 in Mira Loma on 2026-11-06 is PST (daylight saving ended 2026-11-01): UTC-8
   assert.equal(localToDate("2026-11-06T03:15", "America/Los_Angeles").toISOString(), "2026-11-06T11:15:00.000Z");
   assert.equal(localToDate("2026-07-01T09:00", "America/New_York").toISOString(), "2026-07-01T13:00:00.000Z");
+});
+
+test("TRAILER # WILL ADVISE is no trailer; a later \"TAKE TRAILER # 16465\" is just the number", () => {
+  const load = parseLoad("LOAD # 0056034\n\nTRAILER # WILL ADVISE\n\nTEMP # REFER BILLS\n\nPICK #\n4Earth Farms / WCD\n5555 E Olympic Blvd\nCommerce, CA 90022\n11/12/2026 07:00PM\n\nDROP #\nWCD Franklin Consolidation\n4040 Scottsville Rd\nFranklin, KY 42134\n11/15/2026 12:01AM")!;
+  assert.deepEqual(load.trailers, []);
+  assert.equal(load.stops.length, 2);
+  for (const t of ["TBD", "tba", "will advise later", "N/A", "--"]) assert.deepEqual(parseLoad(`LOAD # 1\nTRAILER # ${t}\nPICK\nA\n1 Main St\nWaco, TX 76701`)!.trailers, [], t);
+  const yes: [string, string][] = [
+    ["TAKE TRAILER # 16465", "16465"], ["trailer 16465", "16465"], ["Trailer#: 16465", "16465"], ["pls take trailer # 16465", "16465"],
+    ["hook trailer 5309", "5309"], ["TRAILER # UST-1234", "UST-1234"], ["use trailer 16465 for this load", "16465"], ["TRL 16465", "16465"],
+  ];
+  for (const [text, want] of yes) assert.equal(trailerOnly(text), want, text);
+  for (const text of ["trailer 16465 is broken", "TRAILER # WILL ADVISE", "where is trailer?", "LOAD # 1\nTRAILER # 16465", "take trailer"]) assert.equal(trailerOnly(text), null, text);
 });
 
 console.log(results.join("\n"));

@@ -343,12 +343,45 @@ class DeliveryTiming {
       );
 }
 
+/// A photo / PDF the driver sent in the chat, put on the load by the server (BOL, POD, lumper …).
+class LoadDocument {
+  LoadDocument({required this.messageId, this.at, this.legNo = 1, required this.url, this.thumbnail, this.uploadType, this.caption, this.docType});
+  final String messageId;
+  final DateTime? at;
+  final int legNo;
+  final String url;
+  final String? thumbnail;
+  final String? uploadType;
+  final String? caption;
+  final String? docType;
+
+  factory LoadDocument.fromJson(Map<String, dynamic> j) => LoadDocument(
+        messageId: '${j['messageId']}',
+        at: _date(j['at']),
+        legNo: _int(j['legNo']) ?? 1,
+        url: '${j['url'] ?? ''}',
+        thumbnail: _str(j['thumbnail']),
+        uploadType: _str(j['uploadType']),
+        caption: _str(j['caption']),
+        docType: _str(j['docType']),
+      );
+
+  bool get isPdf => url.toLowerCase().endsWith('.pdf');
+
+  String get name {
+    const names = {'bol': 'BOL', 'pod': 'POD', 'scale_ticket': 'Scale ticket', 'lumper': 'Lumper receipt', 'lumper_receipt': 'Lumper receipt'};
+    if (docType != null) return names[docType] ?? docType!.replaceAll('_', ' ');
+    return isPdf ? 'PDF' : 'Photo';
+  }
+}
+
 class LoadDetail {
   LoadDetail({
     required this.load,
     required this.legs,
     this.segments = const [],
     this.history = const [],
+    this.documents = const [],
     this.yardVisits = const [],
     this.yardMinutes = 0,
     this.timing,
@@ -361,6 +394,7 @@ class LoadDetail {
   final List<LoadLeg> legs;
   final List<LoadSegment> segments;
   final List<HistoryEntry> history;
+  final List<LoadDocument> documents;
   final List<YardVisit> yardVisits;
   final int yardMinutes;
   final DeliveryTiming? timing;
@@ -388,6 +422,7 @@ class LoadDetail {
       legs: legs,
       segments: _maps(j['segments']).map(LoadSegment.fromJson).toList(),
       history: _maps(j['history']).map(HistoryEntry.fromJson).toList(),
+      documents: _maps(j['documents']).map(LoadDocument.fromJson).where((d) => d.url.isNotEmpty).toList(),
       yardVisits: _maps(j['yardVisits']).map(YardVisit.fromJson).toList(),
       yardMinutes: _int(j['yardMinutes']) ?? 0,
       timing: j['timing'] is Map ? DeliveryTiming.fromJson(Map<String, dynamic>.from(j['timing'])) : null,
@@ -839,4 +874,34 @@ class LiveTrip {
         eta: _date(j['eta']),
         fuelGallons: _num(j['fuelGallons']),
       );
+}
+
+/// A load a chat message made — asked about before the message is deleted.
+class MessageLoad {
+  MessageLoad({required this.loadId, required this.legId, this.legNo = 1, this.tripNo, this.loadNo, this.status = '', this.driverName, this.onlyLeg = true, this.canDelete = true, this.why});
+  final int loadId;
+  final int legId;
+  final int legNo;
+  final String? tripNo;
+  final String? loadNo;
+  final String status;
+  final String? driverName;
+  final bool onlyLeg;
+  final bool canDelete;
+  final String? why;
+
+  factory MessageLoad.fromJson(Map<String, dynamic> j) => MessageLoad(
+        loadId: _int(j['loadId']) ?? 0,
+        legId: _int(j['legId']) ?? 0,
+        legNo: _int(j['legNo']) ?? 1,
+        tripNo: _str(j['tripNo']),
+        loadNo: _str(j['loadNo']),
+        status: '${j['status'] ?? ''}',
+        driverName: _str(j['driverName']),
+        onlyLeg: j['onlyLeg'] != false,
+        canDelete: j['canDelete'] == true,
+        why: _str(j['why']),
+      );
+
+  String get title => 'Load ${loadNo ?? '#${tripNo ?? loadId}'}${onlyLeg ? '' : ' · leg $legNo'}';
 }

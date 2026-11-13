@@ -287,12 +287,40 @@ export interface MilesRow {
   items: MilesItem[];
 }
 
+/** A photo / PDF the driver sent in the chat, put on the load (BOL, POD, lumper …) */
+export interface LoadDocument {
+  messageId: string;
+  at: string;
+  legNo: number;
+  tripNo: string | null;
+  url: string;
+  thumbnail: string | null;
+  uploadType: string | null;
+  caption: string | null;
+  docType: string | null;
+}
+
+/** A load a chat message made — asked about before the message is deleted */
+export interface MessageLoad {
+  loadId: number;
+  legId: number;
+  legNo: number;
+  tripNo: string | null;
+  loadNo: string | null;
+  status: string;
+  driverName: string | null;
+  onlyLeg: boolean;
+  canDelete: boolean;
+  why: string | null;
+}
+
 export interface LoadDetail {
   load: Load;
   legs: Trip[];
   segments: LoadSegment[];
   milesTotals: { miles: number; missing: number; byDriver: Record<string, number>; byTruck: Record<string, number> };
   history: LoadHistoryEntry[];
+  documents?: LoadDocument[];
   driverNames: Record<string, string>;
   yardVisits: YardVisit[];
   yardMinutes: number;
@@ -626,6 +654,14 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['chatTrips'],
     }),
     /** Read the leg's times / miles from the truck's GPS again */
+    getLoadsOfMessage: builder.query<Res<MessageLoad[]>, string>({
+      query: (messageId) => ({ url: `loads/by-message/${messageId}`, method: 'GET' }),
+      keepUnusedDataFor: 0,
+    }),
+    deleteLoadOfMessage: builder.mutation<Res<{ deletedLoad: boolean; loadId: number }>, { messageId: string; legId: number }>({
+      query: ({ messageId, legId }) => ({ url: `loads/by-message/${messageId}/legs/${legId}`, method: 'DELETE' }),
+      invalidatesTags: ['chatTrips'],
+    }),
     matchLegGps: builder.mutation<Res<LoadDetail>, { id: number; legId: number }>({
       query: ({ id, legId }) => ({ url: `loads/${id}/legs/${legId}/match-gps`, method: 'POST' }),
       invalidatesTags: ['chatTrips'],
@@ -745,6 +781,8 @@ export const {
   useCorrectLegTimesMutation,
   useSetLegMilesMutation,
   useMatchLegGpsMutation,
+  useLazyGetLoadsOfMessageQuery,
+  useDeleteLoadOfMessageMutation,
   useGetMilesReportQuery,
   useReorderDriverLineupMutation,
   useRemoveFromDriverLineupMutation,

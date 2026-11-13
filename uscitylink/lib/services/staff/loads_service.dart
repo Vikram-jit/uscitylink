@@ -22,6 +22,19 @@ class LoadsService {
     );
   }
 
+  /// The load(s) a chat message made (asked before deleting it).
+  Future<List<MessageLoad>> loadsOfMessage(String messageId) async {
+    final res = await _api.get('loads/by-message/$messageId');
+    final list = res['data'] is List ? res['data'] as List : const [];
+    return list.whereType<Map>().map((m) => MessageLoad.fromJson(Map<String, dynamic>.from(m))).toList();
+  }
+
+  /// Confirmed: delete the leg this message made (the whole load when it's the only leg).
+  Future<String> deleteLoadOfMessage(String messageId, int legId) async {
+    final res = await _api.delete('loads/by-message/$messageId/legs/$legId');
+    return '${res['message'] ?? 'Load deleted'}';
+  }
+
   Future<LoadDetail> detail(int id) async => LoadDetail.fromJson(_data(await _api.get('loads/$id')));
 
   /// What this Load # is: new, or leg N after …; and whether the chosen driver is busy.

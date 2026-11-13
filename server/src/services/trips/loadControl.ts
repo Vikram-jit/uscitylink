@@ -654,7 +654,7 @@ export function historyOf(legs: ChatTrip[]): HistoryEntry[] {
         note: e.note,
         actor: e.actor_name || (e.actor_role === "system" ? "System" : e.actor_role),
         actorRole: e.actor_role,
-        data: ["time_correction", "miles", "transfer"].includes(e.type) ? e.data : null,
+        data: ["time_correction", "miles", "transfer", "document"].includes(e.type) ? e.data : null,
       });
     }
   }

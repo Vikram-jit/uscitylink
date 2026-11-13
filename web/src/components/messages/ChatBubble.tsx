@@ -21,6 +21,7 @@ import { DocumentChip } from '../dashboard/automation/DocumentChip';
 import { formatUtcTime } from './utils';
 import { CallBubble } from '@/calls/CallBubble';
 import { mediaServerUrl } from '@/lib/serverUrl';
+import { DeleteMessageDialog } from '../dashboard/trips/DeleteMessageDialog';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -54,6 +55,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
   const { socket } = useSocket();
   const [openDialog, setOpenDialog] = React.useState<boolean>(false);
   const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
+  // Delete asks first when the message made a load
+  const [deleting, setDeleting] = React.useState<string | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -299,7 +302,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => {
-                    socket.emit('delete_message', { messageId: props.id });
+                    handleClose();
+                    setDeleting(props.id);
                   }}
                 >
                   <ListItemIcon>
@@ -350,6 +354,11 @@ export default function ChatBubble(props: ChatBubbleProps) {
           message={props.singleMessage!}
         />
       )}
+      <DeleteMessageDialog
+        messageId={deleting}
+        onClose={() => setDeleting(null)}
+        deleteMessage={(id) => socket.emit('delete_message', { messageId: id })}
+      />
     </Box>
   );
 }

@@ -11,6 +11,7 @@ import { refreshLoadStatus } from "../services/trips/legs";
 import { ChatTrip } from "../models/ChatTrip";
 import { changeType, correctTimes, endLegNow, releaseLeg, setMiles, splitLeg, truckPlace, undoSplit } from "../services/trips/loadControl";
 import { milesReport } from "../services/trips/milesReport";
+import { deleteLegOfMessage, loadsOfMessage } from "../services/trips/messageLoads";
 
 // Loads (a load = invoice # + its legs) and the equipment board, for dispatch. The rules live in
 // services/trips (loadService, equipment, tripService); this only maps HTTP to them.
@@ -197,4 +198,13 @@ export const fromTextRest = handle(async (req) => {
   const answers = { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true, replace: b.replace === true };
   const { data, loadNo } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null);
   return { data, message: answers.lineUp && !answers.endDriverCurrent ? `Load ${loadNo} lined up — it goes to the driver when their current load is delivered` : `Load ${loadNo} sent to the driver` };
+});
+
+/** Before deleting a chat message: the load(s) it made, so the app can ask "delete the load too?" */
+export const loadsOfMessageRest = handle(async (req) => ({ data: await loadsOfMessage(String(req.params.messageId)) }));
+
+/** Confirmed: delete the leg this message made (the whole load when it's the only leg). */
+export const deleteLoadOfMessageRest = handle(async (req) => {
+  const res = await deleteLegOfMessage(String(req.params.messageId), Number(req.params.legId), await actorOf(req));
+  return { data: res, message: res.deletedLoad ? "Load deleted" : "Leg deleted" };
 });

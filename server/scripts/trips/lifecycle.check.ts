@@ -3,7 +3,7 @@
 // else is refused.
 import assert from "assert";
 import { check, nextStep, RULES, StopProgress, TripAction, TripStatus } from "../../src/services/trips/lifecycle";
-import { ruleIntent, SMALL_TALK } from "../../src/services/trips/intents";
+import { clearStatus, ruleIntent, SMALL_TALK } from "../../src/services/trips/intents";
 
 const results: string[] = [];
 const test = (name: string, fn: () => void) => {
@@ -111,6 +111,24 @@ test("what drivers write → trip intent", () => {
   ];
   for (const [text, want] of cases) assert.equal(ruleIntent(text), want, text);
   assert(SMALL_TALK.test("ok") && SMALL_TALK.test("thanks!") && !SMALL_TALK.test("ok loaded"));
+});
+
+test("plain status lines move the load by themselves; unclear ones don't", () => {
+  const yes: [string, string][] = [
+    ["rolling", "rolling"], ["rolling ", "rolling"], ["Loaded", "rolling"], ["loaded rolling", "rolling"], ["picked up", "rolling"],
+    ["pickup done", "rolling"], ["left", "rolling"], ["left shipper", "rolling"], ["on my way", "rolling"], ["omw", "rolling"],
+    ["en route", "rolling"], ["chal pye", "rolling"], ["nikal gya", "rolling"], ["arrived at shipper, loaded now", "rolling"],
+    ["arrived", "arrive"], ["arrived ", "arrive"], ["reached", "arrive"], ["at receiver", "arrive"], ["checked in", "arrive"],
+    ["check in done", "arrive"], ["here now", "arrive"], ["pahunch gya", "arrive"], ["aa gya", "arrive"], ["in door", "arrive"],
+    ["delivered", "end"], ["unloaded", "end"], ["empty now", "end"], ["unloading done", "end"], ["khali ho gya", "end"], ["delivery done", "end"],
+  ];
+  for (const [text, want] of yes) assert.equal(clearStatus(text), want, text);
+  const no = [
+    "not loaded yet", "when will i be loaded?", "rolling?", "will leave at 5", "waiting to get loaded", "still not arrived",
+    "arrive by 6", "should i leave", "abhi nahi hua", "I left my phone at the shipper and need to go back for it right now please",
+    "ok", "how are you", "lumper charged 150",
+  ];
+  for (const text of no) assert.equal(clearStatus(text), "none", text);
 });
 
 console.log(results.join("\n"));

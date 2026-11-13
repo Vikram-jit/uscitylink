@@ -1,3 +1,4 @@
+import { forgetMessage } from "../services/trips/messageLoads";
 import { ActingSocket } from "./userConnections";
 import { STAFF_ROLES } from "../middleware/requireRole";
 //Message to channel
@@ -2785,6 +2786,8 @@ export async function deleteMessage(
         id: messageId,
       },
     });
+    // A driver's photo leaves the load's Paperwork (a load message's load is asked about by the app first)
+    await forgetMessage(messageId).catch((e) => console.warn("[trips] forget message:", e?.message || e));
 
     io.to(socket.id).emit("delete_message", messageId);
   }

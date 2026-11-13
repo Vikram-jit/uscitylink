@@ -28,6 +28,8 @@ import {
   updateLoadRest,
   yardStopRest,
   matchGpsRest,
+  loadsOfMessageRest,
+  deleteLoadOfMessageRest,
   fromTextRest,
 } from "../controllers/loadController";
 
@@ -39,6 +41,8 @@ router.get("/", ...staffOnly, listLoadsRest);
 router.post("/", ...staffOnly, createLoadRest);
 router.get("/yard-stop", ...staffOnly, yardStopRest);
 router.get("/lookup", ...staffOnly, lookupLoadRest);
+router.get("/by-message/:messageId", ...staffOnly, loadsOfMessageRest);
+router.delete("/by-message/:messageId/legs/:legId", ...staffOnly, deleteLoadOfMessageRest);
 router.post("/typed/:pendingId/answer", ...staffOnly, answerTypedRest);
 router.post("/from-text", ...staffOnly, fromTextRest);
 router.get("/places/search", ...staffOnly, searchPlacesRest);

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/model/staff/load_models.dart';
 import 'package:uscitylink/services/staff/loads_service.dart';
 import 'package:uscitylink/services/staff/staff_api_client.dart';
@@ -338,6 +340,13 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
           _title('In our yard · ${fmtMinutes(d.yardMinutes)}'),
           for (final v in d.yardVisits) Text('${v.trailer ?? 'Trailer'}: ${fmtDateTime(v.inAt)} → ${v.outAt == null ? 'still there' : fmtDateTime(v.outAt)}', style: AppText.bodySm),
         ]),
+      _card([
+        _title('Paperwork (${d.documents.length})'),
+        if (d.documents.isEmpty)
+          Text('Nothing yet — photos / PDFs the driver sends in the chat (BOL, POD …) show up here by themselves.', key: const Key('paperworkEmpty'), style: AppText.bodySm.copyWith(color: StaffColors.textMuted))
+        else
+          Wrap(spacing: 8, runSpacing: 8, children: [for (final doc in d.documents.reversed) _DocTile(doc: doc)]),
+      ]),
       if (d.history.isNotEmpty)
         _card([
           _title('History'),
@@ -508,6 +517,51 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
           ]),
         ),
       ]),
+    );
+  }
+}
+
+/// The full link of a chat attachment (S3, or the media server while it's still uploading).
+String docLink(String key, String? uploadType) =>
+    (uploadType == 'not-upload' || uploadType == 'local') ? '${Constant.tempImageUrl}$key' : '${Constant.aws}/$key';
+
+/// One paperwork photo / PDF: tap to open it.
+class _DocTile extends StatelessWidget {
+  const _DocTile({required this.doc});
+  final LoadDocument doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final href = docLink(doc.url, doc.uploadType);
+    return InkWell(
+      key: Key('doc_${doc.messageId}'),
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication),
+      child: Container(
+        width: 104,
+        decoration: BoxDecoration(border: Border.all(color: StaffColors.hairline), borderRadius: BorderRadius.circular(10)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            height: 78,
+            width: double.infinity,
+            child: doc.isPdf
+                ? const ColoredBox(color: Color(0xFFF1F5F9), child: Center(child: Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 32)))
+                : Image.network(
+                    doc.thumbnail != null ? docLink(doc.thumbnail!, doc.uploadType) : href,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFF1F5F9), child: Center(child: Icon(Icons.image_rounded, color: Color(0xFF94A3B8)))),
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${doc.name}${doc.legNo > 1 ? ' · leg ${doc.legNo}' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.labelMd),
+              Text(fmtDateTime(doc.at), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.bodySm.copyWith(color: StaffColors.textMuted)),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

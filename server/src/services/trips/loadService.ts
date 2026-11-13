@@ -4,6 +4,7 @@ import { UserProfile } from "../../models/UserProfile";
 import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
 import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
+import { documentsOf } from "./paperwork";
 import { trackToken } from "./publicTracking";
 import { parseLoad } from "./parseLoad";
 import { Actor, announce, cleanInvoice, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
@@ -233,6 +234,7 @@ export async function getLoad(id: number) {
     segments,
     milesTotals: totals,
     history: historyOf(legs),
+    documents: await documentsOf(legs),
     driverNames: names,
     yardVisits: visits,
     yardMinutes: visits.reduce((a, v) => a + v.minutes, 0),
@@ -536,7 +538,7 @@ export async function loadFromText(
 
 const pendingTyped = new Map<
   string,
-  { input: TripInput & { loadNo?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } }
+  { input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null }; actor: Actor; at: number; answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean } }
 >();
 const PENDING_MS = 30 * 60_000;
 
@@ -545,10 +547,20 @@ export type TypedLoadOutcome =
   | { kind: "noLoadNo" }
   | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy" | "replaceLinedUp"; info: Record<string, any>; loadNo: string | null; message: string };
 
-export async function loadFromChat(input: TripInput & { loadNo?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
+/** The staff's own chat message that made a leg: deleting that message offers to delete the load. */
+async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: string | null | undefined, actor: Actor) {
+  if (!messageId) return;
+  const legs = res.legs.filter((l) => l.status !== "cancelled");
+  const leg = legs[legs.length - 1];
+  if (leg) await record(leg, { type: "source_message", actor, messageId, note: "Made from a chat message" });
+}
+
+export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
   try {
-    return outcome(await addLoad(input, actor, { send: true, fromChat: true }));
+    const res = await addLoad(input, actor, { send: true, fromChat: true });
+    await linkSource(res, input.sourceMessageId, actor);
+    return outcome(res);
   } catch (err) {
     if (!(err instanceof NeedsAnswer)) throw err;
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -567,6 +579,7 @@ export async function answerTypedLoad(id: string, answers: { endPrevious?: boole
   try {
     const res = await addLoad(p.input, actor, { send: true, fromChat: true, ...p.answers });
     pendingTyped.delete(id);
+    await linkSource(res, (p.input as any).sourceMessageId, actor);
     return outcome(res);
   } catch (err) {
     if (!(err instanceof NeedsAnswer)) throw err;

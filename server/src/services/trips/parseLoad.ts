@@ -50,6 +50,8 @@ const SWITCH_LABEL = /^go\s+to\b/i;
 // "LOAD # 1011", "LOAD ID: 1011", "LOAD NO 1011", "INVOICE # 1011", "INV# 1011" — never "LOADED TRAILER"
 const LOAD_FIELD =
   /^(?:load|invoice|inv)(?:\s*(?:no\.?|id|number))?\s*[#:]+\s*([A-Za-z0-9][A-Za-z0-9-]*)\s*$|^(?:load|invoice|inv)\s+(?:no\.?|id|number)\s+([A-Za-z0-9][A-Za-z0-9-]*)\s*$/i;
+/** "TRAILER # WILL ADVISE / TBD / later" — no number yet (it comes in a later message) */
+export const TRAILER_LATER = /^(will\s+advise|w\/?a|tba|tbd|tbc|later|pending|n\/?a|none|na|-+|\?+|advise\s+later|will\s+send|will\s+update|update\s+later|coming|soon)(?=$|[\s.,!])/i;
 const FIELD = /^(?:(truck|trailer|team)\s*[#:]|(temp(?:erature)?)\b\s*[#:]?)\s*(.*)$/i;
 
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/[,\s]+$/, "").trim();
@@ -154,7 +156,7 @@ export function parseLoad(text: string): ParsedLoad | null {
       const key = (field[1] || field[2]).toLowerCase();
       const value = clean(field[3]);
       if (key === "truck" && value) result.truck = value.replace(/^#/, "").trim();
-      else if (key === "trailer" && value) result.trailers.push(...value.split(/[,&/]|\s+and\s+/i).map(clean).filter(Boolean));
+      else if (key === "trailer" && value && !TRAILER_LATER.test(value)) result.trailers.push(...value.split(/[,&/]|\s+and\s+/i).map(clean).filter(Boolean));
       else if (key === "team" && value) result.team = value.split(/\s*(?:\+|&|,|\band\b)\s*/i).map(clean).filter(Boolean);
       else if (key.startsWith("temp") && value) result.temperature = value;
       continue;
@@ -220,4 +222,16 @@ export function parseLoad(text: string): ParsedLoad | null {
 
   result.needsReview = result.reasons.length > 0;
   return result;
+}
+
+/**
+ * "TAKE TRAILER # 16465" sent on its own after the load (often sent as "TRAILER # WILL ADVISE"):
+ * the number, when the whole message is just that. Must contain a digit.
+ */
+const TRAILER_ONLY =
+  /^\s*(?:(?:pls|please|plz)\s+)?(?:(?:take|use|pick\s*up|hook(?:\s+up)?|grab|get|change\s+to|new|your|ur)\s+)?(?:the\s+)?(?:trailer|trl|trlr)\s*(?:#|no\.?|number)?\s*[:\-]?\s*#?\s*([A-Za-z]{0,4}[\s-]?\d[A-Za-z0-9-]{2,11})\s*(?:(?:for|on)\s+(?:this|the|your)?\s*load)?\s*[.!]*\s*$/i;
+
+export function trailerOnly(text: string): string | null {
+  const m = TRAILER_ONLY.exec(String(text || ""));
+  return m ? m[1].replace(/\s+/g, "").toUpperCase() : null;
 }

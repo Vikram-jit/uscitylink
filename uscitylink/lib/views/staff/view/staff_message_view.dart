@@ -1,3 +1,4 @@
+import 'package:uscitylink/views/staff/widgets/delete_message_guard.dart';
 import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
 import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
@@ -851,7 +852,8 @@ class _StaffMessageViewState extends State<StaffMessageView>
                 // Handle pin action
                 break;
               case 'delete':
-                socketService.deleteMessage(message.id!);
+                // Asks first when this message made a load
+                DeleteMessageGuard.delete(context, message.id!, socketService.deleteMessage);
                 // Handle delete action
                 break;
             }

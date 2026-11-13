@@ -25,6 +25,7 @@ import { toast } from 'react-toastify';
 
 import {
   LoadDetail,
+  LoadDocument,
   LoadHistoryEntry,
   Trip,
   useGetLoadDetailQuery,
@@ -42,6 +43,7 @@ import { LineupDrawer } from './LineupDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
 import { EndLegDialog, ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { TripDrawer } from './TripDrawer';
+import { mediaServerUrl } from '@/lib/serverUrl';
 import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL, milesSourceLabel } from './tripFormat';
 
 // One load (tracked by its invoice #): every leg with its driver, truck and trailer and the button
@@ -65,6 +67,59 @@ const STATUS_WORD: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+const S3 = 'https://ciity-sms.s3.us-west-1.amazonaws.com';
+const docLink = (key: string, type: string | null) => (type === 'not-upload' || type === 'local' ? `${mediaServerUrl()}/${key}` : `${S3}/${key}`);
+const DOC_NAME: Record<string, string> = { bol: 'BOL', pod: 'POD', scale_ticket: 'Scale ticket', lumper: 'Lumper receipt', lumper_receipt: 'Lumper receipt' };
+const docName = (d: LoadDocument) => (d.docType ? DOC_NAME[d.docType] || d.docType.replace(/_/g, ' ') : /\.pdf$/i.test(d.url) ? 'PDF' : 'Photo');
+
+/** Paperwork the driver sent in the chat — on the load automatically, newest first */
+function Paperwork({ docs }: { docs: LoadDocument[] }): React.JSX.Element {
+  return (
+    <Box data-testid="loadPaperwork">
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>{`Paperwork (${docs.length})`}</Typography>
+      {docs.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          Nothing yet — photos / PDFs the driver sends in the chat (BOL, POD …) show up here by themselves.
+        </Typography>
+      ) : (
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          {[...docs].reverse().map((d) => {
+            const href = docLink(d.url, d.uploadType);
+            const pdf = /\.pdf$/i.test(d.url);
+            return (
+              <Box
+                key={d.messageId}
+                component="a"
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                sx={{ width: 112, textDecoration: 'none', color: 'inherit', border: 1, borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', '&:hover': { borderColor: 'primary.main' } }}
+              >
+                <Box sx={{ height: 84, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {pdf ? (
+                    <Typography variant="h6" color="text.secondary">PDF</Typography>
+                  ) : (
+                    <Box component="img" src={d.thumbnail ? docLink(d.thumbnail, d.uploadType) : href} alt={docName(d)} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                </Box>
+                <Box sx={{ px: 0.75, py: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }} noWrap>
+                    {docName(d)}
+                    {d.legNo > 1 ? ` · leg ${d.legNo}` : ''}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>
+                    {when(d.at)}
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+        </Stack>
+      )}
+    </Box>
+  );
+}
+
 /** One line of the load's history */
 function historyText(h: LoadHistoryEntry): string {
   const fmt = (v?: string | null) =>
@@ -83,6 +138,8 @@ function historyText(h: LoadHistoryEntry): string {
     }
     case 'miles':
       return `📏 ${h.note || 'Miles changed'}`;
+    case 'document':
+      return `📎 ${h.note || 'Document from the chat'}`;
     case 'stop_arrived':
       return `📍 Arrived${h.note ? ` — ${h.note}` : ''}`;
     case 'stop_departed':
@@ -528,6 +585,8 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
               </Typography>
             )}
           </Box>
+
+          <Paperwork docs={detail.documents || []} />
 
           {/* Everything that happened, in order */}
           <Box data-testid="loadHistory">

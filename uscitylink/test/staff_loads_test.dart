@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -7,6 +8,7 @@ import 'package:uscitylink/services/staff/staff_api_client.dart';
 import 'package:uscitylink/utils/load_text.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_add_load_view.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_load_detail_view.dart';
+import 'package:uscitylink/views/staff/widgets/delete_message_guard.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_loads_view.dart';
 import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
@@ -257,6 +259,80 @@ void main() {
     await tester.tap(find.byKey(const Key('recheck_2')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(api.calls.any((c) => c.startsWith('POST loads/7/legs/2/match-gps')), true);
+  });
+
+  testWidgets('paperwork the driver sent in the chat shows on the load (none yet → says it comes by itself)', (tester) async {
+    final ended = {...leg(1, 1, 'paperwork'), 'ended_at': '2026-11-11T15:40:00Z'};
+    var docs = <Map<String, dynamic>>[];
+    final api = FakeApi((m, p, b) {
+      if (p == 'loads/7') {
+        return {'data': {'load': loadJson([ended], status: 'delivered'), 'legs': [ended], 'segments': [], 'history': [], 'documents': docs, 'driverNames': {'p1': 'Raj Singh'}, 'yardVisits': [], 'milesTotals': {'miles': 0, 'missing': 0}}};
+      }
+      return {};
+    });
+    tester.view.physicalSize = const Size(900, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(GetMaterialApp(home: StaffLoadDetailView(loadId: 7, service: LoadsService(api))));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Paperwork (0)'), findsOneWidget);
+    expect(find.byKey(const Key('paperworkEmpty')), findsOneWidget);
+
+    docs = [
+      {'messageId': 'm1', 'at': '2026-11-11T16:00:00Z', 'legNo': 1, 'url': 'uscitylink/pod.jpg', 'thumbnail': null, 'uploadType': 'server', 'caption': 'pod', 'docType': 'pod'},
+      {'messageId': 'm2', 'at': '2026-11-11T16:05:00Z', 'legNo': 1, 'url': 'uscitylink/bol.pdf', 'uploadType': 'server', 'docType': null},
+    ];
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(GetMaterialApp(home: StaffLoadDetailView(loadId: 7, service: LoadsService(api))));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Paperwork (2)'), findsOneWidget);
+    expect(find.byKey(const Key('doc_m1')), findsOneWidget);
+    expect(find.text('POD'), findsOneWidget);
+    expect(find.text('PDF'), findsOneWidget);
+    expect(find.byIcon(Icons.picture_as_pdf_rounded), findsOneWidget);
+    expect(docLink('a/b.jpg', 'server'), 'https://ciity-sms.s3.us-west-1.amazonaws.com/a/b.jpg');
+  });
+
+  testWidgets('deleting a chat message: no load → deleted straight away; a load message → asks, Delete with load deletes both', (tester) async {
+    final api = FakeApi((m, p, b) {
+      if (p == 'loads/by-message/plain') return {'data': []};
+      if (p == 'loads/by-message/loadmsg') {
+        return {'data': [{'loadId': 7, 'legId': 70, 'legNo': 1, 'tripNo': '0056034', 'loadNo': '0056034', 'status': 'planned', 'driverName': 'Terry', 'onlyLeg': true, 'canDelete': true}]};
+      }
+      return {'message': 'Load deleted'};
+    });
+    DeleteMessageGuard.service = LoadsService(api);
+    final deleted = <String>[];
+    late BuildContext ctx;
+    await tester.pumpWidget(GetMaterialApp(home: Builder(builder: (c) {
+      ctx = c;
+      return const Scaffold();
+    })));
+
+    await DeleteMessageGuard.delete(ctx, 'plain', deleted.add);
+    expect(deleted, ['plain']);
+    expect(find.byKey(const Key('deleteMessageDialog')), findsNothing);
+
+    // Message only: the load stays
+    unawaited(DeleteMessageGuard.delete(ctx, 'loadmsg', deleted.add));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('This message made a load'), findsOneWidget);
+    expect(find.text('Load 0056034'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('deleteMessageOnly')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(deleted.last, 'loadmsg');
+    expect(api.calls.any((c) => c.startsWith('DELETE')), false);
+
+    // Delete with load
+    deleted.clear();
+    unawaited(DeleteMessageGuard.delete(ctx, 'loadmsg', deleted.add));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const Key('deleteMessageAndLoad')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(api.calls.any((c) => c.startsWith('DELETE loads/by-message/loadmsg/legs/70')), true);
+    expect(deleted, ['loadmsg']);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('add load: same Load # already lined up → note, then Replace dialog with End current & send', (tester) async {
