@@ -523,6 +523,7 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
     );
   });
   if (input.invoiceNo !== undefined) await setInvoice(trip, input.invoiceNo, actor);
+  if (input.stops) await refreshTapDiffs(id).catch(() => undefined); // the appointments may have changed
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch((e) => console.warn("[trips] route row:", e?.message));
   announce(id);
@@ -772,6 +773,9 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
     case "rolling":
       // Rolling straight from "Got it" starts the trip too
       if (!trip.started_at) set("started_at", at);
+      // The driver's own tap, kept apart from started_at: miles are read from it and a time correction or the
+      // GPS match never overwrites it
+      if (actor.role === "driver" && !trip.rolling_tapped_at) set("rolling_tapped_at", at);
       break;
     case "depart":
       if (stop && !stop.arrived_at) setStop("arrived_at", at);
@@ -780,6 +784,7 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
     case "end":
       set("ended_at", at);
       setStop("arrived_at", at);
+      if (actor.role === "driver") set("end_tapped_at", at);
       break;
     case "complete": {
       // No invoice number, no completion of the load's last leg: dispatch adds it here if the load was
@@ -901,6 +906,7 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
     console.warn("[trips] route row:", e?.message || e);
   }
   if (action === "rolling") void snapshotEta(fresh.id);
+  if (action === "rolling" || action === "end") await refreshTapDiffs(fresh.id).catch((e) => console.warn("[trips] tap diffs:", e?.message || e));
   // A leg that ends at the yard / a meet point hands the load to the next leg
   const handedTo = action === "end" ? await handOver(fresh).catch((e) => (console.warn("[trips] hand over:", e?.message), null)) : null;
   if (action === "start") await openScaleRoute(fresh, stops).catch(() => undefined);
@@ -1104,6 +1110,27 @@ export async function applyGpsTimes(id: number): Promise<{ matched: boolean; cha
 }
 
 /** Samsara odometer difference for the trip and each leg, written to the trip and its Route List row. */
+/**
+ * How far the driver's real taps were from the appointments, in minutes (+ late, − early), saved in their own
+ * columns — never in the appointment or start / end columns:
+ *   pickup_diff_min = Loaded — rolling tap  vs the pickup appointment
+ *   drop_diff_min   = Delivered tap          vs the last drop's appointment
+ * A side with no tap or no appointment is empty. Recomputed when a tap is undone or an appointment changes.
+ */
+export async function refreshTapDiffs(id: number) {
+  const trip = await ChatTrip.findByPk(id, withStops);
+  if (!trip) return;
+  const stops = [...(trip.stops || [])].sort((a, b) => a.seq - b.seq);
+  const pickup = stops.find((s) => s.type === "pickup" && s.appointment_at);
+  const drop = [...stops].reverse().find((s) => s.type === "drop" && s.appointment_at);
+  const diff = (tap: Date | null, appt?: Date | null) => (tap && appt ? Math.round((new Date(tap).getTime() - new Date(appt).getTime()) / 60000) : null);
+  const pickup_diff_min = diff(trip.rolling_tapped_at, pickup?.appointment_at);
+  const drop_diff_min = diff(trip.end_tapped_at, drop?.appointment_at);
+  if (pickup_diff_min === trip.pickup_diff_min && drop_diff_min === trip.drop_diff_min) return;
+  await trip.update({ pickup_diff_min, drop_diff_min });
+  announce(id);
+}
+
 export async function addMileage(id: number, opts: { forceGps?: boolean } = {}) {
   let trip = await ChatTrip.findByPk(id, withStops);
   // Miles typed by dispatch stay as they are
@@ -1127,10 +1154,24 @@ export async function addMileage(id: number, opts: { forceGps?: boolean } = {}) 
   }
   if (!trip.started_at || !trip.ended_at) return;
   const stops = [...(trip.stops || [])].sort((a, b) => a.seq - b.seq);
+  // Miles are read between the driver's own Loaded — rolling and Delivered taps (saved apart from the main times).
+  // A missing tap falls back to the start / end time as before (including the GPS-matched ones), and when
+  // dispatch corrected the times by hand, that correction wins.
+  const fixedByDispatch = (await ChatTripEvent.findAll({ where: { chat_trip_id: id, type: "time_correction" } })).some((e) => e.actor_role !== "system");
+  const tapFrom = !fixedByDispatch ? trip.rolling_tapped_at : null;
+  const tapTo = !fixedByDispatch ? trip.end_tapped_at : null;
+  let from: Date = tapFrom || trip.started_at;
+  let to: Date = tapTo || trip.ended_at;
+  if (new Date(from).getTime() >= new Date(to).getTime()) {
+    // taps that don't make a drive (a stray tap): the start / end times as before
+    from = trip.started_at;
+    to = trip.ended_at;
+  }
+  const fromTaps = (!!tapFrom && from === tapFrom) || (!!tapTo && to === tapTo);
   const result = await tripMileage(
     vehicle,
-    trip.started_at,
-    trip.ended_at,
+    from,
+    to,
     stops.map((s) => s.arrived_at),
   );
   if (!result) {
@@ -1145,7 +1186,7 @@ export async function addMileage(id: number, opts: { forceGps?: boolean } = {}) 
   await record(trip, {
     type: "note",
     actor: { role: "system", name: "Samsara" },
-    note: `Trip mileage ${result.total} mi (odometer${gps ? ", times from GPS" : ""})`,
+    note: `Trip mileage ${result.total} mi (odometer${fromTaps ? ", from the driver's Rolling / Delivered taps" : gps ? ", times from GPS" : ""})`,
     data: result,
   });
   const fresh = await ChatTrip.findByPk(id, withStops);
@@ -1265,6 +1306,7 @@ export async function undo(id: number, actor: Actor) {
     note: `Undid: ${last.data?.action || last.type}`,
     data: { undoes: last.id },
   });
+  await refreshTapDiffs(id).catch(() => undefined);
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch(() => undefined);
   announce(id);

@@ -87,6 +87,13 @@ export function currentLeg(legs?: Trip[]): Trip | undefined {
 }
 
 /** "45 min", "3 h 10 min", "2 d 4 h" */
+/** "12 min late" / "35 min early" / "on time" (within 5 min) — for a difference from an appointment; '' when unknown */
+export function diffText(min: number | null | undefined): string {
+  if (min === null || min === undefined) return '';
+  if (Math.abs(min) < 5) return 'on time';
+  return `${minutesText(Math.abs(min))} ${min > 0 ? 'late' : 'early'}`;
+}
+
 export function minutesText(min: number | null | undefined): string {
   if (min === null || min === undefined) return '—';
   const m = Math.abs(Math.round(min));

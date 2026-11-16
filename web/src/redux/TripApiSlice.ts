@@ -81,6 +81,11 @@ export interface Trip {
   /** The driver's answer: accepted an upcoming load / rejected it (sent back, no driver) */
   driver_response?: 'accepted' | 'rejected' | null;
   driver_response_note?: string | null;
+  /** The driver's own taps (never overwritten by corrections / GPS) and how far they were from the appointments, in minutes (+ late, − early) */
+  rolling_tapped_at?: string | null;
+  end_tapped_at?: string | null;
+  pickup_diff_min?: number | null;
+  drop_diff_min?: number | null;
   review_notes: string | null;
   driver_profile_id: string | null;
   channel_id: string | null;

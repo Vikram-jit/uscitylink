@@ -23,7 +23,7 @@ import GroupChannel from "../../src/models/GroupChannel";
 import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripStop } from "../../src/models/ChatTrip";
-import { act, addMileage, NO_GPS_NOTE } from "../../src/services/trips/tripService";
+import { act, addMileage, NO_GPS_NOTE, refreshTapDiffs, undo } from "../../src/services/trips/tripService";
 import { addLoad, getLoad } from "../../src/services/trips/loadService";
 import { endLegNow, setMiles } from "../../src/services/trips/loadControl";
 import { milesReport } from "../../src/services/trips/milesReport";
@@ -329,6 +329,78 @@ const settle = () => new Promise((r) => setTimeout(r, 1500));
       assert.equal(l.miles_note, NO_GPS_NOTE);
       const detail = await getLoad(l.load_id!);
       assert.equal(detail.milesTotals.missing, 1);
+    });
+
+    await test("the driver's Rolling / Delivered taps are saved on their own, compared with the pickup / drop appointments (minutes) in their own columns, and miles are read between the taps", async () => {
+      TRAILS.zzv2 = TRAILS.zzv1;
+      const leg = await sendAt({ loadNo: "ZZGPS-T1", driverProfileId: b.id, truckNumber: "ZZGPS2", stops: [stop("pickup", "ZZGPICK"), stop("drop", "ZZGDROP")] }, at(7, 30), { endDriverCurrent: true });
+      const [pk, dr] = sorted(await legOf(leg.id));
+      await ChatTripStop.update({ appointment_at: at(9, 0) }, { where: { id: pk.id } });
+      await ChatTripStop.update({ appointment_at: at(16, 0) }, { where: { id: dr.id } });
+      const asB = { role: "driver" as const, id: b.id, name: b.username };
+      await act(leg.id, "accept", asB, { at: at(7, 40).toISOString() } as any);
+      await act(leg.id, "rolling", asB, { at: at(9, 10).toISOString() } as any);
+      let l = await legOf(leg.id);
+      near(l.rolling_tapped_at, at(9, 10), 0.1, "rolling tap saved");
+      assert.equal(l.pickup_diff_min, 10, "left the pickup 10 min after its appointment");
+      assert.equal(l.drop_diff_min, null, "not delivered yet");
+      await act(leg.id, "end", asB, { at: at(15, 25).toISOString() } as any);
+      await settle();
+      l = await legOf(leg.id);
+      near(l.end_tapped_at, at(15, 25), 0.1, "end tap saved");
+      assert.equal(l.drop_diff_min, -35, "delivered 35 min before its appointment");
+      assert.equal(l.pickup_diff_min, 10);
+      // the appointments in the main columns are untouched
+      const s2 = sorted(l);
+      assert.equal(new Date(s2[0].appointment_at!).getTime(), at(9, 0).getTime());
+      assert.equal(new Date(s2[1].appointment_at!).getTime(), at(16, 0).getTime());
+      about(l.total_mileage, 187.5, 3, "miles between the taps (9:10 → 15:25)");
+      const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: leg.id, type: "note", actor_name: "Samsara" }, order: [["id", "DESC"]] });
+      assert.match(String(ev?.note), /from the driver's Rolling \/ Delivered taps/);
+
+      // The main start / end columns drifting (a stray edit, no dispatcher correction): the taps still decide the miles
+      await ChatTrip.update({ started_at: at(5, 0), ended_at: at(20, 0) }, { where: { id: leg.id }, silent: true });
+      await addMileage(leg.id);
+      about((await legOf(leg.id)).total_mileage, 187.5, 3, "miles still from the taps");
+
+      // …but a dispatcher's own time correction wins over the taps
+      await ChatTripEvent.create({ chat_trip_id: leg.id, type: "time_correction", actor_role: "dispatcher", actor_name: staff!.username, note: "Times corrected", happened_at: new Date() } as any);
+      await ChatTrip.update({ started_at: at(9, 0), ended_at: at(15, 40) }, { where: { id: leg.id }, silent: true });
+      await addMileage(leg.id);
+      about((await legOf(leg.id)).total_mileage, 200, 3, "miles from the corrected times");
+      assert.equal(new Date((await legOf(leg.id)).rolling_tapped_at!).getTime(), at(9, 10).getTime(), "the tap itself is kept as it was");
+
+      // An appointment that changes later: the difference follows, the tap does not move
+      await ChatTripStop.update({ appointment_at: at(9, 30) }, { where: { id: pk.id } });
+      await refreshTapDiffs(leg.id);
+      assert.equal((await legOf(leg.id)).pickup_diff_min, -20);
+    });
+
+    await test("undoing the Delivered tap clears its saved time and difference; a dispatcher ending the load saves no tap; no appointment → no difference", async () => {
+      TRAILS.zzv2 = TRAILS.zzv1;
+      const asB = { role: "driver" as const, id: b.id, name: b.username };
+      const one = await sendAt({ loadNo: "ZZGPS-T2", driverProfileId: b.id, truckNumber: "ZZGPS2", stops: [stop("pickup", "ZZGPICK"), stop("drop", "ZZGDROP")] }, at(7, 30), { endDriverCurrent: true });
+      const [pk, dr] = sorted(await legOf(one.id));
+      await ChatTripStop.update({ appointment_at: at(16, 0) }, { where: { id: dr.id } });
+      void pk;
+      await act(one.id, "accept", asB);
+      await act(one.id, "rolling", asB);
+      await act(one.id, "end", asB);
+      let l = await legOf(one.id);
+      assert(l.end_tapped_at && l.drop_diff_min !== null, "saved");
+      assert.equal(l.pickup_diff_min, null, "no pickup appointment → no pickup difference");
+      await undo(one.id, asB);
+      l = await legOf(one.id);
+      assert.equal(l.end_tapped_at, null, "the Delivered tap was undone");
+      assert.equal(l.drop_diff_min, null);
+      assert(l.rolling_tapped_at, "the Rolling tap stays");
+
+      const two = await sendAt({ loadNo: "ZZGPS-T3", driverProfileId: b.id, truckNumber: "ZZGPS2", stops: [stop("pickup", "ZZGPICK"), stop("drop", "ZZGDROP")] }, at(7, 30), { endDriverCurrent: true });
+      await endLegNow(two.id, dispatcher, { at: at(19, 10), sendNext: false });
+      l = await legOf(two.id);
+      assert.equal(l.rolling_tapped_at, null, "dispatch's End is not a driver tap");
+      assert.equal(l.end_tapped_at, null);
+      assert.equal(l.drop_diff_min, null);
     });
 
     await test("typed miles are never overwritten by GPS", async () => {

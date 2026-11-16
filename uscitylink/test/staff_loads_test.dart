@@ -7,6 +7,7 @@ import 'package:uscitylink/services/staff/loads_service.dart';
 import 'package:uscitylink/services/staff/staff_api_client.dart';
 import 'package:uscitylink/utils/load_text.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_add_load_view.dart';
+import 'package:uscitylink/views/staff/view/loads/loads_common.dart';
 import 'package:uscitylink/views/staff/view/loads/staff_load_detail_view.dart';
 import 'package:uscitylink/views/staff/widgets/delete_message_guard.dart';
 import 'package:uscitylink/views/staff/widgets/repair_load.dart';
@@ -553,5 +554,23 @@ void main() {
     expect(d.driverAndTeam(d.legs[1]), 'Gurvinder Singh', reason: 'no team mate on this leg');
     final noName = LoadDetail.fromJson({'load': loadJson([team]), 'legs': [team], 'driverNames': {'p1': 'Gurvinder Singh'}});
     expect(noName.driverAndTeam(noName.legs[0]), 'Gurvinder Singh + team mate');
+  });
+
+  testWidgets("the driver's own Rolling / Delivered taps show on the leg, with how far they were from the appointments", (tester) async {
+    final ended = {...leg(1, 1, 'ended'), 'ended_at': '2026-11-11T15:25:00Z', 'rolling_tapped_at': '2026-11-11T09:10:00Z', 'end_tapped_at': '2026-11-11T15:25:00Z', 'pickup_diff_min': 10, 'drop_diff_min': -35};
+    final onTime = {...leg(2, 2, 'ended', driver: 'p2'), 'rolling_tapped_at': '2026-11-11T16:00:00Z', 'pickup_diff_min': 2};
+    final api = FakeApi((m, p, b) => {'data': {'load': loadJson([ended, onTime], status: 'delivered'), 'legs': [ended, onTime], 'segments': [], 'history': [], 'driverNames': {'p1': 'Raj Singh', 'p2': 'Aman Kumar'}, 'yardVisits': [], 'milesTotals': {'miles': 0, 'missing': 0}}});
+    tester.view.physicalSize = const Size(900, 4500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(GetMaterialApp(home: StaffLoadDetailView(loadId: 7, service: LoadsService(api))));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('DRIVER TAPPED ROLLING'), findsNWidgets(2));
+    expect(find.textContaining('10 min late (pickup)'), findsOneWidget);
+    expect(find.textContaining('35 min early (drop)'), findsOneWidget);
+    expect(find.textContaining('on time (pickup)'), findsOneWidget, reason: 'within 5 minutes');
+    expect(find.text('DRIVER TAPPED DELIVERED'), findsOneWidget, reason: 'only the leg that has the tap');
+    expect(fmtDiff(null), '');
+    expect(fmtDiff(75), '1h 15m late');
   });
 }

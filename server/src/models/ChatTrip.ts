@@ -89,6 +89,12 @@ export class ChatTrip extends Model {
   public driver_response!: "accepted" | "rejected" | null;
   public driver_response_at!: Date | null;
   public driver_response_note!: string | null;
+  /** The driver's own taps (not touched by corrections / GPS): Loaded — rolling, Delivered — end trip */
+  public rolling_tapped_at!: Date | null;
+  public end_tapped_at!: Date | null;
+  /** Minutes from the pickup / drop appointment to those taps (+ late, − early) */
+  public pickup_diff_min!: number | null;
+  public drop_diff_min!: number | null;
   public created_at!: Date;
   public updated_at!: Date;
   public stops?: ChatTripStop[];
@@ -142,6 +148,10 @@ ChatTrip.init(
     driver_response: DataTypes.STRING(10),
     driver_response_at: DataTypes.DATE,
     driver_response_note: DataTypes.STRING(255),
+    rolling_tapped_at: DataTypes.DATE,
+    end_tapped_at: DataTypes.DATE,
+    pickup_diff_min: DataTypes.INTEGER,
+    drop_diff_min: DataTypes.INTEGER,
   },
   { sequelize: primarySequelize, tableName: "chat_trips", modelName: "ChatTrip", underscored: true, timestamps: true }
 );

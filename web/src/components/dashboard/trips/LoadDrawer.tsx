@@ -44,7 +44,7 @@ import { LoadFormDialog } from './LoadFormDialog';
 import { EndLegDialog, ReleaseLegDialog, ReleaseTarget } from './ReleaseLegDialog';
 import { TripDrawer } from './TripDrawer';
 import { mediaServerUrl } from '@/lib/serverUrl';
-import { appointment, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL, milesSourceLabel } from './tripFormat';
+import { appointment, diffText, lateText, LOAD_STATUS, LOAD_TYPE, legsInOrder, minutesText, STATUS, STOP_LABEL, milesSourceLabel } from './tripFormat';
 
 // One load (tracked by its invoice #): every leg with its driver, truck and trailer and the button
 // it needs now (assign, send, complete), how long it sat in the yard, and how the delivery compared
@@ -337,6 +337,14 @@ function LegCard({
         {place(first)} → {place(last)}
         {last?.appointment_local ? ` · appt ${appointment(last.appointment_local)}` : ''}
       </Typography>
+      {(leg.rolling_tapped_at || leg.end_tapped_at) && (
+        <Typography variant="caption" color="text.secondary" component="div" data-testid="tapTimes">
+          Driver tapped
+          {leg.rolling_tapped_at ? ` Rolling ${when(leg.rolling_tapped_at)}${diffText(leg.pickup_diff_min) ? ` (${diffText(leg.pickup_diff_min)} vs the pickup appointment)` : ''}` : ''}
+          {leg.rolling_tapped_at && leg.end_tapped_at ? ' ·' : ''}
+          {leg.end_tapped_at ? ` Delivered ${when(leg.end_tapped_at)}${diffText(leg.drop_diff_min) ? ` (${diffText(leg.drop_diff_min)} vs the drop appointment)` : ''}` : ''}
+        </Typography>
+      )}
       {(leg.started_at || leg.ended_at) && (
         <Typography variant="caption" color="text.secondary" component="div">
           {leg.started_at ? `Rolling ${when(leg.started_at)}` : ''}

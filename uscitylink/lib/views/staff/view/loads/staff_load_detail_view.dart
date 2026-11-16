@@ -469,6 +469,9 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
             if (l.temperature != null) _fact('Temperature', l.temperature!),
             if (l.totalMileage != null) _fact('Miles', '${fmtMiles(l.totalMileage)} · ${l.milesSourceLabel}') else if (l.endedAt != null) _fact('Miles', l.milesNote ?? 'Missing', warn: true),
             if (l.loadedTrailer) _fact('Trailer', 'Loaded'),
+            // The driver's own taps, kept apart from the start / end times, vs the appointments
+            if (l.rollingTappedAt != null) _fact('Driver tapped Rolling', '${fmtDateTime(l.rollingTappedAt)}${fmtDiff(l.pickupDiffMin).isEmpty ? '' : ' · ${fmtDiff(l.pickupDiffMin)} (pickup)'}'),
+            if (l.endTappedAt != null) _fact('Driver tapped Delivered', '${fmtDateTime(l.endTappedAt)}${fmtDiff(l.dropDiffMin).isEmpty ? '' : ' · ${fmtDiff(l.dropDiffMin)} (drop)'}'),
           ]),
         ),
         if (l.handoverReason != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(l.handoverReason!, style: AppText.bodySm.copyWith(color: StaffColors.textMuted))),

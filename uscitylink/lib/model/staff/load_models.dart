@@ -96,6 +96,10 @@ class LoadLeg {
     this.needsReview = false,
     this.driverResponse,
     this.driverResponseNote,
+    this.rollingTappedAt,
+    this.endTappedAt,
+    this.pickupDiffMin,
+    this.dropDiffMin,
     this.reviewNotes,
     this.invoiceNo,
     this.stops = const [],
@@ -130,6 +134,13 @@ class LoadLeg {
   /// The driver's answer: 'accepted' an upcoming load / 'rejected' it (sent back, no driver)
   final String? driverResponse;
   final String? driverResponseNote;
+
+  /// The driver's own taps (Loaded — rolling / Delivered), kept apart from the start / end times, and how far they
+  /// were from the pickup / drop appointments in minutes (+ late, − early)
+  final DateTime? rollingTappedAt;
+  final DateTime? endTappedAt;
+  final int? pickupDiffMin;
+  final int? dropDiffMin;
   final String? reviewNotes;
   final String? invoiceNo;
   final List<LoadStop> stops;
@@ -162,6 +173,10 @@ class LoadLeg {
       needsReview: _bool(j['needs_review']),
       driverResponse: _str(j['driver_response']),
       driverResponseNote: _str(j['driver_response_note']),
+      rollingTappedAt: _date(j['rolling_tapped_at']),
+      endTappedAt: _date(j['end_tapped_at']),
+      pickupDiffMin: _int(j['pickup_diff_min']),
+      dropDiffMin: _int(j['drop_diff_min']),
       reviewNotes: _str(j['review_notes']),
       invoiceNo: _str(j['invoice_no']),
       stops: stops,

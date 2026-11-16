@@ -39,6 +39,13 @@ String fmtMinutes(int? m) {
   return '${m ~/ 60}h ${m % 60}m';
 }
 
+/// "12 min late" / "35 min early" / "on time" (within 5 min) — a difference from an appointment; '' when unknown
+String fmtDiff(int? m) {
+  if (m == null) return '';
+  if (m.abs() < 5) return 'on time';
+  return '${fmtMinutes(m.abs())} ${m > 0 ? 'late' : 'early'}';
+}
+
 Color loadStatusColor(String s) => switch (s) {
       'transfer' => StaffColors.orange,
       'waiting' => StaffColors.danger,
