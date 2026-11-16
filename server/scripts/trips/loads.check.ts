@@ -208,6 +208,10 @@ const lastMessage = async (profileId: string) => String((await Message.findOne({
       assert.equal(t.state, "waiting_transfer");
       const list = await listLoads({ status: "transfer", q: "ZZTEST-INV-78" });
       assert.deepEqual(list.loads.map((l) => l.id), [res.load.id]);
+      // The Loads list shows when each load was created: the JSON the web / apps get carries created_at
+      const sent = JSON.parse(JSON.stringify(list.loads[0]));
+      assert(sent.created_at && !isNaN(Date.parse(sent.created_at)), `created_at in the list: ${sent.created_at}`);
+      assert(sent.legs?.[0]?.created_at, "each leg too");
       // Assign driver B and send in one go
       await assignLeg(res.load.id, l2.id, { driverProfileId: b.id, send: true }, dispatcher);
       assert.equal((await ChatTrip.findByPk(l2.id))?.status, "planned");

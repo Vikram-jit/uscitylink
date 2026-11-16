@@ -16,7 +16,27 @@ export type LoadStatus = "scheduled" | "waiting" | "active" | "transfer" | "deli
  * more legs: each leg is a ChatTrip run by one driver with their own truck / trailer / stops.
  * status is worked out from the legs (services/trips/loadService.loadStatusOf).
  */
+/**
+ * underscored models serialise their timestamps as createdAt / updatedAt, while the web, the apps and the
+ * driver view read created_at / updated_at (the column names): send both.
+ */
+function withSnakeTimestamps(json: Record<string, any>): Record<string, any> {
+  if (!json || typeof json !== "object" || json instanceof Date) return json;
+  if (Array.isArray(json)) {
+    json.forEach(withSnakeTimestamps);
+    return json;
+  }
+  if (json.createdAt !== undefined && json.created_at === undefined) json.created_at = json.createdAt;
+  if (json.updatedAt !== undefined && json.updated_at === undefined) json.updated_at = json.updatedAt;
+  // included rows (a load's legs, a leg's stops) come as plain objects inside
+  for (const v of Object.values(json)) if (v && typeof v === "object" && !(v instanceof Date)) withSnakeTimestamps(v);
+  return json;
+}
+
 export class ChatLoad extends Model {
+  toJSON() {
+    return withSnakeTimestamps(super.toJSON() as Record<string, any>) as any;
+  }
   public id!: number;
   public load_no!: string | null;
   public invoice_no!: string | null;
@@ -35,6 +55,9 @@ export class ChatLoad extends Model {
 }
 
 export class ChatTrip extends Model {
+  toJSON() {
+    return withSnakeTimestamps(super.toJSON() as Record<string, any>) as any;
+  }
   public id!: number;
   /** The load this leg moves (every trip has one; a plain load has a single leg) */
   public load_id!: number | null;
@@ -157,6 +180,9 @@ ChatTrip.init(
 );
 
 export class ChatTripStop extends Model {
+  toJSON() {
+    return withSnakeTimestamps(super.toJSON() as Record<string, any>) as any;
+  }
   public id!: number;
   public chat_trip_id!: number;
   public seq!: number;
@@ -199,6 +225,9 @@ ChatTripStop.init(
 );
 
 export class ChatTripEvent extends Model {
+  toJSON() {
+    return withSnakeTimestamps(super.toJSON() as Record<string, any>) as any;
+  }
   public id!: number;
   public chat_trip_id!: number;
   public type!: string;
@@ -246,6 +275,9 @@ ChatTripEvent.init(
 );
 
 export class ChatTripProblem extends Model {
+  toJSON() {
+    return withSnakeTimestamps(super.toJSON() as Record<string, any>) as any;
+  }
   public id!: number;
   public chat_trip_id!: number;
   public kind!: string;
