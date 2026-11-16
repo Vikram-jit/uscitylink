@@ -198,7 +198,8 @@ export const matchGpsRest = handle(async (req) => {
 export const fromTextRest = handle(async (req) => {
   const b = req.body || {};
   const answers = { endPrevious: b.endPrevious === true, endDriverCurrent: b.endDriverCurrent === true, lineUp: b.lineUp === true, replace: b.replace === true };
-  const { data, loadNo, plan } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null, b.groupId || null);
+  const { data, loadNo, plan, updated } = await loadFromText(String(b.text || ""), String(b.driverProfileId || "") || null, await actorOf(req), answers, b.channelId || null, b.groupId || null);
+  if (updated) return { data, updated, message: updated.length ? `Load ${loadNo} updated (the running leg only): ${updated.join(" · ")}` : `Load ${loadNo}: sent to the driver — nothing on the load changed` };
   if (plan) return { data, message: `Load ${loadNo} saved as a plan — no pickup or drop address yet, so nothing was sent. Add one from Loads` };
   return { data, message: answers.lineUp && !answers.endDriverCurrent ? `Load ${loadNo} lined up — it goes to the driver when their current load is delivered` : `Load ${loadNo} sent to the driver` };
 });

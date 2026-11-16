@@ -12,7 +12,7 @@ import { documentsOf } from "./paperwork";
 import { truckOfGroup } from "./truckGroup";
 import { trackToken } from "./publicTracking";
 import { parseLoad } from "./parseLoad";
-import { Actor, announce, cleanInvoice, teamNamesByLeg, teamNamesOf, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
+import { Actor, announce, cleanInvoice, teamNamesByLeg, teamNamesOf, createTrip, driverOfTruck, editTrip, ensureChannel, postDispatchText, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
 
 // Loads (Loads screen): one load, tracked by its invoice #, moved by one or more legs —
 //   direct        pickup → delivery
@@ -530,6 +530,32 @@ export async function loadFromText(
   const parsed = parseLoad(text, { plan: true });
   if (!parsed) throw new TripError("Couldn't read a load from that text — it needs a LOAD # line (the pickup and drop can be PENDING)", 422);
   if (!parsed.loadNo) throw new TripError('Add a line "LOAD # 1234" — the Load # is required', 422);
+  const input: TripInput & { loadNo: string } = {
+    loadNo: parsed.loadNo,
+    driverProfileId: driverId,
+    channelId,
+    truckNumber: parsed.truck || truck?.truck || null,
+    teamNames: parsed.team,
+    ...(truck?.team && !parsed.team.length ? { teamDriverProfileId: truck.team.id } : {}),
+    trailerNumbers: parsed.trailers,
+    temperature: parsed.temperature,
+    notes: parsed.notes,
+    loadedTrailer: parsed.loadedTrailer,
+    stops: parsed.stops,
+    needsReview: parsed.needsReview,
+    reviewNotes: parsed.reasons,
+    rawText: text,
+  };
+  // The Load # is already out and its leg is running for this driver: the text goes to the chat as typed
+  // and updates that leg only (ended legs untouched)
+  const open = await openLegForUpdate(parsed.loadNo, driverId, input.teamDriverProfileId);
+  if (open) {
+    const chan = open.leg.channel_id || (await ensureChannel(open.leg));
+    if (!chan) throw new TripError("This driver isn't in a chat channel yet — add them to one first");
+    const msg = await postDispatchText(open.leg.driver_profile_id!, chan, text, actor, truck?.groupId || null);
+    const res = await updateOpenLeg(open, input, actor, { messageId: (msg as any)?.id || null, text });
+    return { data: await getLoad(open.load.id), loadNo: parsed.loadNo, plan: false, updated: (res as any).changes as string[] };
+  }
   // Only the Load # is required: with no pickup or drop address yet it is saved as a plan, not sent
   const placed = parsed.stops.some((st) => stopHasPlace(st));
   const data = await addLoad(
@@ -552,7 +578,7 @@ export async function loadFromText(
     actor,
     { send: placed, fromChat: true, groupId: truck?.groupId || null, ...answers }
   );
-  return { data, loadNo: parsed.loadNo, plan: !placed };
+  return { data, loadNo: parsed.loadNo, plan: !placed, updated: null as string[] | null };
 }
 
 // ---------- a load pasted / typed straight into a driver's chat ----------
@@ -568,10 +594,88 @@ const pendingTyped = new Map<
 const PENDING_MS = 30 * 60_000;
 
 export type TypedLoadOutcome =
+  | { kind: "updated"; loadId: number; loadNo: string | null; tripNo: string | null; legNo: number; changes: string[] }
   | { kind: "sent"; loadId: number; loadNo: string | null; tripNo: string | null; legNo: number }
   | { kind: "planned"; loadId: number; loadNo: string | null }
   | { kind: "noLoadNo" }
   | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy" | "replaceLinedUp"; info: Record<string, any>; loadNo: string | null; message: string };
+
+// ---------- a load message for a Load # that's already out: an update of its open leg ----------
+//
+// "LOAD# 0055897 / UPDATED DELIVERY FOR TOMORROW / TRAILER# 16965 / DROP# …" — the load has 3 legs, 1 and 2
+// delivered. It is not a new leg: it changes the leg still running for this driver (the last one not
+// ended), and only what the message gives (a pickup / drop it names, the trailer, truck, temp). Ended
+// legs are never touched.
+
+const RUNNING = ["planned", "accepted", "started", "rolling", "on_hold"];
+
+const stopText = (st: { name?: string | null; city?: string | null; state?: string | null; appointment?: string | null }) =>
+  [st.name, [st.city, st.state].filter(Boolean).join(" "), st.appointment ? st.appointment.replace("T", " ") : null].filter(Boolean).join(", ") || "—";
+
+/** The leg a Load # update goes to: this load's running leg for this driver (or their team mate). */
+export async function openLegForUpdate(loadNo: string | null | undefined, driverProfileId: string | null | undefined, teamProfileId?: string | null) {
+  const no = cleanLoadNo(loadNo);
+  if (!no || !driverProfileId) return null;
+  const load = await findLoadByNo(no);
+  if (!load) return null;
+  const legs = byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] }));
+  const last = legs[legs.length - 1];
+  if (!last || !RUNNING.includes(last.status)) return null; // all ended (a new leg) or only lined up (asked to replace)
+  if (![driverProfileId, teamProfileId].filter(Boolean).includes(last.driver_profile_id || "")) return null; // another driver: a handover
+  return { load, leg: last };
+}
+
+/** Puts what the message gives on that leg — nothing else. Returns the changes made (empty: nothing new). */
+export async function updateOpenLeg(target: { load: ChatLoad; leg: ChatTrip }, input: TripInput, actor: Actor, opts: { messageId?: string | null; text?: string | null } = {}): Promise<TypedLoadOutcome> {
+  const { load, leg } = target;
+  const parts: string[] = [];
+  const changes: Partial<TripInput> = {};
+
+  // Stops: a pickup / drop the message names replaces this leg's pickups / drops; the rest stays
+  const placed = (input.stops || []).filter((st) => stopHasPlace({ name: st.name ?? null, street: st.street ?? null, city: st.city ?? null, state: st.state ?? null, zip: st.zip ?? null }));
+  const oldStops: StopInput[] = [...(leg.stops || [])]
+    .sort((a, b) => a.seq - b.seq)
+    .map((o) => ({ type: o.type as StopInput["type"], name: o.name, street: o.street, city: o.city, state: o.state, zip: o.zip, appointment: o.appointment_local, ref: o.ref }));
+  const same = (a: StopInput[], b: StopInput[]) =>
+    a.length === b.length && a.every((x, i) => ["name", "street", "city", "state", "zip", "appointment"].every((k) => String((x as any)[k] || "").trim().toUpperCase() === String((b[i] as any)[k] || "").trim().toUpperCase()));
+  let stops = oldStops;
+  for (const type of ["pickup", "drop"] as const) {
+    const given = placed.filter((st) => st.type === type);
+    if (!given.length) continue;
+    const had = stops.filter((st) => st.type === type);
+    if (same(given, had)) continue;
+    const at = stops.findIndex((st) => st.type === type);
+    const rest = stops.filter((st) => st.type !== type);
+    const pos = at >= 0 ? stops.slice(0, at).filter((st) => st.type !== type).length : type === "pickup" ? 0 : rest.length;
+    stops = [...rest.slice(0, pos), ...given, ...rest.slice(pos)];
+    parts.push(`${type === "pickup" ? "Pickup" : "Drop"} ${had.map(stopText).join(" + ") || "—"} → ${given.map(stopText).join(" + ")}`);
+  }
+  if (stops !== oldStops) changes.stops = stops;
+
+  const trailers = (leg.trailer_numbers || "").split(/,\s*/).filter(Boolean);
+  const newTrailers = (input.trailerNumbers || []).map((t) => t.trim().toUpperCase()).filter(Boolean);
+  if (newTrailers.length && newTrailers.join(",") !== trailers.map((t) => t.toUpperCase()).join(",")) {
+    changes.trailerNumbers = newTrailers;
+    parts.push(`Trailer ${trailers.join(", ") || "—"} → ${newTrailers.join(", ")}`);
+  }
+  const truck = input.truckNumber?.trim().toUpperCase();
+  if (truck && truck !== (leg.truck_number || "").toUpperCase()) {
+    changes.truckNumber = truck;
+    parts.push(`Truck ${leg.truck_number || "—"} → ${truck}`);
+  }
+  const temp = input.temperature?.trim();
+  if (temp && temp.toUpperCase() !== (leg.temperature || "").toUpperCase()) {
+    changes.temperature = temp;
+    parts.push(`Temp ${leg.temperature || "—"} → ${temp}`);
+  }
+
+  if (parts.length) {
+    await editTrip(leg.id, changes, actor, { quiet: true });
+    const said = String(opts.text || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    await record(leg, { type: "chat_update", actor, messageId: opts.messageId || null, note: `${parts.join(" · ")}${said ? ` — from the chat: "${said}"` : ""}` });
+  }
+  return { kind: "updated", loadId: load.id, loadNo: load.invoice_no || load.load_no, tripNo: leg.trip_no, legNo: leg.leg_no, changes: parts };
+}
 
 /** The staff's own chat message that made a leg: deleting that message offers to delete the load. */
 async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: string | null | undefined, actor: Actor) {
@@ -583,6 +687,9 @@ async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: s
 
 export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null; groupId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
+  // The Load # is already out and its leg is running for this driver: an update of that leg only
+  const open = await openLegForUpdate(input.loadNo, input.driverProfileId, input.teamDriverProfileId);
+  if (open) return updateOpenLeg(open, input, actor, { messageId: input.sourceMessageId, text: input.rawText });
   try {
     // No pickup and no drop yet (a Load # and PENDING): saved as a plan, nothing goes to the driver
     const placed = (input.stops || []).some((st) => stopHasPlace({ name: st.name ?? null, street: st.street ?? null, city: st.city ?? null, state: st.state ?? null, zip: st.zip ?? null }));

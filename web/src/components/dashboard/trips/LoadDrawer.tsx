@@ -146,6 +146,8 @@ function historyText(h: LoadHistoryEntry): string {
       return `👍 ${h.note || 'Driver accepted the upcoming load'}`;
     case 'equipment':
       return `🔧 ${h.note || 'Truck / trailer changed'}`;
+    case 'chat_update':
+      return `✏️ ${h.note || 'Updated from the chat'}`;
     case 'stop_arrived':
       return `📍 Arrived${h.note ? ` — ${h.note}` : ''}`;
     case 'stop_departed':

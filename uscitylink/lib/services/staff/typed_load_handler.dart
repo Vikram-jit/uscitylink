@@ -18,6 +18,11 @@ class TypedLoadHandler {
       case 'sent':
         final leg = (d['legNo'] as num?)?.toInt() ?? 1;
         _toast('Load sent', 'Load ${d['loadNo']}${leg > 1 ? ' (leg $leg)' : ''} sent to $who — from your message');
+      case 'updated':
+        // The Load # was already out: only its running leg was updated (ended legs untouched)
+        final leg = (d['legNo'] as num?)?.toInt() ?? 1;
+        final changes = (d['changes'] is List) ? (d['changes'] as List).map((e) => '$e').toList() : <String>[];
+        _toast('Load updated', changes.isEmpty ? 'Load ${d['loadNo']}: nothing changed on the load' : 'Load ${d['loadNo']}${leg > 1 ? ' leg $leg' : ''} — ${changes.join(' · ')}');
       case 'planned':
         // A Load # and no pickup / drop address yet: saved as a plan, nothing went to the driver
         _toast('Load saved as a plan', 'Load ${d['loadNo']} for $who has no pickup or drop address yet, so nothing was sent. Add one from Loads.');

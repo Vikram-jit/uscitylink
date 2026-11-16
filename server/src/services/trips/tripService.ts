@@ -572,21 +572,7 @@ export async function sendLoad(id: number, actor: Actor, opts: { groupId?: strin
     trip.source === "typed" && trip.raw_text?.trim()
       ? trip.raw_text
       : formatLoad(trip, trip.stops || [], trip.driver_id_2 ? await teamNamesOf(trip) : []);
-  const senderId = actor.id || (await getBotProfileId());
-  // Sent from a truck chat: the message shows in that chat (staff + each member, once). Anywhere else
-  // it goes to the driver's own chat.
-  // Sent by a dispatcher: it is THEIR message in the chat (name + normal bubble), same as if they had typed it.
-  // Without a person (a lined-up load going out by itself) it stays the assistant's.
-  const asDispatcher = !!actor.id && actor.role === "dispatcher";
-  rememberOwnLoadText(body); // its own message — never read back as a new load
-  const inGroup = opts.groupId
-    ? await postToGroup({ groupId: opts.groupId, senderId, channelId, body, automated: !asDispatcher }).catch((e) => {
-        console.warn("[trips] truck chat post:", e?.message || e);
-        return null;
-      })
-    : null;
-  const message =
-    inGroup || (await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body, { automated: !asDispatcher }));
+  const message = await postDispatchText(trip.driver_profile_id, channelId, body, actor, opts.groupId);
   const from = trip.status;
   await trip.update({
     status: ok.to,
@@ -603,6 +589,24 @@ export async function sendLoad(id: number, actor: Actor, opts: { groupId?: strin
   });
   announce(trip.id);
   return getTrip(trip.id);
+}
+
+/**
+ * Text from dispatch posted in the driver's chat (or the truck chat: staff + each member, once). Sent by
+ * a dispatcher it is THEIR message (name + normal bubble), same as if they had typed it; without a person
+ * (a lined-up load going out by itself) it is the assistant's. Never read back as a new load.
+ */
+export async function postDispatchText(driverProfileId: string, channelId: string, body: string, actor: Actor, groupId?: string | null) {
+  const senderId = actor.id || (await getBotProfileId());
+  const asDispatcher = !!actor.id && actor.role === "dispatcher";
+  rememberOwnLoadText(body);
+  const inGroup = groupId
+    ? await postToGroup({ groupId, senderId, channelId, body, automated: !asDispatcher }).catch((e) => {
+        console.warn("[trips] truck chat post:", e?.message || e);
+        return null;
+      })
+    : null;
+  return inGroup || (await sendSystemMessageToDriver(getSocketInstance(), senderId, driverProfileId, channelId, body, { automated: !asDispatcher }));
 }
 
 export async function teamNamesOf(trip: ChatTrip): Promise<string[]> {

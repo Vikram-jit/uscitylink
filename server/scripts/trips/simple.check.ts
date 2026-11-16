@@ -655,6 +655,49 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal((await msgs(b.id)).find((m) => m.startsWith(`LOAD # ${NO}PP\n`)), text2, "exactly as pasted");
     });
 
+    await test("an update for a load that's already out (same Load #, its last leg running): only that leg changes — ended legs untouched, no new leg, the message as typed", async () => {
+      const no = `${NO}UPD`;
+      // Leg 1 and leg 2 delivered, leg 3 running for A
+      const l1 = await addLoad({ loadNo: no, driverProfileId: b.id, stops: CHD_AMB, trailerNumbers: ["ZZT1"] }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(l1.load.id);
+      await addLoad({ loadNo: no, driverProfileId: b.id, stops: AMB_DEL, trailerNumbers: ["ZZT2"] }, dispatcher, { send: true, endPrevious: true, endDriverCurrent: true });
+      await addLoad({ loadNo: no, driverProfileId: a.id, stops: AMB_DEL, trailerNumbers: ["ZZT3"] }, dispatcher, { send: true, endPrevious: true, endDriverCurrent: true });
+      const legsOf = async () => ChatTrip.findAll({ where: { load_id: l1.load.id }, include: [{ model: ChatTripStop, as: "stops" }], order: [["leg_no", "ASC"]] });
+      const before = await legsOf();
+      assert.deepEqual(before.map((l) => l.status), ["ended", "ended", "planned"], before.map((l) => l.status).join());
+      const snap = (l: ChatTrip) => JSON.stringify({ t: l.trailer_numbers, s: (l.stops || []).map((x) => [x.type, x.name, x.appointment_local]) });
+      const endedBefore = before.slice(0, 2).map(snap);
+
+      const text = `LOAD# ${no}\n\nUPDATED DELIVERY FOR TOMORROW\n\nTRAILER# ZZ16965\n\nDROP# \nZZ NORTHGATE - ANAHEIM\n1201 NORTH MAGNOLIA AVENUE\nANAHEIM, CA 92801\n11/16/2026 07:00AM`;
+      const typedMsg = await Message.create({ channelId: channel[0].id, userProfileId: a.id, senderId: staff!.id, body: text, messageDirection: "S", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+      await wait(2500);
+      const after = await legsOf();
+      assert.equal(after.filter((l) => l.status !== "cancelled").length, 3, "no new leg");
+      assert.deepEqual(after.slice(0, 2).map(snap), endedBefore, "legs 1 and 2 (ended) untouched");
+      const l3 = after[2];
+      assert.equal(l3.status, "planned", "still running");
+      assert.equal(l3.trailer_numbers, "ZZ16965", "the new trailer on leg 3");
+      const st = [...(l3.stops || [])].sort((x, y) => x.seq - y.seq);
+      assert.deepEqual(st.map((x) => [x.type, x.name]), [["pickup", "ZZ DROP AMBALA"], ["drop", "ZZ NORTHGATE - ANAHEIM"]], "the pickup kept, the drop replaced");
+      assert.equal(st[1].appointment_local, "2026-11-16T07:00");
+      assert.equal((await Message.findByPk(typedMsg.id))!.body, text, "the message stays as typed");
+      const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: l3.id, type: "chat_update" } });
+      assert(ev && /Drop ZZ DELIVERY DELHI.*→ ZZ NORTHGATE - ANAHEIM/.test(ev.note || "") && /Trailer ZZT3 → ZZ16965/.test(ev.note || ""), ev?.note || "no log");
+
+      // Same through the paste box: the text goes to the chat once, as typed, and updates leg 3 only
+      const text2 = `LOAD# ${no}\nTRAILER# ZZ17000`;
+      const chatBefore = (await msgs(a.id)).length;
+      const r = await loadFromText(text2, a.id, dispatcher);
+      assert.deepEqual(r.updated, ["Trailer ZZ16965 → ZZ17000"]);
+      const chat = await msgs(a.id);
+      assert.equal(chat.length, chatBefore + 1);
+      assert.equal(chat[0], text2, "posted as typed");
+      const again = await legsOf();
+      assert.equal(again.filter((l) => l.status !== "cancelled").length, 3, "still no new leg");
+      assert.equal(again[2].trailer_numbers, "ZZ17000");
+      assert.deepEqual(again.slice(0, 2).map(snap), endedBefore);
+    });
+
     await test("the assistant speaks in the driver's chat ONLY for the driver's own Got it / Rolling / Delivered — nothing for what dispatch does", async () => {
       const chat = async (id: string) => (await Message.count({ where: { userProfileId: id } }));
       // Load 1: dispatch does everything it can to it
