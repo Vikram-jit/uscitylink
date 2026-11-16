@@ -285,7 +285,7 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert(leg.sent_at);
     });
 
-    await test("a load typed in chat = Send now: same Load # asks first, then leg 2 goes out with the standard message; no Load # → nothing", async () => {
+    await test("a load typed in chat = Send now: same Load # asks first, then leg 2 goes out; the typed message is left exactly as dispatch wrote it; no Load # → nothing", async () => {
       const no = `${NO}T`;
       const r = await addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
       loadIds.add(r.load.id);
@@ -322,14 +322,10 @@ const asks = async (p: Promise<any>, needs: string) => {
         assert(tl.sent_at, "counts as sent");
       }
       assert.equal((await msgs(a.id)).length, chatBefore, "no second 'standard' message was posted to the driver");
-      // …and that message was put in the one standard layout, in place (every dispatcher's loads look the same)
-      if (tl.status === "planned") {
-        const now = (await Message.findByPk(typedMsg.id))!;
-        assert(now.body.startsWith(`LOAD # ${fresh}\n\nTRUCK # ZZ404\n\n`), now.body);
-        assert(/\nPICKUP\nZZ YARD FRESNO\n1 MAIN ST\nFRESNO, CA 93701\nDATE PENDING\n/.test(now.body), "pickup with no date");
-        assert(/\nDROP\nZZ DELIVERY FREMONT\n2 MAIN ST\nFREMONT, CA 94538\nDATE PENDING$/.test(now.body), "drop with no date");
-        assert(!/PICK\s*$/m.test(now.body), "the typed words are gone");
-      }
+      // …and that message is left exactly as dispatch typed it: nothing rewritten, nothing added
+      assert.equal((await Message.findByPk(typedMsg.id))!.body, text, "the typed message is unchanged");
+      assert.equal(tl.truck_number, "ZZ404", "the truck the text gave");
+      assert(!tl.trailer_numbers, "no trailer in the text → none filled in");
 
       // A Load # with PICKUP / DROP headings but no address yet (both PENDING): saved as a plan, nothing goes to the driver
       const planNo = `${NO}PL`;
@@ -420,7 +416,7 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert(!(await msgs(a.id)).some((m) => /lined up/i.test(m)), "nothing about lined-up loads in A's chat");
     });
 
-    await test("a load pasted in the chat box: nothing reaches the driver until it's sent; Line up → nothing; End & send → the standard layout, once", async () => {
+    await test("a load pasted in the chat box: nothing reaches the driver until it's sent; Line up → nothing; End & send → the pasted text word for word, once", async () => {
       const no = `${NO}P`;
       const text = `Load #: ${no}\n\nPickup#\nWayne Farms - Albertville\n700 McDonald Ave.\nALBERTVILLE, AL 35950\n\nPickup#\nSANDERSON FARMS\n320 SANDERSONS FARMS PARKWAY\nPALESTINE, TX 75801\n11/12/2026 08:00PM\n\nDrop#\nROMA SOUTHERN CALIFORNIA\n16639 East Gale Ave\nCITY OF INDUSTRY, CA 91745\n11/15/2026 07:00AM`;
       // A is on another load
@@ -444,16 +440,14 @@ const asks = async (p: Promise<any>, needs: string) => {
       const live = sent.data.legs.filter((l: any) => l.status !== "cancelled");
       assert.equal(live.length, 1);
       assert.equal(live[0].status, "planned");
-      // The driver gets the load in the one standard layout — once, whatever way it was typed
+      // The driver gets exactly what dispatch pasted — once, nothing rewritten or added
       const chat = await msgs(a.id);
-      const standard = chat.filter((m) => m.startsWith(`LOAD # ${no}\n`));
-      assert.equal(standard.length, 1, "one standard load message");
-      assert(/\nPICKUP\nWayne Farms - Albertville\n700 McDonald Ave\.\nALBERTVILLE, AL 35950\nDATE PENDING\n/.test(standard[0]), "a pickup with no date shows DATE PENDING");
-      assert(/\nDROP\nROMA SOUTHERN CALIFORNIA\n16639 East Gale Ave\nCITY OF INDUSTRY, CA 91745\n11\/15\/2026 07:00AM/.test(standard[0]), "the drop with its date");
-      assert(!chat.some((m) => m.startsWith("Load #:")), "the pasted text itself never went to the driver");
-      const sentRow = await Message.findOne({ where: { userProfileId: a.id, body: standard[0] }, order: [["createdAt", "DESC"]] });
+      assert.equal(chat.filter((m) => m === text).length, 1, "the pasted text, once");
+      assert(!chat.some((m) => m.startsWith(`LOAD # ${no}\n`)), "no standard-layout copy");
+      const sentRow = await Message.findOne({ where: { userProfileId: a.id, body: text }, order: [["createdAt", "DESC"]] });
       assert(sentRow, "the message row");
       assert.equal(live[0].message_id, sentRow!.id, "the load is linked to that message");
+      assert(!live[0].truck_number && !live[0].trailer_numbers, "no truck / trailer in the text → left empty, not filled in");
       assert.equal(await ChatTrip.count({ where: { raw_text: text, driver_profile_id: a.id, status: { [Op.ne]: "cancelled" } } }), 1, "the message did not make a second load");
       // No Load # / no address: refused, nothing sent
       await assert.rejects(loadFromText("Pickup#\nX\n1 Main St\nRENO, NV 89501", a.id, dispatcher), /LOAD # 1234/);
@@ -640,25 +634,25 @@ const asks = async (p: Promise<any>, needs: string) => {
       await assert.rejects(convertMessageToLoad(staffChat.id, dispatcher), /driver's chat/);
     });
 
-    await test("a PICKUP / DROP that dispatch left PENDING is not in the message the driver gets — for either side", async () => {
+    await test("a pasted load with PICKUP / DROP PENDING goes to the driver word for word, as the dispatcher's own message", async () => {
       const addr = "ZZ FreshPoint\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213";
-      const dropOnly = await loadFromText(`LOAD # ${NO}PD\nPICKUP\nPENDING\n\nDROP\n${addr}\n11/16/2026 06:00AM`, a.id, dispatcher, { endDriverCurrent: true });
+      const text1 = `LOAD # ${NO}PD\nPICKUP\nPENDING\n\nDROP\n${addr}\n11/16/2026 06:00AM`;
+      const dropOnly = await loadFromText(text1, a.id, dispatcher, { endDriverCurrent: true });
       loadIds.add(dropOnly.data.load.id);
       const m1 = (await msgs(a.id)).find((m) => m.startsWith(`LOAD # ${NO}PD\n`))!;
-      assert(m1, "the load message");
-      // It is the DISPATCHER's own message (their name, the normal bubble) — not the Dispatch Assistant's — and the
-      // chat hook did not read it as a newly typed load
+      assert.equal(m1, text1, "exactly as pasted");
+      // It is the DISPATCHER's own message (their name, the normal bubble) — and not read back as a new load
       const row = (await Message.findOne({ where: { userProfileId: a.id, body: m1 } }))!;
       assert.equal(row.senderId, staff!.id, "sent as the dispatcher");
       assert.equal(!!row.is_automated, false, "not the Dispatch Assistant bubble");
       await wait(1500);
       assert.equal(await ChatTrip.count({ where: { load_id: dropOnly.data.load.id, status: { [Op.ne]: "cancelled" } } }), 1, "no second load made from our own message");
-      assert(!/PICKUP/.test(m1) && !/PENDING\n|PENDING$/.test(m1.replace(/DATE PENDING/g, "")), m1);
-      assert(/\nDROP\nZZ FreshPoint\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11\/16\/2026 06:00AM$/.test(m1), m1);
-      const pickOnly = await loadFromText(`LOAD # ${NO}PP\nPICKUP\n${addr}\n11/15/2026 07:00AM\n\nDROP\nPENDING`, b.id, dispatcher, { endDriverCurrent: true });
+      const leg = dropOnly.data.legs.find((l: any) => l.status !== "cancelled")!;
+      assert.deepEqual(leg.stops.map((x: any) => x.type), ["drop"], "the load itself: only the drop (the pending pickup stays empty)");
+      const text2 = `LOAD # ${NO}PP\nPICKUP\n${addr}\n11/15/2026 07:00AM\n\nDROP\nPENDING`;
+      const pickOnly = await loadFromText(text2, b.id, dispatcher, { endDriverCurrent: true });
       loadIds.add(pickOnly.data.load.id);
-      const m2 = (await msgs(b.id)).find((m) => m.startsWith(`LOAD # ${NO}PP\n`))!;
-      assert(m2 && /\nPICKUP\nZZ FreshPoint/.test(m2) && !/DROP/.test(m2) && !/PENDING/.test(m2), m2);
+      assert.equal((await msgs(b.id)).find((m) => m.startsWith(`LOAD # ${NO}PP\n`)), text2, "exactly as pasted");
     });
 
     await test("the assistant speaks in the driver's chat ONLY for the driver's own Got it / Rolling / Delivered — nothing for what dispatch does", async () => {

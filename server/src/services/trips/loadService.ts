@@ -4,7 +4,6 @@ import { UserProfile } from "../../models/UserProfile";
 import Role from "../../models/Role";
 import { Message } from "../../models/Message";
 import { loadsOfMessage } from "./messageLoads";
-import { replaceMessageText } from "./messageText";
 import { formatLoad, stopHasPlace } from "./tripMessages";
 import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
@@ -471,7 +470,9 @@ export async function addLoad(
     plan: true, // no stops yet is allowed here: a plan with just the Load #
     messageId: goesNow && opts.messageId ? opts.messageId : null,
     invoiceNo: no,
-    trailerNumbers: input.trailerNumbers?.length ? input.trailerNumbers : prev?.trailer_numbers ? prev.trailer_numbers.split(/,\s*/) : [],
+    // Typed / pasted: only what the text says (a later chat line can add the truck / trailer)
+    asWritten: !!(opts.typed || opts.fromChat),
+    trailerNumbers: input.trailerNumbers?.length ? input.trailerNumbers : prev?.trailer_numbers && !(opts.typed || opts.fromChat) ? prev.trailer_numbers.split(/,\s*/) : [],
     loadedTrailer: input.loadedTrailer ?? (prev ? true : false),
     allowNoDriver: false,
     reviewNotes,
@@ -503,12 +504,7 @@ export async function addLoad(
   if (busy && opts.lineUp && !opts.endDriverCurrent) await trip.update({ auto_send: true });
   // Send now — unless dispatch chose to line it up after the driver's current load
   if (goesNow && !trip.sent_at) await sendLoad(trip.id, actor, { groupId: opts.groupId });
-  // Dispatch's message is already in the chat and IS the load message: put it in the one standard layout
-  // (every dispatcher's loads look the same) — the screens update at once, the driver's app on reload
-  else if (goesNow && opts.messageId && trip.message_id === opts.messageId) {
-    const fresh = await ChatTrip.findByPk(trip.id, { include: [{ model: ChatTripStop, as: "stops" }] });
-    if (fresh) await replaceMessageText(opts.messageId, formatLoad(fresh, fresh.stops || [], fresh.driver_id_2 ? await teamNamesOf(fresh) : [])).catch((e) => console.warn("[loads] standard layout:", e?.message || e));
-  }
+  // Dispatch's own message already in the chat IS the load message: left exactly as they typed it
   await refreshLoadStatus(target.id);
   return getLoad(target.id);
 }

@@ -102,25 +102,22 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       assert.equal(await ChatLoad.count({ where: { invoice_no: LOAD_NO } }), 1, "one load");
     });
 
-    await test("the load stays visible in the truck chat in the one standard layout: once for staff and once per member, the pasted text replaced — no duplicates", async () => {
+    await test("the load stays in the truck chat exactly as dispatch pasted it: once for staff and once per member — nothing rewritten or added, no duplicates", async () => {
       const raw = LOAD(LOAD_NO).trim();
-      const standard = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${LOAD_NO}\n\nTRUCK #%` } }, order: [["createdAt", "ASC"]] });
-      const staffView = standard.filter((m) => m.type === "default");
+      const rows = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `%LOAD # ${LOAD_NO}%` } }, order: [["createdAt", "ASC"]] });
+      assert(rows.every((m) => String(m.body).trim() === raw), "every copy is the pasted text, unchanged");
+      const staffView = rows.filter((m) => m.type === "default");
       assert.equal(staffView.length, 1, `staff see the load once in the truck chat, got ${staffView.length}`);
       for (const p of [a, b]) {
-        const mine = standard.filter((m) => m.type === "truck_group" && m.userProfileId === p.id);
+        const mine = rows.filter((m) => m.type === "truck_group" && m.userProfileId === p.id);
         assert.equal(mine.length, 1, `${p.username} sees the load once in the truck group, got ${mine.length}`);
       }
-      assert.equal(await Message.count({ where: { groupId: group.id, body: raw } }), 0, "the pasted text was replaced by the standard layout");
-      assert.equal(await GroupMessage.count({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${LOAD_NO}\n\nTRUCK #%` } } }), 1, "one group message");
-      const text = String(staffView[0].body);
-      assert(/\nPICKUP\nZZ 4Earth Farms\n5555 E Olympic Blvd\nCommerce, CA 90022\n11\/20\/2026 07:00PM\n/.test(text), text);
-      assert(/\nDROP\nZZ WCD Franklin\n4040 Scottsville Rd\nFranklin, KY 42134\n11\/22\/2026 12:01AM$/.test(text), "the drop with its date, last");
+      assert.equal(await Message.count({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${LOAD_NO}\n\nTRUCK #%` } } }), 0, "no standard-layout copy");
       const trip = (await legsOf(LOAD_NO))[0];
       assert.equal(trip.message_id, staffView[0].id, "the load is that message");
     });
 
-    await test("the same send from the Send load button / pasted box (loadFromText) shows in the truck chat once, in the standard layout", async () => {
+    await test("the same send from the Send load button / pasted box (loadFromText) shows in the truck chat once, word for word", async () => {
       const no = `${LOAD_NO}B`;
       const text = LOAD(no).trim();
       // From the truck chat: no driver given — the truck's main driver is used (A is on the first load: end it)
@@ -130,10 +127,10 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       await wait(1500);
       const legs = (await legsOf(no)).filter((l) => l.status !== "cancelled");
       assert.equal(legs.length, 1, "one load, the message did not make another");
-      const rows = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${no}\n\nTRUCK #%` } } });
+      const rows = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `%LOAD # ${no}\n%` } } });
+      assert(rows.every((m) => m.body === text), "the pasted text exactly");
       assert.equal(rows.filter((m) => m.type === "default").length, 1, "the truck chat got the load once");
       assert.deepEqual(rows.filter((m) => m.type === "truck_group").map((m) => m.userProfileId).sort(), [a.id, b.id].sort(), "each member got it once");
-      assert.equal(await Message.count({ where: { groupId: group.id, body: text } }), 0, "the pasted text itself was never posted");
       assert(rows.every((m) => m.senderId === staff!.id && !m.is_automated), "the dispatcher's own message in the truck chat (their name, normal bubble), not the Dispatch Assistant's");
       assert.equal(legs[0].driver_profile_id, a.id, "on the main driver");
       assert(legs[0].driver_id_2, "the team mate is linked");

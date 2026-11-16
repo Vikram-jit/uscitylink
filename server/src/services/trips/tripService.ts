@@ -74,6 +74,8 @@ export interface TripInput {
   plan?: boolean;
   /** A later leg of a load can be saved before its driver is known ("assign later") */
   allowNoDriver?: boolean;
+  /** Typed / pasted by dispatch: the load holds only what the text says — no truck, team or trailer filled in for it */
+  asWritten?: boolean;
 }
 
 /** Which load a new trip is a leg of (loadService.createLoad); without it the trip is its own load. */
@@ -275,7 +277,7 @@ async function resolvePeople(input: TripInput) {
   let truckNumber = input.truckNumber?.trim() || null;
   if (!profileId && truckNumber) profileId = (await driverOfTruck(truckNumber))?.id || null;
   if (!profileId && !input.allowNoDriver) throw new TripError(truckNumber ? `No driver found on truck ${truckNumber}` : "Choose a driver or a truck");
-  if (!truckNumber && profileId) truckNumber = await truckOfDriver(profileId);
+  if (!truckNumber && profileId && !input.asWritten) truckNumber = await truckOfDriver(profileId);
 
   const driver1 = profileId ? await yardDriverId(profileId) : null;
   const teamNames: string[] = [];
@@ -293,7 +295,7 @@ async function resolvePeople(input: TripInput) {
       if (found && found.id !== driver1 && !driver2 && !own.includes(name.toLowerCase())) driver2 = found.id;
     }
     teamNames.push(...input.teamNames);
-  } else if (input.teamDriverProfileId === undefined && profileId && truckNumber) {
+  } else if (input.teamDriverProfileId === undefined && profileId && truckNumber && !input.asWritten) {
     // Neither a team mate nor team names were given (a load typed in a chat, or only a truck): the other
     // members of the truck's group are the team. An explicit "no team" (null from the form) is kept.
     const group = await Group.findOne({ where: { name: truckNumber, type: "truck" } });
@@ -564,16 +566,19 @@ export async function sendLoad(id: number, actor: Actor, opts: { groupId?: strin
   // A pickup or a drop (one of them) is needed to send; only the Load # is needed to save
   if (!(trip.stops || []).some(stopHasPlace)) throw new TripError("Add the pickup or the drop (one is needed) before sending this load");
 
-  const teamNames = trip.driver_id_2 ? await teamNamesOf(trip) : [];
-  // Every load goes out in the one standard layout (formatLoad) — typed or filled in on the form
-  const body = formatLoad(trip, trip.stops || [], teamNames);
+  // A load dispatch typed / pasted goes out exactly as they wrote it — nothing rewritten or added.
+  // Only a load filled in on the form is laid out (formatLoad).
+  const body =
+    trip.source === "typed" && trip.raw_text?.trim()
+      ? trip.raw_text
+      : formatLoad(trip, trip.stops || [], trip.driver_id_2 ? await teamNamesOf(trip) : []);
   const senderId = actor.id || (await getBotProfileId());
   // Sent from a truck chat: the message shows in that chat (staff + each member, once). Anywhere else
   // it goes to the driver's own chat.
   // Sent by a dispatcher: it is THEIR message in the chat (name + normal bubble), same as if they had typed it.
   // Without a person (a lined-up load going out by itself) it stays the assistant's.
   const asDispatcher = !!actor.id && actor.role === "dispatcher";
-  if (asDispatcher) rememberOwnLoadText(body);
+  rememberOwnLoadText(body); // its own message — never read back as a new load
   const inGroup = opts.groupId
     ? await postToGroup({ groupId: opts.groupId, senderId, channelId, body, automated: !asDispatcher }).catch((e) => {
         console.warn("[trips] truck chat post:", e?.message || e);
