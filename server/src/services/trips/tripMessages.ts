@@ -35,32 +35,96 @@ export const loadRef = (trip: Pick<ChatTrip, "trip_no" | "invoice_no">, capital 
   return `${capital ? "Load" : "load"} ${no}`;
 };
 
-export function formatLoad(trip: ChatTrip, stops: ChatTripStop[], teamNames: string[] = []): string {
-  const lines: string[] = [`LOAD # ${loadNoOf(trip)}`.trim()];
-  if (trip.truck_number) lines.push(`TRUCK # ${trip.truck_number}`);
-  if (teamNames.length > 1) lines.push(`TEAM # ${teamNames.join(" + ")}`);
-  if (trip.trailer_numbers) lines.push(`TRAILER # ${trip.trailer_numbers}`);
-  if (trip.temperature) lines.push(`TEMP # ${trip.temperature}`);
-  if (trip.loaded_trailer) lines.push("LOADED TRAILER");
+/** A stop that has an address (or at least a name): "pending" is a stop with nothing to show. */
+export const stopHasPlace = (s: Pick<ChatTripStop, "name" | "street" | "city" | "state" | "zip">) => !!(s.name || s.street || s.city || s.state || s.zip);
 
-  const drops = sorted(stops).filter((s) => s.type === "drop").length;
+/**
+ * THE load layout — one pattern for every dispatcher, for the driver's chat and for truck chats. Only the
+ * Load # is required; the pickup and the drop are each optional:
+ *
+ *   LOAD # 0056000
+ *
+ *   TRUCK # 35865
+ *
+ *   TEAM # ABBY + AMIT
+ *
+ *   TRAILER # 107065
+ *
+ *   TEMP # 34 CONT.
+ *
+ *   PICKUP
+ *   Echo Cold
+ *   9 Dock Rd
+ *   Fresno, CA 93701
+ *   11/15/2026 07:00AM
+ *
+ *   DROP
+ *   FreshPoint Atlanta
+ *   1200 Oakley Industrial Blvd B
+ *   FAIRBURN, GA 30213
+ *   DATE PENDING              (a place with no appointment yet)
+ *
+ * A pickup or a drop that is still PENDING (no address, no date) is NOT in the message the driver gets — it is
+ * left out until dispatch confirms it. Optional header lines (truck, team, trailer, temp) are left out when
+ * empty. Read back by parseLoad (which also accepts PENDING under a heading, as dispatch types it).
+ */
+export function formatLoad(trip: ChatTrip, stops: ChatTripStop[], teamNames: string[] = []): string {
+  // One blank line between the fields, as dispatch types them
+  const head: string[] = [`LOAD # ${loadNoOf(trip)}`.trim()];
+  if (trip.truck_number) head.push(`TRUCK # ${trip.truck_number}`);
+  if (teamNames.length > 1) head.push(`TEAM # ${teamNames.join(" + ")}`);
+  if (trip.trailer_numbers) head.push(`TRAILER # ${trip.trailer_numbers}`);
+  if (trip.temperature) head.push(`TEMP # ${trip.temperature}`);
+  if (trip.loaded_trailer) head.push("LOADED TRAILER");
+  const lines: string[] = [head.join("\n\n")];
+
+  // A stop with nothing known — no address and no date — is pending: it is not sent to the driver
+  const list = sorted(stops).filter((s) => stopHasPlace(s) || !!stopTime(s));
+  const drops = list.filter((s) => s.type === "drop").length;
   let dropNo = 0;
-  for (const s of sorted(stops)) {
+  for (const s of list) {
     lines.push("");
     if (s.type === "pickup") lines.push("PICKUP");
     else if (s.type === "switch") lines.push("GO TO (SWITCH TRAILER)");
     else if (s.type === "yard") lines.push("DROP AT YARD");
     else lines.push(drops > 1 ? `DROP # ${++dropNo}` : "DROP");
+    const placed = stopHasPlace(s);
     if (s.name) lines.push(s.name);
     if (s.street) lines.push(s.street);
-    lines.push(`${s.city || ""}, ${s.state || ""} ${s.zip || ""}`.trim());
+    if (s.city || s.state || s.zip) lines.push(`${s.city || ""}, ${s.state || ""} ${s.zip || ""}`.trim());
+    // (a stop here has an address or a date; only a date with no address yet says PENDING for the place)
+    if (!placed) lines.push("PENDING");
     const t = stopTime(s);
     if (t) lines.push(t);
+    else if (placed && (s.type === "pickup" || s.type === "drop")) lines.push("DATE PENDING");
     if (s.ref) lines.push(`REF # ${s.ref}`);
   }
   if (trip.notes) lines.push("", trip.notes);
   return lines.join("\n");
 }
+
+/**
+ * The blank layout staff start from (Templates → "Load format"). Same lines as formatLoad; only the Load #
+ * is required, the rest can stay empty or PENDING (a pending pickup or drop is not sent to the driver). The web (loadFormat.ts) and the app (load_format.dart)
+ * carry the same text; scripts/trips/format.check.ts keeps the three identical.
+ */
+export const LOAD_TEMPLATE = [
+  "LOAD #",
+  "",
+  "TRUCK #",
+  "",
+  "TEAM #",
+  "",
+  "TRAILER #",
+  "",
+  "TEMP #",
+  "",
+  "PICKUP",
+  "PENDING",
+  "",
+  "DROP",
+  "PENDING",
+].join("\n");
 
 /** "(17 min early)" / "(1 h 05 min late)" against the appointment. */
 function punctuality(stop: ChatTripStop, at: Date): string {
@@ -107,6 +171,7 @@ export const statusLine = {
       : stop?.type === "switch"
         ? `🔁 ${loadRef(trip)} handed over at ${place(stop)} — thank you`
         : `✅ ${loadRef(trip)} delivered${stop ? ` at ${place(stop)}` : ""} — please send the BOL / POD photos`,
+  rejected: (trip: ChatTrip, who: string) => `❌ ${who} rejected ${loadRef(trip, false)} — sent back to dispatch`,
   paperwork: (trip: ChatTrip, summary: string) => `📄 Paperwork for ${loadRef(trip, false)}: ${summary} — waiting for dispatch to confirm`,
   complete: (trip: ChatTrip, who: string) => `✅ ${loadRef(trip)} completed — paperwork confirmed by ${who}`,
   hold: (trip: ChatTrip, note?: string | null) => `⏸️ ${loadRef(trip)} on hold${note ? `: ${note}` : ""}`,

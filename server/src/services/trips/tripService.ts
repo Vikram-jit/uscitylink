@@ -13,10 +13,11 @@ import { getSocketInstance } from "../../sockets/socket";
 import { userRoom } from "../../sockets/userConnections";
 import { sendSystemMessageToDriver } from "../../sockets/messageHandler";
 import { driversInGroup, postToGroup } from "./truckGroup";
+import { rememberOwnLoadText } from "./ownMessages";
 import { ActorRole, check, DRIVER_CURRENT, nextStep, TripAction, TripStatus, UNDO_WINDOW_MS } from "./lifecycle";
 import { localToDate, stateTimezone } from "./stateTimezone";
 import { createRouteRow, isPriced, removeRouteRow, syncRouteRow } from "./routeListSync";
-import { formatLoad, loadRef, PROBLEM_KINDS, statusLine } from "./tripMessages";
+import { formatLoad, loadRef, PROBLEM_KINDS, statusLine, stopHasPlace } from "./tripMessages";
 import { gpsTrail, tripMileage } from "./samsara";
 import { matchStops, meetPoint, pointAt } from "./gpsTimes";
 import { geocodeStop, placeAt } from "./places";
@@ -138,6 +139,21 @@ export interface TruckAssignment {
 }
 
 /** Drivers in a truck's group (the truck's assigned driver, two for a team). */
+/**
+ * The team mate's name per leg (keyed by trip id): the chat name when the yard driver is linked to a login,
+ * else the yard's name. Screens show "Driver + Team mate" instead of "+ team".
+ */
+export async function teamNamesByLeg(trips: Pick<ChatTrip, "id" | "driver_id_2">[]): Promise<Record<string, string>> {
+  const ids = [...new Set(trips.map((t) => (t.driver_id_2 ? Number(t.driver_id_2) : 0)).filter(Boolean))];
+  if (!ids.length) return {};
+  const byYard = new Map<number, string>();
+  const rows = await secondarySequelize.query<{ id: number; name: string }>(`SELECT id, name FROM drivers WHERE id IN (:ids)`, { replacements: { ids }, type: QueryTypes.SELECT });
+  for (const r of rows) byYard.set(Number(r.id), r.name);
+  const profiles = await UserProfile.findAll({ attributes: ["id", "username"], include: [{ model: User, as: "user", where: { yard_id: ids }, required: true, attributes: ["yard_id"] }] });
+  for (const p of profiles as any[]) if (p.user?.yard_id && p.username) byYard.set(Number(p.user.yard_id), p.username);
+  return Object.fromEntries(trips.filter((t) => t.driver_id_2 && byYard.has(Number(t.driver_id_2))).map((t) => [String(t.id), byYard.get(Number(t.driver_id_2))!]));
+}
+
 /** Trucks to pick from (Send load / Add load), each with the driver(s) its truck group assigns. */
 export async function truckAssignments(q = ""): Promise<TruckAssignment[]> {
   const groups = await Group.findAll({
@@ -183,7 +199,7 @@ async function yardDriverByName(name: string): Promise<{ id: number; name: strin
   });
 }
 
-async function driverChannel(profileId: string, preferred?: string | null): Promise<string | null> {
+export async function driverChannel(profileId: string, preferred?: string | null): Promise<string | null> {
   if (preferred) {
     const member = await UserChannel.findOne({
       where: { userProfileId: profileId, channelId: preferred },
@@ -208,7 +224,7 @@ export async function ensureChannel(trip: ChatTrip): Promise<string | null> {
   return channelId;
 }
 
-const profileName = async (id?: string | null) => (id ? (await UserProfile.findByPk(id))?.username || null : null);
+export const profileName = async (id?: string | null) => (id ? (await UserProfile.findByPk(id))?.username || null : null);
 
 /** The load's own number, shown in chat, the app and Loads (the yard trip id comes at completion). */
 export const loadNo = (id: number) => `L${String(id).padStart(4, "0")}`;
@@ -230,6 +246,9 @@ export async function getTrip(id: number | string) {
 // ---------- create / edit ----------
 
 function stopRows(stops: StopInput[], allowEmpty = false) {
+  // A row with no address and no appointment is just an empty form line (the pickup or the drop dispatch
+  // doesn't have yet): it is not a stop. Only the Load # is required; one of pickup / drop is needed to send.
+  stops = stops.filter((s) => stopHasPlace({ name: s.name ?? null, street: s.street ?? null, city: s.city ?? null, state: s.state ?? null, zip: s.zip ?? null }) || !!s.appointment);
   if (!stops.length && !allowEmpty) throw new TripError("Add at least one stop");
   return stops.map((s, i) => {
     const state = (s.state || "").trim().toUpperCase().slice(0, 2) || null;
@@ -261,6 +280,7 @@ async function resolvePeople(input: TripInput) {
   const driver1 = profileId ? await yardDriverId(profileId) : null;
   const teamNames: string[] = [];
   let driver2: number | null = null;
+  const moreMembers: string[] = [];
   if (input.teamDriverProfileId) {
     driver2 = await yardDriverId(input.teamDriverProfileId);
     const n = await profileName(input.teamDriverProfileId);
@@ -273,6 +293,17 @@ async function resolvePeople(input: TripInput) {
       if (found && found.id !== driver1 && !driver2 && !own.includes(name.toLowerCase())) driver2 = found.id;
     }
     teamNames.push(...input.teamNames);
+  } else if (input.teamDriverProfileId === undefined && profileId && truckNumber) {
+    // Neither a team mate nor team names were given (a load typed in a chat, or only a truck): the other
+    // members of the truck's group are the team. An explicit "no team" (null from the form) is kept.
+    const group = await Group.findOne({ where: { name: truckNumber, type: "truck" } });
+    const mates = group ? (await driversInGroup((group as any).id)).filter((d) => d.id !== profileId) : [];
+    if (mates[0]) {
+      driver2 = await yardDriverId(mates[0].id);
+      teamNames.push(mates[0].name);
+    }
+    // A load records a driver and one team mate: say so when the truck has more drivers
+    moreMembers.push(...mates.slice(1).map((m) => m.name));
   }
 
   // The Route List form only lists the fleet's active trucks / trailers / drivers (no company):
@@ -309,6 +340,7 @@ async function resolvePeople(input: TripInput) {
     driver1,
     driver2,
     teamNames,
+    moreMembers,
     trailerNumbers,
     trailerIds, notFleet,
   };
@@ -324,6 +356,7 @@ export async function createTrip(input: TripInput, actor: Actor, opts: { send?: 
   if (people.profileId && !people.driver1) reviewNotes.push("The driver isn't linked to a yard driver — the Route List row has no driver yet");
   if (people.truckNumber && !people.truckId) reviewNotes.push(`Truck ${people.truckNumber} isn't in the yard`);
   if (people.trailerNumbers.length > people.trailerIds.length) reviewNotes.push("A trailer number isn't in the yard");
+  if (people.moreMembers.length) reviewNotes.push(`Truck ${people.truckNumber} has more drivers (${people.moreMembers.join(", ")}) — a load records the driver and one team mate`);
   if (people.notFleet.length) reviewNotes.push(`${people.notFleet.join(", ")}: not an active fleet unit in the yard — the Route List form won't show it selected`);
 
   const firstTime = rows.map((r) => r.appointment_at).filter(Boolean)[0] as Date | undefined;
@@ -452,7 +485,7 @@ export async function editTrip(id: number, input: Partial<TripInput>, actor: Act
     if (input.stops) {
       // Stops already visited keep their arrival/departure times when they're still in the list
       const old = trip.stops || [];
-      const rows = stopRows(input.stops);
+      const rows = stopRows(input.stops, true);
       await ChatTripStop.destroy({
         where: { chat_trip_id: trip.id },
         transaction: t,
@@ -527,25 +560,27 @@ export async function sendLoad(id: number, actor: Actor, opts: { groupId?: strin
   const blocking = await blockingLeg(trip);
   if (blocking) throw new TripError(`Leg ${blocking.leg_no} (${blocking.trip_no}) isn't delivered yet — this leg goes out after it`);
 
-  // No stops yet (a plan-only load): nothing to send
-  if (!(trip.stops || []).length) throw new TripError("Add where it goes (the stops) before sending this load");
+  // A pickup or a drop (one of them) is needed to send; only the Load # is needed to save
+  if (!(trip.stops || []).some(stopHasPlace)) throw new TripError("Add the pickup or the drop (one is needed) before sending this load");
 
   const teamNames = trip.driver_id_2 ? await teamNamesOf(trip) : [];
-  // A load made from dispatch's own text goes out as dispatch typed it — nothing added or rewritten.
-  // Loads made on the form have no text of their own: they get the standard layout.
-  const typedText = trip.source === "typed" && trip.raw_text && trip.raw_text.trim() ? trip.raw_text.trim() : null;
-  const body = typedText ?? formatLoad(trip, trip.stops || [], teamNames);
+  // Every load goes out in the one standard layout (formatLoad) — typed or filled in on the form
+  const body = formatLoad(trip, trip.stops || [], teamNames);
   const senderId = actor.id || (await getBotProfileId());
   // Sent from a truck chat: the message shows in that chat (staff + each member, once). Anywhere else
   // it goes to the driver's own chat.
+  // Sent by a dispatcher: it is THEIR message in the chat (name + normal bubble), same as if they had typed it.
+  // Without a person (a lined-up load going out by itself) it stays the assistant's.
+  const asDispatcher = !!actor.id && actor.role === "dispatcher";
+  if (asDispatcher) rememberOwnLoadText(body);
   const inGroup = opts.groupId
-    ? await postToGroup({ groupId: opts.groupId, senderId, channelId, body, automated: !typedText }).catch((e) => {
+    ? await postToGroup({ groupId: opts.groupId, senderId, channelId, body, automated: !asDispatcher }).catch((e) => {
         console.warn("[trips] truck chat post:", e?.message || e);
         return null;
       })
     : null;
   const message =
-    inGroup || (await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body, { automated: !typedText }));
+    inGroup || (await sendSystemMessageToDriver(getSocketInstance(), senderId, trip.driver_profile_id, channelId, body, { automated: !asDispatcher }));
   const from = trip.status;
   await trip.update({
     status: ok.to,
@@ -595,9 +630,8 @@ export async function offerNextLoad(profileId: string, reason: "asked" | "rollin
   const channelId = next?.channel_id || (await driverChannel(profileId));
   if (next && !next.channel_id && channelId && next.driver_profile_id === profileId) await next.update({ channel_id: channelId });
   const bot = await getBotProfileId().catch(() => null);
-  const say = async (text: string) => {
-    if (bot && channelId) await sendSystemMessageToDriver(getSocketInstance(), bot, profileId, channelId, text).catch(() => undefined);
-  };
+  // Not said in the driver's chat any more ("dispatch will send your next load"): dispatch is told instead
+  const say = async (_text: string) => undefined;
 
   if (!next) {
     if (reason === "asked") {
@@ -656,12 +690,6 @@ export async function declineOffer(id: number, actor: Actor) {
     actor,
     note: "Not sent yet",
   });
-  const bot = await getBotProfileId().catch(() => null);
-  if (bot && trip.driver_profile_id && trip.channel_id) {
-    await sendSystemMessageToDriver(getSocketInstance(), bot, trip.driver_profile_id, trip.channel_id, statusLine.declined()).catch(
-      () => undefined,
-    );
-  }
   announce(id);
   return getTrip(id);
 }
@@ -679,7 +707,7 @@ export interface ActOptions {
   invoiceNo?: string | null;
 }
 
-const isTripDriver = async (trip: ChatTrip, profileId?: string | null) => {
+export const isTripDriver = async (trip: ChatTrip, profileId?: string | null) => {
   if (!profileId) return false;
   if (trip.driver_profile_id === profileId) return true;
   // The team driver on their own phone
@@ -807,29 +835,16 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
 
   // The chat line both sides see
   const who = actor.name || (actor.role === "driver" ? "Driver" : "Dispatch");
-  const line =
-    action === "accept"
+  // The chat line is for the driver's own Got it / Rolling / Delivered only; dispatch's actions stay silent
+  const speaks = actor.role === "driver" && (action === "accept" || action === "rolling" || action === "end");
+  const line = !speaks
+    ? null
+    : action === "accept"
       ? statusLine.accept(trip, who)
-      : action === "start"
-        ? statusLine.start(trip, at, stops[0])
-        : action === "arrive"
-          ? statusLine.arrive(stop!, at)
-          : action === "rolling"
-            ? statusLine.rolling(trip, stops, stop)
-            : action === "depart"
-              ? statusLine.depart(stop!, stops, at)
-              : action === "end"
-                ? statusLine.end(trip, stop)
-                : action === "complete"
-                  ? statusLine.complete(trip, who)
-                  : action === "hold"
-                    ? statusLine.hold(trip, opts.note)
-                    : action === "resume"
-                      ? statusLine.resume(trip)
-                      : action === "cancel"
-                        ? statusLine.cancel(trip, opts.note)
-                        : null;
-  const messageId = line ? await postToChat(trip, line) : null;
+      : action === "rolling"
+        ? statusLine.rolling(trip, stops, stop)
+        : statusLine.end(trip, stop);
+  const messageId = line ? await postToChat(trip, line, { driverTap: true }) : null;
 
   await record(trip, {
     type: action === "arrive" ? "stop_arrived" : action === "depart" ? "stop_departed" : "status",
@@ -854,7 +869,14 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
   return getTrip(trip.id);
 }
 
-export async function postToChat(trip: ChatTrip, text: string): Promise<string | null> {
+/**
+ * A Dispatch Assistant line in the driver's chat. The assistant speaks there ONLY for the driver's own taps —
+ * Got it, Rolling, Delivered ({ driverTap: true }, from act()). Everything dispatch does (ends a trip, hold,
+ * cancel, a handover, undo, a problem, paperwork, reminders, the next load) is recorded in History and told to
+ * staff, but never posted to the driver. The load itself is sent by sendLoad, not by this.
+ */
+export async function postToChat(trip: ChatTrip, text: string, opts: { driverTap?: boolean } = {}): Promise<string | null> {
+  if (!opts.driverTap) return null;
   const channelId = trip.driver_profile_id ? await ensureChannel(trip) : null;
   if (!trip.driver_profile_id || !channelId) return null;
   try {
@@ -878,7 +900,6 @@ async function afterAction(trip: ChatTrip, action: TripAction) {
   } catch (e: any) {
     console.warn("[trips] route row:", e?.message || e);
   }
-  if (action === "rolling") await askForScaleTicket(fresh).catch((e) => console.warn("[trips] scale ticket:", e?.message));
   if (action === "rolling") void snapshotEta(fresh.id);
   // A leg that ends at the yard / a meet point hands the load to the next leg
   const handedTo = action === "end" ? await handOver(fresh).catch((e) => (console.warn("[trips] hand over:", e?.message), null)) : null;
@@ -921,7 +942,6 @@ async function handOver(leg: ChatTrip): Promise<ChatTrip | null> {
       actor: { role: "system", name: "Dispatch Assistant" },
       note: `Leg ${leg.leg_no} ${leg.ends_at_yard ? "at the yard" : "handed over"}`,
     });
-    await postToChat(next, statusLine.offered());
     alertStaff("trip:offer", {
       tripId: next.id,
       tripNo: next.trip_no,
@@ -1154,17 +1174,6 @@ async function scaleTicketForTrip(trip: ChatTrip): Promise<boolean> {
   return Number(rows[0]?.n || 0) > 0;
 }
 
-/**
- * Once the driver starts the trip (Rolling), ask for the scale ticket — unless one already came in
- * for this trip, so a driver who sent it early is never asked.
- */
-async function askForScaleTicket(trip: ChatTrip) {
-  if (!trip.driver_profile_id) return;
-  if (await scaleTicketForTrip(trip)) return;
-  const messageId = await postToChat(trip, statusLine.askScaleTicket(trip));
-  await record(trip, { type: "note", actor: { role: "system", name: "Dispatch Assistant" }, note: "Asked for the scale ticket", messageId });
-}
-
 /** A document the driver sent was read (documentAnalysisQueue): a scale ticket goes on the trip record. */
 export async function onDocumentRead(message: { id: string; userProfileId: string }, docType: string | null | undefined) {
   if (docType !== SCALE_TICKET || !message.userProfileId) return;
@@ -1256,7 +1265,6 @@ export async function undo(id: number, actor: Actor) {
     note: `Undid: ${last.data?.action || last.type}`,
     data: { undoes: last.id },
   });
-  await postToChat(trip, `↩️ ${actor.name || "Driver"} undid the last update on ${loadRef(trip, false)}`);
   const fresh = await ChatTrip.findByPk(id, withStops);
   if (fresh) await syncRoute(fresh).catch(() => undefined);
   announce(id);
@@ -1288,7 +1296,7 @@ export async function addProblem(
     opened_by: actor.id || null,
     opened_by_name: actor.name || null,
   });
-  const messageId = await postToChat(trip, statusLine.problem(trip, kind, actor.name || "Dispatch", input.note, amount));
+  const messageId: string | null = null; // (not said in the driver's chat — History and staff screens have it)
   if (kind === "lumper" && amount) {
     const fresh = await ChatTrip.findByPk(id, withStops);
     if (fresh) await syncRoute(fresh).catch((e) => console.warn("[trips] route row:", e?.message));
@@ -1329,7 +1337,7 @@ export async function resolveProblem(id: number, problemId: number, actor: Actor
     resolved_at: new Date(),
     resolved_by_name: actor.name || null,
   });
-  const messageId = await postToChat(trip, statusLine.resolved(trip, problem.kind, actor.name || "Dispatch"));
+  const messageId: string | null = null; // (not said in the driver's chat)
   await record(trip, {
     type: "problem_resolved",
     actor,
@@ -1488,11 +1496,12 @@ export async function currentTripFor(profileId: string) {
 }
 
 /**
- * Driver app "Up next": drivers don't see loads lined up for them — only their current load and their
- * history. Kept (empty) so older app builds that still ask don't break.
+ * The loads lined up for this driver, in order — the driver's "Upcoming" (each with Accept / Reject). They are
+ * only the loads assigned to this driver; a load that waits on an earlier leg of its own load is still listed.
  */
-export async function upcomingFor(_profileId: string) {
-  return { trips: [] as any[] };
+export async function upcomingFor(profileId: string) {
+  const legs = (await linedUpLegs(profileId)).filter((l) => l.driver_profile_id === profileId);
+  return { trips: legs };
 }
 
 /**
@@ -1505,10 +1514,18 @@ export async function sendLinedUpNext(profileId: string): Promise<ChatTrip | nul
   if (busy) return null;
   for (const leg of await linedUpLegs(profileId)) {
     if (await blockingLeg(leg)) continue; // waits for the leg before it
-    if (!leg.auto_send || leg.driver_profile_id !== profileId) return null; // #1 needs dispatch's confirm
+    if (leg.driver_profile_id !== profileId) return null; // lined up for someone else on this truck
+    // #1 takes over the main card at once. If the driver already accepted it as an upcoming load it goes out
+    // as accepted — the main card then shows "Loaded — rolling"; otherwise Accept / Reject.
+    const accepted = leg.driver_response === "accepted";
     await sendLoad(leg.id, { role: "dispatcher", id: null, name: "Dispatch Assistant" });
+    if (accepted) {
+      await ChatTrip.update({ status: "accepted" }, { where: { id: leg.id } });
+      await record(leg, { type: "status", from: "planned", to: "accepted", actor: { role: "system", name: "Dispatch Assistant" }, note: "Accepted earlier by the driver (as an upcoming load)" });
+      announce(leg.id);
+    }
     const name = await profileName(profileId);
-    alertStaff("trip:reminder", { tripId: leg.id, tripNo: leg.trip_no, kind: "auto_sent", text: `✅ Next load #${leg.trip_no} sent to ${name || "the driver"} — the one before is delivered` });
+    alertStaff("trip:reminder", { tripId: leg.id, tripNo: leg.trip_no, kind: "auto_sent", text: `✅ Next load #${leg.trip_no} sent to ${name || "the driver"} — the one before is delivered${accepted ? " (they had accepted it)" : ""}` });
     return leg;
   }
   return null;

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:uscitylink/model/message_model.dart';
+import 'package:uscitylink/services/call/call_service.dart';
 
 /// The call-log message in a chat ("Voice call · 3:42", "Missed voice call").
 /// [viewerIsDriver] decides the wording: direction "S" means dispatch placed the call.
@@ -79,5 +81,25 @@ class CallLogBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The driver's call-log bubble. "Tap to call back" is offered only while calling is on for this driver
+/// (staff switch it on per driver; [CallService.enabled] follows it live). Dispatch's calls to the driver
+/// still show here, and the driver can still answer them — only placing a call is gated.
+class DriverCallLogBubble extends StatelessWidget {
+  const DriverCallLogBubble({super.key, required this.message, required this.onCallBack, this.service});
+
+  final MessageModel message;
+  final VoidCallback onCallBack;
+
+  /// For tests; the app uses the registered CallService.
+  final CallService? service;
+
+  @override
+  Widget build(BuildContext context) {
+    final call = service ?? (Get.isRegistered<CallService>() ? Get.find<CallService>() : null);
+    if (call == null) return CallLogBubble(message: message, viewerIsDriver: true);
+    return Obx(() => CallLogBubble(message: message, viewerIsDriver: true, onCallBack: call.enabled.value ? onCallBack : null));
   }
 }

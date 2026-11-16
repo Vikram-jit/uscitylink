@@ -36,10 +36,18 @@ export interface ParsedLoad {
   team: string[];
   temperature: string | null;
   loadedTrailer: boolean;
+  /** Everything in the text that isn't a field or an address ("YOUR LONG FOR TOMORROW MORNING."), kept as the load's notes */
+  notes: string | null;
   needsReview: boolean;
   /** Why it needs a check, in plain words for dispatch. */
   reasons: string[];
 }
+
+// A place or a date dispatch has not confirmed yet: "PENDING", "TBD", "N/A" …  Under a PICKUP / DROP heading it
+// means "no address yet"; "DATE PENDING" says the appointment is not set. Both are normal, not errors.
+export const PENDING_WORD = /^(?:pending|tbd|tba|tbc|n\/?a|unconfirmed|not\s+confirmed|to\s+be\s+(?:determined|confirmed|advised|announced)|will\s+advise|—+|-{2,}|\?+)\.?$/i;
+const DATE_PENDING = /^(?:date|dates|appt|appointment|time|(?:pick\s*-?\s*up|pickup|delivery|drop)\s+(?:date|time|appt))\s*[:#-]?\s*(?:pending|tbd|tba|tbc|n\/?a|unconfirmed|not\s+confirmed)\.?$/i;
+const LOADED_TRAILER_LINE = /^loaded\s+trailer\b/i;
 
 const CITY_STATE_ZIP = /^(.+?),?\s+([A-Za-z]{2})\.?,?\s*(\d{5})(?:-\d{4})?[.,]?$/;
 const DATE_TIME = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/;
@@ -101,6 +109,8 @@ const hasPlace = (text: string, lines: string[]) =>
  */
 export function looksLikeLoad(text: string): boolean {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
+  // A LOAD # line with a PICKUP / DROP heading is a load even before any address is known (both pending)
+  if (lines.some((l) => LOAD_FIELD.test(l)) && lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l))) return true;
   if (!hasPlace(text, lines)) return false;
   return LOAD_WORDS.test(text) || lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l) || SWITCH_LABEL.test(l) || LOAD_FIELD.test(l) || parseDateTime(l));
 }
@@ -121,6 +131,7 @@ export function parseLoad(text: string, opts: { plan?: boolean } = {}): ParsedLo
     loadNo: null,
     temperature: null,
     loadedTrailer: /\bloaded\s+trailer\b/i.test(text),
+    notes: null,
     needsReview: false,
     reasons: [],
   };
@@ -137,33 +148,61 @@ export function parseLoad(text: string, opts: { plan?: boolean } = {}): ParsedLo
     if (PICK_LABEL.test(line)) {
       nextType = "pickup";
       labelled = true;
+      used.add(i);
       continue;
     }
     if (DROP_LABEL.test(line)) {
       nextType = "drop";
       labelled = true;
+      used.add(i);
       continue;
     }
     if (SWITCH_LABEL.test(line)) {
       nextType = "switch";
       labelled = true;
+      used.add(i);
       continue;
     }
 
     const loadField = LOAD_FIELD.exec(line);
     if (loadField) {
       result.loadNo = (loadField[1] || loadField[2]).toUpperCase();
+      used.add(i);
+      continue;
+    }
+
+    // "DATE PENDING" / "LOADED TRAILER": understood, nothing to read from them
+    if (DATE_PENDING.test(line) || LOADED_TRAILER_LINE.test(line)) {
+      used.add(i);
+      continue;
+    }
+
+    // A PICKUP / DROP heading followed by PENDING: that place is not confirmed yet (no stop). A date under it
+    // still counts: the stop is kept with its appointment and no address.
+    if (PENDING_WORD.test(line)) {
+      used.add(i);
+      if (nextType) {
+        const next = i + 1 < lines.length ? parseDateTime(lines[i + 1]) : null;
+        if (next) {
+          result.stops.push({ type: nextType, name: "", street: "", city: "", state: "", zip: "", appointment: next });
+          used.add(i + 1);
+        }
+        nextType = null;
+      }
       continue;
     }
 
     const field = FIELD.exec(line);
     if (field && !isCityStateZip(line)) {
+      used.add(i);
       const key = (field[1] || field[2]).toLowerCase();
       const value = clean(field[3]);
-      if (key === "truck" && value) result.truck = value.replace(/^#/, "").trim();
-      else if (key === "trailer" && value && !TRAILER_LATER.test(value)) result.trailers.push(...value.split(/[,&/]|\s+and\s+/i).map(clean).filter(Boolean));
-      else if (key === "team" && value) result.team = value.split(/\s*(?:\+|&|,|\band\b)\s*/i).map(clean).filter(Boolean);
-      else if (key.startsWith("temp") && value) result.temperature = value;
+      // "WILL ADVISE" / "TBD" / "PENDING" in any header field means "not known yet" — never a truck, team or temp
+      const later = TRAILER_LATER.test(value) || PENDING_WORD.test(value);
+      if (key === "truck" && value && !later) result.truck = value.replace(/^#/, "").trim();
+      else if (key === "trailer" && value && !later) result.trailers.push(...value.split(/[,&/]|\s+and\s+/i).map(clean).filter(Boolean));
+      else if (key === "team" && value && !later) result.team = value.split(/\s*(?:\+|&|,|\band\b)\s*/i).map(clean).filter(Boolean);
+      else if (key.startsWith("temp") && value && !later) result.temperature = value;
       continue;
     }
 
@@ -199,11 +238,15 @@ export function parseLoad(text: string, opts: { plan?: boolean } = {}): ParsedLo
     nextType = null;
   }
 
+  // Anything else dispatch wrote ("YOUR LONG FOR TOMORROW MORNING.") is kept as the load's notes
+  const leftovers = lines.filter((l, i) => l && !used.has(i));
+  result.notes = leftovers.length ? leftovers.join("\n").slice(0, 400) : null;
+
   if (!result.stops.length) {
-    // Nothing to route, but it has a Load #: a plan-only load (saved, never sent until stops are added)
-    if (opts.plan && result.loadNo) {
+    // Nothing to route, but it has a Load #: a plan-only load (saved, never sent until a pickup or drop is added)
+    if (result.loadNo && (opts.plan || labelled || lines.some((l) => PICK_LABEL.test(l) || DROP_LABEL.test(l)))) {
       result.needsReview = true;
-      result.reasons.push("No address found — saved as a plan; add the stops before sending");
+      result.reasons.push("No pickup or drop address yet — saved as a plan; add one before sending");
       return result;
     }
     return null;
@@ -231,24 +274,43 @@ export function parseLoad(text: string, opts: { plan?: boolean } = {}): ParsedLo
     } else only.type = "drop";
   }
 
-  if (!result.stops.some((s) => s.type === "drop")) result.reasons.push("No delivery found");
-  if (!result.stops.some((s) => s.appointment)) result.reasons.push("No appointment date/time found");
-  const deliveriesWithoutTime = result.stops.filter((s) => s.type === "drop" && !s.appointment).length;
-  if (deliveriesWithoutTime) result.reasons.push(`${deliveriesWithoutTime} delivery without an appointment time`);
-  if (result.stops.some((s) => !s.name)) result.reasons.push("A stop has no name");
+  // Only a pickup or only a drop is fine (the other is pending); a missing date is "PENDING", not a problem
+  if (result.stops.some((s) => !s.name && (s.city || s.street))) result.reasons.push("A stop has no name");
 
   result.needsReview = result.reasons.length > 0;
   return result;
 }
 
 /**
- * "TAKE TRAILER # 16465" sent on its own after the load (often sent as "TRAILER # WILL ADVISE"):
- * the number, when the whole message is just that. Must contain a digit.
+ * A truck and / or a trailer number sent on its own after a load ("truck 24565", "TAKE TRAILER # 16465",
+ * "truck 24565 trailer 107065", "TRUCK # 24565\nTRAILER # 107065"): the whole message is only that. It belongs to
+ * the load the driver is on. Each number must contain a digit; anything else in the message (a sentence, an
+ * address, a LOAD # …) means it is not this.
  */
-const TRAILER_ONLY =
-  /^\s*(?:(?:pls|please|plz)\s+)?(?:(?:take|use|pick\s*up|hook(?:\s+up)?|grab|get|change\s+to|new|your|ur)\s+)?(?:the\s+)?(?:trailer|trl|trlr)\s*(?:#|no\.?|number)?\s*[:\-]?\s*#?\s*([A-Za-z]{0,4}[\s-]?\d[A-Za-z0-9-]{2,11})\s*(?:(?:for|on)\s+(?:this|the|your)?\s*load)?\s*[.!]*\s*$/i;
+const EQUIPMENT = /\b(truck|trk|tractor|trailer|trl|trlr)\b\s*(?:#|no\.?|number)?\s*[:\-]?\s*#?\s*([A-Za-z]{0,3}-?\d[A-Za-z0-9-]{1,11})\b/gi;
+const FILLER = /\b(?:pls|please|plz|take|use|pick\s*up|hook(?:\s+up)?|grab|get|change(?:\s+it)?\s+to|switch\s+to|new|your|ur|assigned?|the|and|for|on|this|load|is|now|also)\b|[\s,&+;:.!#\-]/gi;
 
+export interface EquipmentUpdate {
+  truck: string | null;
+  trailer: string | null;
+}
+
+export function equipmentOnly(text: string): EquipmentUpdate | null {
+  const t = String(text || "").trim();
+  if (!t || t.length > 90) return null;
+  const found: { kind: "truck" | "trailer"; value: string }[] = [];
+  for (const m of t.matchAll(EQUIPMENT)) found.push({ kind: /^(?:truck|trk|tractor)$/i.test(m[1]) ? "truck" : "trailer", value: m[2].replace(/\s+/g, "").toUpperCase() });
+  if (!found.length) return null;
+  const rest = t.replace(EQUIPMENT, " ").replace(FILLER, "");
+  if (rest.trim()) return null;
+  const trucks = found.filter((f) => f.kind === "truck");
+  const trailers = found.filter((f) => f.kind === "trailer");
+  if (trucks.length > 1 || trailers.length > 1) return null;
+  return { truck: trucks[0]?.value || null, trailer: trailers[0]?.value || null };
+}
+
+/** Only a trailer number ("TAKE TRAILER # 16465"). */
 export function trailerOnly(text: string): string | null {
-  const m = TRAILER_ONLY.exec(String(text || ""));
-  return m ? m[1].replace(/\s+/g, "").toUpperCase() : null;
+  const e = equipmentOnly(text);
+  return e && e.trailer && !e.truck ? e.trailer : null;
 }

@@ -35,6 +35,8 @@ import 'package:uscitylink/views/driver/views/scan/scan_document_view.dart';
 import 'package:uscitylink/views/driver/views/training_view.dart';
 import 'package:uscitylink/services/call/call_service.dart';
 import 'package:uscitylink/views/call/call_dispatch_card.dart';
+import 'package:uscitylink/views/driver/widegts/permissions_sheet.dart';
+import 'package:uscitylink/views/trip/upcoming_loads.dart';
 import 'package:uscitylink/services/trip/trip_service.dart';
 import 'package:uscitylink/views/trip/current_trip_card.dart';
 import 'package:uscitylink/views/trip/loads_view.dart';
@@ -80,6 +82,13 @@ class _DriverDashboardState extends State<DriverDashboard>
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getDashboard();
     liveLocationController.getLiveLocation();
+    // Every permission the app uses, asked in one place — once per launch, only while something is
+    // still unasked, and never over a call being answered
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted || CallService.inCall) return;
+      await PermissionsSheet.showIfNeeded(context);
+    });
     if (socketService.isConnected.value) {
       if (_hiveController.isProcessing.value == false) {
         // socketService.socket.disconnect();
@@ -298,6 +307,9 @@ class _DriverDashboardState extends State<DriverDashboard>
                             );
                           },
                         ),
+                        // Loads lined up for the driver, in order: Accept / Reject (the first takes over the main
+                        // card when the current load is delivered)
+                        const UpcomingLoads(),
                         // No load right now: the way to past loads
                         const MyLoadsShortcut(),
                         // One tap to talk to dispatch (hidden when calling is off)
@@ -1754,6 +1766,9 @@ class _LiveLocationCardState extends State<_LiveLocationCard> {
                           // real, fully-interactive page full-screen instead.
                           IgnorePointer(
                             child: WebViewWidget(
+                              // A new link means a new controller: a fresh element for it, so the phone never
+                              // tries to create the same native web view twice ("recreating_view")
+                              key: ValueKey(_loadedUrl),
                               controller: _previewController!,
                             ),
                           ),

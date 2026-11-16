@@ -83,6 +83,8 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
   const { data, isFetching } = useGetLoadQuery(tripId as number, { skip: !tripId });
   const trip = data?.data?.trip;
   const driverName = trip?.driver_profile_id ? data?.data?.driverNames?.[trip.driver_profile_id] : null;
+  // Driver + team mate by name (never a bare "+ team")
+  const teamName = trip?.driver_id_2 ? data?.data?.teamNames?.[String(trip.id)] || 'team mate' : null;
   const legInfo = data?.data?.leg;
   const blockedBy = legInfo?.blockedBy || null;
 
@@ -157,7 +159,7 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
             }}
             data-testid="tripSummary"
           >
-            <Fact label="Driver" value={`${driverName || 'Driver'}${trip.driver_id_2 ? ' + team' : ''}`} />
+            <Fact label="Driver" value={`${driverName || 'Driver'}${teamName ? ` + ${teamName}` : ''}`} />
             <Fact label="Truck" value={trip.truck_number || '—'} />
             <Fact label="Trailer" value={trip.trailer_numbers || '—'} />
             <Fact label="Load #" value={trip.invoice_no || 'Not added yet'} warn={!trip.invoice_no} testId="tripInvoice" />
@@ -258,13 +260,13 @@ export function TripDrawer({ tripId, onClose }: { tripId: number | null; onClose
                 <Box sx={{ width: 26, height: 26, flexShrink: 0, borderRadius: '50%', bgcolor: 'action.selected', display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700 }}>{i + 1}</Box>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" fontWeight={700}>
-                    {STOP_LABEL[st.type]} · {st.name || '—'}
+                    {STOP_LABEL[st.type]} · {st.name || (st.city || st.street ? '—' : 'Pending')}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" component="div">
-                    {[st.street, [st.city, st.state, st.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                    {[st.street, [st.city, st.state, st.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ') || (st.name ? '' : 'No address yet')}
                   </Typography>
                   <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
-                    <Chip size="small" variant="outlined" label={`Appointment ${appointment(st.appointment_local)}`} />
+                    <Chip size="small" variant="outlined" label={`Appointment ${st.appointment_local ? appointment(st.appointment_local) : 'pending'}`} />
                     <Chip size="small" variant="outlined" color={st.arrived_at ? 'warning' : 'default'} label={`Arrived ${atStop(st.arrived_at, st.timezone)}`} />
                     <Chip size="small" variant="outlined" color={st.departed_at ? 'success' : 'default'} label={`Left ${atStop(st.departed_at, st.timezone)}`} />
                     {st.mileage ? <Chip size="small" variant="outlined" label={`${st.mileage} mi`} /> : null}

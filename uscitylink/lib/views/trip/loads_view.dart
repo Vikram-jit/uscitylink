@@ -13,6 +13,7 @@ import 'package:uscitylink/utils/theme/app_text.dart';
 import 'package:uscitylink/utils/theme/app_tokens.dart';
 import 'package:uscitylink/views/driver/views/chat_view.dart';
 import 'package:uscitylink/views/trip/current_trip_card.dart';
+import 'package:uscitylink/views/trip/upcoming_loads.dart';
 
 /// Driver bottom-nav "Loads": the load they're on (same one-button card as the dashboard) and every
 /// load dispatch sent them before, newest first. Tap a load for its stops and times.
@@ -152,6 +153,8 @@ class _LoadsViewState extends State<LoadsView> {
                           text: 'No load right now — dispatch will send your next load to your chat and it shows up here.',
                         ),
                       const SizedBox(height: AppSpacing.sm),
+                      // Lined up for the driver, in order — Accept / Reject
+                      UpcomingLoads(service: widget.service),
                       const _SectionTitle('History'),
                       if (past.isEmpty && !trips.historyLoading.value)
                         const _Empty(icon: Icons.history_rounded, text: 'Your delivered loads will be listed here.'),
@@ -281,8 +284,6 @@ class _LoadTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final first = trip.firstStop;
-    final last = trip.lastStop;
     final when = trip.completedAt ?? trip.endedAt ?? trip.sentAt;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -318,7 +319,7 @@ class _LoadTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${first?.place ?? '—'} → ${last?.place ?? '—'}',
+                        trip.routeText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppText.bodyMd,
@@ -399,7 +400,7 @@ class LoadDetailView extends StatelessWidget {
                   for (final s in trip.stops)
                     _Card(
                       children: [
-                        Text('${s.typeLabel} · ${s.name ?? s.place}', style: AppText.labelLg),
+                        Text('${s.typeLabel} · ${s.title}', style: AppText.labelLg),
                         const SizedBox(height: 2),
                         Text(
                           [
@@ -409,7 +410,7 @@ class LoadDetailView extends StatelessWidget {
                           style: AppText.bodySm.copyWith(color: Colors.grey.shade700),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        if (s.appointment != null) _Line('Appointment', s.appointment!),
+                        _Line('Appointment', s.appointment ?? 'Pending'),
                         if (s.arrivedAt != null) _Line('Arrived', dateTime(s.arrivedAt)),
                         if (s.departedAt != null) _Line('Left', dateTime(s.departedAt)),
                         if (s.miles != null && s.miles! > 0) _Line('Miles to here', '${_miles(s.miles!)} mi'),

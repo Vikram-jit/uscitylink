@@ -30,6 +30,8 @@ bool _hasPlace(String text, List<String> all) =>
 /// DELIVERY heading, an appointment time or a LOAD # line → a load: it must carry its Load #.
 bool looksLikeLoad(String text) {
   final all = _lines(text);
+  // A LOAD # line with a PICKUP / DROP heading is a load even before any address is known (both pending)
+  if (all.any(_loadNo.hasMatch) && all.any(_label.hasMatch)) return true;
   if (!_hasPlace(text, all)) return false;
   return _loadWords.hasMatch(text) || all.any((l) => _label.hasMatch(l) || _switch.hasMatch(l) || _dateTime.hasMatch(l) || _loadNo.hasMatch(l));
 }

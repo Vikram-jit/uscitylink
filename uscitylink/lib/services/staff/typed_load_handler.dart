@@ -18,6 +18,9 @@ class TypedLoadHandler {
       case 'sent':
         final leg = (d['legNo'] as num?)?.toInt() ?? 1;
         _toast('Load sent', 'Load ${d['loadNo']}${leg > 1 ? ' (leg $leg)' : ''} sent to $who — from your message');
+      case 'planned':
+        // A Load # and no pickup / drop address yet: saved as a plan, nothing went to the driver
+        _toast('Load saved as a plan', 'Load ${d['loadNo']} for $who has no pickup or drop address yet, so nothing was sent. Add one from Loads.');
       case 'noLoadNo':
         _toast('No Load # in your message', 'The load you typed to $who has no Load # — add a line "LOAD # 1234" and send it again, or use Add load.', warn: true);
       case 'question':

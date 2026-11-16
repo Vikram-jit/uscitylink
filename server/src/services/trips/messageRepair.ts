@@ -17,11 +17,12 @@ import Role from "../../models/Role";
 import { isStaffRole } from "../../middleware/requireRole";
 import { getSocketInstance } from "../../sockets/socket";
 import { userRoom } from "../../sockets/userConnections";
-import { looksLikeLoad, parseLoad, ParsedLoad, trailerOnly } from "./parseLoad";
+import { equipmentOnly, looksLikeLoad, parseLoad, ParsedLoad } from "./parseLoad";
 import { formatLoad, loadNoOf } from "./tripMessages";
 import { Actor, alertStaff, announce, editTrip, record, teamNamesOf, TripError } from "./tripService";
 import { cleanLoadNo, convertMessageToLoad, findLoadByNo, getLoad } from "./loadService";
 import { loadsOfMessage, MessageLoad } from "./messageLoads";
+import { replaceMessageText } from "./messageText";
 
 const CLOSED = ["completed", "routed", "cancelled"];
 const STOP_WORD: Record<string, string> = { pickup: "Pickup", drop: "Drop", switch: "Switch", yard: "Yard" };
@@ -190,24 +191,7 @@ export async function repairApply(messageId: string, actor: Actor, opts: { loadN
   // The assistant's old message → the corrected text (and its truck-chat copies)
   let replaced = false;
   if (pv.message && trip.message_id) {
-    const old = (await Message.findByPk(trip.message_id))!;
-    const copies = await Message.findAll({
-      where: old.groupId
-        ? { [Op.or]: [{ id: old.id }, { groupId: old.groupId, senderId: old.senderId, body: old.body, messageTimestampUtc: old.messageTimestampUtc }] }
-        : { id: old.id },
-    });
-    await Message.update({ body: pv.message.after }, { where: { id: copies.map((c) => c.id) } });
-    if (old.groupId) await GroupMessage.update({ body: pv.message.after }, { where: { groupId: old.groupId, senderId: old.senderId, body: old.body, messageTimestampUtc: old.messageTimestampUtc } });
-    replaced = true;
-    const payload = { id: old.id, ids: copies.map((c) => c.id), body: pv.message.after, channelId: old.channelId, groupId: old.groupId };
-    alertStaff("message_updated", payload);
-    try {
-      const io = getSocketInstance();
-      const members = old.groupId ? (await GroupUser.findAll({ where: { groupId: old.groupId } })).map((g: any) => g.userProfileId) : [old.userProfileId];
-      for (const id of members) io.to(userRoom(String(id))).emit("message_updated", payload);
-    } catch {
-      // sockets not up (scripts)
-    }
+    replaced = !!(await replaceMessageText(trip.message_id, pv.message.after));
   }
 
   await record(trip, {
@@ -276,7 +260,7 @@ async function scanMissed(days: number): Promise<MissedLoad[]> {
   const seenTrips = new Set<number>();
   for (const m of rows) {
     const body = String(m.body || "");
-    if (!looksLikeLoad(body) || trailerOnly(body)) continue;
+    if (!looksLikeLoad(body) || equipmentOnly(body)) continue;
     if (!(await isStaff(m.senderId))) continue;
     const linked = await leg(m.id);
     if (linked) continue; // handled by the fixable pass below

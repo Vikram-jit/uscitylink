@@ -5,6 +5,20 @@ import 'package:uscitylink/controller/group_controller.dart';
 import 'package:uscitylink/controller/staff/staffchat_controller.dart';
 import 'package:uscitylink/controller/template_controller.dart';
 import 'package:uscitylink/model/template_model.dart';
+import 'package:uscitylink/utils/load_format.dart';
+
+/// "Load format" — the one pattern every dispatcher follows, on top of the saved templates.
+Widget loadFormatTile(VoidCallback onPick) => Container(
+      color: const Color(0xFFF0FDF4),
+      child: ListTile(
+        key: const Key('loadFormatTemplate'),
+        onTap: onPick,
+        leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF15803D)),
+        title: const Text(kLoadFormatName, style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text(kLoadFormatHint, maxLines: 3, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.arrow_right),
+      ),
+    );
 
 class TemplateDialog {
   static void showDriverBottomSheet(
@@ -110,13 +124,17 @@ class TemplateDialog {
                               }
                             }),
                           itemBuilder: (context, index) {
-                            Template template =
-                                _templateController.templates[index];
-                            if (_templateController.templates.length == 0) {
-                              return Center(
-                                child: Text("No Driver Found"),
-                              );
+                            // The one load pattern every dispatcher follows — always first
+                            if (index == 0) {
+                              return loadFormatTile(() {
+                                _controller.text = kLoadTemplate;
+                                _groupController.templateurl.value = "";
+                                Get.back();
+                                Get.back();
+                              });
                             }
+                            Template template =
+                                _templateController.templates[index - 1];
                             return ListTile(
                               onTap: () {
                                 _controller.text = template?.body ?? "";
@@ -133,7 +151,7 @@ class TemplateDialog {
                               trailing: Icon(Icons.arrow_right),
                             );
                           },
-                          itemCount: _templateController.templates.length,
+                          itemCount: _templateController.templates.length + 1,
                         );
                       },
                     ),
@@ -271,13 +289,17 @@ class TemplateDialog {
                               }
                             }),
                           itemBuilder: (context, index) {
-                            Template template =
-                                _templateController.templates[index];
-                            if (_templateController.templates.length == 0) {
-                              return Center(
-                                child: Text("No Driver Found"),
-                              );
+                            // The one load pattern every dispatcher follows — always first
+                            if (index == 0) {
+                              return loadFormatTile(() {
+                                _staffchatController.messageController.text = kLoadTemplate;
+                                _staffchatController.templateUrl.value = "";
+                                Get.back();
+                                Get.back();
+                              });
                             }
+                            Template template =
+                                _templateController.templates[index - 1];
                             return ListTile(
                               onTap: () {
                                 _staffchatController.messageController.text =
@@ -295,7 +317,7 @@ class TemplateDialog {
                               trailing: Icon(Icons.arrow_right),
                             );
                           },
-                          itemCount: _templateController.templates.length,
+                          itemCount: _templateController.templates.length + 1,
                         );
                       },
                     ),

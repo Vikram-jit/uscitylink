@@ -13,6 +13,8 @@ interface UserAttributes {
   user_type?:string;
   profiles?: UserProfile[];
   driver_number?:string
+  /** Drivers only: staff turned calling on for this driver (off by default) */
+  calls_enabled?: boolean
 }
 
 
@@ -30,6 +32,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public user_type?: string | undefined;
   public yard_id?: number | undefined;
   public driver_number?: string | undefined;
+  public calls_enabled?: boolean;
   static associate(models: any) {
     User.hasMany(models.UserProfile, { foreignKey: 'userId', as: 'profiles' });
   
@@ -58,6 +61,11 @@ User.init({
   yard_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
+  },
+  calls_enabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   email: {
     type: DataTypes.STRING,

@@ -44,7 +44,7 @@ import { AssignLegDialog } from './AssignLegDialog';
 import { LineupDrawer } from './LineupDrawer';
 import { driverState, LegState, trailerState, truckState } from './LegEditor';
 import { LoadDrawer } from './LoadDrawer';
-import { legsInOrder } from './tripFormat';
+import { legsInOrder, routeText } from './tripFormat';
 
 // Who and what is free right now: the fleet's trucks, trailers and drivers against the loads they're
 // on, and where trailers are by the yard's gate log (in the yard loaded / empty, out). A free one can
@@ -327,7 +327,7 @@ export function EquipmentBoard(): React.JSX.Element {
                 >
                   <ListItemText
                     primary={`${load.invoice_no || 'No load #'} · #${leg.trip_no}${legsInOrder(load.legs).length > 1 ? ` (leg ${leg.leg_no})` : ''}`}
-                    secondary={`${stops[0]?.city || '—'}, ${stops[0]?.state || ''} → ${stops[stops.length - 1]?.city || '—'}, ${stops[stops.length - 1]?.state || ''} · ${
+                    secondary={`${routeText(stops, { loaded: !!leg.loaded_trailer })} · ${
                       load.status === 'transfer' ? 'ready to transfer' : leg.driver_profile_id ? 'driver set' : 'no driver yet'
                     }`}
                   />

@@ -72,19 +72,22 @@ const STOPS = [
 
   try {
     let tripId = 0;
+    /** Reminders recorded on the trip (they go to dispatch, never to the driver's chat) */
+    const reminders = async (kind?: string) => (await ChatTripEvent.findAll({ where: { chat_trip_id: tripId, type: "reminder" } })).filter((e) => !kind || e.data?.kind === kind).length;
 
     await test("no Got it after 30 min: driver reminded + dispatch System Message; not twice", async () => {
       const res = await addLoad({ loadNo: NO, driverProfileId: driver.id, stops: STOPS }, dispatcher, { send: true });
       loadIds.push(res.load.id);
       tripId = res.legs[0].id;
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: load/), 0, "too early");
+      assert.equal(await reminders(), 0, "too early");
       await ChatTrip.update({ sent_at: new Date(Date.now() - 31 * MIN) }, { where: { id: tripId } });
       await runReminders();
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: load .* tap "Got it"/), 1, "driver reminded once");
+      assert.equal(await reminders("ack30"), 1, "dispatch reminded once");
+      assert.equal(await driverMsgs(/Reminder|tap "Got it"/), 0, "the driver's chat gets nothing from the assistant");
       if (sys) {
-        const sm = await systemMsgs(/hasn't tapped "Got it"/);
+        const sm = await systemMsgs(/hasn't tapped "Accept"/);
         assert.equal(sm.length, 1, "one System Message");
         assert((await MessageStaff.count({ where: { messageId: sm[0].id, status: "un-read" } })) > 0, "unread for staff");
       }
@@ -94,11 +97,12 @@ const STOPS = [
       await ChatTrip.update({ sent_at: new Date(Date.now() - 61 * MIN) }, { where: { id: tripId } });
       await runReminders();
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: load/), 2);
+      assert.equal(await reminders(), 2);
+      assert.equal(await driverMsgs(/Reminder|tap "Got it"/), 0);
       if (sys) assert.equal((await systemMsgs(/second reminder/)).length, 1);
       await ChatTrip.update({ sent_at: new Date(Date.now() - 120 * MIN) }, { where: { id: tripId } });
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: load/), 2, "stops after two");
+      assert.equal(await reminders(), 2, "stops after two");
     });
 
     await test("Got it, pickup time passed, not rolling: both alerted once", async () => {
@@ -106,25 +110,26 @@ const STOPS = [
       const pickup = (await ChatTripStop.findAll({ where: { chat_trip_id: tripId } })).find((s) => s.type === "pickup")!;
       await pickup.update({ appointment_at: new Date(Date.now() + 30 * MIN), appointment_local: "2026-11-12T10:00" });
       await runReminders();
-      assert.equal(await driverMsgs(/pickup time .* has passed/), 0, "not before the appointment");
+      assert.equal(await reminders("pickup_late"), 0, "not before the appointment");
       await pickup.update({ appointment_at: new Date(Date.now() - 20 * MIN) });
       await runReminders();
       await runReminders();
-      assert.equal(await driverMsgs(/pickup time .* has passed/), 1, "driver alerted once");
+      assert.equal(await reminders("pickup_late"), 1, "dispatch alerted once");
+      assert.equal(await driverMsgs(/pickup time .* has passed/), 0, "the driver's chat gets nothing from the assistant");
       if (sys) assert.equal((await systemMsgs(/Pickup time passed: ZZ Reminder Driver/)).length, 1, "dispatch alerted once");
       // Rolling: nothing more
       await act(tripId, "rolling", { role: "driver", id: driver.id, name: driver.username });
       await runReminders();
-      assert.equal(await driverMsgs(/pickup time .* has passed/), 1);
+      assert.equal(await reminders("pickup_late"), 1);
     });
 
     await test("old loads (sent hours ago) don't start reminding", async () => {
       const res = await addLoad({ loadNo: `${NO}B`, driverProfileId: driver.id, stops: STOPS }, dispatcher, { send: true, endDriverCurrent: true });
       loadIds.push(res.load.id);
       await ChatTrip.update({ sent_at: new Date(Date.now() - 5 * 60 * MIN) }, { where: { id: res.legs[0].id } });
-      const before = await driverMsgs(/Reminder: load/);
+      const before = await ChatTripEvent.count({ where: { chat_trip_id: res.legs[0].id, type: "reminder" } });
       await runReminders();
-      assert.equal(await driverMsgs(/Reminder: load/), before);
+      assert.equal(await ChatTripEvent.count({ where: { chat_trip_id: res.legs[0].id, type: "reminder" } }), before);
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { load_id: loadIds } });

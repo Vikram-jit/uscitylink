@@ -115,6 +115,11 @@ export const CallApiSlice = apiSlice.injectEndpoints({
       query: (body) => ({ url: 'calls/settings', method: 'PUT', body }),
       invalidatesTags: ['callSettings'],
     }),
+    /** Staff turn calling on / off for one driver: the driver sees the call buttons and may call dispatch only while it is on (staff can always call drivers). */
+    setDriverCalling: builder.mutation<Res<{ profileId: string; enabled: boolean; effective: boolean }>, { profileId: string; enabled: boolean }>({
+      query: ({ profileId, enabled }) => ({ url: `calls/drivers/${profileId}`, method: 'PUT', body: { enabled } }),
+      invalidatesTags: ['users'],
+    }),
     /** Staff who can be asked to join a call: online; busy ones flagged. */
     getAvailableStaff: builder.query<Res<{ id: string; name: string; busy: boolean }[]>, void>({
       query: () => ({ url: 'calls/available-staff', method: 'GET' }),
@@ -132,6 +137,7 @@ export const CallApiSlice = apiSlice.injectEndpoints({
 });
 
 export const {
+  useSetDriverCallingMutation,
   useGetCallConfigQuery,
   useGetCallsQuery,
   useGetCallQuery,

@@ -1,3 +1,4 @@
+import 'package:uscitylink/views/staff/widgets/chat_load_sender.dart';
 import 'package:uscitylink/views/staff/widgets/load_guard.dart';
 import 'dart:async';
 
@@ -113,6 +114,15 @@ class _StaffTruckGroupUiState extends State<StaffTruckGroupUi>
     // } else {
     if (_controller.text.isNotEmpty) {
       if (blockLoadWithoutNo(_controller)) return;
+      // A load with its Load # (LOAD / ORDER / TRIP …) is saved as the truck's load — asked first when needed —
+      // and shows once in this chat; it is not just posted as group text
+      final text = _controller.text;
+      if (ChatLoadSender.isLoad(text)) {
+        ChatLoadSender.send(context, text, null, groupId: groupController.truckGroup.value!.group!.id!).then((done) {
+          if (done && _controller.text == text) _controller.clear();
+        });
+        return;
+      }
       if (socketService.isConnected.value) {
         socketService.sendMessageToTruck(
             "",

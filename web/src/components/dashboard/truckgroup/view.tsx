@@ -66,7 +66,8 @@ import AddGroupDialog from './component/AddGroupDialog';
 import GroupDetail from './component/GroupDetail';
 import GroupHeader from './component/GroupHeader';
 import { generateTempId } from '@/components/messages/MessageInput';
-import { LOAD_NO_MISSING_MESSAGE, loadNoMissing } from '@/components/dashboard/trips/loadText';
+import { LOAD_NO_MISSING_MESSAGE, loadNoMissing, looksLikeLoad } from '@/components/dashboard/trips/loadText';
+import { useChatLoadSender } from '@/components/dashboard/trips/useChatLoadSender';
 import { toast } from 'react-toastify';
 
 // Styled Components
@@ -443,10 +444,21 @@ const ChatInterface = ({ type }: { type: string }) => {
     }
   }, [selectedTemplate]);
 
+  const { send: sendLoad, sending: sendingLoad, dialog: loadDialog } = useChatLoadSender({
+    groupId: type != 'group' ? selectedGroup || null : null,
+    onSent: () => setNewMessage(''),
+  });
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     if (loadNoMissing(newMessage)) {
       toast.error(LOAD_NO_MISSING_MESSAGE, { autoClose: 10000 });
+      return;
+    }
+    // A load with its Load # (LOAD / ORDER / TRIP …) in a truck chat is saved as the truck's load — asked
+    // first when needed — and shows once in this chat; it is not just posted as group text
+    if (type != 'group' && selectedGroup && looksLikeLoad(newMessage)) {
+      if (!sendingLoad) void sendLoad(newMessage);
       return;
     }
 
@@ -673,6 +685,7 @@ const ChatInterface = ({ type }: { type: string }) => {
   return (
     <Grid container>
       {open && <AddGroupDialog open={open} setOpen={setOpen} type={type} />}
+      {loadDialog}
 
       <Grid item xs={12} md={3} sx={{ borderRight: '1px solid var(--mui-palette-divider)' }}>
         <SidebarContainer>

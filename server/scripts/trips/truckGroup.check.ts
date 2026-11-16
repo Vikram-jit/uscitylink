@@ -24,7 +24,7 @@ import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripStop } from "../../src/models/ChatTrip";
 import { registerTripHooks } from "../../src/services/trips/tripAssistant";
-import { convertMessageToLoad, loadFromText } from "../../src/services/trips/loadService";
+import { addLoad, convertMessageToLoad, loadFromText } from "../../src/services/trips/loadService";
 
 const local = (h?: string) => !h || /^(localhost|127\.0\.0\.1)$/.test(h);
 if (!local(process.env.DB_PRIMARY_HOST) || !local(process.env.DB_SECONDARY_HOST)) {
@@ -102,22 +102,25 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       assert.equal(await ChatLoad.count({ where: { invoice_no: LOAD_NO } }), 1, "one load");
     });
 
-    await test("the load stays visible in the truck chat: dispatch's text once for staff and once per member — nothing added, no duplicates", async () => {
-      const text = LOAD(LOAD_NO).trim();
-      const inGroup = await Message.findAll({ where: { groupId: group.id, body: text }, order: [["createdAt", "ASC"]] });
-      const staffView = inGroup.filter((m) => m.type === "default");
-      assert.equal(staffView.length, 1, `staff see the message once in the truck chat, got ${staffView.length}`);
+    await test("the load stays visible in the truck chat in the one standard layout: once for staff and once per member, the pasted text replaced — no duplicates", async () => {
+      const raw = LOAD(LOAD_NO).trim();
+      const standard = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${LOAD_NO}\n\nTRUCK #%` } }, order: [["createdAt", "ASC"]] });
+      const staffView = standard.filter((m) => m.type === "default");
+      assert.equal(staffView.length, 1, `staff see the load once in the truck chat, got ${staffView.length}`);
       for (const p of [a, b]) {
-        const mine = inGroup.filter((m) => m.type === "truck_group" && m.userProfileId === p.id);
-        assert.equal(mine.length, 1, `${p.username} sees it once in the truck group, got ${mine.length}`);
+        const mine = standard.filter((m) => m.type === "truck_group" && m.userProfileId === p.id);
+        assert.equal(mine.length, 1, `${p.username} sees the load once in the truck group, got ${mine.length}`);
       }
-      assert.equal(await Message.count({ where: { groupId: group.id, body: { [Op.like]: "LOAD # %\nTRUCK #%" } } }), 0, "no rewritten 'standard' message was added");
-      assert.equal(await GroupMessage.count({ where: { groupId: group.id, body: text } }), 1, "one group message");
+      assert.equal(await Message.count({ where: { groupId: group.id, body: raw } }), 0, "the pasted text was replaced by the standard layout");
+      assert.equal(await GroupMessage.count({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${LOAD_NO}\n\nTRUCK #%` } } }), 1, "one group message");
+      const text = String(staffView[0].body);
+      assert(/\nPICKUP\nZZ 4Earth Farms\n5555 E Olympic Blvd\nCommerce, CA 90022\n11\/20\/2026 07:00PM\n/.test(text), text);
+      assert(/\nDROP\nZZ WCD Franklin\n4040 Scottsville Rd\nFranklin, KY 42134\n11\/22\/2026 12:01AM$/.test(text), "the drop with its date, last");
       const trip = (await legsOf(LOAD_NO))[0];
       assert.equal(trip.message_id, staffView[0].id, "the load is that message");
     });
 
-    await test("the same send from the Send load button / pasted box (loadFromText) shows in the truck chat once, as typed", async () => {
+    await test("the same send from the Send load button / pasted box (loadFromText) shows in the truck chat once, in the standard layout", async () => {
       const no = `${LOAD_NO}B`;
       const text = LOAD(no).trim();
       // From the truck chat: no driver given — the truck's main driver is used (A is on the first load: end it)
@@ -126,11 +129,12 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       });
       await wait(1500);
       const legs = (await legsOf(no)).filter((l) => l.status !== "cancelled");
-      assert.equal(legs.length, 1, "one load, the dispatcher's message did not make another");
-      const rows = await Message.findAll({ where: { groupId: group.id, body: text } });
-      assert.equal(rows.filter((m) => m.type === "default").length, 1, "the truck chat got the text once");
+      assert.equal(legs.length, 1, "one load, the message did not make another");
+      const rows = await Message.findAll({ where: { groupId: group.id, body: { [Op.like]: `LOAD # ${no}\n\nTRUCK #%` } } });
+      assert.equal(rows.filter((m) => m.type === "default").length, 1, "the truck chat got the load once");
       assert.deepEqual(rows.filter((m) => m.type === "truck_group").map((m) => m.userProfileId).sort(), [a.id, b.id].sort(), "each member got it once");
-      assert.equal(!!rows[0].is_automated, false, "dispatch's own message, not the assistant's");
+      assert.equal(await Message.count({ where: { groupId: group.id, body: text } }), 0, "the pasted text itself was never posted");
+      assert(rows.every((m) => m.senderId === staff!.id && !m.is_automated), "the dispatcher's own message in the truck chat (their name, normal bubble), not the Dispatch Assistant's");
       assert.equal(legs[0].driver_profile_id, a.id, "on the main driver");
       assert(legs[0].driver_id_2, "the team mate is linked");
     });
@@ -147,6 +151,28 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       assert.equal(leg.truck_number, group.name, "the truck of this chat");
       assert.equal(leg.sent_at, null, "not sent");
       assert.equal(await Message.count({ where: { groupId: group.id } }), before, "nothing posted in the truck chat");
+    });
+
+    await test("no driver / team named: the truck's members are the team (driver + team mate, by name in the load detail); an explicit 'no team' is kept", async () => {
+      const mk = async (no: string, extra: any) => {
+        const res = await addLoad({ loadNo: no, driverProfileId: a.id, truckNumber: group.name, stops: [{ type: "drop", name: "ZZ DROP", city: "FRESNO", state: "CA" }], ...extra }, { role: "dispatcher", id: staff!.id, name: staff!.username }, { send: false });
+        loadIds.add(res.load.id);
+        return res;
+      };
+      // Only a truck + driver given (team not mentioned) → the other member joins
+      const auto = await mk(`${LOAD_NO}T1`, {});
+      assert(auto.legs[0].driver_id_2, "the other member is the team mate");
+      assert.equal((auto as any).teamNames[String(auto.legs[0].id)], b.username, "the load detail names the team mate, not '+ team'");
+      assert.equal(auto.driverNames[a.id], a.username);
+      // The form says "no team" on purpose (null) → kept
+      const none = await mk(`${LOAD_NO}T2`, { teamDriverProfileId: null });
+      assert.equal(none.legs[0].driver_id_2, null);
+      assert.deepEqual((none as any).teamNames, {});
+      // Only a truck number (no driver, no team) → main driver + team mate from the group
+      const res = await addLoad({ loadNo: `${LOAD_NO}T3`, truckNumber: group.name, stops: [{ type: "drop", name: "ZZ DROP", city: "FRESNO", state: "CA" }] }, { role: "dispatcher", id: staff!.id, name: staff!.username }, { send: false });
+      loadIds.add(res.load.id);
+      assert.equal(res.legs[0].driver_profile_id, a.id);
+      assert(res.legs[0].driver_id_2);
     });
 
     await test("a plain (non-load) message to the group still reaches every member once", async () => {

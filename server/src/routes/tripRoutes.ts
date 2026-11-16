@@ -11,6 +11,7 @@ import {
   editTripRest,
   listTrips,
   myCurrentTrip,
+  respondRest,
   myTrips,
   myUpcoming,
   parseTripText,
@@ -40,6 +41,8 @@ router.patch("/:id", ...staffOnly, editTripRest);
 router.post("/:id/send", ...staffOnly, sendTripRest);
 router.post("/:id/decline-offer", ...staffOnly, declineOfferRest);
 router.post("/:id/action", authMiddleware, tripActionRest);
+// The driver answers a load: Accept / Reject (an upcoming load or the one just sent)
+router.post("/:id/respond", authMiddleware, respondRest);
 router.post("/:id/undo", authMiddleware, undoTripRest);
 router.post("/:id/problems", authMiddleware, addProblemRest);
 router.patch("/:id/problems/:problemId/resolve", ...staffOnly, resolveProblemRest);

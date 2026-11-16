@@ -388,6 +388,7 @@ function StopRow({
             type="datetime-local"
             label="Appointment (local)"
             InputLabelProps={{ shrink: true }}
+            helperText={stop.appointment ? undefined : 'Pending'}
             value={stop.appointment || ''}
             onChange={(e) => onChange({ appointment: e.target.value })}
             sx={{ width: 230 }}
@@ -456,6 +457,11 @@ function StopRow({
               >
                 or type the address
               </Link>
+            )}
+            {!showFields && (
+              <Typography variant="caption" color="text.secondary" data-testid="stopPendingHint">
+                Not confirmed yet? Leave it empty — it is <b>not sent to the driver</b> until you add it. Only the Load # is required.
+              </Typography>
             )}
             <Collapse in={showFields} unmountOnExit>
               <Grid container spacing={1}>

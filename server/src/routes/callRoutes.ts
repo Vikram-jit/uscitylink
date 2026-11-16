@@ -14,6 +14,7 @@ import {
   listCalls,
   saveCallQuality,
   saveVoipToken,
+  setDriverCalling,
   updateCallSettings,
 } from "../calls/callController";
 
@@ -25,6 +26,8 @@ router.put("/voip-token", authMiddleware, saveVoipToken);
 router.get("/settings", authMiddleware, getCallSettings);
 router.put("/settings", authMiddleware, requireRole("admin"), updateCallSettings);
 router.get("/available-staff", authMiddleware, listAvailableStaff);
+// Staff switch calling on / off per driver (drivers only place calls with it on; staff always can)
+router.put("/drivers/:profileId", authMiddleware, requireRole("staff", "admin"), setDriverCalling);
 router.get("/callback-target", authMiddleware, callbackTarget);
 router.get("/", authMiddleware, listCalls);
 router.get("/:id", authMiddleware, getCall);

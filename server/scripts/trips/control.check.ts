@@ -120,7 +120,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       assert.equal((await lineupOf(b.id)).next[0]?.tripId, leg2, "#1 in B's lineup");
       const load = (await ChatLoad.findByPk(loadId))!;
       assert.equal(load.type, "relay");
-      assert.match(await lastMsg(a.id, /handed over/), /handed over at ZZ TA KINGMAN · KINGMAN, AZ \(breakdown\)/);
+      assert.equal(await lastMsg(a.id, /handed over/), "", "dispatch handing the load over is not said in the driver's chat");
       const detail = await getLoad(loadId);
       const t = detail.history.find((h) => h.type === "transfer" && h.legNo === 1);
       assert.match(String(t?.note), /Breakdown: ZZ Control Driver A \/ truck ZZT1 → ZZ Control Driver B \/ truck ZZT2 at ZZ TA KINGMAN · KINGMAN, AZ — engine light/);
@@ -139,7 +139,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       assert.deepEqual(types(one.stops), ["pickup:ZZ PICK", "drop:ZZ DROP ONE", "drop:ZZ DROP TWO"]);
       assert.equal((await ChatTrip.findByPk(leg2))?.status, "cancelled");
       assert.equal((await ChatLoad.findByPk(loadId))?.type, "direct");
-      assert.match(await lastMsg(a.id, /continues with you/), /undid the handover/);
+      assert.equal(await lastMsg(a.id, /continues with you|undid the handover/), "", "undoing a handover is not said in the driver's chat");
       assert(!(await lineupOf(b.id)).next.some((x) => x.tripId === leg2));
     });
 
@@ -241,9 +241,9 @@ const lastMsg = async (id: string, re: RegExp) =>
       for (const x of ["accept", "rolling", "end"] as const) await act(trip.id, x, asA);
       const two = (await ChatTrip.findByPk(res.next))!;
       assert.equal(two.status, "offered");
-      assert.equal(two.channel_id, channel[0].id, "channel found and saved");
-      assert.match(await lastMsg(c.id, /dispatch will send your next load/), /dispatch will send your next load here/);
+      assert.equal(await lastMsg(c.id, /dispatch will send your next load/), "", "the offer is not said in the driver's chat");
       await sendLoad(res.next, dispatcher);
+      assert.equal((await ChatTrip.findByPk(res.next))?.channel_id, channel[0].id, "channel found and saved when the load is sent");
       assert.equal((await ChatTrip.findByPk(res.next))?.status, "planned");
 
       // A planned handover: the new driver isn't told anything until dispatch sends it (no lineup for drivers)
@@ -253,7 +253,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       const r2 = await splitLeg(t2.id, { when: "plan", afterSeq: s2.seq, place: KINGMAN, driverProfileId: c.id, reason: "planned" }, dispatcher);
       assert.equal(await lastMsg(c.id, /lined up/i), "", "nothing about a lined-up load");
       assert.equal(await lastMsg(c.id, new RegExp(String((await ChatTrip.findByPk(r2.next))!.trip_no))), "", "the load isn't in their chat yet");
-      assert.deepEqual((await upcomingFor(c.id)).trips, [], "no Up next for drivers");
+      assert.deepEqual((await upcomingFor(c.id)).trips.map((t) => t.id), [r2.next], "shown to C as an Upcoming load (Accept / Reject) — but nothing is in their chat");
     });
 
     await test("dispatch marks the handover (leg 1 never tapped Rolling) and sends leg 2 to the new driver", async () => {
@@ -263,6 +263,8 @@ const lastMsg = async (id: string, re: RegExp) =>
       const s1 = (await ChatTripStop.findAll({ where: { chat_trip_id: t.id } })).sort((x, y) => x.seq - y.seq)[1];
       const r = await splitLeg(t.id, { when: "plan", afterSeq: s1.seq, place: KINGMAN, driverProfileId: b.id, truckNumber: "ZZT2", reason: "planned" }, dispatcher);
       await assert.rejects(sendLoad(r.next, dispatcher), /isn't delivered yet/);
+      const aHandoverLines = async () => (await Message.findAll({ where: { userProfileId: a.id } })).filter((m) => /handed over|ended by dispatch/.test(String(m.body))).length;
+      const aChatBefore = await aHandoverLines();
       await releaseLeg(r.next, {}, dispatcher);
       const one = (await ChatTrip.findByPk(t.id, { include: [{ model: ChatTripStop, as: "stops" }] }))!;
       assert.equal(one.status, "ended");
@@ -271,7 +273,7 @@ const lastMsg = async (id: string, re: RegExp) =>
       const two = (await ChatTrip.findByPk(r.next))!;
       assert.equal(two.status, "planned", "sent to the new driver");
       assert.match(await lastMsg(b.id, /LOAD # /), new RegExp(`LOAD # ${two.trip_no}[\\s\\S]*DROP\\nZZ DROP TWO`));
-      assert.match(await lastMsg(a.id, /handed over/), /handed over at ZZ TA KINGMAN/);
+      assert.equal(await aHandoverLines(), aChatBefore, "dispatch handing the load over says nothing to A in the chat");
       // B's app: it's the current trip now with its Got it button
       const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: t.id, type: "status", to_status: "ended" } });
       assert.match(String(ev?.note), /Handed over by dispatch \(the driver hadn't tapped Rolling\)/);

@@ -14,7 +14,7 @@ import { STATUS } from './tripFormat';
 // leg of this load still open, or the driver already on another load) — same buttons as the form.
 
 interface Typed {
-  kind: 'sent' | 'noLoadNo' | 'question';
+  kind: 'sent' | 'planned' | 'noLoadNo' | 'question';
   id?: string;
   needs?: 'endPrevious' | 'driverBusy' | 'replaceLinedUp';
   info?: { prev?: LegBrief; current?: LegBrief | null; linedUp?: LegBrief };
@@ -31,6 +31,9 @@ export function TypedLoadQuestion({ enabled }: { enabled: boolean }): React.JSX.
   const handle = React.useCallback((d: Typed) => {
     if (d.kind === 'sent') {
       toast.success(`Load ${d.loadNo}${d.legNo && d.legNo > 1 ? ` (leg ${d.legNo})` : ''} sent to ${d.driverName || 'the driver'} — from your message`);
+    } else if (d.kind === 'planned') {
+      // A Load # and no pickup / drop address yet: saved as a plan, nothing was sent to the driver
+      toast.info(`Load ${d.loadNo} saved as a plan for ${d.driverName || 'the driver'} — no pickup or drop address yet, so nothing was sent. Add one from Loads.`, { autoClose: 12000 });
     } else if (d.kind === 'noLoadNo') {
       toast.warning(`The load you typed to ${d.driverName || 'the driver'} has no Load # — add a line "LOAD # 1234" and send it again, or use Add load`, { autoClose: 20000 });
     } else {

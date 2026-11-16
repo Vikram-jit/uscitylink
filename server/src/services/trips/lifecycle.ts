@@ -116,12 +116,12 @@ export type NextStep =
 
 /**
  * The one big button the driver sees — three steps only, so the app never gets in their way:
- * Got it (accept) → Rolling (loaded and on the way) → Delivered (end trip). Stop arrivals and other
+ * Accept (or Reject) → Rolling (loaded and on the way) → Delivered (end trip). Stop arrivals and other
  * details are optional for dispatch; the driver isn't asked for them.
  */
 export function nextStep(status: TripStatus, stops: StopProgress[]): NextStep {
   const last = [...stops].sort((a, b) => a.seq - b.seq).pop();
-  if (status === "planned") return { action: "accept", label: "Got it" };
+  if (status === "planned") return { action: "accept", label: "Accept" };
   if (status === "accepted" || status === "started") return { action: "rolling", label: "Loaded — rolling" };
   if (status === "rolling") {
     // A leg that hands the load over (our yard / a meet point) ends there, not at the customer

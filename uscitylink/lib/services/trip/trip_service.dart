@@ -21,6 +21,9 @@ class TripService extends GetxService {
 
   final current = Rxn<CurrentTrip>();
 
+  /// The loads lined up for the driver, in order: Upcoming, each answered with Accept / Reject
+  final upcoming = <CurrentTrip>[].obs;
+
   /// Loads screen: every load sent to this driver, newest first (GET trips/mine)
   final history = <CurrentTrip>[].obs;
   final historyLoading = false.obs;
@@ -98,7 +101,10 @@ class TripService extends GetxService {
 
   Future<void> refresh() async {
     final res = await _rest('GET', 'trips/current');
-    if (res.ok) current.value = CurrentTrip.fromResponse(res.body?['data']);
+    if (res.ok) {
+      current.value = CurrentTrip.fromResponse(res.body?['data']);
+      upcoming.assignAll(CurrentTrip.upcomingFrom(res.body?['data']));
+    }
   }
 
   // ---------- actions ----------
@@ -131,6 +137,26 @@ class TripService extends GetxService {
         _toast('${res.body?['message'] ?? 'Could not update the trip'}');
         await refresh();
       }
+    } finally {
+      busy.value = false;
+    }
+  }
+
+  /// Accept or Reject a load: the one just sent (the main card) or an upcoming one. Reject sends it back to
+  /// dispatch with the driver's reason (optional). Needs signal — an answer is not queued offline.
+  Future<bool> respond(CurrentTrip trip, String response, {String? note}) async {
+    if (busy.value) return false;
+    busy.value = true;
+    try {
+      final res = await _rest('POST', 'trips/${trip.id}/respond', {'response': response, if (note != null && note.trim().isNotEmpty) 'note': note.trim()});
+      if (res.ok) {
+        if (response == 'accept' && trip.status == 'planned') undoUntil.value = DateTime.now().add(const Duration(minutes: 5));
+        await refresh();
+        return true;
+      }
+      _toast(res.offline ? 'No signal — try again when you are back online' : '${res.body?['message'] ?? 'Could not send your answer'}');
+      await refresh();
+      return false;
     } finally {
       busy.value = false;
     }

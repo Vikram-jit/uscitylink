@@ -4,6 +4,8 @@ import { UserProfile } from "../../models/UserProfile";
 import Role from "../../models/Role";
 import { Message } from "../../models/Message";
 import { loadsOfMessage } from "./messageLoads";
+import { replaceMessageText } from "./messageText";
+import { formatLoad, stopHasPlace } from "./tripMessages";
 import { byLeg, refreshLoadStatus } from "./legs";
 import { conflictsFor, yardVisitsOfLoad } from "./equipment";
 import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
@@ -11,7 +13,7 @@ import { documentsOf } from "./paperwork";
 import { truckOfGroup } from "./truckGroup";
 import { trackToken } from "./publicTracking";
 import { parseLoad } from "./parseLoad";
-import { Actor, announce, cleanInvoice, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
+import { Actor, announce, cleanInvoice, teamNamesByLeg, teamNamesOf, createTrip, driverOfTruck, editTrip, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
 
 // Loads (Loads screen): one load, tracked by its invoice #, moved by one or more legs —
 //   direct        pickup → delivery
@@ -240,6 +242,7 @@ export async function getLoad(id: number) {
     history: historyOf(legs),
     documents: await documentsOf(legs),
     driverNames: names,
+    teamNames: await teamNamesByLeg(legs),
     yardVisits: visits,
     yardMinutes: visits.reduce((a, v) => a + v.minutes, 0),
     timing: deliveryTiming(legs),
@@ -305,7 +308,7 @@ export async function listLoads(query: { status?: string; q?: string; page?: num
   const counts = Object.fromEntries(
     ((await ChatLoad.count({ group: ["status"] })) as unknown as { status: string; count: number }[]).map((c) => [c.status, Number(c.count)])
   );
-  return { loads: rows, total: count, page, counts, driverNames: await driverNames(legs) };
+  return { loads: rows, total: count, page, counts, driverNames: await driverNames(legs), teamNames: await teamNamesByLeg(legs) };
 }
 
 // ---------- simple loads: the Load # decides the legs ----------
@@ -407,6 +410,9 @@ export async function addLoad(
 ) {
   const no = cleanLoadNo(input.loadNo ?? input.invoiceNo);
   if (!no && !opts.typed) throw new TripError("Enter the Load # — it's how the load is tracked");
+  // Only the Load # is required to save. Pickup and drop are each optional (pending); sending needs one of them.
+  const placedStops = (input.stops || []).some((st) => stopHasPlace({ name: st.name ?? null, street: st.street ?? null, city: st.city ?? null, state: st.state ?? null, zip: st.zip ?? null }));
+  if (opts.send && !placedStops) throw new TripError("Add the pickup or the drop (one is needed) before sending — or save the load for later");
   const load = no ? await findLoadByNo(no) : null;
   const all = load ? byLeg(await ChatTrip.findAll({ where: { load_id: load.id, status: { [Op.ne]: "cancelled" } }, include: [{ model: ChatTripStop, as: "stops" }] })) : [];
 
@@ -462,6 +468,7 @@ export async function addLoad(
   const goesNow = !!opts.send && (!busy || !!opts.endDriverCurrent);
   const leg = {
     ...input,
+    plan: true, // no stops yet is allowed here: a plan with just the Load #
     messageId: goesNow && opts.messageId ? opts.messageId : null,
     invoiceNo: no,
     trailerNumbers: input.trailerNumbers?.length ? input.trailerNumbers : prev?.trailer_numbers ? prev.trailer_numbers.split(/,\s*/) : [],
@@ -496,6 +503,12 @@ export async function addLoad(
   if (busy && opts.lineUp && !opts.endDriverCurrent) await trip.update({ auto_send: true });
   // Send now — unless dispatch chose to line it up after the driver's current load
   if (goesNow && !trip.sent_at) await sendLoad(trip.id, actor, { groupId: opts.groupId });
+  // Dispatch's message is already in the chat and IS the load message: put it in the one standard layout
+  // (every dispatcher's loads look the same) — the screens update at once, the driver's app on reload
+  else if (goesNow && opts.messageId && trip.message_id === opts.messageId) {
+    const fresh = await ChatTrip.findByPk(trip.id, { include: [{ model: ChatTripStop, as: "stops" }] });
+    if (fresh) await replaceMessageText(opts.messageId, formatLoad(fresh, fresh.stops || [], fresh.driver_id_2 ? await teamNamesOf(fresh) : [])).catch((e) => console.warn("[loads] standard layout:", e?.message || e));
+  }
   await refreshLoadStatus(target.id);
   return getLoad(target.id);
 }
@@ -518,9 +531,11 @@ export async function loadFromText(
   const truck = await truckOfGroup(groupId);
   const driverId = driverProfileId || truck?.driver?.id || null;
   if (!driverId) throw new TripError(groupId ? "There's no driver in this truck chat — add the driver to the truck first" : "Open a driver's chat first");
-  const parsed = parseLoad(text);
-  if (!parsed) throw new TripError("Couldn't read a pickup / delivery address from that text — use Add load", 422);
+  const parsed = parseLoad(text, { plan: true });
+  if (!parsed) throw new TripError("Couldn't read a load from that text — it needs a LOAD # line (the pickup and drop can be PENDING)", 422);
   if (!parsed.loadNo) throw new TripError('Add a line "LOAD # 1234" — the Load # is required', 422);
+  // Only the Load # is required: with no pickup or drop address yet it is saved as a plan, not sent
+  const placed = parsed.stops.some((st) => stopHasPlace(st));
   const data = await addLoad(
     {
       loadNo: parsed.loadNo,
@@ -531,6 +546,7 @@ export async function loadFromText(
       ...(truck?.team && !parsed.team.length ? { teamDriverProfileId: truck.team.id } : {}),
       trailerNumbers: parsed.trailers,
       temperature: parsed.temperature,
+      notes: parsed.notes,
       loadedTrailer: parsed.loadedTrailer,
       stops: parsed.stops,
       needsReview: parsed.needsReview,
@@ -538,9 +554,9 @@ export async function loadFromText(
       rawText: text,
     },
     actor,
-    { send: true, fromChat: true, groupId: truck?.groupId || null, ...answers }
+    { send: placed, fromChat: true, groupId: truck?.groupId || null, ...answers }
   );
-  return { data, loadNo: parsed.loadNo };
+  return { data, loadNo: parsed.loadNo, plan: !placed };
 }
 
 // ---------- a load pasted / typed straight into a driver's chat ----------
@@ -557,6 +573,7 @@ const PENDING_MS = 30 * 60_000;
 
 export type TypedLoadOutcome =
   | { kind: "sent"; loadId: number; loadNo: string | null; tripNo: string | null; legNo: number }
+  | { kind: "planned"; loadId: number; loadNo: string | null }
   | { kind: "noLoadNo" }
   | { kind: "question"; id: string; needs: "endPrevious" | "driverBusy" | "replaceLinedUp"; info: Record<string, any>; loadNo: string | null; message: string };
 
@@ -571,9 +588,11 @@ async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: s
 export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null; groupId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
   try {
-    const res = await addLoad(input, actor, { send: true, fromChat: true, groupId: input.groupId || null, messageId: input.sourceMessageId || null });
+    // No pickup and no drop yet (a Load # and PENDING): saved as a plan, nothing goes to the driver
+    const placed = (input.stops || []).some((st) => stopHasPlace({ name: st.name ?? null, street: st.street ?? null, city: st.city ?? null, state: st.state ?? null, zip: st.zip ?? null }));
+    const res = await addLoad(input, actor, { send: placed, fromChat: true, groupId: input.groupId || null, messageId: input.sourceMessageId || null });
     await linkSource(res, input.sourceMessageId, actor);
-    return outcome(res);
+    return placed ? outcome(res) : { kind: "planned", loadId: res.load.id, loadNo: res.load.invoice_no || res.load.load_no };
   } catch (err) {
     if (!(err instanceof NeedsAnswer)) throw err;
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -654,6 +673,7 @@ export async function convertMessageToLoad(messageId: string, actor: Actor, opts
       ...(truck?.team && !parsed.team.length ? { teamDriverProfileId: truck.team.id } : {}),
       trailerNumbers: parsed.trailers,
       temperature: parsed.temperature,
+      notes: parsed.notes,
       loadedTrailer: parsed.loadedTrailer,
       stops: parsed.stops,
       plan: !parsed.stops.length,

@@ -5,10 +5,11 @@ import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/staff/widgets/staff_ui.dart';
 
 class StaffDriverView extends StatelessWidget {
-  StaffDriverView({super.key});
+  /// [controller] is for tests; the app registers its own.
+  StaffDriverView({super.key, StaffDriverController? controller})
+      : _staffDriverController = controller ?? Get.put(StaffDriverController());
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  StaffDriverController _staffDriverController =
-      Get.put(StaffDriverController());
+  final StaffDriverController _staffDriverController;
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -165,8 +166,14 @@ class StaffDriverView extends StatelessWidget {
               //     );
               //   },
               //),
-              title:
-                  Text("${driver?.username} (${driver?.user?.driverNumber})"),
+              title: Row(children: [
+                Flexible(child: Text("${driver?.username} (${driver?.user?.driverNumber})")),
+                // Calling is on for this driver
+                if (driver?.user?.callsEnabled == true) ...[
+                  const SizedBox(width: 8),
+                  Icon(Icons.call_rounded, key: Key('callingOn_${driver?.id}'), size: 16, color: const Color(0xFF16A34A)),
+                ],
+              ]),
 
               /// subtitle: Divider(),
               children: [
@@ -214,6 +221,25 @@ class StaffDriverView extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                // Calling: drivers see the call buttons and may call dispatch only while this is on. Staff can
+                // always call any driver, whatever this says.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text("Calling", style: Theme.of(context).textTheme.titleSmall),
+                        Text("Lets this driver call dispatch from the app. Staff can always call drivers.",
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      ]),
+                    ),
+                    Switch(
+                      key: Key('callingSwitch_${driver?.id}'),
+                      value: driver?.user?.callsEnabled ?? false,
+                      onChanged: driver?.user == null ? null : (on) => _staffDriverController.setCalling(driver!, on),
+                    ),
+                  ]),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

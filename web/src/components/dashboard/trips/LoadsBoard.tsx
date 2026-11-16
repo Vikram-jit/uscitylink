@@ -35,7 +35,7 @@ import { LoadDrawer } from './LoadDrawer';
 import { LineupDrawer } from './LineupDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
 import { MissedLoadsDialog } from './MissedLoadsDialog';
-import { appointment, currentLeg, isLate, legsInOrder, LOAD_STATUS, LOAD_TABS, LOAD_TYPE } from './tripFormat';
+import { appointment, currentLeg, isLate, legsInOrder, LOAD_STATUS, LOAD_TABS, LOAD_TYPE, routeText } from './tripFormat';
 
 // Dispatch's Loads screen. A load is tracked by its invoice # and moved by one or more legs (direct,
 // via our yard, relay, trailer move). Loads that need dispatch come first: a driver waiting for a
@@ -240,7 +240,7 @@ export function LoadsBoard(): React.JSX.Element {
                 </TableCell>
                 <TableCell sx={WIDE}>
                   <Typography variant="body2">
-                    {first ? `${first.city}, ${first.state}` : '—'} → {last ? `${last.city}, ${last.state}` : '—'}
+                    {routeText(stops, { loaded: !!leg?.loaded_trailer })}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {last?.name || ''}

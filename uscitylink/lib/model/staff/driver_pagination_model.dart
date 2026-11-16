@@ -109,6 +109,10 @@ class User {
   String? createdAt;
   String? updatedAt;
 
+  /// Staff turned calling on for this driver (they see the call buttons and may call dispatch). Off by
+  /// default; staff can always call the driver whatever this says.
+  bool callsEnabled = false;
+
   User(
       {this.id,
       this.phoneNumber,
@@ -118,7 +122,8 @@ class User {
       this.email,
       this.status,
       this.createdAt,
-      this.updatedAt});
+      this.updatedAt,
+      this.callsEnabled = false});
 
   User.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -130,11 +135,13 @@ class User {
     status = json['status'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
+    callsEnabled = json['calls_enabled'] == true || json['calls_enabled'] == 1;
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
+    data['calls_enabled'] = this.callsEnabled;
     data['phone_number'] = this.phoneNumber;
     data['user_type'] = this.userType;
     data['driver_number'] = this.driverNumber;

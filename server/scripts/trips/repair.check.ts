@@ -129,7 +129,8 @@ const OLD_ASSISTANT = (no: string) => `TRIP #${no}\nTRUCK # ZZTRUCK${TAG}\nTRAIL
       assert(/Trailer\|WILL ADVISE→ZZ107065/.test(labels), "trailer");
       assert(pv.message, "the assistant's message would be replaced");
       assert.equal(pv.message!.before, OLD_ASSISTANT(NO));
-      assert(/^LOAD # /.test(pv.message!.after) && /^DROP$/m.test(pv.message!.after) && !/PICKUP/.test(pv.message!.after), pv.message!.after);
+      // the one standard layout: no pickup on the load → no PICKUP section is sent; the single address is the DROP
+      assert(/^LOAD # /.test(pv.message!.after) && !/PICKUP/.test(pv.message!.after) && !/PENDING\n/.test(pv.message!.after.replace(/DATE PENDING/g, "")) && /\nDROP\nZZ FreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11\/16\/2026 06:00AM/.test(pv.message!.after), pv.message!.after);
       assert(/TEMP # 34 CONT\./.test(pv.message!.after));
       // nothing changed by previewing
       assert.equal((await Message.findByPk(o.assistant.id))!.body, OLD_ASSISTANT(NO));

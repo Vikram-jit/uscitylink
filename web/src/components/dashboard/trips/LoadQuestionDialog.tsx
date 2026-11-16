@@ -118,8 +118,8 @@ export function LoadQuestionDialog({
             <Stack spacing={1.5}>
               <LegBox label={`Current load · ${statusText(cur)}`} leg={cur} />
               <Typography variant="body2">
-                End it now and send load <b>{loadNo}</b>, or line {loadNo} up to go out by itself when #{cur.tripNo} is delivered? Lined up, the driver doesn&apos;t see it
-                yet.
+                End it now and send load <b>{loadNo}</b>, or line {loadNo} up to go out by itself when #{cur.tripNo} is delivered? Lined up, the driver sees it as Upcoming and
+                can accept or reject it; it takes over their main load when #{cur.tripNo} is delivered.
               </Typography>
             </Stack>
           </DialogContent>

@@ -65,8 +65,10 @@ async function alreadySent(tripId: number, kind: Kind) {
   return events.some((e) => e.data?.kind === kind);
 }
 
-async function remind(trip: ChatTrip, kind: Kind, driverText: string, dispatchText: string) {
-  const messageId = await postToChat(trip, driverText);
+// Reminders go to dispatch only (a System Message + the live alert). The driver's chat gets nothing from the
+// assistant except the driver's own Got it / Rolling / Delivered lines.
+async function remind(trip: ChatTrip, kind: Kind, dispatchText: string) {
+  const messageId: string | null = null;
   await systemAlert(trip.channel_id, dispatchText).catch((e) => console.warn("[trips] system alert:", e?.message));
   await record(trip, { type: "reminder", actor: { role: "system", name: "Dispatch Assistant" }, note: dispatchText, messageId, data: { kind } });
   alertStaff("trip:reminder", { tripId: trip.id, tripNo: trip.trip_no, kind, text: dispatchText });
@@ -92,8 +94,7 @@ export async function runReminders(now = Date.now()) {
       await remind(
         trip,
         kind,
-        `⏰ Reminder: ${loadRef(trip, false)} was sent to you ${mins} min ago — please open it and tap "Got it"`,
-        `⏰ ${who} hasn't tapped "Got it" on ${loadRef(trip, false)} (sent ${mins} min ago)${kind === "ack60" ? " — second reminder" : ""}`
+        `⏰ ${who} hasn't tapped "Accept" on ${loadRef(trip, false)} (sent ${mins} min ago)${kind === "ack60" ? " — second reminder" : ""}`
       );
     }
   }
@@ -115,7 +116,6 @@ export async function runReminders(now = Date.now()) {
     await remind(
       trip,
       "pickup_late",
-      `⚠️ ${loadRef(trip)}: the pickup time at ${where}${appt ? ` (${appt})` : ""} has passed and the load isn't rolling yet. Tap "Loaded — rolling" when you leave, or tell dispatch if you're delayed`,
       `⚠️ Pickup time passed: ${who} on ${loadRef(trip, false)} isn't rolling — pickup ${where}${appt ? ` was ${appt}` : ""} (${minutesSince(pickup.appointment_at, now)} min ago)`
     );
   }

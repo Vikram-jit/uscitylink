@@ -76,13 +76,23 @@ void main() {
     expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsNothing);
   });
 
-  testWidgets('drivers see no Up next / lined-up loads — only the current load and history', (tester) async {
+  testWidgets('nothing lined up: no Upcoming section — only the current load and history', (tester) async {
     final service = TripService();
     await tester.pumpWidget(GetMaterialApp(home: LoadsView(service: service)));
     await tester.pumpAndSettle();
-    expect(find.text('Up next'), findsNothing);
-    expect(find.textContaining('Lined up'), findsNothing);
+    expect(find.byKey(const Key('upcomingLoads')), findsNothing);
     expect(find.text('History'), findsWidgets);
+  });
+
+  testWidgets('lined-up loads are listed as Upcoming (in order) between the current load and History, each with Accept / Reject', (tester) async {
+    final service = TripService();
+    service.upcoming.assignAll([CurrentTrip.fromTrip(trip(8, 'scheduled')), CurrentTrip.fromTrip({...trip(9, 'scheduled'), 'driver_response': 'accepted'})]);
+    await tester.pumpWidget(GetMaterialApp(home: LoadsView(service: service)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('upcomingLoads')), findsOneWidget);
+    expect(find.byKey(const Key('upcomingAccept_8')), findsOneWidget);
+    expect(find.byKey(const Key('upcomingReject_8')), findsOneWidget);
+    expect(find.byKey(const Key('upcomingAccepted_9')), findsOneWidget, reason: 'already accepted');
   });
 
   testWidgets('each load in the list shows the date it was created', (tester) async {

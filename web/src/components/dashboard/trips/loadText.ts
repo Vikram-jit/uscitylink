@@ -37,6 +37,8 @@ const hasPlace = (text: string, all: string[]) =>
  */
 export function looksLikeLoad(text: string): boolean {
   const all = lines(text);
+  // A LOAD # line with a PICKUP / DROP heading is a load even before any address is known (both pending)
+  if (all.some((l) => LOAD_NO.test(l)) && all.some((l) => LABEL.test(l))) return true;
   if (!hasPlace(text, all)) return false;
   return LOAD_WORDS.test(text) || all.some((l) => LABEL.test(l) || SWITCH.test(l) || DATE_TIME.test(l) || LOAD_NO.test(l));
 }

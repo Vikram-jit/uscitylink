@@ -21,7 +21,7 @@ import GroupChannel from "../../src/models/GroupChannel";
 import { MessageStaff } from "../../src/models/MessageStaff";
 import { Message } from "../../src/models/Message";
 import { ChatLoad, ChatTrip, ChatTripEvent, ChatTripStop } from "../../src/models/ChatTrip";
-import { act, currentTripFor, sendLoad, tripsForDriver } from "../../src/services/trips/tripService";
+import { act, addProblem, currentTripFor, sendLoad, tripsForDriver } from "../../src/services/trips/tripService";
 import { addLoad, answerTypedLoad, convertMessageToLoad, getLoad, listLoads, loadFromChat, loadFromText, lookupLoad, NeedsAnswer } from "../../src/services/trips/loadService";
 import { endLegNow, setMiles } from "../../src/services/trips/loadControl";
 import { milesReport } from "../../src/services/trips/milesReport";
@@ -158,8 +158,9 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(two.status, "planned");
       assert.equal(two.trailer_numbers, "ZZ10010", "trailer carried over");
       assert.equal(res.load.type, "relay", "shown as Transfer");
-      // A's app: the load is gone (delivered); A was told. B's app: leg 2 is the current trip
-      assert.match((await msgs(a.id)).join("\n"), /handed over at ZZ DROP AMBALA/);
+      // A's app: the load is gone (delivered). The assistant does NOT write "handed over" in A's chat (dispatch
+      // did it — only the driver's own Got it / Rolling / Delivered lines are said there). B's app: leg 2 is the current trip
+      assert.doesNotMatch((await msgs(a.id)).join("\n"), /handed over/);
       const cur = await currentTripFor(a.id);
       assert(!cur || cur.trip.status === "ended", "A has nothing to drive");
       assert.equal((await currentTripFor(b.id))?.trip.id, two.id);
@@ -221,7 +222,7 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(leg.status, "ended");
       const ev = await ChatTripEvent.findOne({ where: { chat_trip_id: leg.id, to_status: "ended" } });
       assert.match(String(ev?.note), /Ended by dispatch \(the driver hadn't tapped Rolling\)/);
-      assert.match((await msgs(a.id)).join("\n"), new RegExp(`Load ${no} ended by dispatch`));
+      assert.doesNotMatch((await msgs(a.id)).join("\n"), /ended by dispatch/, "dispatch ending the trip is not said in the driver's chat");
     });
 
     await test("driver card: delivered load stays until dispatch completes it, then only in history; old loads don't come back", async () => {
@@ -273,14 +274,15 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.match((await msgs(a.id)).join("\n"), new RegExp(`LOAD # ${tomorrow}[\\s\\S]*ZZ ROBINSON PHARMA`), "full load message");
     });
 
-    await test("a load only saved for later still waits for dispatch to confirm", async () => {
+    await test("a load only saved for later is the driver's Upcoming and takes over the main card when the current load is delivered", async () => {
       const no = `${NO}S1`;
       const s1 = await addLoad({ loadNo: no, driverProfileId: a.id, stops: CHD_AMB }, dispatcher, { send: false });
       loadIds.add(s1.load.id);
       const cur = (await currentTripFor(a.id))!.trip.id;
       for (const x of ["accept", "rolling", "end"] as const) await act(cur, x, asA);
       const leg = (await ChatTrip.findByPk(s1.legs[0].id))!;
-      assert.equal(leg.status, "offered", "offered — dispatch confirms");
+      assert.equal(leg.status, "planned", "sent at once when the one before is delivered — dispatch no longer has to confirm it");
+      assert(leg.sent_at);
     });
 
     await test("a load typed in chat = Send now: same Load # asks first, then leg 2 goes out with the standard message; no Load # → nothing", async () => {
@@ -320,6 +322,24 @@ const asks = async (p: Promise<any>, needs: string) => {
         assert(tl.sent_at, "counts as sent");
       }
       assert.equal((await msgs(a.id)).length, chatBefore, "no second 'standard' message was posted to the driver");
+      // …and that message was put in the one standard layout, in place (every dispatcher's loads look the same)
+      if (tl.status === "planned") {
+        const now = (await Message.findByPk(typedMsg.id))!;
+        assert(now.body.startsWith(`LOAD # ${fresh}\n\nTRUCK # ZZ404\n\n`), now.body);
+        assert(/\nPICKUP\nZZ YARD FRESNO\n1 MAIN ST\nFRESNO, CA 93701\nDATE PENDING\n/.test(now.body), "pickup with no date");
+        assert(/\nDROP\nZZ DELIVERY FREMONT\n2 MAIN ST\nFREMONT, CA 94538\nDATE PENDING$/.test(now.body), "drop with no date");
+        assert(!/PICK\s*$/m.test(now.body), "the typed words are gone");
+      }
+
+      // A Load # with PICKUP / DROP headings but no address yet (both PENDING): saved as a plan, nothing goes to the driver
+      const planNo = `${NO}PL`;
+      const planOut = await loadFromChat({ loadNo: planNo, driverProfileId: b.id, stops: [], notes: "call on arrival" }, dispatcher);
+      assert.equal(planOut.kind, "planned");
+      loadIds.add((planOut as any).loadId);
+      const planLeg = (await ChatTrip.findOne({ where: { load_id: (planOut as any).loadId } }))!;
+      assert.equal(planLeg.sent_at, null, "not sent");
+      assert.equal(planLeg.notes, "call on arrival");
+      assert.equal(await ChatTripStop.count({ where: { chat_trip_id: planLeg.id } }), 0, "no stops — nothing invented");
 
       // No Load # → no load
       const before = await ChatTrip.count();
@@ -400,7 +420,7 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert(!(await msgs(a.id)).some((m) => /lined up/i.test(m)), "nothing about lined-up loads in A's chat");
     });
 
-    await test("a load pasted in the chat box: nothing reaches the driver until it's sent; Line up → nothing; End & send → dispatch's own text, once", async () => {
+    await test("a load pasted in the chat box: nothing reaches the driver until it's sent; Line up → nothing; End & send → the standard layout, once", async () => {
       const no = `${NO}P`;
       const text = `Load #: ${no}\n\nPickup#\nWayne Farms - Albertville\n700 McDonald Ave.\nALBERTVILLE, AL 35950\n\nPickup#\nSANDERSON FARMS\n320 SANDERSONS FARMS PARKWAY\nPALESTINE, TX 75801\n11/12/2026 08:00PM\n\nDrop#\nROMA SOUTHERN CALIFORNIA\n16639 East Gale Ave\nCITY OF INDUSTRY, CA 91745\n11/15/2026 07:00AM`;
       // A is on another load
@@ -424,19 +444,28 @@ const asks = async (p: Promise<any>, needs: string) => {
       const live = sent.data.legs.filter((l: any) => l.status !== "cancelled");
       assert.equal(live.length, 1);
       assert.equal(live[0].status, "planned");
-      // The driver gets what dispatch typed — once, as the dispatcher's own message, nothing added
+      // The driver gets the load in the one standard layout — once, whatever way it was typed
       const chat = await msgs(a.id);
-      assert.equal(chat.filter((m) => m.startsWith("Load #:")).length, 1, "dispatch's own text, once");
-      assert(!chat.some((m) => /^LOAD # /.test(m) && /PICKUP\nWayne Farms - Albertville/.test(m)), "no rewritten 'standard' message added");
-      const sentRow = await Message.findOne({ where: { userProfileId: a.id, body: text }, order: [["createdAt", "DESC"]] });
+      const standard = chat.filter((m) => m.startsWith(`LOAD # ${no}\n`));
+      assert.equal(standard.length, 1, "one standard load message");
+      assert(/\nPICKUP\nWayne Farms - Albertville\n700 McDonald Ave\.\nALBERTVILLE, AL 35950\nDATE PENDING\n/.test(standard[0]), "a pickup with no date shows DATE PENDING");
+      assert(/\nDROP\nROMA SOUTHERN CALIFORNIA\n16639 East Gale Ave\nCITY OF INDUSTRY, CA 91745\n11\/15\/2026 07:00AM/.test(standard[0]), "the drop with its date");
+      assert(!chat.some((m) => m.startsWith("Load #:")), "the pasted text itself never went to the driver");
+      const sentRow = await Message.findOne({ where: { userProfileId: a.id, body: standard[0] }, order: [["createdAt", "DESC"]] });
       assert(sentRow, "the message row");
-      assert.equal(sentRow!.senderId, staff!.id, "sent by the dispatcher");
-      assert.equal(!!sentRow!.is_automated, false, "not shown as the Dispatch Assistant");
       assert.equal(live[0].message_id, sentRow!.id, "the load is linked to that message");
       assert.equal(await ChatTrip.count({ where: { raw_text: text, driver_profile_id: a.id, status: { [Op.ne]: "cancelled" } } }), 1, "the message did not make a second load");
       // No Load # / no address: refused, nothing sent
       await assert.rejects(loadFromText("Pickup#\nX\n1 Main St\nRENO, NV 89501", a.id, dispatcher), /LOAD # 1234/);
-      await assert.rejects(loadFromText("LOAD # 1\nhello", a.id, dispatcher), /Couldn't read a pickup/);
+      // A Load # and nothing else: only the Load # is required → saved as a plan (nothing sent), the words kept as notes
+      const bare = await loadFromText(`LOAD # ${no}Z\nhello`, a.id, dispatcher);
+      loadIds.add(bare.data.load.id);
+      assert.equal(bare.plan, true);
+      assert.equal(bare.data.legs[0].stops.length, 0);
+      assert.equal(bare.data.legs[0].notes, "hello");
+      assert.equal(bare.data.legs[0].sent_at, null, "not sent");
+      assert((await msgs(a.id)).every((m) => !m.includes(`${no}Z`)), "nothing reached the driver's chat")
+      await assert.rejects(loadFromText("hello there", a.id, dispatcher), /Couldn't read a load/);
     });
 
     await test("the driver's app gets only the driver's part: no dispatch notes / raw text / pay ids; miles once delivered", async () => {
@@ -595,7 +624,7 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(planned.data.legs[0].stops.length, 0);
       assert(planned.data.legs[0].needs_review, "flagged: no address found");
       assert.equal(planned.data.legs[0].temperature, "34 CONT.");
-      await assert.rejects(sendLoad(planned.data.legs[0].id, dispatcher), /Add where it goes/);
+      await assert.rejects(sendLoad(planned.data.legs[0].id, dispatcher), /Add the pickup or the drop/);
       // The screens that read stops don't break on a load with none
       const listed = await listLoads({ q: `${no}P` });
       assert((listed.loads || listed.rows || (listed as any).data || []).length >= 1, "listed");
@@ -609,6 +638,97 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(bareLoad.plan, true);
       const staffChat = await Message.create({ channelId: channel[0].id, userProfileId: staff!.id, senderId: staff!.id, body: text.replace(no, `${no}3`), messageDirection: "S", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date(), is_automated: true } as any);
       await assert.rejects(convertMessageToLoad(staffChat.id, dispatcher), /driver's chat/);
+    });
+
+    await test("a PICKUP / DROP that dispatch left PENDING is not in the message the driver gets — for either side", async () => {
+      const addr = "ZZ FreshPoint\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213";
+      const dropOnly = await loadFromText(`LOAD # ${NO}PD\nPICKUP\nPENDING\n\nDROP\n${addr}\n11/16/2026 06:00AM`, a.id, dispatcher, { endDriverCurrent: true });
+      loadIds.add(dropOnly.data.load.id);
+      const m1 = (await msgs(a.id)).find((m) => m.startsWith(`LOAD # ${NO}PD\n`))!;
+      assert(m1, "the load message");
+      // It is the DISPATCHER's own message (their name, the normal bubble) — not the Dispatch Assistant's — and the
+      // chat hook did not read it as a newly typed load
+      const row = (await Message.findOne({ where: { userProfileId: a.id, body: m1 } }))!;
+      assert.equal(row.senderId, staff!.id, "sent as the dispatcher");
+      assert.equal(!!row.is_automated, false, "not the Dispatch Assistant bubble");
+      await wait(1500);
+      assert.equal(await ChatTrip.count({ where: { load_id: dropOnly.data.load.id, status: { [Op.ne]: "cancelled" } } }), 1, "no second load made from our own message");
+      assert(!/PICKUP/.test(m1) && !/PENDING\n|PENDING$/.test(m1.replace(/DATE PENDING/g, "")), m1);
+      assert(/\nDROP\nZZ FreshPoint\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11\/16\/2026 06:00AM$/.test(m1), m1);
+      const pickOnly = await loadFromText(`LOAD # ${NO}PP\nPICKUP\n${addr}\n11/15/2026 07:00AM\n\nDROP\nPENDING`, b.id, dispatcher, { endDriverCurrent: true });
+      loadIds.add(pickOnly.data.load.id);
+      const m2 = (await msgs(b.id)).find((m) => m.startsWith(`LOAD # ${NO}PP\n`))!;
+      assert(m2 && /\nPICKUP\nZZ FreshPoint/.test(m2) && !/DROP/.test(m2) && !/PENDING/.test(m2), m2);
+    });
+
+    await test("the assistant speaks in the driver's chat ONLY for the driver's own Got it / Rolling / Delivered — nothing for what dispatch does", async () => {
+      const chat = async (id: string) => (await Message.count({ where: { userProfileId: id } }));
+      // Load 1: dispatch does everything it can to it
+      const one = await addLoad({ loadNo: `${NO}TAP1`, driverProfileId: b.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(one.load.id);
+      const id1 = one.legs[0].id;
+      const afterSend = await chat(b.id); // the load message itself
+      await act(id1, "hold", dispatcher, { note: "weather" });
+      await act(id1, "resume", dispatcher);
+      await addProblem(id1, { kind: "delay", note: "snow" }, dispatcher);
+      assert.equal(await chat(b.id), afterSend, "hold / resume / a problem: nothing said to the driver");
+      await act(id1, "accept", dispatcher); // dispatch taps Got it for the driver
+      await act(id1, "rolling", dispatcher);
+      assert.equal(await chat(b.id), afterSend, "Got it / Rolling tapped by dispatch: nothing said");
+      await endLegNow(id1, dispatcher); // dispatch ends the trip
+      assert.equal(await chat(b.id), afterSend, "dispatch ending the trip: nothing said to the driver");
+      // Load 2: the driver's own taps ARE said
+      const two = await addLoad({ loadNo: `${NO}TAP2`, driverProfileId: b.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(two.load.id);
+      const id2 = two.legs[0].id;
+      const afterSend2 = await chat(b.id);
+      await act(id2, "accept", asB);
+      await act(id2, "rolling", asB);
+      await act(id2, "end", asB);
+      assert.equal(await chat(b.id), afterSend2 + 3, "exactly the driver's three taps");
+      const all = await msgs(b.id);
+      assert(all.some((m) => new RegExp(`accepted load ${NO}TAP2`).test(m)), "Got it");
+      assert(all.some((m) => /Loaded — rolling/.test(m)), "Rolling");
+      assert(all.some((m) => new RegExp(`Load ${NO}TAP2 delivered`).test(m)), "Delivered");
+    });
+
+    await test("a truck and / or trailer number sent on its own after a load updates that load and is logged (old → new); nothing is said to the driver", async () => {
+      const r = await addLoad({ loadNo: `${NO}EQ`, driverProfileId: b.id, truckNumber: "ZZ555", trailerNumbers: ["ZZ111"], stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+      loadIds.add(r.load.id);
+      const legId = r.legs[0].id;
+      const leg = async () => (await ChatTrip.findByPk(legId))!;
+      const events = async () => ChatTripEvent.findAll({ where: { chat_trip_id: legId, type: "equipment" }, order: [["id", "ASC"]] });
+      const say = async (body: string) => {
+        await Message.create({ channelId: channel[0].id, userProfileId: b.id, senderId: staff!.id, body, messageDirection: "S", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+        await wait(1800);
+      };
+      const chatBefore = (await msgs(b.id)).length;
+
+      await say("truck 24565");
+      assert.equal((await leg()).truck_number, "24565", "the load's truck");
+      assert.equal((await leg()).trailer_numbers, "ZZ111", "the trailer is untouched");
+      let ev = await events();
+      assert.equal(ev.length, 1);
+      assert.match(String(ev[0].note), /^Truck ZZ555 → 24565 — from the chat: "truck 24565"$/);
+      assert.deepEqual(ev[0].data?.before, { truck: "ZZ555", trailers: ["ZZ111"] });
+      assert.deepEqual(ev[0].data?.after, { truck: "24565", trailers: ["ZZ111"] });
+      assert.equal(ev[0].actor_name, staff!.username, "by the dispatcher who wrote it");
+
+      await say("TRUCK # 24570\nTRAILER # 107065");
+      assert.equal((await leg()).truck_number, "24570");
+      assert.equal((await leg()).trailer_numbers, "107065", "the trailer is replaced");
+      ev = await events();
+      assert.equal(ev.length, 2);
+      assert.match(String(ev[1].note), /^Truck 24565 → 24570 · Trailer ZZ111 → 107065 — from the chat:/);
+
+      await say("truck 24570"); // already what it is: nothing to log
+      await say("truck 24565 broke down"); // a sentence, not an assignment
+      assert.equal((await events()).length, 2, "no new log lines");
+      assert.equal((await leg()).truck_number, "24570");
+      // It shows in the load's History for dispatch…
+      assert((await getLoad(r.load.id)).history.some((h: any) => h.type === "equipment" && /Truck ZZ555 → 24565/.test(String(h.note))));
+      // …and nothing came back into the driver's chat: only the 4 staff messages we sent are new
+      assert.equal((await msgs(b.id)).length, chatBefore + 4, "the assistant said nothing to the driver");
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { [Op.or]: [{ load_id: [...loadIds] }, { driver_profile_id: people.map((p) => p.id) }] } });

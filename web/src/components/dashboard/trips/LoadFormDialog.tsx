@@ -244,17 +244,18 @@ export function LoadFormDialog({ open, onClose, trip, driver, truck, groupId, on
     }
   };
 
-  const problems = (): string | null => {
+  // Only the Load # is required to save. The pickup and the drop are each optional — leave a place empty
+  // while it is not confirmed (it shows PENDING). Sending needs at least one of them.
+  const problems = (send: boolean): string | null => {
     if (!editing && !loadNo.trim()) return 'Enter the Load # — it’s how the load is tracked';
     if (!leg.driver && !leg.truck.trim()) return 'Choose a driver or enter a truck number';
-    if (!leg.stops.length) return 'Add at least one stop';
-    if (leg.stops.some((s) => !s.city?.trim() || !s.state?.trim())) return 'Every stop needs a city and state';
-    if (!leg.stops.some((s) => s.type === 'drop' || s.type === 'yard' || s.type === 'switch')) return 'Add where it goes';
+    const placed = leg.stops.some((s) => [s.name, s.street, s.city, s.state, s.zip].some((v) => !!v?.trim()));
+    if (send && !placed) return 'Add the pickup or the drop (one is needed) to send it — or use Save for later';
     return null;
   };
 
   const save = async (send: boolean, answers: Answers = {}) => {
-    const problem = problems();
+    const problem = problems(send);
     if (problem) {
       toast.error(problem);
       if (!loadNo.trim()) loadNoRef.current?.focus();

@@ -10,6 +10,7 @@ import 'package:uscitylink/routes/app_routes.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/driver/widegts/document_status_card.dart';
+import 'package:uscitylink/views/driver/widegts/permissions_sheet.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
 
 import '../../../model/login_model.dart';
@@ -158,6 +159,13 @@ class _SettingViewState extends State<SettingView> with WidgetsBindingObserver {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      const _SectionLabel(
+                        title: 'App permissions',
+                        subtitle: 'Microphone, notifications, camera, location and photos',
+                      ),
+                      const SizedBox(height: 10),
+                      const _PermissionsCard(),
                       const SizedBox(height: 24),
                       _SectionLabel(
                         title: 'Documents',
@@ -610,6 +618,42 @@ class _InfoRowData {
   final String value;
 
   _InfoRowData({required this.icon, required this.label, required this.value});
+}
+
+/// Reopens "Allow what the app needs" any time (the dashboard offers it once per launch).
+class _PermissionsCard extends StatelessWidget {
+  const _PermissionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        key: const Key('appPermissionsRow'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => PermissionsSheet.show(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: TColors.navyHeader.withOpacity(0.06), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.verified_user_rounded, size: 20, color: TColors.navyHeader),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text('Review permissions', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: TColors.navyHeader)),
+              ),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _InfoGroup extends StatelessWidget {

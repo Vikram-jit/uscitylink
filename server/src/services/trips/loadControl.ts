@@ -22,7 +22,7 @@ import { byLeg, legTripNo, refreshLoadStatus } from "./legs";
 import { nextPosition } from "./lineup";
 import { defaultYardStop } from "./loadService";
 import { localToDate, stateTimezone } from "./stateTimezone";
-import { loadRef, statusLine } from "./tripMessages";
+import { statusLine } from "./tripMessages";
 import { liveTrip } from "./liveTrip";
 import { placeAt, PlaceStop } from "./places";
 
@@ -248,7 +248,7 @@ export async function splitLeg(legId: number, input: SplitInput, actor: Actor) {
   }
 
   if (live) {
-    await postToChat(leg, `🔁 ${loadRef(leg)} handed over at ${placeText(place)} (${reasonLabel.toLowerCase()}) — thank you, dispatch has the rest of this load`);
+    // (Nothing is posted to the driver's chat when dispatch hands a load over — it is in History.)
     await closeScaleRoute(leg).catch(() => undefined);
     void addMileage(leg.id).catch(() => undefined);
     if (leg.driver_profile_id && leg.driver_profile_id !== fresh.driver_profile_id) {
@@ -260,7 +260,6 @@ export async function splitLeg(legId: number, input: SplitInput, actor: Actor) {
       else {
         await fresh.update({ status: "offered" });
         await record(fresh, { type: "offer", from: "scheduled", to: "offered", actor: { role: "system", name: "Dispatch Assistant" }, note: `Handover: ${reasonLabel}` });
-        await postToChat(fresh, statusLine.offered());
         alertStaff("trip:offer", { tripId: fresh.id, tripNo: fresh.trip_no, driverProfileId: fresh.driver_profile_id, truck: fresh.truck_number, reason: "handover" });
       }
     } else {
@@ -331,13 +330,8 @@ export async function endLegNow(legId: number, actor: Actor, opts: { at?: string
     note: opts.note || `${opts.handover ? "Handed over" : "Ended"} by dispatch${tapped ? "" : " (the driver hadn't tapped Rolling)"}`,
     data: { action: "end_by_dispatch", before: { trip: { status: from, ended_at: null } } },
   });
-  const where = last ? ` at ${placeText(last)}` : "";
-  await postToChat(
-    leg,
-    opts.handover
-      ? `🔁 ${loadRef(leg)} handed over${where} — thank you, dispatch has the rest of this load`
-      : `✅ ${loadRef(leg)} ended by dispatch${where} — thank you. Send the BOL / POD photos here if you have them`
-  );
+  // Dispatch ending the trip is NOT said in the driver's chat (the assistant only speaks for the driver's own
+  // Got it / Rolling / Delivered); it is in History and on dispatch's screens.
   await closeScaleRoute(leg).catch(() => undefined);
   void addMileage(leg.id).catch(() => undefined);
   announce(leg.id);
@@ -384,8 +378,7 @@ export async function undoSplit(nextLegId: number, actor: Actor) {
 
   await record(prev, { type: "transfer_undone", from: prev.status, to: restore.status, actor, note: `Handover undone — the load stays on leg ${prev.leg_no}`, data: { undid: ev.id, removedLeg: next.id } });
   await record(next, { type: "transfer_undone", from: next.status, to: "cancelled", actor, note: "Handover undone — this leg was removed" });
-  if (nextDriver) await postToChat(nextDriver, `↩️ Dispatch changed the plan — ${loadRef(next, false)} is not yours anymore`);
-  if (restore.status && ON_ROAD.includes(restore.status)) await postToChat(prev, `↩️ Dispatch undid the handover — ${loadRef(prev, false)} continues with you`);
+  void nextDriver; // (the drivers are not messaged about a handover being undone — History has it)
 
   await deriveType(load.id);
   await refreshLoadStatus(load.id);

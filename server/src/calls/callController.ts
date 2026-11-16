@@ -19,6 +19,9 @@ import { availableStaff, callService, driverPhoneOf } from "./callSocket";
 import User from "../models/User";
 import Channel from "../models/Channel";
 import { ERRORS } from "./callService";
+import { callingFor, setDriverCallingFlag } from "./callAccess";
+import { getSocketInstance } from "../sockets/socket";
+import { userRoom } from "../sockets/userConnections";
 
 const fail = (res: Response, err: any, code = 400) =>
   res.status(code).json({ status: false, message: err?.message || "Something went wrong" });
@@ -28,7 +31,9 @@ const me = async (req: Request) => UserProfile.findByPk(req.user?.id, { include:
 // GET /calls/config — whether calling is on, plus fresh STUN/TURN servers
 export async function callConfig(req: Request, res: Response): Promise<any> {
   try {
-    return res.json({ status: true, data: { enabled: await isCallsEnabled(), ...iceServersFor(String(req.user?.id)) } });
+    // enabled is per person: staff = the global switch; a driver = the global switch AND the flag staff gave them
+    const access = await callingFor(String(req.user?.id));
+    return res.json({ status: true, data: { enabled: access.enabled, ...iceServersFor(String(req.user?.id)) } });
   } catch (err) {
     return fail(res, err, 500);
   }
@@ -243,6 +248,27 @@ export async function getCallSettings(_req: Request, res: Response): Promise<any
     status: true,
     data: { enabled: await isCallsEnabled(), recording: await isCallRecordingEnabled(), videoRecording: await isCallVideoRecordingEnabled() },
   });
+}
+
+// PUT /calls/drivers/:profileId { enabled } — staff turn calling on or off for one driver. The driver's open
+// app hears it at once (calls:config) and shows / hides the call buttons.
+export async function setDriverCalling(req: Request, res: Response): Promise<any> {
+  try {
+    const profileId = String(req.params.profileId);
+    const enabled = req.body?.enabled === true;
+    const done = await setDriverCallingFlag(profileId, enabled);
+    if (!done.ok) return res.status(done.reason === "Driver not found" ? 404 : 400).json({ status: false, message: done.reason });
+    const access = await callingFor(profileId);
+    try {
+      getSocketInstance().to(userRoom(profileId)).emit("calls:config", { enabled: access.enabled });
+    } catch {
+      // sockets not up (scripts)
+    }
+    console.log(`[calls] ${(await me(req))?.username || req.user?.id} turned calling ${enabled ? "on" : "off"} for driver ${profileId}`);
+    return res.json({ status: true, message: enabled ? "Calling turned on" : "Calling turned off", data: { profileId, enabled, effective: access.enabled } });
+  } catch (err) {
+    return fail(res, err);
+  }
 }
 
 export async function updateCallSettings(req: Request, res: Response): Promise<any> {

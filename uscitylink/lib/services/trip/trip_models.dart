@@ -43,6 +43,12 @@ class TripStop {
               : 'Drop';
   String get place => [city, state].where((s) => s != null && s.isNotEmpty).join(', ');
 
+  /// What to call this stop: its name, else "City, ST" — "Pending" when dispatch has no address for it yet
+  String get title => (name != null && name!.isNotEmpty) ? name! : (place.isEmpty ? 'Pending' : place);
+
+  /// "City, ST" (or the name) — "Pending" when there is no address yet
+  String get shortPlace => place.isNotEmpty ? place : ((name != null && name!.isNotEmpty) ? name! : 'Pending');
+
   /// "11/06 03:15 AM"
   String? get appointment {
     final v = appointmentLocal;
@@ -105,6 +111,7 @@ class CurrentTrip {
     this.createdAt,
     this.position,
     this.waitsFor,
+    this.driverResponse,
     this.loadNo,
     this.miles,
   });
@@ -130,6 +137,17 @@ class CurrentTrip {
   final String? temperature;
   final String? notes;
   final bool loadedTrailer;
+
+  /// Where it starts → where it ends. The pickup and the drop are each optional, so either side can still be
+  /// unknown: it says Pending — never the other side's address twice. A trailer that is already loaded has
+  /// no pickup.
+  String get routeText {
+    final f = stops.isEmpty ? null : stops.first;
+    final l = stops.isEmpty ? null : stops.last;
+    final from = f == null || f.type == 'drop' ? (loadedTrailer ? 'Loaded trailer' : 'Pending') : f.shortPlace;
+    final to = l == null || l.type == 'pickup' ? 'Pending' : l.shortPlace;
+    return '$from → $to';
+  }
   final int openProblems;
   final TripStep? next;
   final DateTime? sentAt;
@@ -143,6 +161,10 @@ class CurrentTrip {
   /// Lined up, not sent yet ("Up next"): its place in the driver's lineup, and what it waits for
   final int? position;
   final String? waitsFor;
+
+  /// "accepted" once the driver confirmed this upcoming load (it then goes out as already accepted)
+  final String? driverResponse;
+  bool get accepted => driverResponse == 'accepted';
   bool get isUpcoming => status == 'scheduled' || status == 'offered';
 
   TripStop? get firstStop => stops.isEmpty ? null : stops.first;
@@ -171,6 +193,13 @@ class CurrentTrip {
         next: data['next'] is Map ? TripStep.fromJson(Map<String, dynamic>.from(data['next'])) : null);
   }
 
+  /// GET trips/current: { trip, next, upcoming } — the loads lined up for the driver, in order (each is
+  /// answered with Accept / Reject). Older servers don't send the list.
+  static List<CurrentTrip> upcomingFrom(dynamic data) {
+    if (data is! Map || data['upcoming'] is! List) return const [];
+    return (data['upcoming'] as List).whereType<Map>().map((t) => fromTrip(Map<String, dynamic>.from(t))).toList();
+  }
+
   /// One trip as the server sends it (GET trips/mine lists these)
   static CurrentTrip fromTrip(Map<String, dynamic> t, {TripStep? next}) {
     final stops = (t['stops'] as List? ?? []).map((s) => TripStop.fromJson(Map<String, dynamic>.from(s))).toList()
@@ -195,6 +224,7 @@ class CurrentTrip {
       createdAt: TripStop._date(t['created_at']),
       position: (t['position'] as num?)?.toInt(),
       waitsFor: t['waits_for'] as String?,
+      driverResponse: t['driver_response'] as String?,
       loadNo: (t['invoice_no'] ?? '').toString().isEmpty ? null : '${t['invoice_no']}',
       miles: TripStop._num(t['total_mileage']),
     );

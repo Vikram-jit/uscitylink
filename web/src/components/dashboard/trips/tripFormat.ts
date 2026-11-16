@@ -127,7 +127,25 @@ export function atStop(iso?: string | null, timeZone?: string | null): string {
   }).format(new Date(iso));
 }
 
-export const place = (s?: TripStop) => (s ? [s.name, [s.city, s.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') : '—');
+export const place = (s?: TripStop) => (s ? [s.name, [s.city, s.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Pending' : '—');
+
+/** "Atlanta, GA" (or the name) — "Pending" when that pickup / drop has no address yet. */
+export const placeShort = (s?: Pick<TripStop, 'city' | 'state' | 'name'> | null) =>
+  s ? [s.city, s.state].filter(Boolean).join(', ') || s.name || 'Pending' : 'Pending';
+
+/**
+ * The route in one line: where it starts → where it ends. Only the Load # is required, so either side
+ * can still be unknown: it says Pending — never the other side's address twice. A trailer that is
+ * already loaded has no pickup.
+ */
+export function routeText(stops: TripStop[], opts: { loaded?: boolean } = {}): string {
+  const list = [...(stops || [])].sort((a, b) => a.seq - b.seq);
+  const first = list[0];
+  const last = list[list.length - 1];
+  const from = !first || first.type === 'drop' ? (opts.loaded ? 'Loaded trailer' : 'Pending') : placeShort(first);
+  const to = !last || last.type === 'pickup' ? 'Pending' : placeShort(last);
+  return `${from} → ${to}`;
+}
 
 export const firstLast = (trip: Trip) => {
   const list = sorted(trip.stops);

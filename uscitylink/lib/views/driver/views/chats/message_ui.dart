@@ -841,9 +841,9 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
       SocketService socketService) {
     // Call log ("Voice call · 3:42" / "Missed voice call"): tap to call dispatch back
     if (message.callId != null) {
-      return CallLogBubble(
+      // "Call back" only for drivers staff turned calling on for (CallService.enabled is per driver)
+      return DriverCallLogBubble(
         message: message,
-        viewerIsDriver: true,
         onCallBack: () => CallService.to.startCall(
             channelId: messageController.channelId.value,
             name: messageController.name.value.isEmpty ? 'Dispatch' : messageController.name.value,

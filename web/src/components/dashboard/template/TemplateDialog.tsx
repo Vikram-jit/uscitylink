@@ -13,6 +13,7 @@ import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
 
 import MediaComponent from '@/components/messages/MediaComment';
+import { LOAD_FORMAT_TEMPLATE } from '@/components/dashboard/trips/loadFormat';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & {
@@ -53,6 +54,34 @@ export default function TemplateDialog({
         <DialogTitle>{'Templates'}</DialogTitle>
         <DialogContent>
           <List>
+            {/* The one load pattern every dispatcher follows — always first, on every page */}
+            <ListItem
+              key={LOAD_FORMAT_TEMPLATE.id}
+              data-testid="loadFormatTemplate"
+              secondaryAction={
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => {
+                    setSelectedTemplate({ name: LOAD_FORMAT_TEMPLATE.name, body: LOAD_FORMAT_TEMPLATE.body, url: '' });
+                    setOpen(false);
+                  }}
+                >
+                  select
+                </Button>
+              }
+            >
+              <ListItemText
+                primary={LOAD_FORMAT_TEMPLATE.name}
+                secondary={
+                  <>
+                    <span style={{ display: 'block', whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: 12 }}>{LOAD_FORMAT_TEMPLATE.body}</span>
+                    <span style={{ display: 'block', marginTop: 4 }}>{LOAD_FORMAT_TEMPLATE.hint}</span>
+                  </>
+                }
+              />
+            </ListItem>
+            <Divider />
             {data &&
               data?.data?.data.map((e) => {
                 return (

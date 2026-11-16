@@ -80,12 +80,12 @@ test("cancel needs a reason and is impossible once completed", () => {
   assert.match(String(to("cancel", "completed", "dispatcher", { note: "x" })), /refused/);
 });
 
-test("the driver has three buttons: Got it → Rolling → Delivered", () => {
+test("the driver has three buttons: Accept (or Reject) → Rolling → Delivered", () => {
   const stops: StopProgress[] = [
     { id: 1, seq: 1, type: "pickup", name: "COLD LINK", arrived_at: null, departed_at: null },
     { id: 3, seq: 3, type: "drop", name: "BI RITE", arrived_at: null, departed_at: null },
   ];
-  assert.deepEqual(nextStep("planned", stops), { action: "accept", label: "Got it" });
+  assert.deepEqual(nextStep("planned", stops), { action: "accept", label: "Accept" });
   assert.deepEqual(nextStep("accepted", stops), { action: "rolling", label: "Loaded — rolling" });
   assert.deepEqual(nextStep("rolling", stops), { action: "end", label: "Delivered — end trip", stopId: 3 });
   assert.equal(nextStep("ended", stops), null);

@@ -140,6 +140,12 @@ function historyText(h: LoadHistoryEntry): string {
       return `📏 ${h.note || 'Miles changed'}`;
     case 'document':
       return `📎 ${h.note || 'Document from the chat'}`;
+    case 'rejected':
+      return `❌ ${h.note || 'Rejected by the driver'}`;
+    case 'driver_response':
+      return `👍 ${h.note || 'Driver accepted the upcoming load'}`;
+    case 'equipment':
+      return `🔧 ${h.note || 'Truck / trailer changed'}`;
     case 'stop_arrived':
       return `📍 Arrived${h.note ? ` — ${h.note}` : ''}`;
     case 'stop_departed':
@@ -247,6 +253,7 @@ function LegCard({
   prev,
   isLast,
   names,
+  teamNames,
   onOpen,
   onAssign,
   onEdit,
@@ -261,6 +268,7 @@ function LegCard({
   prev?: Trip;
   isLast: boolean;
   names: Record<string, string>;
+  teamNames?: Record<string, string>;
   onOpen: () => void;
   onAssign: () => void;
   onEdit: () => void;
@@ -297,7 +305,7 @@ function LegCard({
       toast.error(err?.data?.message || 'Could not send');
     }
   };
-  const place = (st?: typeof first) => (st ? `${st.type === 'yard' || st.type === 'switch' ? `${STOP_LABEL[st.type]}: ` : ''}${st.name || ''}${st.city ? ` (${st.city}, ${st.state})` : ''}` : '—');
+  const place = (st?: typeof first) => (st ? `${st.type === 'yard' || st.type === 'switch' ? `${STOP_LABEL[st.type]}: ` : ''}${st.name || ''}${st.city ? ` (${st.city}, ${st.state})` : ''}` || 'Pending' : '—');
 
   return (
     <Box sx={{ border: 1, borderColor: leg.status === 'offered' ? 'warning.main' : 'divider', borderRadius: 2, p: 1.5 }} data-testid={`loadLeg-${leg.leg_no}`}>
@@ -306,11 +314,19 @@ function LegCard({
           Leg {leg.leg_no} · #{leg.trip_no}
         </Typography>
         {leg.needs_review && <Chip size="small" color="warning" variant="outlined" label="Check" />}
+        {leg.driver_response === 'accepted' && ['scheduled', 'offered'].includes(leg.status) && (
+          <Chip size="small" color="success" variant="outlined" label="Driver accepted" data-testid="driverAccepted" />
+        )}
+        {leg.driver_response === 'rejected' && !leg.driver_profile_id && (
+          <Tooltip title={leg.driver_response_note || 'The driver sent this load back'}>
+            <Chip size="small" color="error" variant="outlined" label="Rejected by driver" data-testid="driverRejected" />
+          </Tooltip>
+        )}
         <Chip size="small" label={s.label} color={s.color} />
       </Stack>
       <Typography variant="body2" sx={{ mt: 0.5 }} color={who ? 'text.primary' : 'warning.main'}>
         {who || 'No driver yet'}
-        {leg.driver_id_2 ? ' + team' : ''} · Truck {leg.truck_number || '—'} · Trailer {leg.trailer_numbers || '—'}
+        {leg.driver_id_2 ? ` + ${teamNames?.[String(leg.id)] || 'team mate'}` : ''} · Truck {leg.truck_number || '—'} · Trailer {leg.trailer_numbers || '—'}
         {leg.driver_profile_id && (
           <Button size="small" sx={{ ml: 1, py: 0, minWidth: 0 }} onClick={() => onLineup(leg.driver_profile_id!)}>
             {['scheduled', 'offered'].includes(leg.status) && leg.queue_pos ? `#${leg.queue_pos} in lineup` : 'Lineup'}
@@ -627,6 +643,7 @@ export function LoadDrawer({ loadId, onClose }: { loadId: number | null; onClose
               prev={live[i - 1]}
               isLast={leg.id === lastLeg?.id}
               names={names}
+              teamNames={detail.teamNames}
               onOpen={() => setOpenTrip(leg.id)}
               onAssign={() => setAssigning(leg)}
               onEdit={() => setEditing(leg)}

@@ -76,9 +76,9 @@ class LoadsService {
 
   /// A load pasted in a driver's chat box: sent as a load (never as a chat message). Throws
   /// [NeedsAnswer] when dispatch must answer first.
-  Future<String> sendLoadText(String text, String driverProfileId, {bool endPrevious = false, bool endDriverCurrent = false, bool lineUp = false, bool replace = false}) async {
+  Future<String> sendLoadText(String text, String? driverProfileId, {String? groupId, bool endPrevious = false, bool endDriverCurrent = false, bool lineUp = false, bool replace = false}) async {
     try {
-      final res = await _api.post('loads/from-text', {'text': text, 'driverProfileId': driverProfileId, 'endPrevious': endPrevious, 'endDriverCurrent': endDriverCurrent, 'lineUp': lineUp, 'replace': replace});
+      final res = await _api.post('loads/from-text', {'text': text, 'driverProfileId': driverProfileId, 'groupId': groupId, 'endPrevious': endPrevious, 'endDriverCurrent': endDriverCurrent, 'lineUp': lineUp, 'replace': replace});
       return '${res['message'] ?? 'Load sent'}';
     } on StaffApiError catch (e) {
       if (e.statusCode == 409 && e.body['needs'] != null) throw asNeedsAnswer(e);

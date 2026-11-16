@@ -518,4 +518,40 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('truck chat: an ORDER # load is saved as the truck\'s load (group id, no driver), asks the same questions', (tester) async {
+    const text = 'YOUR LONG FOR TOMORROW MORNING.\n\nTRUCK # 35865\n\nORDER # 0056000\n\nFreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213\n11/16/2026 06:00AM';
+    final bodies = <Map>[];
+    ChatLoadSender.service = LoadsService(FakeApi((m, p, b) {
+      if (p == 'loads/from-text') {
+        final body = Map.from(b as Map);
+        bodies.add(body);
+        return {'message': 'Load 0056000 sent to the driver'};
+      }
+      return {};
+    }));
+    expect(ChatLoadSender.isLoad(text), true, reason: 'ORDER # is the Load #');
+    bool? done;
+    await tester.pumpWidget(GetMaterialApp(
+      home: Builder(builder: (ctx) => Scaffold(body: ElevatedButton(key: const Key('go'), onPressed: () async => done = await ChatLoadSender.send(ctx, text, null, groupId: 'g1'), child: const Text('go')))),
+    ));
+    await tester.tap(find.byKey(const Key('go')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(bodies.length, 1);
+    expect(bodies.single['groupId'], 'g1');
+    expect(bodies.single['driverProfileId'], null, reason: 'the server picks the truck\'s main driver and team mate');
+    expect(done, true);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  test('load detail names the team mate ("Driver + Team mate"), never a bare "+ team"', () {
+    final team = {...leg(1, 1, 'planned'), 'driver_id_2': 55};
+    final solo = leg(2, 2, 'planned');
+    final d = LoadDetail.fromJson({'load': loadJson([team, solo]), 'legs': [team, solo], 'driverNames': {'p1': 'Gurvinder Singh'}, 'teamNames': {'1': 'Amit Kumar'}});
+    expect(d.driverAndTeam(d.legs[0]), 'Gurvinder Singh + Amit Kumar');
+    expect(d.driverAndTeam(d.legs[1]), 'Gurvinder Singh', reason: 'no team mate on this leg');
+    final noName = LoadDetail.fromJson({'load': loadJson([team]), 'legs': [team], 'driverNames': {'p1': 'Gurvinder Singh'}});
+    expect(noName.driverAndTeam(noName.legs[0]), 'Gurvinder Singh + team mate');
+  });
 }

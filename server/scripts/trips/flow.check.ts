@@ -118,9 +118,9 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       await offerNextLoad(driver.id, "asked");
       const trip = await ChatTrip.findByPk(tripId);
       assert.equal(trip?.status, "offered");
-      // Drivers never see lined-up loads: asking only gets "dispatch will send your next load"
+      // Drivers never see lined-up loads, and the assistant does not answer in the chat either (dispatch is told)
       const said = await Message.findAll({ where: { userProfileId: driver.id }, order: [["createdAt", "DESC"]], limit: 5 });
-      assert(said.some((m) => /dispatch will send your next load here/.test(String(m.body))), "told dispatch will send it");
+      assert(!said.some((m) => /dispatch will send your next load/.test(String(m.body))), "no assistant reply in the driver's chat");
       assert(!said.some((m) => /lined up/i.test(String(m.body))), "nothing about a lined-up load");
     });
 
@@ -144,12 +144,9 @@ const runToCompleted = async (id: number, driverActor: any, dispatcherActor: any
       assert(trip?.started_at, "rolling starts the trip");
       const lines = await Message.findAll({ where: { userProfileId: driver.id, is_automated: true }, order: [["createdAt", "ASC"]] });
       assert(lines.some((l) => /accepted load/.test(String(l.body))) && lines.some((l) => /Loaded — rolling/.test(String(l.body))));
-      // No scale ticket sent: asked once, right after Rolling (not at Got it)
+      // The driver's own Got it and Rolling taps are said in the chat; the scale ticket is NOT asked for there
       const asks = lines.filter((l) => /Please send the scale ticket/.test(String(l.body)));
-      assert.equal(asks.length, 1, "asked once");
-      const acceptedAt = lines.find((l) => /accepted load/.test(String(l.body)))!;
-      const rollingAt = lines.find((l) => /Loaded — rolling/.test(String(l.body)))!;
-      assert(new Date(asks[0].createdAt) >= new Date(rollingAt.createdAt) && asks[0].id !== acceptedAt.id, "asked after Rolling");
+      assert.equal(asks.length, 0, "the assistant only speaks for Got it / Rolling / Delivered");
     });
 
     await test("end, undo by the same driver, end again; still nothing in the yard until dispatch completes", async () => {

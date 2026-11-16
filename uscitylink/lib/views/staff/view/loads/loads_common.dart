@@ -68,8 +68,11 @@ class LoadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final legs = load.activeLegs;
-    final first = legs.isEmpty ? null : legs.first.first;
-    final last = legs.isEmpty ? null : legs.last.last;
+    final firstStop = legs.isEmpty ? null : legs.first.first;
+    final lastStop = legs.isEmpty ? null : legs.last.last;
+    // Pickup and drop are each optional: a side with no stop is PENDING — never the other side's address twice
+    final first = firstStop != null && firstStop.type != 'drop' ? firstStop : null;
+    final last = lastStop != null && lastStop.type != 'pickup' ? lastStop : null;
     final pickupAt = first?.appointmentLocal;
     final dropAt = last?.appointmentLocal;
     final meta = [load.typeLabel, if (legs.length > 1) '${legs.length} legs', if (load.createdAt != null) 'Added ${fmtDay(load.createdAt)}'].join('  ·  ');
@@ -101,11 +104,9 @@ class LoadCard extends StatelessWidget {
               ),
               StaffPill(label: load.statusLabel, color: loadStatusColor(load.status)),
             ]),
-            if (first != null) ...[
-              const SizedBox(height: 12),
-              _RoutePoint(color: StaffColors.success, label: 'PICKUP', stop: first, when: pickupAt, line: last != null && last != first),
-              if (last != null && last != first) _RoutePoint(color: StaffColors.danger, label: 'DELIVERY', stop: last, when: dropAt, line: false),
-            ],
+            const SizedBox(height: 12),
+            _RoutePoint(color: StaffColors.success, label: 'PICKUP', stop: first, when: pickupAt, line: true),
+            _RoutePoint(color: StaffColors.danger, label: 'DELIVERY', stop: last, when: dropAt, line: false),
             if (legs.isNotEmpty) ...[
               const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider(height: 1, color: StaffColors.hairline)),
               for (final l in legs)
@@ -149,14 +150,17 @@ class _RoutePoint extends StatelessWidget {
   const _RoutePoint({required this.color, required this.label, required this.stop, this.when, required this.line});
   final Color color;
   final String label;
-  final LoadStop stop;
+
+  /// null (or a stop with no address): not confirmed yet → PENDING
+  final LoadStop? stop;
   final String? when;
   final bool line;
 
   @override
   Widget build(BuildContext context) {
-    final place = stop.place.isEmpty ? stop.title : stop.place;
-    final name = stop.name != null && stop.name != place ? stop.name! : null;
+    final pending = stop == null || (stop!.place.isEmpty && (stop!.name ?? '').isEmpty && (stop!.street ?? '').isEmpty);
+    final place = pending ? 'PENDING' : (stop!.place.isEmpty ? stop!.title : stop!.place);
+    final name = !pending && stop!.name != null && stop!.name != place ? stop!.name! : null;
     return IntrinsicHeight(
       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SizedBox(
@@ -181,7 +185,11 @@ class _RoutePoint extends StatelessWidget {
                   Text(fmtLocal(when), style: AppText.labelMd.copyWith(color: StaffColors.textBody)),
                 ],
               ]),
-              Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.bodyMd.copyWith(color: StaffColors.textStrong, fontWeight: FontWeight.w700)),
+              Text(place,
+                  key: pending ? Key('pending_${label.toLowerCase()}') : null,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.bodyMd.copyWith(color: pending ? StaffColors.textMuted : StaffColors.textStrong, fontWeight: pending ? FontWeight.w600 : FontWeight.w700, fontStyle: pending ? FontStyle.italic : FontStyle.normal)),
               if (name != null) Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.bodySm.copyWith(color: StaffColors.textMuted)),
             ]),
           ),

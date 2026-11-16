@@ -12,10 +12,11 @@ import { PRECHECK_MODEL } from "../documentAi/settings";
 import { logUsage } from "../documentAi/usageLog";
 import { check, TripAction, TripStatus } from "./lifecycle";
 import { attachFromChat } from "./paperwork";
+import { isOwnLoadText } from "./ownMessages";
 import { truckOfGroup } from "./truckGroup";
-import { looksLikeLoad, parseLoad, trailerOnly } from "./parseLoad";
+import { EquipmentUpdate, equipmentOnly, looksLikeLoad, parseLoad } from "./parseLoad";
 import { clearStatus, Intent, ruleIntent, SMALL_TALK } from "./intents";
-import { act, currentTripFor, editTrip, offerNextLoad } from "./tripService";
+import { act, currentTripFor, editTrip, offerNextLoad, record } from "./tripService";
 import { Op } from "sequelize";
 
 // Reads chat as it's saved (one Message hook covers every send path):
@@ -180,8 +181,13 @@ async function onDriverMessage(m: Message) {
   });
 }
 
-/** Staff sent only a trailer number: it goes on the driver's load just sent (current, else latest sent and open). */
-async function trailerFollowUp(m: Message, trailer: string, driverId: string) {
+/**
+ * Staff sent only a truck and / or trailer number after a load ("truck 24565", "TAKE TRAILER # 16465", both):
+ * it belongs to the driver's current load (else the latest one sent and still open). The load is updated at
+ * once (the lists refresh) and the change is logged on the load: what it was → what it is now, and the words
+ * that said so. Nothing is posted to the driver.
+ */
+async function equipmentFollowUp(m: Message, eq: EquipmentUpdate, driverId: string) {
   const sender = await UserProfile.findByPk(m.senderId, { include: [{ model: Role, as: "role" }] });
   if (!isStaffRole((sender as any)?.role?.name)) return;
   const trip =
@@ -191,13 +197,35 @@ async function trailerFollowUp(m: Message, trailer: string, driverId: string) {
       order: [["sent_at", "DESC"], ["id", "DESC"]],
     }));
   if (!trip || ["completed", "routed", "cancelled"].includes(trip.status)) return;
-  const now = (trip.trailer_numbers || "").split(/,\s*/).filter(Boolean);
-  if (now.length === 1 && now[0].toUpperCase() === trailer) return;
-  await editTrip(trip.id, { trailerNumbers: [trailer] }, { role: "dispatcher", id: sender?.id || null, name: sender?.username || null }, { quiet: true });
+
+  const trailers = (trip.trailer_numbers || "").split(/,\s*/).filter(Boolean);
+  const changes: { truckNumber?: string; trailerNumbers?: string[] } = {};
+  const parts: string[] = [];
+  if (eq.truck && eq.truck !== (trip.truck_number || "").toUpperCase()) {
+    changes.truckNumber = eq.truck;
+    parts.push(`Truck ${trip.truck_number || "—"} → ${eq.truck}`);
+  }
+  if (eq.trailer && !(trailers.length === 1 && trailers[0].toUpperCase() === eq.trailer)) {
+    changes.trailerNumbers = [eq.trailer];
+    parts.push(`Trailer ${trailers.join(", ") || "—"} → ${eq.trailer}`);
+  }
+  if (!parts.length) return; // already what the message says
+
+  const actor = { role: "dispatcher" as const, id: sender?.id || null, name: sender?.username || null };
+  await editTrip(trip.id, changes, actor, { quiet: true });
+  await record(trip, {
+    type: "equipment",
+    actor,
+    note: `${parts.join(" · ")} — from the chat: "${String(m.body || "").trim().replace(/\s+/g, " ").slice(0, 80)}"`,
+    messageId: m.id,
+    data: { source: "chat", before: { truck: trip.truck_number || null, trailers }, after: { truck: changes.truckNumber ?? trip.truck_number ?? null, trailers: changes.trailerNumbers ?? trailers } },
+  });
 }
 
 async function onStaffMessage(m: Message) {
   const text = String(m.body || "");
+  // The load message the system just sent as the dispatcher's own: not a newly typed load
+  if (isOwnLoadText(text)) return;
   // A truck chat send saves several rows: the staff's own copy (shown in the truck chat) and one copy
   // for each member. A load is made ONCE, from the staff's copy — for the truck's main driver (the
   // team mate linked) — never once per member.
@@ -210,8 +238,8 @@ async function onStaffMessage(m: Message) {
     if (!truck.driver) return;
     driverId = truck.driver.id;
   }
-  const trailer = trailerOnly(text);
-  if (trailer) return trailerFollowUp(m, trailer, driverId);
+  const equipment = equipmentOnly(text);
+  if (equipment) return equipmentFollowUp(m, equipment, driverId);
   if (!looksLikeLoad(text)) return;
   if (await ChatTrip.findOne({ where: { message_id: m.id } })) return;
   // The same text already made a load for this driver a moment ago — this is that load's own message
@@ -235,6 +263,7 @@ async function onStaffMessage(m: Message) {
       groupId: truck?.groupId || null,
       trailerNumbers: load.trailers,
       temperature: load.temperature,
+      notes: load.notes,
       loadedTrailer: load.loadedTrailer,
       channelId: m.channelId,
       stops: load.stops,

@@ -85,6 +85,10 @@ export class ChatTrip extends Model {
   public created_by!: string | null;
   public created_by_name!: string | null;
   public raw_text!: string | null;
+  /** The driver's answer: "accepted" (an upcoming load they confirmed) / "rejected" (sent back to dispatch) */
+  public driver_response!: "accepted" | "rejected" | null;
+  public driver_response_at!: Date | null;
+  public driver_response_note!: string | null;
   public created_at!: Date;
   public updated_at!: Date;
   public stops?: ChatTripStop[];
@@ -135,6 +139,9 @@ ChatTrip.init(
     created_by: DataTypes.STRING(64),
     created_by_name: DataTypes.STRING,
     raw_text: DataTypes.TEXT,
+    driver_response: DataTypes.STRING(10),
+    driver_response_at: DataTypes.DATE,
+    driver_response_note: DataTypes.STRING(255),
   },
   { sequelize: primarySequelize, tableName: "chat_trips", modelName: "ChatTrip", underscored: true, timestamps: true }
 );

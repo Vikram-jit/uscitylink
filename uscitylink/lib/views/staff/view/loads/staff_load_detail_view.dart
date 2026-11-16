@@ -104,7 +104,7 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 title: Text('Leg ${l.legNo} · ${_d!.driverName(l)}'),
-                subtitle: Text('${l.first?.title ?? ''} → ${l.last?.title ?? ''}'),
+                subtitle: Text(l.routeText),
                 trailing: TextButton(
                   key: Key('completeLeg_${l.id}'),
                   onPressed: () async {
@@ -445,6 +445,15 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
       _card([
         Row(children: [
           Expanded(child: Text('Leg ${l.legNo} · #${l.tripNo ?? ''}', style: AppText.titleMd.copyWith(color: StaffColors.textStrong))),
+          // The driver's answer to an upcoming load: dispatch sees it here
+          if (l.driverResponse == 'accepted' && const ['scheduled', 'offered'].contains(l.status)) ...[
+            StaffPill(key: Key('driverAccepted_${l.id}'), label: 'Driver accepted', color: StaffColors.success),
+            const SizedBox(width: 6),
+          ],
+          if (l.driverResponse == 'rejected' && l.driverProfileId == null) ...[
+            StaffPill(key: Key('driverRejected_${l.id}'), label: 'Rejected by driver', color: StaffColors.danger),
+            const SizedBox(width: 6),
+          ],
           StaffPill(label: l.isLate ? 'Late · ${l.statusLabel}' : l.statusLabel, color: l.isLate ? StaffColors.danger : legStatusColor(l.status)),
         ]),
         const SizedBox(height: 12),
@@ -453,7 +462,7 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: StaffColors.canvas, borderRadius: BorderRadius.circular(AppRadii.sm)),
           child: Wrap(spacing: 16, runSpacing: 12, children: [
-            _fact('Driver', '${d.driverName(l)}${l.isTeam ? ' + team' : ''}'),
+            _fact('Driver', d.driverAndTeam(l)),
             _fact('Truck', l.truck ?? '—'),
             _fact('Trailer', l.trailers ?? '—'),
             _fact('Load #', d.load.number),
@@ -510,7 +519,7 @@ class _StaffLoadDetailViewState extends State<StaffLoadDetailView> {
             if (s.address.isNotEmpty) Text(s.address, style: AppText.bodySm.copyWith(color: StaffColors.textMuted)),
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 6, children: [
-              _chip('Appointment ${s.appointmentLocal == null ? '—' : fmtLocal(s.appointmentLocal)}', icon: Icons.event_rounded),
+              _chip('Appointment ${s.appointmentLocal == null ? 'pending' : fmtLocal(s.appointmentLocal)}', icon: Icons.event_rounded),
               _chip('Arrived ${s.arrivedAt == null ? '—' : fmtDateTime(s.arrivedAt)}', color: s.arrivedAt == null ? StaffColors.textMuted : StaffColors.warning),
               _chip('Left ${s.departedAt == null ? '—' : fmtDateTime(s.departedAt)}', color: s.departedAt == null ? StaffColors.textMuted : StaffColors.success),
             ]),

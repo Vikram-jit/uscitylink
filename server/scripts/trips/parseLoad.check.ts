@@ -2,7 +2,7 @@
 // The load messages dispatchers really send (examples from dispatch, 2026-11) and what must be read
 // from each. Add new formats here before changing the parser.
 import assert from "assert";
-import { looksLikeLoad, parseLoad, ParsedLoad, trailerOnly } from "../../src/services/trips/parseLoad";
+import { equipmentOnly, looksLikeLoad, parseLoad, ParsedLoad, trailerOnly } from "../../src/services/trips/parseLoad";
 import { localToDate } from "../../src/services/trips/stateTimezone";
 
 const results: string[] = [];
@@ -277,6 +277,41 @@ test("one address: a labelled PICKUP stays a pickup; unlabelled with only pickup
   assert.equal(plan.truck, "35865");
   assert.equal(plan.needsReview, true);
   assert.equal(parseLoad("TRUCK # 11\nTEMP # 34", { plan: true }), null, "no Load # → nothing to plan");
+});
+
+test("TRUCK / TEAM / TEMP / TRAILER saying WILL ADVISE, TBD or PENDING are not known yet — never read as the value", () => {
+  const l = parseLoad("LOAD # 9\nTRUCK # will advise\nTEAM # TBD\nTRAILER # PENDING\nTEMP # to be confirmed\nDROP\nFreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213")!;
+  assert.equal(l.truck, null);
+  assert.deepEqual(l.team, []);
+  assert.deepEqual(l.trailers, []);
+  assert.equal(l.temperature, null);
+  assert.equal(l.notes, null);
+  assert.equal(parseLoad("LOAD # 9\nTRUCK # 24565\nTEMP # 34\nDROP\nFreshPoint Atlanta\n1200 Oakley Industrial Blvd B\nFAIRBURN, GA 30213")!.truck, "24565");
+});
+
+test("a truck and / or trailer number sent on its own: truck 24565, trailer 16465, both together; a sentence or a load is not", () => {
+  const yes: [string, { truck: string | null; trailer: string | null }][] = [
+    ["truck 24565", { truck: "24565", trailer: null }],
+    ["TRUCK # 24565", { truck: "24565", trailer: null }],
+    ["Truck: 24565.", { truck: "24565", trailer: null }],
+    ["use truck 24565", { truck: "24565", trailer: null }],
+    ["pls take truck # 24565 for this load", { truck: "24565", trailer: null }],
+    ["change to truck 24565", { truck: "24565", trailer: null }],
+    ["tractor 24565", { truck: "24565", trailer: null }],
+    ["TAKE TRAILER # 16465", { truck: null, trailer: "16465" }],
+    ["truck 24565 trailer 107065", { truck: "24565", trailer: "107065" }],
+    ["TRUCK # 24565\nTRAILER # 107065", { truck: "24565", trailer: "107065" }],
+    ["trailer 107065 & truck 24565", { truck: "24565", trailer: "107065" }],
+    ["truck 24565, trailer UST-1234", { truck: "24565", trailer: "UST-1234" }],
+  ];
+  for (const [text, want] of yes) assert.deepEqual(equipmentOnly(text), want, text);
+  for (const text of [
+    "truck 24565 broke down", "where is truck 24565?", "truck will advise", "TRUCK # WILL ADVISE\nTRAILER # PENDING", "truck", "trailer 16465 is broken",
+    "truck 24565 truck 111222", "LOAD # 5\nTRUCK # 24565", "call me about truck 24565 please", "hello",
+    "TRUCK # 24565\nPICKUP\nA\n1 Main St\nWaco, TX 76701",
+  ]) assert.equal(equipmentOnly(text), null, text);
+  assert.equal(trailerOnly("truck 24565"), null, "a truck is not a trailer");
+  assert.equal(trailerOnly("truck 24565 trailer 107065"), null, "both together is not trailer-only");
 });
 
 console.log(results.join("\n"));

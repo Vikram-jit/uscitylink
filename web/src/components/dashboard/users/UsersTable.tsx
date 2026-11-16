@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography';
 import { Circle } from '@phosphor-icons/react';
 import { pagination } from '@/redux/models/ChannelModel';
 import Link from 'next/link';
+import { CallingSwitch } from './CallingSwitch';
 
 function noop(): void {
   // do nothing
@@ -51,6 +52,7 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage,
               
               <TableCell>Status</TableCell>
               <TableCell>Is Online</TableCell>
+              {role == 'driver' && <TableCell>Calling</TableCell>}
               <TableCell>Action</TableCell>
             </TableRow>
           </TableHead>
@@ -80,6 +82,11 @@ export function UsersTable({ count = 0, rows = [], page = 0, pagination,setPage,
                       variant="filled"
                     />
                   </TableCell>
+                  {role == 'driver' && (
+                    <TableCell>
+                      <CallingSwitch profileId={row.id} enabled={!!row.user?.calls_enabled} name={row.username} />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Stack direction="row" spacing={1}>
                     {row.role?.name?.toLowerCase() === 'driver' && (

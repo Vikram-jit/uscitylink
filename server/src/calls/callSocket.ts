@@ -8,12 +8,13 @@ import Channel from "../models/Channel";
 import UserChannel from "../models/UserChannel";
 import { Call, CallParticipant } from "../models/Call";
 import { isCallMuted } from "../services/staffNotifications";
-import { isCallRecordingEnabled, isCallVideoRecordingEnabled, isCallsEnabled } from "../services/documentAi/settings";
+import { isCallRecordingEnabled, isCallVideoRecordingEnabled } from "../services/documentAi/settings";
 import { CallService, ERRORS, MemoryCallStore, Person } from "./callService";
 import { iceServersFor } from "./iceServers";
 import { pushCallEnded, pushIncomingCall, pushMissedCall } from "./callPush";
 import { answerRecordingOffer, finishRecording, startVideoRecording } from "./callRecorder";
 import { writeCallLog } from "./callLog";
+import { inviteBlocked } from "./callAccess";
 
 // Socket.IO side of calls: who may call whom, and the real dependencies for CallService.
 //
@@ -401,7 +402,9 @@ export function registerCallHandlers(socket: CustomSocket) {
   socket.on("call:invite", async (payload, ackFn) => {
     const ack = safeAck(ackFn);
     try {
-      if (!(await isCallsEnabled())) return fail(ack, "Calling is turned off");
+      // Off for everyone (admin switch), or a driver staff haven't turned calling on for (staff can always call)
+      const blocked = await inviteBlocked(me());
+      if (blocked) return fail(ack, blocked);
       const last = lastInvite.get(me()) || 0;
       if (Date.now() - last < 2000) return fail(ack, "Please wait a moment before calling again");
       lastInvite.set(me(), Date.now());

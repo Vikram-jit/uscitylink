@@ -5,6 +5,7 @@ import 'package:uscitylink/services/trip/trip_service.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/utils/theme/app_text.dart';
 import 'package:uscitylink/utils/theme/app_tokens.dart';
+import 'package:uscitylink/views/trip/respond_buttons.dart';
 
 /// Status colour shared by the trip card and the Loads list.
 Color tripStatusColor(String status) => switch (status) {
@@ -16,7 +17,7 @@ Color tripStatusColor(String status) => switch (status) {
     };
 
 /// The load the driver is on, its stops, and ONE big button for the next step
-/// (Accept → Start trip → Arrived → Loaded, rolling → … → Delivered). Each tap goes to dispatch's
+/// (Accept or Reject → Loaded, rolling → Delivered). Each tap goes to dispatch's
 /// chat and the trip record. Hidden when there is no current trip.
 ///
 /// Dashboard: the full card. Dispatch chat ([compact]): one line and the button, so the messages keep
@@ -189,7 +190,7 @@ class _CurrentTripCardState extends State<CurrentTripCard> {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   [
-                    '${nextStop.typeLabel} · ${nextStop.name ?? nextStop.place}',
+                    '${nextStop.typeLabel} · ${nextStop.title}',
                     if (nextStop.appointment != null) 'Appt ${nextStop.appointment}',
                   ].join(' · '),
                   maxLines: 1,
@@ -232,6 +233,16 @@ class _CurrentTripCardState extends State<CurrentTripCard> {
                   icon: Icons.photo_camera_rounded,
                   color: const Color(0xFFF59E0B),
                   onTap: widget.onOpenChat,
+                )
+              else if (next != null && next.action == 'accept')
+                // A load just sent: Accept or Reject (a rejected load goes back to dispatch, with the reason)
+                AcceptRejectRow(
+                  acceptKey: const Key('tripNextButton'),
+                  rejectKey: const Key('tripRejectButton'),
+                  acceptLabel: next.label,
+                  busy: trips.busy.value,
+                  onAccept: () => trips.respond(trip, 'accept'),
+                  onReject: () => trips.respond(trip, 'reject'),
                 )
               else if (next != null)
                 _WideButton(
@@ -306,10 +317,10 @@ class _StopRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${stop.typeLabel} · ${stop.name ?? stop.place}',
+                Text('${stop.typeLabel} · ${stop.title}',
                     style: AppText.labelMd.copyWith(color: CurrentTripCard._ink, fontWeight: isNext ? FontWeight.w700 : FontWeight.w500)),
                 Text(
-                  [stop.place, if (stop.appointment != null) 'Appt ${stop.appointment}'].where((s) => s.isNotEmpty).join(' · '),
+                  [stop.place, 'Appt ${stop.appointment ?? 'pending'}'].where((s) => s.isNotEmpty).join(' · '),
                   style: AppText.labelSm.copyWith(color: CurrentTripCard._muted),
                 ),
               ],

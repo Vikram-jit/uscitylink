@@ -34,4 +34,6 @@ export interface User {
   profiles? : UserModel[]
   driver_number:    null | string
   yard_id?:         null | number
+  /** Drivers: staff turned calling on (they see the call buttons and may call dispatch). Staff can always call. */
+  calls_enabled?:   boolean
 }

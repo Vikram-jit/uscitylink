@@ -31,6 +31,7 @@ const TRIP_KEYS = [
   "completed_at",
   "created_at",
   "channel_id",
+  "driver_response",
 ];
 const STOP_KEYS = ["id", "seq", "type", "name", "street", "city", "state", "zip", "appointment_local", "timezone", "arrived_at", "departed_at"];
 const PROBLEM_KEYS = ["id", "kind", "note", "created_at", "resolved_at"];
@@ -52,6 +53,8 @@ export function driverTrip(trip: any): Record<string, any> | null {
 /** A response for the driver: a trip, { trip, next }, or { trips } with every trip cleaned. */
 export function driverPayload(data: any): any {
   if (!data) return data;
+  // The current load plus the upcoming ones: { trip, next, upcoming }
+  if ("upcoming" in data && !Array.isArray(data)) return { ...pick(data, ["next"]), trip: driverTrip(data.trip), upcoming: (data.upcoming || []).map(driverTrip) };
   if (Array.isArray(data)) return data.map(driverTrip);
   if (data.trips && Array.isArray(data.trips)) return { ...data, trips: data.trips.map(driverTrip) };
   if (data.trip) return { ...pick(data, ["next"]), trip: driverTrip(data.trip) };

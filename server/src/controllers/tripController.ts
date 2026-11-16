@@ -9,6 +9,7 @@ import { parseLoad } from "../services/trips/parseLoad";
 import { blockingLeg, legsOf } from "../services/trips/legs";
 import { liveTrip } from "../services/trips/liveTrip";
 import { TripAction } from "../services/trips/lifecycle";
+import { respondToLoad } from "../services/trips/driverResponse";
 import {
   act,
   Actor,
@@ -25,6 +26,7 @@ import {
   resolveProblem,
   sendLoad,
   syncPriced,
+  teamNamesByLeg,
   TripError,
   undo,
 } from "../services/trips/tripService";
@@ -89,7 +91,7 @@ export async function listTrips(req: Request, res: Response): Promise<any> {
     const counts = Object.fromEntries(
       ((await ChatTrip.count({ group: ["status"] })) as unknown as { status: string; count: number }[]).map((c) => [c.status, Number(c.count)])
     );
-    return ok(res, { trips: rows, total: count, page, counts, driverNames: await namesFor(rows) });
+    return ok(res, { trips: rows, total: count, page, counts, driverNames: await namesFor(rows), teamNames: await teamNamesByLeg(rows) });
   } catch (err) {
     return fail(res, err);
   }
@@ -115,6 +117,7 @@ export async function showTrip(req: Request, res: Response): Promise<any> {
     return ok(res, {
       trip,
       driverNames: await namesFor([trip]),
+      teamNames: await teamNamesByLeg([trip]),
       leg: {
         count: siblings.length || 1,
         isLast: !siblings.some((l) => l.leg_no > trip.leg_no),
@@ -138,7 +141,11 @@ export async function showTrip(req: Request, res: Response): Promise<any> {
 /** Driver app: the trip I'm on and what my big button does. */
 export async function myCurrentTrip(req: Request, res: Response): Promise<any> {
   try {
-    return ok(res, driverPayload(await currentTripFor(String(req.user?.id))));
+    // The current load, its next button, and the upcoming loads (each with Accept / Reject)
+    const me = String(req.user?.id);
+    const cur = await currentTripFor(me);
+    const up = await upcomingFor(me);
+    return ok(res, driverPayload({ trip: cur?.trip || null, next: cur?.next || null, upcoming: up.trips }));
   } catch (err) {
     return fail(res, err);
   }
@@ -269,10 +276,22 @@ export async function myTrips(req: Request, res: Response): Promise<any> {
   }
 }
 
-/** Driver app (older builds): lined-up loads are not shown to drivers — always empty. */
+/** The loads lined up for the driver, in order (the driver's Upcoming). */
 export async function myUpcoming(req: Request, res: Response): Promise<any> {
   try {
-    return ok(res, await upcomingFor(String(req.user?.id)));
+    return ok(res, driverPayload({ trips: (await upcomingFor(String(req.user?.id))).trips }));
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+/** The driver answers a load: { response: "accept" | "reject", note? } — see services/trips/driverResponse.ts */
+export async function respondRest(req: Request, res: Response): Promise<any> {
+  try {
+    const response = String(req.body?.response || "");
+    if (response !== "accept" && response !== "reject") return res.status(400).json({ status: false, message: "Say accept or reject" });
+    const data = await respondToLoad(Number(req.params.id), await actorOf(req), response, req.body?.note ?? null);
+    return ok(res, driverPayload(data), response === "accept" ? "Accepted" : "Sent back to dispatch");
   } catch (err) {
     return fail(res, err);
   }

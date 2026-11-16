@@ -5,8 +5,10 @@ import 'package:uscitylink/services/staff/loads_service.dart';
 import 'package:uscitylink/utils/load_text.dart';
 import 'package:uscitylink/views/staff/view/loads/loads_common.dart';
 
-/// A load pasted in a driver's chat box (with its Load #) is sent as a load, never as a chat message:
-/// the driver gets the standard load message only when it's really sent; lined up → nothing yet.
+/// A load pasted in a driver's chat box or a truck chat (with its Load # — LOAD / ORDER / TRIP …) is saved as a
+/// load, never just posted as a chat message: the driver gets dispatch's text only when it's really sent;
+/// lined up → nothing yet. In a truck chat the load is the truck's: its main driver, the team mate named, and the
+/// text shows once in that chat for every member.
 /// The same questions as Add load are asked first. Returns true when it was sent or lined up (clear
 /// the input), false when dispatch cancelled or it failed (keep the text).
 class ChatLoadSender {
@@ -14,12 +16,12 @@ class ChatLoadSender {
 
   static bool isLoad(String text) => looksLikeLoad(text) && loadNoIn(text) != null;
 
-  static Future<bool> send(BuildContext context, String text, String driverProfileId) async {
+  static Future<bool> send(BuildContext context, String text, String? driverProfileId, {String? groupId}) async {
     final loadNo = loadNoIn(text) ?? '';
     var endPrevious = false, endCurrent = false, lineUp = false, replace = false;
     for (var i = 0; i < 4; i++) {
       try {
-        final msg = await service.sendLoadText(text, driverProfileId, endPrevious: endPrevious, endDriverCurrent: endCurrent, lineUp: lineUp, replace: replace);
+        final msg = await service.sendLoadText(text, driverProfileId, groupId: groupId, endPrevious: endPrevious, endDriverCurrent: endCurrent, lineUp: lineUp, replace: replace);
         _toast(msg);
         return true;
       } on NeedsAnswer catch (n) {
@@ -46,7 +48,7 @@ class ChatLoadSender {
               key: const Key('chatLoadDriverBusy'),
               title: Text('${c?.driverName ?? 'The driver'} is on another load'),
               content: Text(
-                  'Load #${c?.tripNo ?? ''} (${c?.from ?? ''} → ${c?.to ?? ''}, ${c?.statusLabel.toLowerCase() ?? ''}).\n\nEnd it now and send load $loadNo, or line $loadNo up to go out by itself when #${c?.tripNo ?? ''} is delivered? Lined up, the driver doesn\'t see it yet.'),
+                  'Load #${c?.tripNo ?? ''} (${c?.from ?? ''} → ${c?.to ?? ''}, ${c?.statusLabel.toLowerCase() ?? ''}).\n\nEnd it now and send load $loadNo, or line $loadNo up to go out by itself when #${c?.tripNo ?? ''} is delivered? Lined up, the driver sees it as Upcoming and can accept or reject it.'),
               actionsOverflowDirection: VerticalDirection.up,
               actionsOverflowButtonSpacing: 8,
               actions: [

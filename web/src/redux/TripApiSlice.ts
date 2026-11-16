@@ -78,6 +78,9 @@ export interface Trip {
   status: TripStatus;
   source: 'form' | 'typed';
   needs_review: boolean;
+  /** The driver's answer: accepted an upcoming load / rejected it (sent back, no driver) */
+  driver_response?: 'accepted' | 'rejected' | null;
+  driver_response_note?: string | null;
   review_notes: string | null;
   driver_profile_id: string | null;
   channel_id: string | null;
@@ -346,6 +349,8 @@ export interface LoadDetail {
   history: LoadHistoryEntry[];
   documents?: LoadDocument[];
   driverNames: Record<string, string>;
+  /** The team mate's name per leg id ("Driver + Team mate") */
+  teamNames?: Record<string, string>;
   yardVisits: YardVisit[];
   yardMinutes: number;
   timing: DeliveryTiming | null;
@@ -530,6 +535,7 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       Res<{
         trip: Trip;
         driverNames: Record<string, string>;
+        teamNames?: Record<string, string>;
         /** Its place in the load; blockedBy = the leg before still has the load (can't send yet) */
         leg?: {
           count: number;

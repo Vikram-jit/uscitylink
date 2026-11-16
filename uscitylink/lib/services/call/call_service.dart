@@ -161,6 +161,8 @@ class CallService extends GetxService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Staff may have switched calling on / off for this driver while the app was in the background
+    if (state == AppLifecycleState.resumed) unawaited(refreshConfig());
     // The camera can't run in the background (iOS/Android rules): off when leaving, back on return
     if (state == AppLifecycleState.paused && cameraOn.value && busy) {
       _resumeCameraOnReturn = true;
@@ -213,8 +215,10 @@ class CallService extends GetxService with WidgetsBindingObserver {
     await refreshConfig();
     await registerVoipToken();
     if (busy) return; // no permission screens over a call being answered
-    await _askMicrophoneOnce();
-    if (Platform.isAndroid && _inForeground) {
+    // Drivers are asked for every permission in one place (the "Allow what the app needs" sheet on the
+    // dashboard, views/driver/widgets/permissions_sheet.dart); staff keep these quiet one-time asks
+    if (isStaffUser.value) await _askMicrophoneOnce();
+    if (isStaffUser.value && Platform.isAndroid && _inForeground) {
       try {
         // Full-screen incoming call over the lock screen (Android 14+). Asked once: it opens a
         // settings page, which must not come back on every launch for someone who said no
@@ -627,6 +631,14 @@ class CallService extends GetxService with WidgetsBindingObserver {
   void _bindSocket(io.Socket socket) {
     if (identical(socket, _boundSocket)) return;
     _boundSocket = socket;
+    // Staff switched calling on / off for this driver: the call buttons appear / vanish at once
+    socket.on('calls:config', (d) {
+      if (d is Map && d['enabled'] is bool) {
+        enabled.value = d['enabled'] == true;
+      } else {
+        unawaited(refreshConfig());
+      }
+    });
     socket.on('call:incoming', (d) => _onIncoming(CallInfo.fromJson(Map<String, dynamic>.from(d))));
     socket.on('call:accepted', (d) => _onAccepted(Map<String, dynamic>.from(d)));
     // Dispatch line: every dispatcher busy → waiting in line; then it rings whoever frees up

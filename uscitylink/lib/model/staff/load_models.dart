@@ -59,7 +59,13 @@ class LoadStop {
 
   String get typeLabel => const {'pickup': 'Pickup', 'drop': 'Delivery', 'switch': 'Meet point', 'yard': 'Our yard'}[type] ?? 'Stop';
   String get place => [city, state].where((x) => x != null && x.isNotEmpty).join(', ');
-  String get title => name ?? (place.isEmpty ? typeLabel : place);
+  String get title => name ?? (place.isEmpty ? 'Pending' : place);
+
+  /// Nothing known about this pickup / drop yet (no name, street, city or state)
+  /// "Atlanta, GA" (or the name) — "Pending" when there is no address yet
+  String get shortPlace => place.isNotEmpty ? place : ((name ?? '').isNotEmpty ? name! : 'Pending');
+
+  bool get pending => (name ?? '').isEmpty && (street ?? '').isEmpty && place.isEmpty;
   String get address => [street, [city, state, zip].where((x) => x != null && x.isNotEmpty).join(' ')].where((x) => x != null && x.isNotEmpty).join(', ');
 }
 
@@ -88,6 +94,8 @@ class LoadLeg {
     this.milesSource,
     this.milesNote,
     this.needsReview = false,
+    this.driverResponse,
+    this.driverResponseNote,
     this.reviewNotes,
     this.invoiceNo,
     this.stops = const [],
@@ -118,6 +126,10 @@ class LoadLeg {
   final String? milesSource;
   final String? milesNote;
   final bool needsReview;
+
+  /// The driver's answer: 'accepted' an upcoming load / 'rejected' it (sent back, no driver)
+  final String? driverResponse;
+  final String? driverResponseNote;
   final String? reviewNotes;
   final String? invoiceNo;
   final List<LoadStop> stops;
@@ -148,6 +160,8 @@ class LoadLeg {
       milesSource: _str(j['miles_source']),
       milesNote: _str(j['miles_note']),
       needsReview: _bool(j['needs_review']),
+      driverResponse: _str(j['driver_response']),
+      driverResponseNote: _str(j['driver_response_note']),
       reviewNotes: _str(j['review_notes']),
       invoiceNo: _str(j['invoice_no']),
       stops: stops,
@@ -156,6 +170,15 @@ class LoadLeg {
 
   LoadStop? get first => stops.isEmpty ? null : stops.first;
   LoadStop? get last => stops.isEmpty ? null : stops.last;
+
+  /// Where it starts → where it ends. Pickup and drop are each optional, so either side can still be unknown:
+  /// it says Pending — never the other side's address twice. A trailer that is already loaded has no pickup.
+  String get routeText {
+    final f = first, l = last;
+    final from = f == null || f.type == 'drop' ? (loadedTrailer ? 'Loaded trailer' : 'Pending') : f.shortPlace;
+    final to = l == null || l.type == 'pickup' ? 'Pending' : l.shortPlace;
+    return '$from → $to';
+  }
   bool get isTeam => driverId2 != null;
 
   /// Where the miles came from, in plain words
@@ -386,6 +409,7 @@ class LoadDetail {
     this.yardMinutes = 0,
     this.timing,
     this.driverNames = const {},
+    this.teamNames = const {},
     this.milesTotal = 0,
     this.milesMissing = 0,
   });
@@ -399,6 +423,9 @@ class LoadDetail {
   final int yardMinutes;
   final DeliveryTiming? timing;
   final Map<String, String> driverNames;
+
+  /// The team mate's name per leg id ("Driver + Team mate")
+  final Map<String, String> teamNames;
   final double milesTotal;
   final int milesMissing;
 
@@ -427,6 +454,7 @@ class LoadDetail {
       yardMinutes: _int(j['yardMinutes']) ?? 0,
       timing: j['timing'] is Map ? DeliveryTiming.fromJson(Map<String, dynamic>.from(j['timing'])) : null,
       driverNames: j['driverNames'] is Map ? Map<String, String>.from((j['driverNames'] as Map).map((k, v) => MapEntry('$k', '$v'))) : {},
+      teamNames: j['teamNames'] is Map ? Map<String, String>.from((j['teamNames'] as Map).map((k, v) => MapEntry('$k', '$v'))) : {},
       milesTotal: _num(totals['miles']) ?? 0,
       milesMissing: _int(totals['missing']) ?? 0,
     );
@@ -434,6 +462,9 @@ class LoadDetail {
 
   List<LoadLeg> get activeLegs => legs.where((l) => l.status != 'cancelled').toList();
   String driverName(LoadLeg l) => l.driverProfileId == null ? 'No driver yet' : (driverNames[l.driverProfileId] ?? 'Driver');
+
+  /// "Driver + Team mate" — the team mate by name (never a bare "+ team")
+  String driverAndTeam(LoadLeg l) => l.isTeam ? '${driverName(l)} + ${teamNames['${l.id}'] ?? 'team mate'}' : driverName(l);
 }
 
 /// A leg in short: the Load # lookup and the questions before something is ended.
@@ -546,6 +577,13 @@ class NewStop {
   String? appointment;
 
   bool get filled => city.trim().isNotEmpty && state.trim().isNotEmpty;
+
+  /// Any address at all (name, street, city, state or zip). A pickup or drop with none is pending: it is
+  /// left out, and the load shows PENDING for it. Only the Load # is required to save a load.
+  bool get hasPlace => [name, street, city, state, zip].any((v) => v.trim().isNotEmpty);
+
+  /// Worth sending to the server: an address, or just an appointment date.
+  bool get worthKeeping => hasPlace || (appointment ?? '').trim().isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         'type': type,

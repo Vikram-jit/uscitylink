@@ -228,13 +228,11 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
         temperature: _temp.text,
         notes: _notes.text,
         loadedTrailer: _loaded,
-        stops: _stops.where((s) => s.filled).toList(),
+        // An empty pickup or drop is pending: left out (the load shows PENDING for it)
+        stops: _stops.where((s) => s.worthKeeping).toList(),
       );
 
   Future<void> _saveEdit() async {
-    if (_stops.where((s) => s.filled).isEmpty)
-      return snack(context, 'Add at least one stop (city and state)',
-          error: true);
     setState(() => _busy = true);
     try {
       final msg = await _svc.editLeg(widget.edit!.id, _input());
@@ -252,8 +250,9 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
     if (_editing) return _saveEdit();
     if (_loadNo.text.trim().isEmpty)
       return snack(context, 'Type the Load # first', error: true);
-    if (_stops.where((s) => s.filled).isEmpty)
-      return snack(context, 'Add at least one stop (city and state)',
+    // Only the Load # is required to save; sending needs the pickup or the drop (one of them)
+    if (send && !_stops.any((s) => s.hasPlace))
+      return snack(context, 'Add the pickup or the drop (one is needed) to send it — or Save for later',
           error: true);
     if (send && _driver == null)
       return snack(context, 'Pick a truck / driver to send to', error: true);
@@ -615,7 +614,8 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
             onTap: () => _searchAddress(s),
             decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
-                hintText: 'Search address (Google)')),
+                hintText: 'Search address (Google)',
+                helperText: 'Not confirmed yet? Leave it empty — it is not sent to the driver until you add it')),
         const SizedBox(height: 6),
         Row(children: [
           Expanded(
@@ -643,6 +643,7 @@ class _StaffAddLoadViewState extends State<StaffAddLoadView> {
           title: Text(s.appointment == null
               ? 'Appointment (stop\'s local time)'
               : fmtLocal(s.appointment)),
+          subtitle: s.appointment == null ? const Text('Pending') : null,
           onTap: () async {
             final d = await _pickDate(s.appointment);
             if (d != null) setState(() => s.appointment = _iso(d));
