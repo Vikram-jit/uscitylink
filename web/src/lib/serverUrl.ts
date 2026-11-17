@@ -3,11 +3,13 @@
  * opened on:
  *   http://52.9.12.189:3004         → API_URL / SOCKET_URL from the build (http://52.9.12.189:4300)
  *   https://chatbox.truckcrave.com  → https://chatbox-server.truckcrave.com
+ *   https://chat.teamsthread.com    → https://chat-server.teamsthread.com
  * An https page cannot call an http server (the browser blocks "mixed content"), so the domain
  * must use the domain server. Add a line to DOMAIN_SERVERS for any new domain.
  */
 const DOMAIN_SERVERS: Record<string, string> = {
   'chatbox.truckcrave.com': 'https://chatbox-server.truckcrave.com',
+  'chat.teamsthread.com': 'https://chat-server.teamsthread.com',
 };
 
 // Old builds hard-coded this for chat media; still used when the dashboard is opened by IP

@@ -35,7 +35,7 @@ class SocketService extends GetxController {
   var isReconnecting = false.obs;
 
   String generateSocketUrl(String token) {
-    return 'https://chatbox-server.truckcrave.com?token=$token';
+    return 'https://chat-server.teamsthread.com?token=$token';
   }
 
   // Method to connect to the socket server
