@@ -64,6 +64,9 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
   };
   // const { key }: { key: string } = useParams();
   const key = documentKey;
+  // Until the upload to S3 finishes (or if it failed) the file is only on the API server
+  const onServer = uploadType === 'not-upload' || uploadType === 'local' || uploadType === 'failed';
+  const fileUrl = onServer ? `${socketUrl()}/uscitylink/${key}` : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`;
 
   // Handle document load success
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
@@ -104,8 +107,8 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
   // Handle downloading the PDF
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`;
-    link.download = 'MANISH-K-VERMA-30414869.pdf';
+    link.href = fileUrl;
+    link.download = key.split('/').pop() ?? 'document.pdf';
     link.click();
   };
 
@@ -124,7 +127,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
       doc.open();
       doc.write('<html><head><title>Print PDF</title></head><body>');
       doc.write(
-        `<embed width="100%" height="100%" src="https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}" type="application/pdf">`
+        `<embed width="100%" height="100%" src="${fileUrl}" type="application/pdf">`
       );
       doc.write('</body></html>');
       doc.close();
@@ -161,7 +164,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
             <ReactPlayer
               controls={true}
               url={
-                uploadType === 'not-upload' || uploadType === 'local'
+                onServer
                   ? `${socketUrl()}/uscitylink/${key}`
                   : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/video/${key}`
               }
@@ -227,9 +230,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
                 <TransformComponent>
                   <Image
                     src={
-                      uploadType === 'not-upload' || uploadType === 'local'
-                        ? `${socketUrl()}/uscitylink/${key}`
-                        : `https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`
+                      fileUrl
                     }
                     alt="image"
                     width={1020}
@@ -310,7 +311,7 @@ export default function Viewer({ documentKey, setLoading, uploadType }: Viewer) 
             <Document
               ref={pdfRef}
               options={options}
-              file={`https://ciity-sms.s3.us-west-1.amazonaws.com/uscitylink/${key}`}
+              file={fileUrl}
               onLoadSuccess={onDocumentLoadSuccess}
             >
               <Page pageNumber={pageNumber} width={pdfWidth} renderTextLayer={false} scale={2} />
