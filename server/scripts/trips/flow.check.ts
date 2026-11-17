@@ -5,6 +5,8 @@
 // Uses a throwaway test driver with no phone token (nothing is pushed to a real phone) and removes
 // everything it created at the end.
 import "dotenv/config";
+// These checks cover loads made from chat messages (off by default, see loadsFromChat.ts): on for this run
+process.env.LOADS_FROM_CHAT = "true";
 process.env.TRIP_ETA_SNAPSHOT = "off"; // no Google / Samsara calls from tests
 import assert from "assert";
 import http from "http";

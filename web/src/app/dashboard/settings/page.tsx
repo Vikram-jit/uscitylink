@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { config } from '@/config';
+import { LoadSettings } from '@/components/dashboard/settings/LoadSettings';
 import { Notifications } from '@/components/dashboard/settings/notifications';
 import { UpdatePasswordForm } from '@/components/dashboard/settings/update-password-form';
 
@@ -15,6 +16,7 @@ export default function Page(): React.JSX.Element {
       <div>
         <Typography variant="h4">Settings</Typography>
       </div>
+      <LoadSettings />
       <Notifications />
       <UpdatePasswordForm />
     </Stack>

@@ -1,3 +1,4 @@
+import { loadFeature } from "./loadFeatures";
 // Paperwork from the chat: drivers rarely use the load's "Send BOL / POD" button — they just send the
 // photo / PDF in the chat. Every attachment a driver sends goes on their load:
 //   1. a delivered load still waiting for paperwork (ended / paperwork), newest first
@@ -31,6 +32,8 @@ export async function paperworkTripFor(profileId: string): Promise<ChatTrip | nu
 
 /** A driver's attachment in the chat → on their load. Returns the trip it went on. */
 export async function attachFromChat(m: Message): Promise<ChatTrip | null> {
+  // Settings → Loads → "Driver photos / PDFs → load paperwork"
+  if (!(await loadFeature("driver_paperwork"))) return null;
   if (!m.url || !m.userProfileId || m.messageDirection !== "R") return null;
   if (await ChatTripEvent.findOne({ where: { type: "document", message_id: m.id } })) return null;
   const trip = await paperworkTripFor(m.userProfileId);

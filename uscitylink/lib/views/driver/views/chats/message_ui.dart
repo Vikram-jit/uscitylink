@@ -1,3 +1,4 @@
+import 'package:uscitylink/services/trip/trip_service.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:uscitylink/services/call/call_service.dart';
@@ -335,12 +336,15 @@ class _MessageuiState extends State<Messageui> with WidgetsBindingObserver {
                       )
                     : const SizedBox.shrink()),
                 // The driver's loads (current one + history), over the chat
-                _HeaderAction(
-                  key: const Key('myLoadsButton'),
-                  icon: Icons.local_shipping_rounded,
-                  tooltip: 'My loads',
-                  onTap: () => Get.to(() => const LoadsView(standalone: true)),
-                ),
+                // (hidden when Settings → Loads turns loads off for drivers)
+                Obx(() => TripService.to.features.value.driverLoads
+                    ? _HeaderAction(
+                        key: const Key('myLoadsButton'),
+                        icon: Icons.local_shipping_rounded,
+                        tooltip: 'My loads',
+                        onTap: () => Get.to(() => const LoadsView(standalone: true)),
+                      )
+                    : const SizedBox.shrink()),
                 _HeaderAction(
                   icon: Icons.add_a_photo_rounded,
                   tooltip: 'Send a photo',

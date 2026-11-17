@@ -11,6 +11,7 @@ import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/controller/user_preference_controller.dart';
 import 'package:uscitylink/services/socket_service.dart';
 import 'package:uscitylink/services/trip/trip_models.dart';
+import 'package:uscitylink/utils/load_text.dart' as load_text;
 
 /// The driver's current trip (load): what the dashboard card shows and the buttons it sends.
 /// Every tap is recorded on the server with when and where (GPS); a tap made without signal is kept
@@ -20,6 +21,9 @@ class TripService extends GetxService {
   static TripService get to => Get.isRegistered<TripService>() ? Get.find() : Get.put(TripService(), permanent: true);
 
   final current = Rxn<CurrentTrip>();
+
+  /// Settings → Loads switches (what the driver app shows; the staff chat box follows loadsFromChat)
+  final features = LoadFeatures.defaults.obs;
 
   /// The loads lined up for the driver, in order: Upcoming, each answered with Accept / Reject
   final upcoming = <CurrentTrip>[].obs;
@@ -51,13 +55,20 @@ class TripService extends GetxService {
       });
       if (socketService.isConnected.value) _bind(socketService.socket);
     }
+    ever<LoadFeatures>(features, (f) => load_text.loadsFromChat = f.loadsFromChat);
     unawaited(_loadPendingCount());
+    unawaited(loadFeatures());
     unawaited(refresh());
   }
 
   void _bind(io.Socket socket) {
     if (identical(socket, _bound)) return;
     _bound = socket;
+    // An admin changed Settings → Loads: show / hide at once
+    socket.on('loads:features', (d) {
+      features.value = LoadFeatures.fromJson(d);
+      refresh();
+    });
     socket.on('trip:updated', (_) {
       refresh();
       if (_historyPage > 0) loadHistory(reset: true);
@@ -99,9 +110,17 @@ class TripService extends GetxService {
     }
   }
 
+  /// GET trips/features — the Settings → Loads switches.
+  Future<void> loadFeatures() async {
+    final res = await _rest('GET', 'trips/features');
+    if (res.ok) features.value = LoadFeatures.fromJson(res.body?['data']?['features']);
+  }
+
   Future<void> refresh() async {
     final res = await _rest('GET', 'trips/current');
     if (res.ok) {
+      final f = res.body?['data'] is Map ? res.body!['data']['features'] : null;
+      if (f != null) features.value = LoadFeatures.fromJson(f);
       current.value = CurrentTrip.fromResponse(res.body?['data']);
       upcoming.assignAll(CurrentTrip.upcomingFrom(res.body?['data']));
     }

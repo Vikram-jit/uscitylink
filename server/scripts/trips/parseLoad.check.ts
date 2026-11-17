@@ -314,5 +314,20 @@ test("a truck and / or trailer number sent on its own: truck 24565, trailer 1646
   assert.equal(trailerOnly("truck 24565 trailer 107065"), null, "both together is not trailer-only");
 });
 
+test("an appointment written as a window (start - end) is read: the appointment is the start, nothing left in the notes", () => {
+  const t = `load# 0056004\n\nPURE PACIFIC COOLING -\n2770 MCDANIEL AVE\nYUMA, AZ 85364\n11/16/2026 10:00AM\n\nWALMART-6055\n655 UNISIA DR\nMONROE, GA 30656\n11/18/2026 04:30AM - 11/18/2026 04:30AM`;
+  const r = parseLoad(t)!;
+  assert.deepEqual(r.stops.map((x) => [x.type, x.name, x.appointment]), [
+    ["pickup", "PURE PACIFIC COOLING -", "2026-11-16T10:00"],
+    ["drop", "WALMART-6055", "2026-11-18T04:30"],
+  ]);
+  assert.equal(r.notes, null, "the window line is not left as a note");
+  const drop = (d: string) => parseLoad(`LOAD # 1\nDROP\nX\n1 MAIN ST\nMONROE, GA 30656\n${d}`)!.stops[0].appointment;
+  assert.equal(drop("11/18/2026 04:30AM - 06:00AM"), "2026-11-18T04:30");
+  assert.equal(drop("11/18/2026 04:30PM to 11/18/2026 06:00PM"), "2026-11-18T16:30");
+  assert.equal(drop("11/18/2026 16:30 – 17:00"), "2026-11-18T16:30");
+  assert.equal(drop("11/18/2026 04:30AM"), "2026-11-18T04:30", "a single time as before");
+});
+
 console.log(results.join("\n"));
 process.exit(results.some((r) => r.startsWith("FAIL")) ? 1 : 0);

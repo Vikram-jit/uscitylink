@@ -10,6 +10,7 @@ import { blockingLeg, legsOf } from "../services/trips/legs";
 import { liveTrip } from "../services/trips/liveTrip";
 import { TripAction } from "../services/trips/lifecycle";
 import { respondToLoad } from "../services/trips/driverResponse";
+import { getLoadFeatures, LOAD_FEATURES, setLoadFeatures } from "../services/trips/loadFeatures";
 import {
   act,
   Actor,
@@ -143,9 +144,13 @@ export async function myCurrentTrip(req: Request, res: Response): Promise<any> {
   try {
     // The current load, its next button, and the upcoming loads (each with Accept / Reject)
     const me = String(req.user?.id);
+    const f = await getLoadFeatures();
+    // Settings → Loads: no loads in the driver app → nothing (even an old app shows no card)
+    if (!f.driver_loads) return ok(res, { trip: null, next: null, upcoming: [], features: f });
     const cur = await currentTripFor(me);
-    const up = await upcomingFor(me);
-    return ok(res, driverPayload({ trip: cur?.trip || null, next: cur?.next || null, upcoming: up.trips }));
+    const up = f.driver_upcoming ? await upcomingFor(me) : { trips: [] };
+    // Buttons off: the driver sees the load but gets no button to tap
+    return ok(res, { ...driverPayload({ trip: cur?.trip || null, next: f.driver_buttons ? cur?.next || null : null, upcoming: up.trips }), features: f });
   } catch (err) {
     return fail(res, err);
   }
@@ -199,6 +204,7 @@ export async function tripActionRest(req: Request, res: Response): Promise<any> 
     if (!ACTIONS.includes(action)) return res.status(400).json({ status: false, message: "Unknown action" });
     const { stopId, note, lat, lng, at, invoiceNo } = req.body || {};
     const actor = await actorOf(req);
+    if (actor.role === "driver") await driverButtonsOn();
     const data = await act(Number(req.params.id), action, actor, { stopId, note, lat, lng, at, invoiceNo });
     return ok(res, actor.role === "driver" ? driverPayload(data) : data);
   } catch (err) {
@@ -270,6 +276,7 @@ export async function liveTripRest(req: Request, res: Response): Promise<any> {
 export async function myTrips(req: Request, res: Response): Promise<any> {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
+    if (!(await getLoadFeatures()).driver_loads) return ok(res, { trips: [], total: 0, page });
     return ok(res, driverPayload(await tripsForDriver(String(req.user?.id), page)));
   } catch (err) {
     return fail(res, err);
@@ -279,6 +286,8 @@ export async function myTrips(req: Request, res: Response): Promise<any> {
 /** The loads lined up for the driver, in order (the driver's Upcoming). */
 export async function myUpcoming(req: Request, res: Response): Promise<any> {
   try {
+    const f = await getLoadFeatures();
+    if (!f.driver_loads || !f.driver_upcoming) return ok(res, { trips: [] });
     return ok(res, driverPayload({ trips: (await upcomingFor(String(req.user?.id))).trips }));
   } catch (err) {
     return fail(res, err);
@@ -290,8 +299,35 @@ export async function respondRest(req: Request, res: Response): Promise<any> {
   try {
     const response = String(req.body?.response || "");
     if (response !== "accept" && response !== "reject") return res.status(400).json({ status: false, message: "Say accept or reject" });
-    const data = await respondToLoad(Number(req.params.id), await actorOf(req), response, req.body?.note ?? null);
+    const actor = await actorOf(req);
+    if (actor.role === "driver") await driverButtonsOn();
+    const data = await respondToLoad(Number(req.params.id), actor, response, req.body?.note ?? null);
     return ok(res, driverPayload(data), response === "accept" ? "Accepted" : "Sent back to dispatch");
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+/** Settings → Loads → "Driver load buttons" off: the driver's taps are refused (dispatch moves the load). */
+async function driverButtonsOn() {
+  const f = await getLoadFeatures();
+  if (!f.driver_loads || !f.driver_buttons) throw new TripError("Load buttons are turned off — dispatch updates your load", 403);
+}
+
+/** GET /trips/features — the load switches (every app reads them); with their titles for the Settings page. */
+export async function loadFeaturesRest(_req: Request, res: Response): Promise<any> {
+  try {
+    return ok(res, { features: await getLoadFeatures(), list: LOAD_FEATURES });
+  } catch (err) {
+    return fail(res, err);
+  }
+}
+
+/** PUT /trips/features { driver_loads?: boolean, … } — admin only. */
+export async function setLoadFeaturesRest(req: Request, res: Response): Promise<any> {
+  try {
+    const features = await setLoadFeatures(req.body || {}, req.user?.id || null);
+    return ok(res, { features, list: LOAD_FEATURES }, "Load settings saved");
   } catch (err) {
     return fail(res, err);
   }

@@ -20,6 +20,8 @@ import {
   showTrip,
   tripActionRest,
   undoTripRest,
+  loadFeaturesRest,
+  setLoadFeaturesRest,
 } from "../controllers/tripController";
 
 // Trips (loads). Dispatch manages them; the driver app runs its own trip (the service checks the
@@ -27,6 +29,8 @@ import {
 const router = Router();
 const staffOnly = [authMiddleware, requireRole("staff", "admin")];
 
+router.get("/features", authMiddleware, loadFeaturesRest);
+router.put("/features", authMiddleware, requireRole("admin"), setLoadFeaturesRest);
 router.get("/current", authMiddleware, myCurrentTrip);
 router.get("/mine", authMiddleware, myTrips);
 router.get("/upcoming", authMiddleware, myUpcoming);

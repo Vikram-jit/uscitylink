@@ -49,6 +49,9 @@ Map<String, dynamic> loadJson(List<Map<String, dynamic>> legs, {String status = 
     {'id': 7, 'load_no': '1011', 'invoice_no': '1011', 'track_token': 'tok', 'type': legs.length > 1 ? 'relay' : 'direct', 'status': status, 'created_at': '2026-11-12T10:00:00Z', 'legs': legs};
 
 void main() {
+  // These tests cover loads made from chat text (off in the app: loads come from the form) — on here
+  setUpAll(() => loadsFromChat = true);
+
   test('load text: a load without Load # is blocked, with it is allowed', () {
     const noNo = 'TEMP# REFER BILLS\n\nPICKUP#\nSignature Brands\n1299 SW 49th Avenue\nOCALA, FL 34474\n11/13/2026 12:00PM\n\nDELIVERY#\nWALMART DC\n10817 HWY 99W\nRED BLUFF, CA 96080';
     expect(looksLikeLoad(noNo), true);
@@ -572,5 +575,14 @@ void main() {
     expect(find.text('DRIVER TAPPED DELIVERED'), findsOneWidget, reason: 'only the leg that has the tap');
     expect(fmtDiff(null), '');
     expect(fmtDiff(75), '1h 15m late');
+  });
+
+  test('loads from chat OFF (the app default): a load text is a plain message — not blocked, not sent as a load, no Add to loads / Repair', () {
+    loadsFromChat = false;
+    addTearDown(() => loadsFromChat = true);
+    const text = 'PICKUP\nZZ PICK\n1 MAIN ST\nFRESNO, CA 93701\n\nDROP\nZZ DROP\n2 MAIN ST\nFREMONT, CA 94538';
+    expect(looksLikeLoad(text), isFalse);
+    expect(loadMissingNo(text), isFalse, reason: 'no Load # check: sent as typed');
+    expect(looksLikeLoad('LOAD # 1011\n$text'), isFalse);
   });
 }

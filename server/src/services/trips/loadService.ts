@@ -10,6 +10,7 @@ import { conflictsFor, yardVisitsOfLoad } from "./equipment";
 import { deriveType, endLegNow, historyOf, segmentsOf } from "./loadControl";
 import { documentsOf } from "./paperwork";
 import { truckOfGroup } from "./truckGroup";
+import { requireLoadsFromChat } from "./loadsFromChat";
 import { trackToken } from "./publicTracking";
 import { parseLoad } from "./parseLoad";
 import { Actor, announce, cleanInvoice, teamNamesByLeg, teamNamesOf, createTrip, driverOfTruck, editTrip, ensureChannel, postDispatchText, record, sendLoad, setInvoice, StopInput, syncPriced, TripError, TripInput } from "./tripService";
@@ -523,6 +524,7 @@ export async function loadFromText(
   channelId: string | null = null,
   groupId: string | null = null
 ) {
+  await requireLoadsFromChat();
   // From a truck chat: the load is for the truck — its main driver, the team mate and the truck number
   const truck = await truckOfGroup(groupId);
   const driverId = driverProfileId || truck?.driver?.id || null;
@@ -686,6 +688,7 @@ async function linkSource(res: Awaited<ReturnType<typeof getLoad>>, messageId: s
 }
 
 export async function loadFromChat(input: TripInput & { loadNo?: string | null; sourceMessageId?: string | null; groupId?: string | null }, actor: Actor): Promise<TypedLoadOutcome> {
+  await requireLoadsFromChat();
   if (!cleanLoadNo(input.loadNo)) return { kind: "noLoadNo" };
   // The Load # is already out and its leg is running for this driver: an update of that leg only
   const open = await openLegForUpdate(input.loadNo, input.driverProfileId, input.teamDriverProfileId);
@@ -707,6 +710,7 @@ export async function loadFromChat(input: TripInput & { loadNo?: string | null; 
 
 /** Dispatch answered the question about a typed load (End & send / Line up). */
 export async function answerTypedLoad(id: string, answers: { endPrevious?: boolean; endDriverCurrent?: boolean; lineUp?: boolean; replace?: boolean }, actor: Actor): Promise<TypedLoadOutcome> {
+  await requireLoadsFromChat();
   const p = pendingTyped.get(id);
   if (!p || Date.now() - p.at > PENDING_MS) throw new TripError("That question expired — add the load from the Loads screen", 410);
   // Answers add up (end the previous leg, then: the driver is busy too)
@@ -738,6 +742,7 @@ function outcome(res: Awaited<ReturnType<typeof getLoad>>): TypedLoadOutcome {
 // when it's time. The message is remembered as the load's source, so Delete on it asks about the load.
 
 export async function convertMessageToLoad(messageId: string, actor: Actor, opts: { loadNo?: string | null } = {}) {
+  await requireLoadsFromChat();
   const m = await Message.findByPk(messageId);
   if (!m || !m.body) throw new TripError("Message not found", 404);
 

@@ -14,6 +14,8 @@ import { check, TripAction, TripStatus } from "./lifecycle";
 import { attachFromChat } from "./paperwork";
 import { isOwnLoadText } from "./ownMessages";
 import { truckOfGroup } from "./truckGroup";
+import { loadsFromChat } from "./loadsFromChat";
+import { loadFeature } from "./loadFeatures";
 import { EquipmentUpdate, equipmentOnly, looksLikeLoad, parseLoad } from "./parseLoad";
 import { clearStatus, Intent, ruleIntent, SMALL_TALK } from "./intents";
 import { act, currentTripFor, editTrip, offerNextLoad, record } from "./tripService";
@@ -136,6 +138,8 @@ export async function applyWords(trip: ChatTrip, intent: Intent, m: Message): Pr
 }
 
 async function onDriverMessage(m: Message) {
+  // Settings → Loads → "Driver chat words move the load"
+  if (!(await loadFeature("driver_chat_words"))) return;
   const text = String(m.body || "").trim();
   if (!text || SMALL_TALK.test(text)) return;
   let intent = ruleIntent(text);
@@ -223,6 +227,8 @@ async function equipmentFollowUp(m: Message, eq: EquipmentUpdate, driverId: stri
 }
 
 async function onStaffMessage(m: Message) {
+  // Loads come only from the Loads form: a load text in the chat is just a message (see loadsFromChat.ts)
+  if (!(await loadsFromChat())) return;
   const text = String(m.body || "");
   // The load message the system just sent as the dispatcher's own: not a newly typed load
   if (isOwnLoadText(text)) return;

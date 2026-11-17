@@ -126,4 +126,46 @@ void main() {
     }
     expect(tester.getSize(find.byKey(const Key('upcomingReject_3'))).width, greaterThan(110), reason: 'room for icon + word');
   });
+
+  // ---------- Settings → Loads switches (web admin) ----------
+
+  test('the switches read from the server; missing ones keep their defaults', () {
+    final f = LoadFeatures.fromJson({'driver_loads': true, 'driver_buttons': false, 'driver_upcoming': true, 'loads_from_chat': true});
+    expect(f.driverButtons, false);
+    expect(f.canTap, false);
+    expect(f.loadsFromChat, true);
+    expect(LoadFeatures.fromJson(null), LoadFeatures.defaults);
+    expect(LoadFeatures.defaults.canTap, true);
+    expect(LoadFeatures.defaults.loadsFromChat, false, reason: 'loads from chat: off unless an admin turns it on');
+  });
+
+  testWidgets('buttons off: the load and the Upcoming list are shown, but no Accept / Reject / Rolling / Undo', (tester) async {
+    final s = await show(tester, main: trip(1, 'planned'), next: {'action': 'accept', 'label': 'Accept'}, upcoming: [trip(3, 'scheduled')]);
+    expect(find.byKey(const Key('tripNextButton')), findsOneWidget);
+    s.features.value = const LoadFeatures(driverButtons: false);
+    await tester.pump();
+    expect(find.byKey(const Key('currentTripCard')), findsOneWidget, reason: 'the load is still shown');
+    expect(find.byKey(const Key('upcomingLoads')), findsOneWidget);
+    expect(find.byKey(const Key('tripNextButton')), findsNothing);
+    expect(find.byKey(const Key('tripRejectButton')), findsNothing);
+    expect(find.byKey(const Key('upcomingAccept_3')), findsNothing);
+    expect(find.byKey(const Key('upcomingReject_3')), findsNothing);
+    // back on → the buttons are back
+    s.features.value = LoadFeatures.defaults;
+    await tester.pump();
+    expect(find.byKey(const Key('tripNextButton')), findsOneWidget);
+    expect(find.byKey(const Key('upcomingAccept_3')), findsOneWidget);
+  });
+
+  testWidgets('upcoming off: no Upcoming list; loads off: no card and no list at all', (tester) async {
+    final s = await show(tester, main: trip(1, 'planned'), next: {'action': 'accept', 'label': 'Accept'}, upcoming: [trip(3, 'scheduled')]);
+    s.features.value = const LoadFeatures(driverUpcoming: false);
+    await tester.pump();
+    expect(find.byKey(const Key('upcomingLoads')), findsNothing);
+    expect(find.byKey(const Key('currentTripCard')), findsOneWidget);
+    s.features.value = const LoadFeatures(driverLoads: false);
+    await tester.pump();
+    expect(find.byKey(const Key('currentTripCard')), findsNothing);
+    expect(find.byKey(const Key('upcomingLoads')), findsNothing);
+  });
 }

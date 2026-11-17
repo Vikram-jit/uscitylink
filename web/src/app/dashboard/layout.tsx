@@ -12,6 +12,7 @@ import { ScrollLockReset } from '@/components/dashboard/layout/scroll-lock-reset
 import { CallProvider } from '@/calls/CallProvider';
 import { CallOverlay } from '@/calls/CallOverlay';
 import { ConnectionBanner } from '@/components/dashboard/layout/ConnectionBanner';
+import { LoadFeaturesSync } from '@/components/dashboard/trips/useLoadFeatures';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,6 +55,8 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         </Box>
       </Box>
       <ScrollLockReset />
+      {/* Settings → Loads switches, live (the chat boxes follow "Loads from chat messages") */}
+      <LoadFeaturesSync />
       <MessageDialog/>
       <CallOverlay />
       </CallProvider>

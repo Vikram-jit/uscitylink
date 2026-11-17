@@ -83,8 +83,10 @@ class _DashboardViewState extends State<DashboardView>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Obx(() {
+        // Settings → Loads → no loads for drivers: the Loads tab is gone (Home shows instead)
+        final idx = channelController.currentIndex.value;
         return IndexedStack(
-          index: channelController.currentIndex.value,
+          index: idx == 1 && !TripService.to.features.value.driverLoads ? 0 : idx,
           children: _screens,
         );
       }),
@@ -103,9 +105,12 @@ class _DashboardViewState extends State<DashboardView>
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Obx(() {
+            // The tabs shown (screen indexes): Loads (1) only when loads are on for drivers
+            final tabs = TripService.to.features.value.driverLoads ? const [0, 1, 2, 3] : const [0, 2, 3];
+            final at = tabs.indexOf(channelController.currentIndex.value);
             return SalomonBottomBar(
-              currentIndex: channelController.currentIndex.value,
-              onTap: _onItemTapped,
+              currentIndex: at < 0 ? 0 : at,
+              onTap: (i) => _onItemTapped(tabs[i]),
               selectedItemColor: TColors.navyHeaderDeep,
               unselectedItemColor: Colors.grey.shade400,
               itemPadding:
@@ -116,11 +121,12 @@ class _DashboardViewState extends State<DashboardView>
                   activeIcon: const Icon(Icons.home_rounded),
                   title: const Text("Home"),
                 ),
-                SalomonBottomBarItem(
-                  icon: _loadsIcon(Icons.local_shipping_outlined),
-                  activeIcon: _loadsIcon(Icons.local_shipping_rounded),
-                  title: const Text("Loads"),
-                ),
+                if (tabs.contains(1))
+                  SalomonBottomBarItem(
+                    icon: _loadsIcon(Icons.local_shipping_outlined),
+                    activeIcon: _loadsIcon(Icons.local_shipping_rounded),
+                    title: const Text("Loads"),
+                  ),
                 SalomonBottomBarItem(
                   icon: _messagesIcon(Icons.chat_bubble_outline_rounded),
                   activeIcon: _messagesIcon(Icons.chat_bubble_rounded),

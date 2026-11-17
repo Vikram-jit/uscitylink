@@ -16,6 +16,7 @@ class RepairLoad {
 
   /// A load-looking text from dispatch, or the assistant's own load message ("TRIP #…" / "LOAD #…").
   static bool canRepair(String? body, {String? url, bool? automated}) {
+    if (!loadsFromChat) return false;
     if (url != null && url.isNotEmpty) return false;
     final text = body ?? '';
     if (automated == true) return RegExp(r'^\s*(?:TRIP|LOAD)\b', caseSensitive: false).hasMatch(text);

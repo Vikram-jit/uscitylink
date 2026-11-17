@@ -66,6 +66,11 @@ void main() {
     service.current.value = CurrentTrip.fromResponse({'trip': trip(7, 'accepted'), 'next': null});
     await tester.pump();
     expect(find.byKey(const Key('myLoadsShortcut')), findsNothing);
+    // Settings → Loads → no loads for drivers: no way into Loads either
+    service.current.value = null;
+    service.features.value = const LoadFeatures(driverLoads: false);
+    await tester.pump();
+    expect(find.byKey(const Key('myLoadsShortcut')), findsNothing);
   });
 
   testWidgets('opened from the chat it has a back arrow; as a tab it does not', (tester) async {

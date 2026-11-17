@@ -1,4 +1,49 @@
 /// A trip (load) the driver is on — server/src/services/trips. GET trips/current.
+
+/// The admin switches for the load features (web: Settings → Loads; server/src/services/trips/loadFeatures.ts).
+/// GET trips/features, also sent with trips/current and live on the `loads:features` socket event.
+class LoadFeatures {
+  const LoadFeatures({
+    this.driverLoads = true,
+    this.driverButtons = true,
+    this.driverUpcoming = true,
+    this.loadsFromChat = false,
+  });
+
+  /// The Loads tab, the load cards (dashboard + chat) and the My loads button
+  final bool driverLoads;
+
+  /// Accept / Reject, Loaded — rolling, Delivered — end trip (and Undo)
+  final bool driverButtons;
+
+  /// The lined-up loads list with Accept / Reject
+  final bool driverUpcoming;
+
+  /// Staff: a load typed / pasted in a chat becomes a load
+  final bool loadsFromChat;
+
+  static const defaults = LoadFeatures();
+
+  factory LoadFeatures.fromJson(dynamic j) {
+    if (j is! Map) return defaults;
+    bool on(String k, bool d) => j[k] is bool ? j[k] as bool : d;
+    return LoadFeatures(
+      driverLoads: on('driver_loads', true),
+      driverButtons: on('driver_buttons', true),
+      driverUpcoming: on('driver_upcoming', true),
+      loadsFromChat: on('loads_from_chat', false),
+    );
+  }
+
+  bool get canTap => driverLoads && driverButtons;
+
+  @override
+  bool operator ==(Object o) =>
+      o is LoadFeatures && o.driverLoads == driverLoads && o.driverButtons == driverButtons && o.driverUpcoming == driverUpcoming && o.loadsFromChat == loadsFromChat;
+
+  @override
+  int get hashCode => Object.hash(driverLoads, driverButtons, driverUpcoming, loadsFromChat);
+}
 class TripStop {
   TripStop({
     required this.id,

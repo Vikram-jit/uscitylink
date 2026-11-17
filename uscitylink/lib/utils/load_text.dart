@@ -26,9 +26,16 @@ const _usStates = {'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','
 bool _hasPlace(String text, List<String> all) =>
     all.any((l) => _cityStateZip.hasMatch(l) || _street.hasMatch(l)) || _cityState.allMatches(text).any((m) => _usStates.contains(m.group(1)!) && (!_wordStates.contains(m.group(1)!) || m.group(2) != null));
 
+/// Loads from chat messages — the admin switch web Settings → Loads → "Loads from chat messages" (off by
+/// default: loads only from the Loads form). Off, a load text in a chat box is sent as a normal message
+/// (no Load # check, not turned into a load) and Add to loads / Repair is hidden. Kept in step with the
+/// server by TripService.features (fetched at start, live on `loads:features`).
+bool loadsFromChat = false; // not const: the tests of the chat-load feature switch it on
+
 /// An address plus any load word (pickup, delivery, drop, … anywhere, any format), or a PICKUP /
 /// DELIVERY heading, an appointment time or a LOAD # line → a load: it must carry its Load #.
 bool looksLikeLoad(String text) {
+  if (!loadsFromChat) return false;
   final all = _lines(text);
   // A LOAD # line with a PICKUP / DROP heading is a load even before any address is known (both pending)
   if (all.any(_loadNo.hasMatch) && all.any(_label.hasMatch)) return true;

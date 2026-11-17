@@ -45,7 +45,8 @@ class MyLoadsShortcut extends StatelessWidget {
   Widget build(BuildContext context) {
     final trips = service ?? TripService.to;
     return Obx(() {
-      if (trips.current.value != null) return const SizedBox.shrink();
+      // Settings → Loads → no loads in the driver app: no way into Loads
+      if (trips.current.value != null || !trips.features.value.driverLoads) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
         child: Material(

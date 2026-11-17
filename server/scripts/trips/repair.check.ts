@@ -5,6 +5,8 @@
 // is never rewritten, closed legs are refused, and the Missed loads list finds skipped / fixable ones.
 // Throwaway drivers / group with no phone token; removes everything it created at the end.
 import "dotenv/config";
+// These checks cover loads made from chat messages (off by default, see loadsFromChat.ts): on for this run
+process.env.LOADS_FROM_CHAT = "true";
 process.env.TRIP_ETA_SNAPSHOT = "off";
 import assert from "assert";
 import http from "http";

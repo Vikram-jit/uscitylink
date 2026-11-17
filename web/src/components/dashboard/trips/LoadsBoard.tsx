@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { Load, Trip, useGetMissedLoadsQuery, useListLoadBoardQuery, useSendTripMutation } from '@/redux/TripApiSlice';
+import { Add, LocalParking, Refresh, Search, Visibility } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -22,20 +24,28 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Add, LocalParking, Refresh, Search, Visibility } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
 import { useSocketEvent } from '@/hooks/use-socket-event';
-import { Load, Trip, useGetMissedLoadsQuery, useListLoadBoardQuery, useSendTripMutation } from '@/redux/TripApiSlice';
 
 import { AssignLegDialog } from './AssignLegDialog';
 import { CompleteTripButton } from './CompleteTripButton';
 import { LegChain } from './LegChain';
-import { LoadDrawer } from './LoadDrawer';
 import { LineupDrawer } from './LineupDrawer';
+import { LoadDrawer } from './LoadDrawer';
 import { LoadFormDialog } from './LoadFormDialog';
+import { useLoadFeatures } from './useLoadFeatures';
 import { MissedLoadsDialog } from './MissedLoadsDialog';
-import { appointment, currentLeg, isLate, legsInOrder, LOAD_STATUS, LOAD_TABS, LOAD_TYPE, routeText } from './tripFormat';
+import {
+  appointment,
+  currentLeg,
+  isLate,
+  legsInOrder,
+  LOAD_STATUS,
+  LOAD_TABS,
+  LOAD_TYPE,
+  routeText,
+} from './tripFormat';
 
 // Dispatch's Loads screen. A load is tracked by its invoice # and moved by one or more legs (direct,
 // via our yard, relay, trailer move). Loads that need dispatch come first: a driver waiting for a
@@ -47,16 +57,22 @@ const WIDE = { display: { xs: 'none', md: 'table-cell' } } as const;
 /** When the load was added: "Nov 12, 2026" / "3:40 PM" */
 const created = (iso: string | null | undefined, part: 'date' | 'time') =>
   iso
-    ? new Intl.DateTimeFormat('en-US', part === 'date' ? { month: 'short', day: 'numeric', year: 'numeric' } : { hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
+    ? new Intl.DateTimeFormat(
+        'en-US',
+        part === 'date' ? { month: 'short', day: 'numeric', year: 'numeric' } : { hour: 'numeric', minute: '2-digit' }
+      ).format(new Date(iso))
     : '—';
 const HANDED_OVER = ['ended', 'paperwork', 'completed', 'routed'];
 
 /** What dispatch does next on this load, and on which leg */
-function nextAction(load: Load): { kind: 'assign' | 'send' | 'confirm' | 'complete'; leg: Trip; isLast: boolean } | null {
+function nextAction(
+  load: Load
+): { kind: 'assign' | 'send' | 'confirm' | 'complete'; leg: Trip; isLast: boolean } | null {
   const legs = legsInOrder(load.legs).filter((l) => l.status !== 'cancelled');
   const last = legs[legs.length - 1];
   const offered = legs.find((l) => l.status === 'offered');
-  if (offered) return { kind: offered.driver_profile_id ? 'confirm' : 'assign', leg: offered, isLast: offered.id === last?.id };
+  if (offered)
+    return { kind: offered.driver_profile_id ? 'confirm' : 'assign', leg: offered, isLast: offered.id === last?.id };
   const ready = legs.find((l, i) => l.status === 'scheduled' && (i === 0 || HANDED_OVER.includes(legs[i - 1].status)));
   if (ready) return { kind: ready.driver_profile_id ? 'send' : 'assign', leg: ready, isLast: ready.id === last?.id };
   const done = legs.find((l) => l.status === 'ended' || l.status === 'paperwork');
@@ -72,14 +88,21 @@ export function LoadsBoard(): React.JSX.Element {
   const [adding, setAdding] = React.useState(false);
   // Chat load messages not in Loads (or in with wrong details) — the badge on the Missed loads button
   const [missedOpen, setMissedOpen] = React.useState(false);
-  const missed = (useGetMissedLoadsQuery(14, { pollingInterval: 300_000 }).data?.data || []).length;
+  const fromChat = useLoadFeatures().loads_from_chat;
+  const missed = (useGetMissedLoadsQuery(14, { pollingInterval: 300_000, skip: !fromChat }).data?.data || [])
+    .length;
   const [openLoad, setOpenLoad] = React.useState<number | null>(null);
   const [lineupOf, setLineupOf] = React.useState<string | null>(null);
   const [assigning, setAssigning] = React.useState<{ loadId: number; leg: Trip; canSend: boolean } | null>(null);
   const limit = 25;
 
   const status = LOAD_TABS.find((t) => t.key === tab)?.status || '';
-  const { data, isFetching, refetch } = useListLoadBoardQuery({ status: status || undefined, q: query || undefined, page: page + 1, limit });
+  const { data, isFetching, refetch } = useListLoadBoardQuery({
+    status: status || undefined,
+    q: query || undefined,
+    page: page + 1,
+    limit,
+  });
   const [sendTrip, { isLoading: sending }] = useSendTripMutation();
 
   // Search after typing stops
@@ -97,7 +120,10 @@ export function LoadsBoard(): React.JSX.Element {
   useSocketEvent('load:updated', refresh);
   useSocketEvent<[any]>('trip:offer', (d) => {
     refresh();
-    toast.warning(`${d?.driverName || 'A driver'}${d?.truck ? ` (truck ${d.truck})` : ''} is waiting for the next load — confirm it`, { autoClose: 15000 });
+    toast.warning(
+      `${d?.driverName || 'A driver'}${d?.truck ? ` (truck ${d.truck})` : ''} is waiting for the next load — confirm it`,
+      { autoClose: 15000 }
+    );
   });
   useSocketEvent<[any]>('load:transfer', (d) => {
     refresh();
@@ -107,17 +133,21 @@ export function LoadsBoard(): React.JSX.Element {
     });
   });
   useSocketEvent<[any]>('trip:no_load', (d) => {
-    toast.info(`${d?.driverName || 'A driver'}${d?.truck ? ` (truck ${d.truck})` : ''} asked for a next load — none is lined up`, { autoClose: 15000 });
+    toast.info(
+      `${d?.driverName || 'A driver'}${d?.truck ? ` (truck ${d.truck})` : ''} asked for a next load — none is lined up`,
+      { autoClose: 15000 }
+    );
   });
   useSocketEvent<[any]>('trip:problem', (d) => {
     refresh();
-    toast.error(`Problem on trip #${(d?.tripNo) || d?.tripId}: ${d?.note || d?.kind || ''}`);
+    toast.error(`Problem on trip #${d?.tripNo || d?.tripId}: ${d?.note || d?.kind || ''}`);
   });
 
   const loads = data?.data?.loads || [];
   const names = data?.data?.driverNames || {};
   const counts = data?.data?.counts || {};
-  const tabCount = (st: string) => (st ? st.split(',').reduce((sum, x) => sum + (counts[x] || 0), 0) : Object.values(counts).reduce((a, b) => a + b, 0));
+  const tabCount = (st: string) =>
+    st ? st.split(',').reduce((sum, x) => sum + (counts[x] || 0), 0) : Object.values(counts).reduce((a, b) => a + b, 0);
 
   const send = async (leg: Trip) => {
     try {
@@ -153,9 +183,16 @@ export function LoadsBoard(): React.JSX.Element {
             <Refresh />
           </IconButton>
         </Tooltip>
-        <Button variant="outlined" color={missed ? 'warning' : 'inherit'} onClick={() => setMissedOpen(true)} data-testid="missedLoadsButton">
-          Missed loads{missed ? ` (${missed})` : ''}
-        </Button>
+        {fromChat && (
+          <Button
+            variant="outlined"
+            color={missed ? 'warning' : 'inherit'}
+            onClick={() => setMissedOpen(true)}
+            data-testid="missedLoadsButton"
+          >
+            Missed loads{missed ? ` (${missed})` : ''}
+          </Button>
+        )}
         <Button variant="contained" startIcon={<Add />} onClick={() => setAdding(true)}>
           Add load
         </Button>
@@ -214,7 +251,13 @@ export function LoadsBoard(): React.JSX.Element {
             const action = nextAction(load);
             const st = LOAD_STATUS[load.status];
             return (
-              <TableRow key={load.id} hover sx={{ cursor: 'pointer' }} onClick={() => setOpenLoad(load.id)} data-testid={`loadRow-${load.id}`}>
+              <TableRow
+                key={load.id}
+                hover
+                sx={{ cursor: 'pointer' }}
+                onClick={() => setOpenLoad(load.id)}
+                data-testid={`loadRow-${load.id}`}
+              >
                 <TableCell>
                   <Typography variant="body2" fontWeight={700}>
                     Load {load.invoice_no || load.load_no}
@@ -223,7 +266,12 @@ export function LoadsBoard(): React.JSX.Element {
                     {LOAD_TYPE[load.type].short}
                     {legs.length > 1 ? ` · ${legs.length} legs` : ''}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" component="div" sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    component="div"
+                    sx={{ display: { xs: 'block', md: 'none' } }}
+                  >
                     Created {created(load.created_at, 'date')}, {created(load.created_at, 'time')}
                   </Typography>
                 </TableCell>
@@ -239,9 +287,7 @@ export function LoadsBoard(): React.JSX.Element {
                   <LegChain legs={load.legs} names={names} dense />
                 </TableCell>
                 <TableCell sx={WIDE}>
-                  <Typography variant="body2">
-                    {routeText(stops, { loaded: !!leg?.loaded_trailer })}
-                  </Typography>
+                  <Typography variant="body2">{routeText(stops, { loaded: !!leg?.loaded_trailer })}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {last?.name || ''}
                     {atYard ? ` · yard ×${atYard}` : ''}
@@ -250,8 +296,15 @@ export function LoadsBoard(): React.JSX.Element {
                 <TableCell sx={WIDE}>{appointment(last?.appointment_local)}</TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                    <Chip size="small" label={st.label} color={st.color} icon={load.status === 'transfer' ? <LocalParking /> : undefined} />
-                    {legs.length > 1 && leg && <Chip size="small" variant="outlined" label={`Leg ${leg.leg_no}/${legs.length}`} />}
+                    <Chip
+                      size="small"
+                      label={st.label}
+                      color={st.color}
+                      icon={load.status === 'transfer' ? <LocalParking /> : undefined}
+                    />
+                    {legs.length > 1 && leg && (
+                      <Chip size="small" variant="outlined" label={`Leg ${leg.leg_no}/${legs.length}`} />
+                    )}
                     {leg && ['scheduled', 'offered'].includes(leg.status) && leg.driver_profile_id && leg.queue_pos && (
                       <Chip
                         size="small"
@@ -266,7 +319,9 @@ export function LoadsBoard(): React.JSX.Element {
                       />
                     )}
                     {late && <Chip size="small" color="error" variant="outlined" label="Late" />}
-                    {legs.some((l) => l.needs_review) && <Chip size="small" color="warning" variant="outlined" label="Check" />}
+                    {legs.some((l) => l.needs_review) && (
+                      <Chip size="small" color="warning" variant="outlined" label="Check" />
+                    )}
                   </Stack>
                 </TableCell>
                 <TableCell align="right" onClick={(e) => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
@@ -288,10 +343,22 @@ export function LoadsBoard(): React.JSX.Element {
                       disabled={sending}
                       onClick={() => void send(action.leg)}
                     >
-                      {action.kind === 'confirm' ? 'Confirm & send' : legs.length > 1 ? `Send leg ${action.leg.leg_no}` : 'Send'}
+                      {action.kind === 'confirm'
+                        ? 'Confirm & send'
+                        : legs.length > 1
+                          ? `Send leg ${action.leg.leg_no}`
+                          : 'Send'}
                     </Button>
                   )}
-                  {action?.kind === 'complete' && <CompleteTripButton trip={action.leg} size="small" requireInvoice={action.isLast} legs={load.legs} names={names} />}
+                  {action?.kind === 'complete' && (
+                    <CompleteTripButton
+                      trip={action.leg}
+                      size="small"
+                      requireInvoice={action.isLast}
+                      legs={load.legs}
+                      names={names}
+                    />
+                  )}
                   <Tooltip title="Open">
                     <IconButton size="small" onClick={() => setOpenLoad(load.id)}>
                       <Visibility fontSize="small" />
@@ -304,7 +371,9 @@ export function LoadsBoard(): React.JSX.Element {
           {!loads.length && !isFetching && (
             <TableRow>
               <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                {tab === 'all' && !query ? "No loads yet — use Add load, or the truck button in a driver's chat" : 'No loads here'}
+                {tab === 'all' && !query
+                  ? "No loads yet — use Add load, or the truck button in a driver's chat"
+                  : 'No loads here'}
               </TableCell>
             </TableRow>
           )}

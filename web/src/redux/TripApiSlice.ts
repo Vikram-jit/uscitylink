@@ -519,6 +519,23 @@ export interface LiveTrip {
 
 export type TripActionName = 'accept' | 'start' | 'rolling' | 'arrive' | 'depart' | 'end' | 'paperwork' | 'complete' | 'hold' | 'resume' | 'cancel';
 
+export type LoadFeatureKey =
+  | 'driver_loads'
+  | 'driver_buttons'
+  | 'driver_upcoming'
+  | 'driver_chat_lines'
+  | 'driver_chat_words'
+  | 'driver_paperwork'
+  | 'auto_send_next'
+  | 'loads_from_chat';
+export type LoadFeatures = Record<LoadFeatureKey, boolean>;
+export interface LoadFeatureInfo {
+  key: LoadFeatureKey;
+  default: boolean;
+  title: string;
+  help: string;
+}
+
 interface Res<T> {
   status: boolean;
   message?: string;
@@ -707,6 +724,15 @@ export const TripApiSlice = apiSlice.injectEndpoints({
       query: ({ messageId, loadNo }) => ({ url: `loads/repair/${messageId}`, method: 'POST', body: { loadNo: loadNo || null } }),
       invalidatesTags: ['chatTrips'],
     }),
+    /** Settings → Loads: the admin switches for the load features (server/src/services/trips/loadFeatures.ts) */
+    getLoadFeatures: builder.query<Res<{ features: LoadFeatures; list: LoadFeatureInfo[] }>, void>({
+      query: () => ({ url: 'trips/features', method: 'GET' }),
+      providesTags: ['loadFeatures'],
+    }),
+    updateLoadFeatures: builder.mutation<Res<{ features: LoadFeatures; list: LoadFeatureInfo[] }>, Partial<LoadFeatures>>({
+      query: (body) => ({ url: 'trips/features', method: 'PUT', body }),
+      invalidatesTags: ['loadFeatures'],
+    }),
     /** Recent chat messages that look like loads but aren't in Loads, and loads made from them wrongly */
     getMissedLoads: builder.query<Res<MissedLoad[]>, number | void>({
       query: (days) => ({ url: 'loads/missed', method: 'GET', params: { days: days || 14 } }),
@@ -846,4 +872,6 @@ export const {
   useGetFleetTrucksQuery,
   useGetFleetTrailersQuery,
   useGetFleetDriversQuery,
+  useGetLoadFeaturesQuery,
+  useUpdateLoadFeaturesMutation,
 } = TripApiSlice;

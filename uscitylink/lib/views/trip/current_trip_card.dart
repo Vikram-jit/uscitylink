@@ -135,7 +135,8 @@ class _CurrentTripCardState extends State<CurrentTripCard> {
     final compact = widget.compact;
     return Obx(() {
       final trip = trips.current.value;
-      if (trip == null) return const SizedBox.shrink();
+      // Settings → Loads → no loads in the driver app
+      if (trip == null || !trips.features.value.driverLoads) return const SizedBox.shrink();
       final next = trip.next;
       final suggestion = trips.suggestion.value;
       final canUndo = (trips.undoUntil.value?.isAfter(DateTime.now()) ?? false);
@@ -234,6 +235,8 @@ class _CurrentTripCardState extends State<CurrentTripCard> {
                   color: const Color(0xFFF59E0B),
                   onTap: widget.onOpenChat,
                 )
+              else if (!trips.features.value.canTap)
+                const SizedBox.shrink() // Settings → Loads → buttons off: dispatch moves the load
               else if (next != null && next.action == 'accept')
                 // A load just sent: Accept or Reject (a rejected load goes back to dispatch, with the reason)
                 AcceptRejectRow(
@@ -264,7 +267,7 @@ class _CurrentTripCardState extends State<CurrentTripCard> {
                       label: const Text('Report problem'),
                     ),
                     const Spacer(),
-                    if (canUndo)
+                    if (canUndo && trips.features.value.canTap)
                       TextButton.icon(
                         style: TextButton.styleFrom(foregroundColor: TColors.navyHeaderDeep),
                         onPressed: trips.undo,

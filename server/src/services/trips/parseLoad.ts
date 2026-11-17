@@ -65,7 +65,13 @@ const FIELD = /^(?:(truck|trailer|team)\s*[#:]|(temp(?:erature)?)\b\s*[#:]?)\s*(
 
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/[,\s]+$/, "").trim();
 
+// An appointment window: "11/18/2026 04:30AM - 11/18/2026 04:30AM", "11/18/2026 04:30AM - 06:00AM",
+// "11/18/2026 04:30AM TO 11/18/2026 06:00AM" — the appointment is the start of the window
+const DATE_RANGE = /^(\d{1,2}\/\d{1,2}\/\d{2,4}\s+\d{1,2}:\d{2}\s*(?:[AaPp][Mm])?)\s*(?:-|–|—|to|till|until)\s*(?:\d{1,2}\/\d{1,2}\/\d{2,4}\s+)?\d{1,2}:\d{2}\s*(?:[AaPp][Mm])?$/i;
+
 function parseDateTime(line: string): string | null {
+  const range = DATE_RANGE.exec(line.trim());
+  if (range) return parseDateTime(range[1]);
   const m = DATE_TIME.exec(line.trim());
   if (!m) return null;
   const [, mo, da, yr, hh, mi, ap] = m;

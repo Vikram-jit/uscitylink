@@ -5,6 +5,8 @@
 // when the current one is delivered, and only the load's own driver can answer. Throwaway drivers; removes
 // everything it created.
 import "dotenv/config";
+// These checks cover loads made from chat messages (off by default, see loadsFromChat.ts): on for this run
+process.env.LOADS_FROM_CHAT = "true";
 process.env.TRIP_ETA_SNAPSHOT = "off";
 import assert from "assert";
 import http from "http";
@@ -29,7 +31,11 @@ import { addLoad } from "../../src/services/trips/loadService";
 import { act, currentTripFor, upcomingFor } from "../../src/services/trips/tripService";
 import { respondToLoad } from "../../src/services/trips/driverResponse";
 import { driverPayload } from "../../src/services/trips/driverView";
-import { myCurrentTrip } from "../../src/controllers/tripController";
+import { myCurrentTrip, myUpcoming, respondRest, tripActionRest } from "../../src/controllers/tripController";
+import { getLoadFeatures, LOAD_FEATURES, setLoadFeatures } from "../../src/services/trips/loadFeatures";
+import { AutomationSetting } from "../../src/models/AutomationSetting";
+import { postToChat, sendLinedUpNext } from "../../src/services/trips/tripService";
+import { attachFromChat } from "../../src/services/trips/paperwork";
 
 const local = (h?: string) => !h || /^(localhost|127\.0\.0\.1)$/.test(h);
 if (!local(process.env.DB_PRIMARY_HOST) || !local(process.env.DB_SECONDARY_HOST)) {
@@ -203,6 +209,79 @@ const STOPS = (tag: string) => [
       assert((await chatOf(b.id)).some((m) => /accepted load/.test(m)), "Got it is said in the chat (the driver's own tap)");
       await assert.rejects(respondToLoad(l5, asB, "reject", "no"), /already accepted/);
       assert.equal((await leg(l5)).driver_profile_id, b.id);
+    });
+
+    await test("Settings → Loads switches: defaults on (loads from chat off); each one off stops its part — the driver's loads, buttons, upcoming, tap lines, paperwork, auto-send — and back on restores it", async () => {
+      const keys = LOAD_FEATURES.map((f) => `loads.${f.key}`);
+      const saved = await AutomationSetting.findAll({ where: { key: keys } });
+      const savedEnv = process.env.LOADS_FROM_CHAT;
+      delete process.env.LOADS_FROM_CHAT;
+      const call = async (fn: any, req: any) => {
+        const res: any = { code: 200, body: null, json(b: any) { this.body = b; return this; }, status(c: number) { this.code = c; return this; } };
+        await fn({ user: { id: a.id }, params: {}, query: {}, body: {}, ...req }, res);
+        return res;
+      };
+      try {
+        await AutomationSetting.destroy({ where: { key: keys } });
+        const d = await getLoadFeatures();
+        for (const f of LOAD_FEATURES) assert.equal(d[f.key], f.key !== "loads_from_chat", `default of ${f.key}`);
+
+        // A's own load on the road and one lined up after it
+        await add("F1", { opts: { send: true, endDriverCurrent: true } });
+        await add("F2", { opts: { send: false } });
+        const cur = await currentTripFor(a.id);
+        const on = (await call(myCurrentTrip, {})).body.data;
+        assert(on.trip && on.next && on.upcoming.length, "on: load, button and upcoming");
+        assert.equal(on.features.driver_loads, true, "the app gets the switches with its load");
+
+        // Buttons off: the load is shown, no button, taps refused
+        await setLoadFeatures({ driver_buttons: false });
+        const nb = (await call(myCurrentTrip, {})).body.data;
+        assert(nb.trip && nb.next === null, "load shown, no button");
+        const tap = await call(tripActionRest, { params: { id: String(cur!.trip.id) }, body: { action: cur!.next!.action } });
+        assert.equal(tap.code, 403, "a tap is refused");
+        const ans = await call(respondRest, { params: { id: String(on.upcoming[0].id) }, body: { response: "accept" } });
+        assert.equal(ans.code, 403, "Accept on an upcoming load is refused");
+        await setLoadFeatures({ driver_buttons: true });
+
+        // Upcoming off
+        await setLoadFeatures({ driver_upcoming: false });
+        assert.deepEqual((await call(myCurrentTrip, {})).body.data.upcoming, []);
+        assert.deepEqual((await call(myUpcoming, {})).body.data.trips, []);
+        await setLoadFeatures({ driver_upcoming: true });
+
+        // Loads off: nothing at all for the driver
+        await setLoadFeatures({ driver_loads: false });
+        const none = (await call(myCurrentTrip, {})).body.data;
+        assert.equal(none.trip, null);
+        assert.deepEqual(none.upcoming, []);
+        await setLoadFeatures({ driver_loads: true });
+        assert((await call(myCurrentTrip, {})).body.data.trip, "back on: the load is back");
+
+        // Tap lines in the chat off
+        await setLoadFeatures({ driver_chat_lines: false });
+        assert.equal(await postToChat(cur!.trip, "ZZ line", { driverTap: true }), null, "no line posted");
+        await setLoadFeatures({ driver_chat_lines: true });
+
+        // Auto-send next off
+        await setLoadFeatures({ auto_send_next: false });
+        assert.equal(await sendLinedUpNext(b.id), null);
+        await setLoadFeatures({ auto_send_next: true });
+
+        // Paperwork off: a driver photo is not attached
+        await setLoadFeatures({ driver_paperwork: false });
+        const photo = { id: "zz-no-attach", url: "zz/bol.jpg", userProfileId: a.id, messageDirection: "R" } as any;
+        assert.equal(await attachFromChat(photo), null);
+        await setLoadFeatures({ driver_paperwork: true });
+
+        // Loads from chat: the panel switch (no .env override)
+        await setLoadFeatures({ loads_from_chat: true });
+        assert.equal((await getLoadFeatures()).loads_from_chat, true);
+      } finally {
+        await AutomationSetting.destroy({ where: { key: keys } });
+        for (const r of saved) await AutomationSetting.create(r.toJSON() as any);
+        if (savedEnv !== undefined) process.env.LOADS_FROM_CHAT = savedEnv;
+      }
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { [Op.or]: [{ load_id: [...loadIds] }, { driver_profile_id: people.map((p) => p.id) }] } });

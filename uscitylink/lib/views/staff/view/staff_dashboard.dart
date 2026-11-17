@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:uscitylink/services/trip/trip_service.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -51,6 +52,8 @@ class _StaffDashboardState extends State<StaffDashboard> with WidgetsBindingObse
     WidgetsBinding.instance.addObserver(this);
     _dashboardController.getStaffDashboard();
     _refreshAttention();
+    // Settings → Loads → "Loads from chat messages": the chat boxes follow it (live)
+    unawaited(TripService.to.loadFeatures());
     // Name and role for the header (the drawer used to be the only place that loaded them)
     if (_loginController.userProfile.value.username == null) _loginController.getProfile();
     super.initState();

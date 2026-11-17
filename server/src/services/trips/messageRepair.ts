@@ -6,6 +6,7 @@
 // convertMessageToLoad (adds it to Loads, lined up — nothing is sent to the driver).
 //   missedLoads: recent chat messages that look like loads but aren't in Loads, or are there wrong.
 
+import { requireLoadsFromChat, loadsFromChat } from "./loadsFromChat";
 import { Op } from "sequelize";
 import { ChatTrip, ChatTripEvent, ChatTripStop } from "../../models/ChatTrip";
 import { Message } from "../../models/Message";
@@ -104,6 +105,7 @@ function diffLeg(trip: ChatTrip, parsed: ParsedLoad) {
 }
 
 export async function repairPreview(messageId: string): Promise<RepairPreview> {
+  await requireLoadsFromChat();
   const m = await Message.findByPk(messageId);
   if (!m || !m.body) throw new TripError("Message not found", 404);
   const linked = await leg(messageId);
@@ -151,6 +153,7 @@ export async function repairPreview(messageId: string): Promise<RepairPreview> {
 
 /** Confirmed: fix the load's details and replace the assistant's old message in the chat. */
 export async function repairApply(messageId: string, actor: Actor, opts: { loadNo?: string | null } = {}) {
+  await requireLoadsFromChat();
   forgetMissed();
   const pv = await repairPreview(messageId);
   if (pv.mode === "add") {
@@ -223,6 +226,7 @@ export const forgetMissed = () => {
 
 /** Recent chat messages that look like loads but aren't in Loads ("missing"), and loads made from them wrongly ("fixable"). */
 export async function missedLoads(days = 14): Promise<MissedLoad[]> {
+  if (!(await loadsFromChat())) return [];
   if (missedCache && missedCache.days === days && Date.now() - missedCache.at < 60_000) return missedCache.rows;
   const rows = await scanMissed(days);
   missedCache = { at: Date.now(), days, rows };

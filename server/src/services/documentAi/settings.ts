@@ -22,7 +22,7 @@ const CACHE_MS = 30_000;
 // next document without a server restart.
 const cache = new Map<string, { row: AutomationSetting | null; at: number }>();
 
-const readSetting = async (key: string): Promise<AutomationSetting | null> => {
+export const readSetting = async (key: string): Promise<AutomationSetting | null> => {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.row;
   let row: AutomationSetting | null = null;
@@ -35,7 +35,7 @@ const readSetting = async (key: string): Promise<AutomationSetting | null> => {
   return row;
 };
 
-const writeSetting = async (key: string, value: string, userId?: string | null) => {
+export const writeSetting = async (key: string, value: string, userId?: string | null) => {
   await AutomationSetting.upsert({ key, value, updated_by: userId || null });
   cache.delete(key);
 };

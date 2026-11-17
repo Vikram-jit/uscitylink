@@ -24,6 +24,7 @@ import { mediaServerUrl } from '@/lib/serverUrl';
 import { DeleteMessageDialog } from '../dashboard/trips/DeleteMessageDialog';
 import { RepairLoadDialog } from '../dashboard/trips/RepairLoadDialog';
 import { looksLikeLoad } from '../dashboard/trips/loadText';
+import { useLoadFeatures } from '../dashboard/trips/useLoadFeatures';
 
 type ChatBubbleProps = MessageModel & {
   variant: 'sent' | 'received';
@@ -62,7 +63,8 @@ export default function ChatBubble(props: ChatBubbleProps) {
   // A load text that never became a load can be added to Loads from here (nothing is sent again)
   const [converting, setConverting] = React.useState<string | null>(null);
   // …and the assistant's own old load messages ("TRIP #…" / "LOAD #…") can be repaired in place
-  const canConvert = !props.url && (automated ? /^\s*(?:TRIP|LOAD)\b/i.test(String(props.body || '')) : looksLikeLoad(String(props.body || '')));
+  const fromChat = useLoadFeatures().loads_from_chat;
+  const canConvert = fromChat && !props.url && (automated ? /^\s*(?:TRIP|LOAD)\b/i.test(String(props.body || '')) : looksLikeLoad(String(props.body || '')));
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);

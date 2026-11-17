@@ -4,6 +4,8 @@
 // dispatch can end a load the driver didn't; miles per leg and total; typed loads; the Load # parser.
 // Throwaway test drivers with no phone token; removes everything it created at the end.
 import "dotenv/config";
+// These checks cover loads made from chat messages (off by default, see loadsFromChat.ts): on for this run
+process.env.LOADS_FROM_CHAT = "true";
 process.env.TRIP_ETA_SNAPSHOT = "off";
 import assert from "assert";
 import http from "http";
@@ -696,6 +698,27 @@ const asks = async (p: Promise<any>, needs: string) => {
       assert.equal(again.filter((l) => l.status !== "cancelled").length, 3, "still no new leg");
       assert.equal(again[2].trailer_numbers, "ZZ17000");
       assert.deepEqual(again.slice(0, 2).map(snap), endedBefore);
+    });
+
+    await test("loads from chat turned OFF (the default): a load typed / pasted in the chat is just a message — no load; paste, Convert and Repair refused; loads only from the form", async () => {
+      process.env.LOADS_FROM_CHAT = "false";
+      try {
+        const no = `${NO}OFF`;
+        const text = `LOAD # ${no}\nPICKUP\nZZ OFF PICK\n1 MAIN ST\nFRESNO, CA 93701\n\nDROP\nZZ OFF DROP\n2 MAIN ST\nFREMONT, CA 94538`;
+        const m = await Message.create({ channelId: channel[0].id, userProfileId: a.id, senderId: staff!.id, body: text, messageDirection: "S", deliveryStatus: "sent", status: "sent", messageTimestampUtc: new Date() } as any);
+        await wait(2500);
+        assert.equal(await ChatLoad.count({ where: { invoice_no: no } }), 0, "no load from the chat message");
+        assert.equal((await Message.findByPk(m.id))!.body, text, "the message is untouched");
+        await assert.rejects(loadFromText(text, a.id, dispatcher), /Loads form/);
+        await assert.rejects(convertMessageToLoad(m.id, dispatcher), /Loads form/);
+        assert.equal(await ChatLoad.count({ where: { invoice_no: no } }), 0);
+        // The form still adds and sends loads
+        const r = await addLoad({ loadNo: no, driverProfileId: b.id, stops: CHD_AMB }, dispatcher, { send: true, endDriverCurrent: true });
+        loadIds.add(r.load.id);
+        assert.equal(r.legs[0].status, "planned", "the form still sends");
+      } finally {
+        process.env.LOADS_FROM_CHAT = "true";
+      }
     });
 
     await test("the assistant speaks in the driver's chat ONLY for the driver's own Got it / Rolling / Delivered — nothing for what dispatch does", async () => {

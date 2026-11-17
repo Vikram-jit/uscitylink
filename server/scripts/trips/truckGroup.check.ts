@@ -4,6 +4,8 @@
 // group for staff and for every member, and the trip card is on the truck's main driver.
 // Throwaway drivers / group with no phone token; removes everything it created at the end.
 import "dotenv/config";
+// These checks cover loads made from chat messages (off by default, see loadsFromChat.ts): on for this run
+process.env.LOADS_FROM_CHAT = "true";
 process.env.TRIP_ETA_SNAPSHOT = "off";
 import assert from "assert";
 import http from "http";
@@ -179,6 +181,23 @@ const LOAD = (no: string) => `LOAD # ${no}\nTRAILER # WILL ADVISE\nTEMP # REFER 
       assert.equal(rows.filter((m) => m.type === "default").length, 1);
       assert.equal(rows.filter((m) => m.type === "truck_group").length, 2);
       assert.equal(await ChatTrip.count({ where: { driver_profile_id: [a.id, b.id] } }), tripsBefore, "no load from plain text");
+    });
+
+    await test("loads from chat OFF (the default): a load pasted in the truck chat is just a group message — every member gets it once, as typed, no load; the paste box is refused", async () => {
+      process.env.LOADS_FROM_CHAT = "false";
+      try {
+        const no = `${LOAD_NO}OFF`;
+        const text = LOAD(no).trim();
+        await sendInGroup(text);
+        assert.equal(await ChatLoad.count({ where: { invoice_no: no } }), 0, "no load from the truck chat");
+        const rows = await Message.findAll({ where: { groupId: group.id, body: text } });
+        assert.equal(rows.filter((m) => m.type === "default").length, 1, "staff see it once");
+        assert.deepEqual(rows.filter((m) => m.type === "truck_group").map((m) => m.userProfileId).sort(), [a.id, b.id].sort(), "each member once");
+        await assert.rejects(loadFromText(text, null, { role: "dispatcher", id: staff!.id, name: staff!.username }, {}, channelId, group.id), /Loads form/);
+        assert.equal(await ChatLoad.count({ where: { invoice_no: no } }), 0);
+      } finally {
+        process.env.LOADS_FROM_CHAT = "true";
+      }
     });
   } finally {
     const trips = await ChatTrip.findAll({ where: { [Op.or]: [{ load_id: [...loadIds] }, { driver_profile_id: people.map((p) => p.id) }] } });

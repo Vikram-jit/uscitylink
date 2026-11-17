@@ -35,7 +35,18 @@ const hasPlace = (text: string, all: string[]) =>
  * An address plus any load word (pickup, delivery, drop, … anywhere, any format), or a PICKUP /
  * DELIVERY heading, an appointment time or a LOAD # line → a load: it must carry its Load #.
  */
+/**
+ * Loads from chat messages — the admin switch Settings → Loads → "Loads from chat messages" (off by
+ * default: loads only from the Loads form). Off, a load text in a chat box is sent as a normal message
+ * (no Load # check, not turned into a load). Kept in step with the server by useLoadFeatures().
+ */
+let loadsFromChat = false;
+export const setLoadsFromChat = (on: boolean): void => {
+  loadsFromChat = on;
+};
+
 export function looksLikeLoad(text: string): boolean {
+  if (!loadsFromChat) return false;
   const all = lines(text);
   // A LOAD # line with a PICKUP / DROP heading is a load even before any address is known (both pending)
   if (all.some((l) => LOAD_NO.test(l)) && all.some((l) => LABEL.test(l))) return true;

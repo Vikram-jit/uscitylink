@@ -14,6 +14,7 @@ import { userRoom } from "../../sockets/userConnections";
 import { sendSystemMessageToDriver } from "../../sockets/messageHandler";
 import { driversInGroup, postToGroup } from "./truckGroup";
 import { rememberOwnLoadText } from "./ownMessages";
+import { loadFeature } from "./loadFeatures";
 import { ActorRole, check, DRIVER_CURRENT, nextStep, TripAction, TripStatus, UNDO_WINDOW_MS } from "./lifecycle";
 import { localToDate, stateTimezone } from "./stateTimezone";
 import { createRouteRow, isPriced, removeRouteRow, syncRouteRow } from "./routeListSync";
@@ -891,6 +892,8 @@ export async function act(id: number, action: TripAction, actor: Actor, opts: Ac
  */
 export async function postToChat(trip: ChatTrip, text: string, opts: { driverTap?: boolean } = {}): Promise<string | null> {
   if (!opts.driverTap) return null;
+  // Settings → Loads → "Driver tap messages in the chat"
+  if (!(await loadFeature("driver_chat_lines"))) return null;
   const channelId = trip.driver_profile_id ? await ensureChannel(trip) : null;
   if (!trip.driver_profile_id || !channelId) return null;
   try {
@@ -1561,6 +1564,8 @@ export async function upcomingFor(profileId: string) {
  * saved for later still wait for dispatch to confirm (offerNextLoad).
  */
 export async function sendLinedUpNext(profileId: string): Promise<ChatTrip | null> {
+  // Settings → Loads → "Send the next lined-up load automatically"
+  if (!(await loadFeature("auto_send_next"))) return null;
   const busy = await ChatTrip.count({ where: { driver_profile_id: profileId, status: { [Op.in]: ["planned", "accepted", "started", "rolling", "on_hold"] } } });
   if (busy) return null;
   for (const leg of await linedUpLegs(profileId)) {

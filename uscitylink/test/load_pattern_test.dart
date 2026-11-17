@@ -12,6 +12,9 @@ import 'package:uscitylink/views/staff/widgets/template_dialog.dart';
 /// The one load pattern (lib/utils/load_format.dart, server tripMessages.formatLoad): only the LOAD # is
 /// required, the pickup and the drop are each optional, a place or a date not confirmed is PENDING.
 void main() {
+  // These tests cover loads made from chat text (off in the app: loads come from the form) — on here
+  setUpAll(() => loadsFromChat = true);
+
   Map<String, dynamic> stop(int id, String type, {String? city, String? state, String? name, String? appt}) =>
       {'id': id, 'seq': id, 'type': type, 'city': city, 'state': state, 'name': name, 'appointment_local': appt};
   Map<String, dynamic> leg(List<Map<String, dynamic>> stops, {bool loaded = false}) => {

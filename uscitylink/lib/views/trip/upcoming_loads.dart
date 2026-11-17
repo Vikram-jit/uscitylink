@@ -21,7 +21,9 @@ class UpcomingLoads extends StatelessWidget {
     if (trips == null) return const SizedBox.shrink();
     return Obx(() {
       final list = trips.upcoming.toList();
-      if (list.isEmpty) return const SizedBox.shrink();
+      final f = trips.features.value;
+      // Settings → Loads: no loads / no upcoming list in the driver app
+      if (list.isEmpty || !f.driverLoads || !f.driverUpcoming) return const SizedBox.shrink();
       return Padding(
         key: const Key('upcomingLoads'),
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
@@ -81,7 +83,10 @@ class _UpcomingCard extends StatelessWidget {
         if (appt != null) Text(appt, style: AppText.bodySm.copyWith(color: const Color(0xFF64748B))),
         if (gear.isNotEmpty) Text(gear, style: AppText.bodySm.copyWith(color: const Color(0xFF64748B))),
         const SizedBox(height: AppSpacing.md),
-        if (trip.accepted)
+        // Settings → Loads → buttons off: the list is shown, dispatch answers for the driver
+        if (!service.features.value.canTap)
+          const SizedBox.shrink()
+        else if (trip.accepted)
           Row(children: [
             const Expanded(child: Text('You accepted it. It becomes your load when the current one is delivered.', style: TextStyle(fontSize: 12.5, color: Color(0xFF475569)))),
             TextButton(key: Key('upcomingReject_${trip.id}'), style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)), onPressed: () => service.respond(trip, 'reject'), child: const Text('Reject')),
