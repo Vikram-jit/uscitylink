@@ -266,6 +266,11 @@ export default function MyMessage() {
       }),
     }
   );
+  // The thread on hand belongs to another driver (or none yet): the new one is still loading
+  const shownFor = messageData?.data?.userProfile?.id;
+  const otherDriversChat = !!selectedUserId && !!shownFor && shownFor !== selectedUserId;
+  const switchingChat = !!selectedUserId && (otherDriversChat || !messageData) && mIsFetching;
+
   if (isLoading) {
     return <CircularProgress />;
   }
@@ -317,9 +322,16 @@ export default function MyMessage() {
           setSelectedUserId={selectUser}
         />
       </Box>
-      {mLoader && <CircularProgress />}
-      {messageData?.status  && selectedUserId && (
+      {/* Right after a click the last reply is still the previous driver's chat: show a loader at once
+          instead of leaving that chat on screen until the new one arrives (it looked stuck) */}
+      {switchingChat && (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <CircularProgress />
+        </Box>
+      )}
+      {!switchingChat && !otherDriversChat && messageData?.status && selectedUserId && (
         <MessagesPane
+          key={selectedUserId}
           page={mPage}
           setPage={setMPage}
           hasMore={mHasMore}
@@ -336,7 +348,7 @@ export default function MyMessage() {
           userList={userList || null}
         />
       )}
-      {!selectedUserId && !mLoader && <EmptyChat />}
+      {!selectedUserId && <EmptyChat />}
     </Box>
   );
 }

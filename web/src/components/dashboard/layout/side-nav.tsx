@@ -185,7 +185,7 @@ function reduceChildRoutes({
 
     acc.push(
       <NavItem
-      key={Math.random() * 10000000}
+      key={item.key ?? item.href ?? item.title}
       pathname={pathname} {...item}
       data={data}
       onC
@@ -199,7 +199,7 @@ function reduceChildRoutes({
     );
   } else {
     acc.push(
-      <NavItem key={Math.random() * 10000000}  pathname={pathname} data={data} {...item}  />
+      <NavItem key={item.key ?? item.href ?? item.title}  pathname={pathname} data={data} {...item}  />
     );
   }
 
@@ -233,7 +233,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title,badg
 
 
   return (
-    <li key={Math.random() * 1000000000} onClick={()=>{
+    <li onClick={()=>{
      
       socket?.emit('staff_open_chat', null);
     }}>

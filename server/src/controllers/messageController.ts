@@ -587,19 +587,24 @@ export const getMessagesByUserId = async (
 
     const offset = (page - 1) * pageSize;
 
-    const userProfile = await UserProfile.findByPk(id, {
-      include: [{ model: User, as: "user" }],
-    });
-
-    const messages = await Message.findAndCountAll({
-      where: {
-        channelId: req.activeChannel,
-        userProfileId: id,
-        type: {
-          [Op.ne]: "group",
-        },
-        ...(req.query.pinMessage == "1" && { staffPin: "1" }),
+    const where = {
+      channelId: req.activeChannel,
+      userProfileId: id,
+      type: {
+        [Op.ne]: "group",
       },
+      ...(req.query.pinMessage == "1" && { staffPin: "1" }),
+    };
+
+    // Independent reads run together (they used to run one after another on every chat open).
+    // The count needs no joins, so it is a plain count instead of findAndCountAll's joined count.
+    const [userProfile, count, rows, groupUser] = await Promise.all([
+      UserProfile.findByPk(id, {
+        include: [{ model: User, as: "user" }],
+      }),
+      Message.count({ where }),
+      Message.findAll({
+      where,
       include: [
         {
           model: Message,
@@ -623,21 +628,22 @@ export const getMessagesByUserId = async (
       order: [["messageTimestampUtc", "DESC"]],
       limit: pageSize,
       offset: offset,
-    });
-
-    const groupUser = await GroupUser.findAll({
-      where: {
-        userProfileId: id,
-      },
-      include: [
-        {
-          model: Group,
-          where: {
-            type: "truck",
-          },
+      }),
+      GroupUser.findAll({
+        where: {
+          userProfileId: id,
         },
-      ],
-    });
+        include: [
+          {
+            model: Group,
+            where: {
+              type: "truck",
+            },
+          },
+        ],
+      }),
+    ]);
+    const messages = { count, rows };
 
     const truckNumbers = await Promise.all(
       groupUser.map((e) => e.dataValues.Group.name),
@@ -646,25 +652,19 @@ export const getMessagesByUserId = async (
     const totalMessages = messages.count;
     const totalPages = Math.ceil(totalMessages / pageSize);
 
-    const modifiedMessage = await Promise.all(
-      messages.rows.map(async (e) => {
-        let group = null;
-        if (e.type == "truck_group") {
-          group = await Group.findOne({
-            where: {
-              id: e?.groupId!,
-            },
-            include: [
-              {
-                model: GroupChannel,
-                as: "group_channel",
-              },
-            ],
-          });
-        }
-        return { ...e.dataValues, group };
-      }),
-    );
+    // One lookup per truck group on the page, not one per message
+    const groupIds = [...new Set(messages.rows.filter((e) => e.type == "truck_group" && e.groupId).map((e) => e.groupId!))];
+    const groups = groupIds.length
+      ? await Group.findAll({
+          where: { id: groupIds },
+          include: [{ model: GroupChannel, as: "group_channel" }],
+        })
+      : [];
+    const groupById = new Map(groups.map((g) => [g.id, g]));
+    const modifiedMessage = messages.rows.map((e) => ({
+      ...e.dataValues,
+      group: e.type == "truck_group" ? (groupById.get(e.groupId!) ?? null) : null,
+    }));
 
     return res.status(200).json({
       status: true,
