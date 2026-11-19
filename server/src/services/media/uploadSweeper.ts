@@ -191,7 +191,7 @@ export function startUploadSweeper() {
     try {
       const r = await sweepUploads();
       backlog = r.checked >= PER_RUN;
-      if (r.uploaded.length || r.alreadyInS3.length || r.errors.length) {
+      if (r.checked) {
         console.log(
           `[uploads] to S3: ${r.uploaded.length} uploaded, ${r.alreadyInS3.length} already there, ${r.missing.length} missing, ${r.errors.length} errors (${r.batches} batches of ${BATCH})${backlog ? " — more waiting, next run in 1 min" : ""}`,
           r.errors.slice(0, 3)
