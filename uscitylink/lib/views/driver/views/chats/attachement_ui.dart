@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get/get.dart';
 import 'package:pdfrx/pdfrx.dart';
+import 'package:uscitylink/constant.dart';
 import 'package:uscitylink/utils/constant/colors.dart';
 import 'package:uscitylink/views/widgets/audio_player_widget.dart';
 import 'package:uscitylink/views/widgets/document_download.dart';
@@ -64,6 +65,9 @@ class _AttachementUiState extends State<AttachementUi> {
     '.ape', // Monkey's Audio
     '.au', // Sun Microsystems Audio
   ];
+  bool get _hasLocalFile =>
+      widget.localFilePath.isNotEmpty && File(widget.localFilePath).existsSync();
+
   @override
   Widget build(BuildContext context) {
     // Extract file extension (lowercase for consistency)
@@ -73,13 +77,19 @@ class _AttachementUiState extends State<AttachementUi> {
     if (['png', 'jpg', 'jpeg'].contains(extension)) {
       // Image files (PNG, JPG, JPEG)
       return _buildImagePreview(widget.fileUrl, widget.url_upload_type);
-    } else if (extension == 'pdf') {
+    }
+    // Not in S3 yet: open the API server's copy
+    final notInS3 = widget.url_upload_type == "not-upload" ||
+        widget.url_upload_type == "failed";
+    final fileUrl = notInS3 ? serverFileUrl(widget.fileUrl) : widget.fileUrl;
+    final thumbnail = notInS3 ? serverFileUrl(widget.thumbnail) : widget.thumbnail;
+    if (extension == 'pdf') {
       // PDF file
-      return _buildPdfPreview(widget.fileUrl);
+      return _buildPdfPreview(fileUrl);
     } else if (videoExtensions.contains(extension)) {
-      return _buildVideoPreview(widget.fileUrl, widget.thumbnail);
-    } else if (isSupportedFormat(widget.fileUrl)) {
-      return AudioPlayerWidget(audioUrl: widget.fileUrl);
+      return _buildVideoPreview(fileUrl, thumbnail);
+    } else if (isSupportedFormat(fileUrl)) {
+      return AudioPlayerWidget(audioUrl: fileUrl);
       // return Center(
       //   child: Text("Audio Player Unavailable"),
       // );
@@ -160,7 +170,7 @@ class _AttachementUiState extends State<AttachementUi> {
 
   // Widget to show the image preview (network image)
   Widget _buildImagePreview(String imageUrl, String url_upload_type) {
-    if (url_upload_type == "failed") {
+    if (url_upload_type == "failed" && _hasLocalFile) {
       return Image.file(File(widget.localFilePath),
           width: double.infinity,
           height: 300.0,
@@ -197,98 +207,54 @@ class _AttachementUiState extends State<AttachementUi> {
         );
       });
     }
-    if (url_upload_type == "not-upload") {
-      return widget.direction &&
-              widget.location == "driver" &&
-              widget.directionType == "R"
-          ? Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Circular progress indicator
-                      const SizedBox(
-                        height: 60.0,
-                        width: 60.0,
-                        child: CircularProgressIndicator(
-                            color: TColors.navyHeader),
-                      ),
-                      // Centered icon
-                      Icon(
-                        widget.location == "driver" &&
-                                widget.directionType == "R"
-                            ? Icons.cloud_upload_rounded
-                            : Icons.download_rounded,
-                        size: 28.0,
-                        color: TColors.navyHeader,
-                      ),
-                    ],
+    // Not in S3 yet (or the copy to S3 failed): the file is already on the API server, so show it from
+    // there instead of a spinner that never ends. If the server copy is gone (S3 got it meanwhile), use S3.
+    if ((url_upload_type == "not-upload" || url_upload_type == "failed") &&
+        serverFileUrl(imageUrl) != imageUrl) {
+      final onServer = serverFileUrl(imageUrl);
+      final sending = (widget.location == "driver" && widget.directionType == "R") ||
+          (widget.location == "staff" && widget.directionType == "S");
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Get.to(() => DocumentDownload(file: onServer)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: onServer,
+                width: double.infinity,
+                height: 200.0,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: CircularProgressIndicator(color: TColors.navyHeader),
                   ),
-                  const SizedBox(
-                    height: 8,
+                ),
+                errorWidget: (context, url, error) => CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: double.infinity,
+                  height: 200.0,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, url, error) => const Icon(
+                    Icons.error,
+                    size: 40,
+                    color: Colors.red,
                   ),
-                  Text(
-                    "${widget.location == "driver" && widget.directionType == "R" ? "sending..." : "receiving..."}",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade600),
-                  )
-                ],
+                ),
               ),
-            )
-          : Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Circular progress indicator
-                      const SizedBox(
-                        height: 60.0,
-                        width: 60.0,
-                        child: CircularProgressIndicator(
-                            color: TColors.navyHeader),
-                      ),
-                      // Centered icon
-                      Icon(
-                        widget.location == "staff" &&
-                                widget.directionType == "S"
-                            ? Icons.cloud_upload_rounded
-                            : Icons.download_rounded,
-                        size: 28.0,
-                        color: TColors.navyHeader,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 8,
-                  ),
-                  Text(
-                    "${widget.location == "staff" && widget.directionType == "S" ? "sending..." : "receiving..."}",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade600),
-                  )
-                ],
-              ),
-            );
+              if (sending && url_upload_type == "not-upload")
+                const Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Icon(Icons.cloud_upload_rounded,
+                      size: 20, color: Colors.white),
+                ),
+            ],
+          ),
+        ),
+      );
     }
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -411,4 +377,12 @@ class _AttachementUiState extends State<AttachementUi> {
       ),
     );
   }
+}
+
+/// The API server's copy of a chat file (it keeps it until the copy to S3 is done):
+/// https://ciity-sms…/uscitylink/x.jpg → https://<api server>/uscitylink/x.jpg. Other links are returned as they are.
+String serverFileUrl(String url) {
+  final s3 = "${Constant.aws}/";
+  if (!url.startsWith(s3)) return url;
+  return "${Constant.tempImageUrl}${url.substring(s3.length)}";
 }

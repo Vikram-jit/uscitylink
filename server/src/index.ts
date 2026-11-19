@@ -1,4 +1,5 @@
 import { startTripReminders } from "./services/trips/reminders";
+import { startUploadSweeper } from "./services/media/uploadSweeper";
 import express from "express";
 import http from "http";
 import cors from "cors";
@@ -157,6 +158,7 @@ server.listen(PORT, async () => {
   logCallPushSetup();
   registerTripHooks();
   startTripReminders();
+  startUploadSweeper();
   logRecordingSetup();
   await primarySequelize.authenticate();
   console.log("Connected to primary database.");
