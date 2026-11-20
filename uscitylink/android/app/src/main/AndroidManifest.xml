@@ -1,6 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Hardware the app can use but does not need. Without these lines Google Play treats them as
+         required and hides the app from devices without them: the ML Kit document scanner locks its
+         screen to portrait (implies android.hardware.screen.portrait), and the camera, microphone and
+         Bluetooth permissions below imply those features. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false"/>
+
     <!-- Permissions -->
 
 
