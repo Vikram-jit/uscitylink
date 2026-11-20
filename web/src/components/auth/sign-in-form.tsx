@@ -87,10 +87,17 @@ export function SignInForm(): React.JSX.Element {
     [checkSession, router, setError]
   );
 
+  // Sent here by an expired session (lib/auth/session.ts)
+  const [expired, setExpired] = React.useState(false);
+  React.useEffect(() => {
+    setExpired(new URLSearchParams(window.location.search).get('expired') === '1');
+  }, []);
+
   return (
     <Stack spacing={4}>
       <Stack spacing={1}>
         <Typography variant="h4">Sign in</Typography>
+        {expired ? <Alert color="warning">Your session expired. Please sign in again.</Alert> : null}
         {/* <Typography color="text.secondary" variant="body2">
           Don&apos;t have an account?{' '}
           <Link component={RouterLink} href={paths.auth.signUp} underline="hover" variant="subtitle2">

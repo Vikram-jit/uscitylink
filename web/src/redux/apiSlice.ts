@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { apiUrl } from '@/lib/serverUrl';
+import { endSession, hasToken } from '@/lib/auth/session';
 
 
 
@@ -17,10 +18,15 @@ const prepareHeaders = (headers: Headers) => {
 // The server is chosen at request time (IP dashboard → IP server, domain dashboard → domain server)
 let cached: { url: string; query: ReturnType<typeof fetchBaseQuery> } | null = null;
 
-const baseQuery: ReturnType<typeof fetchBaseQuery> = (args, api, extraOptions) => {
+const baseQuery: ReturnType<typeof fetchBaseQuery> = async (args, api, extraOptions) => {
   const url = apiUrl();
   if (!cached || cached.url !== url) cached = { url, query: fetchBaseQuery({ baseUrl: url, prepareHeaders }) };
-  return cached.query(args, api, extraOptions);
+  const result = await cached.query(args, api, extraOptions);
+  // 401 = the session is no longer valid (token expired / revoked). Sign-in calls answer 401 for a
+  // wrong password, so those are left to the form.
+  const path = typeof args === 'string' ? args : args.url;
+  if (result.error?.status === 401 && hasToken() && !/^\/?auth\//.test(path)) endSession();
+  return result;
 };
 
 export interface ApiResponse<T = unknown> {

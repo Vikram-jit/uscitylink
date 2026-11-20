@@ -6,6 +6,7 @@ import Alert from '@mui/material/Alert';
 
 import { paths } from '@/paths';
 import { logger } from '@/lib/default-logger';
+import { watchSessionExpiry } from '@/lib/auth/session';
 import { useUser } from '@/hooks/use-user';
 
 export interface AuthGuardProps {
@@ -35,6 +36,9 @@ export function AuthGuard({ children }: AuthGuardProps): React.JSX.Element | nul
 
     setIsChecking(false);
   };
+
+  // Logged-in pages: sign out as soon as the token's expiry passes, even if no API call is made
+  React.useEffect(() => watchSessionExpiry(), []);
 
   React.useEffect(() => {
     checkPermissions().catch(() => {
