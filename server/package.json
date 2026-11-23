@@ -3,7 +3,8 @@
     "start": "node dist/index.js",
     "dev": "nodemon",
     "build": "tsc && copyfiles -u 2 './src/config/firebase.json' './dist/config/'",
-    "build:web": "cd ../chat_app && flutter build web --wasm --release --base-href=/app/ --pwa-strategy=none && rm -rf ../server/public/build && mkdir -p ../server/public/build && cp -r build/web/* ../server/public/build/"
+    "build:web": "cd ../chat_app && flutter build web --wasm --release --base-href=/app/ --pwa-strategy=none && rm -rf ../server/public/build && mkdir -p ../server/public/build && cp -r build/web/* ../server/public/build/",
+    "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

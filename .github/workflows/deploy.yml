@@ -2,7 +2,7 @@
 #
 # Everything runs ON the server over SSH, because its secrets live only there (server/.env,
 # server/config/config.json, web env files are not in git):
-#   server: npm install → build → sequelize migrations
+#   server: npm install → build → npm run migrate (DB from server/.env, like the API)
 #   web:    npm install --legacy-peer-deps → next build
 #   then:   pm2 restart 3 4
 # Any failing step stops the deploy before pm2 is restarted.
@@ -57,7 +57,7 @@ jobs:
             cd server
             npm install
             npm run build
-            npx sequelize-cli db:migrate
+            npm run migrate
 
             echo "== web: install, build"
             cd ../web
