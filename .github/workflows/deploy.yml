@@ -1,0 +1,70 @@
+# Deploy server + web to the production machine on every push to main (or by hand from the Actions tab).
+#
+# Everything runs ON the server over SSH, because its secrets live only there (server/.env,
+# server/config/config.json, web env files are not in git):
+#   server: npm install → build → sequelize migrations
+#   web:    npm install --legacy-peer-deps → next build
+#   then:   pm2 restart 3 4
+# Any failing step stops the deploy before pm2 is restarted.
+#
+# Repository secrets to add (Settings → Secrets and variables → Actions):
+#   SSH_HOST      server IP / hostname
+#   SSH_USER      user that owns the app and pm2 (e.g. ubuntu)
+#   SSH_KEY       private key whose public key is in that user's ~/.ssh/authorized_keys
+#   SSH_PORT      optional, defaults to 22
+#   APP_DIR       folder of the repo checkout on the server (e.g. /home/ubuntu/uscitylink)
+
+name: Deploy server and web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "web/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Build, migrate and restart on the server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 35m
+          script: |
+            set -euo pipefail
+            # non-interactive SSH shells don't load nvm; pick up node/npm/pm2 if it is used
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            cd "${{ secrets.APP_DIR }}"
+            echo "== pull"
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "== server: install, build, migrate"
+            cd server
+            npm install
+            npm run build
+            npx sequelize-cli db:migrate
+
+            echo "== web: install, build"
+            cd ../web
+            npm install --legacy-peer-deps
+            npm run build
+
+            echo "== restart"
+            pm2 restart 3 4
+            pm2 save
+            pm2 ls
