@@ -1,23 +1,37 @@
-# Deploy server + web to the production machine on every push to main (or by hand from the Actions tab).
+# Check, then deploy to production.
 #
-# Everything runs ON the server over SSH, because its secrets live only there (server/.env,
-# server/config/config.json, web env files are not in git):
-#   server: npm install → build → npm run migrate (DB from server/.env, like the API)
-#           → npm run build:web (Flutter web app from chat_app/ into server/public/build, needs flutter)
-#   web:    npm install --legacy-peer-deps → next build
-#   then:   pm2 restart 3 4
-# Any failing step stops the deploy before pm2 is restarted.
+# check (every pull request and every push to main), on GitHub's machines, no secrets needed:
+#   server    npm install → tsc (type check)
+#   web       npm install --legacy-peer-deps → tsc (type check)
+#   chat_app  flutter pub get → flutter analyze (errors fail, warnings/infos don't)
 #
-# Repository secrets to add (Settings → Secrets and variables → Actions):
+# production (push to main or run by hand, only when every check passed), ON the server over SSH,
+# because its secrets live only there (server/.env, server/config/config.json, web env files):
+#   server    npm install → build → npm run migrate (DB from server/.env, like the API)
+#   chat_app  flutter clean → pub get → npm run build:web (into server/public/build, served at /app)
+#   web       npm install --legacy-peer-deps → next build
+#   then      pm2 restart 3 4
+# Any failing step stops the deploy before pm2 is restarted, so the running apps stay up.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
 #   SSH_HOST      server IP / hostname
 #   SSH_USER      user that owns the app and pm2 (e.g. ubuntu)
 #   SSH_KEY       private key whose public key is in that user's ~/.ssh/authorized_keys
 #   SSH_PORT      optional, defaults to 22
 #   APP_DIR       folder of the repo checkout on the server (e.g. /home/ubuntu/uscitylink)
+# The deploy job uses the "production" environment: add required reviewers to it in
+# Settings → Environments → production if a deploy should wait for approval.
 
-name: Deploy server and web
+name: Check and deploy
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "web/**"
+      - "chat_app/**"
+      - ".github/workflows/deploy.yml"
   push:
     branches: [main]
     paths:
@@ -27,14 +41,71 @@ on:
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  check-server:
+    name: Check server
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm install --no-audit --no-fund
+      - name: Type check
+        run: npx tsc --noEmit
+
+  check-web:
+    name: Check web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Type check
+        run: npx tsc --noEmit
+
+  check-chat-app:
+    name: Check chat_app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: chat_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.6
+          cache: true
+      - run: flutter pub get
+      - name: Analyze (errors only)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  production:
+    name: Deploy to production
+    needs: [check-server, check-web, check-chat-app]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       - name: Build, migrate and restart on the server
         uses: appleboy/ssh-action@v1.2.0
@@ -65,6 +136,10 @@ jobs:
             # non-interactive SSH shells skip ~/.bashrc: add the usual Flutter install folders
             export PATH="$HOME/flutter/bin:$HOME/snap/flutter/common/flutter/bin:/snap/bin:/opt/flutter/bin:/usr/local/flutter/bin:$PATH"
             command -v flutter >/dev/null || { echo "flutter not found on the server PATH"; exit 1; }
+            export CI=true                      # no analytics / first-run prompts
+            flutter --version
+            flutter config --enable-web --no-analytics >/dev/null
+            (cd ../chat_app && flutter clean && flutter pub get)
             npm run build:web
 
             echo "== web: install, build"
