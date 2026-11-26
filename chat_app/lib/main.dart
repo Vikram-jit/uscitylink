@@ -1,4 +1,4 @@
-import 'package:chat_app/Login_with_token_screen.dart';
+import 'package:chat_app/login_with_token_screen.dart';
 import 'package:chat_app/core/services/socket_service.dart';
 import 'package:chat_app/core/services/user_interaction_service.dart';
 import 'package:chat_app/core/storage/storage_service.dart';
