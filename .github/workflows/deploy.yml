@@ -58,6 +58,7 @@ jobs:
             cd server
             npm install
             npm run build
+            npm run build:web
             npm run migrate
 
             echo "== web: install, build"
