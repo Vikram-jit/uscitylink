@@ -22,6 +22,7 @@ on:
     paths:
       - "server/**"
       - "web/**"
+      - "chat_app/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
