@@ -3,6 +3,7 @@
 # Everything runs ON the server over SSH, because its secrets live only there (server/.env,
 # server/config/config.json, web env files are not in git):
 #   server: npm install → build → npm run migrate (DB from server/.env, like the API)
+#           → npm run build:web (Flutter web app from chat_app/ into server/public/build, needs flutter)
 #   web:    npm install --legacy-peer-deps → next build
 #   then:   pm2 restart 3 4
 # Any failing step stops the deploy before pm2 is restarted.
@@ -58,8 +59,13 @@ jobs:
             cd server
             npm install
             npm run build
-            npm run build:web
             npm run migrate
+
+            echo "== chat_app: flutter web build → server/public/build (/app)"
+            # non-interactive SSH shells skip ~/.bashrc: add the usual Flutter install folders
+            export PATH="$HOME/flutter/bin:$HOME/snap/flutter/common/flutter/bin:/snap/bin:/opt/flutter/bin:/usr/local/flutter/bin:$PATH"
+            command -v flutter >/dev/null || { echo "flutter not found on the server PATH"; exit 1; }
+            npm run build:web
 
             echo "== web: install, build"
             cd ../web
